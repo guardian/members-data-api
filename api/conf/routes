@@ -1,0 +1,2 @@
+GET         /user-attributes/me/membership              @controllers.AttributeController.getMyAttributes
+GET         /user-attributes/:userId/membership         @controllers.AttributeController.getAttributes(userId)
