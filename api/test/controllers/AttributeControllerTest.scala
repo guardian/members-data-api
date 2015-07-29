@@ -35,7 +35,7 @@ class AttributeControllerTest extends Specification {
     override val AuthenticatedAction = NoCacheAction andThen authenticated()
   }
 
-  def verifySuccessfulResult(result: Future[Result]) ={
+  def verifySuccessfulResult(result: Future[Result]) = {
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     (jsonBody \ "response" \ "tier").toOption.map(_.as[String]) shouldEqual Some("patron")
@@ -45,18 +45,18 @@ class AttributeControllerTest extends Specification {
 
   "getAttributes" should {
     "retrieve attributes for the given user id" in {
-        val apiResponse = ApiResponse.Right(MembershipAttributes(userId, LocalDate.now, "patron", "abc"))
-        when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
+      val apiResponse = ApiResponse.Right(MembershipAttributes(userId, LocalDate.now, "patron", "abc"))
+      when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
-        val result = controller.getAttributes(userId)(FakeRequest())
-        verifySuccessfulResult(result)
+      val result = controller.getAttributes(userId)(FakeRequest())
+      verifySuccessfulResult(result)
     }
   }
 
   "getMyAttributes" should {
     "return unauthorised when cookies not provided" in {
-        val result = controller.getMyAttributes(FakeRequest())
-        status(result) shouldEqual UNAUTHORIZED
+      val result = controller.getMyAttributes(FakeRequest())
+      status(result) shouldEqual UNAUTHORIZED
     }
 
     "retrieve attributes for user in cookie" in {

@@ -82,14 +82,7 @@ object ApiResponse extends Results {
 
   def apply[T](action: => ApiResponse[T])(implicit tjs: Writes[T], ec: ExecutionContext): Future[Result] = {
     action.fold(
-      err =>
-        Status(err.statusCode) {
-          JsObject(Seq(
-            "status" -> JsString("error"),
-            "statusCode" -> JsNumber(err.statusCode),
-            "errors" -> Json.toJson(err.errors)
-          ))
-        },
+      err => err.toResult,
       t =>
         Ok {
           JsObject(Seq(

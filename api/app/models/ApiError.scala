@@ -1,6 +1,8 @@
 package models
 
+import models.ApiResponse._
 import play.api.libs.json._
+import play.api.mvc.Result
 
 
 case class ApiError(message: String, friendlyMessage: String,
@@ -13,6 +15,14 @@ object ApiError {
 
 case class ApiErrors(errors: List[ApiError]) {
   def statusCode = errors.map(_.statusCode).max
+
+  def toResult: Result = Status(statusCode) {
+    JsObject(Seq(
+      "status" -> JsString("error"),
+      "statusCode" -> JsNumber(statusCode),
+      "errors" -> Json.toJson(errors)
+    ))
+  }
 }
 
 object ApiErrors {

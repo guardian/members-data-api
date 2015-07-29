@@ -1,6 +1,7 @@
 package actions
 
 import com.gu.identity.play.IdMinimalUser
+import models.{ApiError, ApiErrors}
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc.Security.AuthenticatedBuilder
@@ -27,7 +28,7 @@ object Functions extends Results {
   }
 
   private def unauthenticated(request: RequestHeader): Result =
-    Unauthorized // TODO return as ApiResponse
+    ApiErrors(List(ApiError("Unauthorised", "Valid GU_U and SC_GU_U cookies are required.", 401))).toResult
 
   val authenticatedExceptionHandler = new ActionFunction[AuthRequest, AuthRequest] {
     override def invokeBlock[A](request: AuthRequest[A], block: (AuthRequest[A]) => Future[Result]): Future[Result] =
