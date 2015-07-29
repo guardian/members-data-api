@@ -17,6 +17,7 @@ target
 tmp
 project/project
 project/target
+dynamodb-local
 
 api/conf/keys.conf
 api/public/

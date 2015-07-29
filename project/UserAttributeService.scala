@@ -1,5 +1,6 @@
 import Dependencies._
 import PlayArtifact._
+import com.teambytes.sbt.dynamodb.DynamoDBLocal
 import play.sbt.PlayScala
 import play.sbt.routes.RoutesKeys._
 import sbt.Keys._
@@ -33,6 +34,8 @@ trait UserAttributeService {
       "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
       "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
       "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
+      "DynamoDB local" at "http://dynamodb-local.s3-website-us-west-2.amazonaws.com/release",
+      Resolver.bintrayRepo("dwhjames", "maven"),
       Resolver.sonatypeRepo("releases")),
     sources in (Compile,doc) := Seq.empty,
     publishArtifact in (Compile, packageDoc) := false,
@@ -41,9 +44,18 @@ trait UserAttributeService {
     javaOptions in Test += "-Dconfig.resource=dev.conf"
   ) ++ buildInfoPlugin
 
+  lazy val dynamoDBLocalSettings = DynamoDBLocal.settings ++ Seq(
+    DynamoDBLocal.Keys.dynamoDBLocalDownloadDirectory := file("dynamodb-local"),
+    DynamoDBLocal.Keys.dynamoDBLocalVersion := "2014-10-07",
+    test in Test <<= (test in Test).dependsOn(DynamoDBLocal.Keys.startDynamoDBLocal)
+  )
+
   def lib(name: String) = Project(name, file(name)).enablePlugins(PlayScala).settings(commonSettings: _*)
 
-  def app(name: String) = lib(name).settings(playArtifactDistSettings: _*).settings(magentaPackageName := name)
+  def app(name: String) = lib(name)
+    .settings(playArtifactDistSettings: _*)
+    .settings(magentaPackageName := name)
+    .settings(dynamoDBLocalSettings)
 }
 
 object UserAttributeService extends Build with UserAttributeService {

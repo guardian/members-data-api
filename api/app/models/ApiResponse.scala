@@ -1,7 +1,9 @@
 package models
 
+import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc.{Result, Results}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -49,10 +51,31 @@ object ApiResponse extends Results {
     ApiResponse(Future.successful(scala.Left(err)))
 
   /**
-   * Asyncronous versions of the ApiResponse Right/Left helpers for when you have
+   * Asynchronous versions of the ApiResponse Right/Left helpers for when you have
    * a Future that returns a good/bad value directly.
    */
   object Async {
+
+    private val logger = Logger(this.getClass)
+
+    def apply[A](underlying: Future[Either[ApiErrors, A]], apiError: ApiError = ApiError.unexpected("Unexpected error")): ApiResponse[A] = {
+      def recovery(t: Throwable): Either[ApiErrors, A] = {
+        logger.error(s"Exception handling future. Returning error: $apiError", t)
+        val apiErrors = ApiErrors(List(apiError))
+        scala.Left(apiErrors)
+      }
+
+      apply(underlying, recovery _)
+    }
+
+    def apply[A](underlying: Future[Either[ApiErrors, A]], recovery: Throwable => Either[ApiErrors, A]): ApiResponse[A] = {
+      val recoverable = underlying recover { case err =>
+        recovery(err)
+      }
+
+      ApiResponse(recoverable)
+    }
+
     /**
      * Create an ApiResponse from a Future of a good value.
      */

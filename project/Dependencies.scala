@@ -14,11 +14,13 @@ object Dependencies {
   val playFilters = PlayImport.filters
   val scalaTest =  "org.scalatestplus" %% "play" % "1.4.0-M3" % "test"
   val specs2 = PlayImport.specs2 % "test"
+  val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
+  val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % "1.9.31"
 
   //projects
 
   val apiDependencies = Seq(identityCookie, identityPlayAuth, scalaUri,
-    playWS, playCache, playFilters,
+    playWS, playCache, playFilters, awsWrap, awsDynamo,
     specs2, scalaTest)
 
 }

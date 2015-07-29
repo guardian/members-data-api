@@ -1,10 +1,13 @@
 package services
 
+import javax.inject.Inject
+
 import models.{ApiResponse, MembershipAttributes}
-import org.joda.time.LocalDate
+import repositories.MembershipAttributesRepository
 
-class AttributeService {
+class AttributeService @Inject() (membershipAttributesRepo: MembershipAttributesRepository) {
 
-  def getAttributes(userId: String): ApiResponse[MembershipAttributes] =
-    ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "1234"))
+  def getAttributes(userId: String): ApiResponse[MembershipAttributes] = {
+    membershipAttributesRepo.getAttributes(userId)
+  }
 }

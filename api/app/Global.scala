@@ -9,7 +9,6 @@ import scala.concurrent.Future
 
 object Global extends WithFilters(CheckCacheHeadersFilter, CSRFFilter(), AddEC2InstanceHeader) {
 
-
   private val logger = Logger(this.getClass)
 
   override def onHandlerNotFound(request: RequestHeader): Future[Result] = {

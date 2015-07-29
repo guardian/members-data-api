@@ -38,14 +38,14 @@ class AttributeControllerTest extends Specification {
   def verifySuccessfulResult(result: Future[Result]) ={
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
-    (jsonBody \ "response" \ "tierLevel").toOption.map(_.as[String]) shouldEqual Some("patron")
+    (jsonBody \ "response" \ "tier").toOption.map(_.as[String]) shouldEqual Some("patron")
     (jsonBody \ "response" \ "membershipNumber").toOption.map(_.as[String]) shouldEqual Some("abc")
   }
 
 
   "getAttributes" should {
     "retrieve attributes for the given user id" in {
-        val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
+        val apiResponse = ApiResponse.Right(MembershipAttributes(userId, LocalDate.now, "patron", "abc"))
         when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
         val result = controller.getAttributes(userId)(FakeRequest())
@@ -60,7 +60,7 @@ class AttributeControllerTest extends Specification {
     }
 
     "retrieve attributes for user in cookie" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
+      val apiResponse = ApiResponse.Right(MembershipAttributes(userId, LocalDate.now, "patron", "abc"))
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val guCookie = "gu_cookie"
