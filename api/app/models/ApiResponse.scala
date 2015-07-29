@@ -58,23 +58,12 @@ object ApiResponse extends Results {
 
     private val logger = Logger(this.getClass)
 
-    def apply[A](underlying: Future[Either[ApiErrors, A]], apiError: ApiError = ApiError.unexpected("Unexpected error")): ApiResponse[A] = {
-      def recovery(t: Throwable): Either[ApiErrors, A] = {
-        logger.error(s"Exception handling future. Returning error: $apiError", t)
-        val apiErrors = ApiErrors(List(apiError))
-        scala.Left(apiErrors)
-      }
-
-      apply(underlying, recovery _)
-    }
-
-    def apply[A](underlying: Future[Either[ApiErrors, A]], recovery: Throwable => Either[ApiErrors, A]): ApiResponse[A] = {
-      val recoverable = underlying recover { case err =>
-        recovery(err)
-      }
-
-      ApiResponse(recoverable)
-    }
+    def apply[A](underlying: Future[Either[ApiErrors, A]], recovery: Throwable => Either[ApiErrors, A]): ApiResponse[A] =
+      ApiResponse(
+        underlying recover { case err =>
+          recovery(err)
+        }
+      )
 
     /**
      * Create an ApiResponse from a Future of a good value.

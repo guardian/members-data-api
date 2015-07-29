@@ -1,5 +1,5 @@
 import controllers.Cached
-import filters.{AddEC2InstanceHeader, CheckCacheHeadersFilter}
+import filters.AddEC2InstanceHeader
 import models.{MembershipAttributes, ApiError, ApiErrors, ApiResponse}
 import play.api.Logger
 import play.api.mvc.{RequestHeader, Result, WithFilters}
@@ -7,7 +7,7 @@ import play.filters.csrf._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object Global extends WithFilters(CheckCacheHeadersFilter, CSRFFilter(), AddEC2InstanceHeader) {
+object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader) {
 
   private val logger = Logger(this.getClass)
 

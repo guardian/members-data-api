@@ -16,14 +16,4 @@ trait CommonActions {
 
   val AuthenticatedAction = NoCacheAction andThen authenticated()
 
-  val AddUserInfoToResponse = new ActionBuilder[Request] {
-    def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
-      block(request).map { result =>
-        (for (user <- AuthenticationService.authenticatedUserFor(request)) yield {
-          result.withHeaders("X-Gu-Identity-Id" -> user.id)
-        }).getOrElse(result)
-      }
-    }
-  }
-
 }

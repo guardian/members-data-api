@@ -2,7 +2,7 @@ package repositories
 
 import javax.inject.Inject
 
-import models.{ApiError, ApiErrors, ApiResponse, MembershipAttributes}
+import models._
 import com.github.dwhjames.awswrap.dynamodb.AmazonDynamoDBScalaMapper
 import play.api.Logger
 import com.github.dwhjames.awswrap.dynamodb._
@@ -15,13 +15,18 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
 
   lazy val NotFoundError = ApiErrors(List(ApiError("Not Found", "No membership attributes found for user", 404)))
 
+  private def handleError[MembershipAttributes](t: Throwable): Either[ApiErrors, MembershipAttributes] ={
+    logger.error("Unexpected error", t)
+    scala.Left(ApiErrors(List(ApiError.unexpected(t.getMessage))))
+  }
+
   def getAttributes(userId: String): ApiResponse[MembershipAttributes] = {
     logger.debug(s"Get attributes for userId: $userId")
     val result = dynamo.loadByKey[MembershipAttributesDynamo](userId).map(x =>
       x.map(_.toMembershipAttributes).toRight(NotFoundError)
     )
 
-    ApiResponse.Async(result)
+    ApiResponse.Async(result, handleError)
   }
 
   def updateAttributes(attributes: MembershipAttributes): ApiResponse[MembershipAttributes] = {
@@ -30,6 +35,6 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
       scala.Right(attributes)
     )
 
-    ApiResponse.Async(result)
+    ApiResponse.Async(result, handleError)
   }
 }
