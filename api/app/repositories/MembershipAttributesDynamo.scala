@@ -8,13 +8,13 @@ import org.joda.time.LocalDate
 case class MembershipAttributesDynamo(userId: String, joinDate: LocalDate, tier: String, membershipNumber: String) {
 
   def toMembershipAttributes: MembershipAttributes =
-    MembershipAttributes(userId, joinDate, tier, membershipNumber)
+    MembershipAttributes(joinDate, tier, membershipNumber)
 }
 
 object MembershipAttributesDynamo {
 
-  def apply(m: MembershipAttributes): MembershipAttributesDynamo =
-    MembershipAttributesDynamo(m.userId, m.joinDate, m.tier, m.membershipNumber)
+  def apply(userId: String, m: MembershipAttributes): MembershipAttributesDynamo =
+    MembershipAttributesDynamo(userId, m.joinDate, m.tier, m.membershipNumber)
 
   val tableName = "MembershipAttributes"
 

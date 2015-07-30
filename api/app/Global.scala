@@ -1,4 +1,4 @@
-import controllers.Cached
+import controllers.{NoCache, Cached}
 import filters.AddEC2InstanceHeader
 import models.{MembershipAttributes, ApiError, ApiErrors, ApiResponse}
 import play.api.Logger
@@ -11,6 +11,13 @@ object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader) {
 
   private val logger = Logger(this.getClass)
 
+  override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
+    logger.debug(s"Bad request: $request, error: $error")
+    ApiResponse {
+      ApiResponse.Left[MembershipAttributes](ApiErrors(List(ApiError("Bad Request", error, 400))))
+    } map { NoCache(_) }
+  }
+
   override def onHandlerNotFound(request: RequestHeader): Future[Result] = {
     logger.debug(s"Handler not found for request: $request")
     ApiResponse {
@@ -18,11 +25,10 @@ object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader) {
     } map { Cached(_) }
   }
 
-
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
     logger.error(s"Error handling request request: $request", ex)
     ApiResponse {
       ApiResponse.Left[MembershipAttributes](ApiErrors(List(ApiError("Error", s"Error handling request request: $request", 500))))
-    }
+    } map { NoCache(_) }
   }
 }

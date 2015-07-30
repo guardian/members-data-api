@@ -30,9 +30,9 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
     ApiResponse.Async(result, handleError)
   }
 
-  def updateAttributes(attributes: MembershipAttributes): ApiResponse[MembershipAttributes] = {
+  def updateAttributes(userId: String, attributes: MembershipAttributes): ApiResponse[MembershipAttributes] = {
     logger.debug(s"Update attributes: $attributes")
-    val result = dynamo.dump(MembershipAttributesDynamo(attributes)).map(x =>
+    val result = dynamo.dump(MembershipAttributesDynamo(userId, attributes)).map(x =>
       scala.Right(attributes)
     )
 

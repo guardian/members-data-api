@@ -29,19 +29,20 @@ class MembershipAttributesRepositoryTest extends Specification {
 
   "getAttributes" should {
     "retrieve attributes for given user" in {
-      val attributes = MembershipAttributes(UUID.randomUUID().toString, LocalDate.parse("2015-07-28"), "patron", "abc")
+      val userId = UUID.randomUUID().toString
+      val attributes = MembershipAttributes(LocalDate.parse("2015-07-28"), "patron", "abc")
       val result = for {
-        insertResult <- repo.updateAttributes(attributes)
-        retrieved <- repo.getAttributes(attributes.userId)
+        insertResult <- repo.updateAttributes(userId, attributes)
+        retrieved <- repo.getAttributes(userId)
       } yield retrieved
 
       Await.result(result.asFuture, 5.seconds) shouldEqual scala.Right(attributes)
     }
 
     "retrieve not found api error when attributes not found for user" in {
-      val attributes = MembershipAttributes(UUID.randomUUID().toString, LocalDate.parse("2015-07-28"), "patron", "abc")
+      val attributes = MembershipAttributes(LocalDate.parse("2015-07-28"), "patron", "abc")
       val result = for {
-        retrieved <- repo.getAttributes(attributes.userId)
+        retrieved <- repo.getAttributes(UUID.randomUUID().toString)
       } yield retrieved
 
       Await.result(result.asFuture, 5.seconds) shouldEqual scala.Left(repo.NotFoundError)

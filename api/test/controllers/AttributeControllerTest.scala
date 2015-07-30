@@ -6,6 +6,8 @@ import models.{ApiResponse, MembershipAttributes}
 import org.joda.time.LocalDate
 import org.mockito.Mockito._
 import org.specs2.mutable.Specification
+import play.api.libs.iteratee.{Iteratee, Input}
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Security.AuthenticatedBuilder
 import play.api.mvc._
 import play.api.test.FakeRequest
@@ -13,6 +15,7 @@ import play.api.test.Helpers._
 import services.AttributeService
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class AttributeControllerTest extends Specification {
 
@@ -45,10 +48,23 @@ class AttributeControllerTest extends Specification {
 
   "getAttributes" should {
     "retrieve attributes for the given user id" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes(userId, LocalDate.now, "patron", "abc"))
+      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val result = controller.getAttributes(userId)(FakeRequest())
+      verifySuccessfulResult(result)
+    }
+  }
+
+  "setAttributes" should {
+    "update attributes for the given user id" in {
+      val attributes = MembershipAttributes(LocalDate.now, "patron", "abc")
+      val apiResponse = ApiResponse.Right(attributes)
+      val attributesJson = Json.toJson(attributes)
+      when(attributeService.setAttributes(userId, attributes)).thenReturn(apiResponse)
+
+      val req = addJsonBodyToRequest(FakeRequest(), attributesJson)
+      val result = executeJsonRequest(controller.setAttributes(userId)(req), attributesJson)
       verifySuccessfulResult(result)
     }
   }
@@ -60,7 +76,7 @@ class AttributeControllerTest extends Specification {
     }
 
     "retrieve attributes for user in cookie" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes(userId, LocalDate.now, "patron", "abc"))
+      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val guCookie = "gu_cookie"
@@ -71,4 +87,34 @@ class AttributeControllerTest extends Specification {
       verifySuccessfulResult(result)
     }
   }
+
+  "setMyAttributes" should {
+    val attributes = MembershipAttributes(LocalDate.now, "patron", "abc")
+    val attributesJson = Json.toJson(attributes)
+
+    "return unauthorised when cookies not provided" in {
+      val req = addJsonBodyToRequest(FakeRequest(), attributesJson)
+      val result = executeJsonRequest(controller.setMyAttributes(req), attributesJson)
+      status(result) shouldEqual UNAUTHORIZED
+    }
+
+    "set attributes for user in cookie" in {
+      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
+      when(attributeService.setAttributes(userId, attributes)).thenReturn(apiResponse)
+
+      val guCookie = "gu_cookie"
+      val scGuCookie = "sc_gu_cookie"
+
+      val req = addJsonBodyToRequest(FakeRequest().withHeaders("Cookie" -> s"GU_U=$guCookie;SC_GU_U=$scGuCookie"), attributesJson)
+
+      val result = executeJsonRequest(controller.setMyAttributes(req), attributesJson)
+      verifySuccessfulResult(result)
+    }
+  }
+
+  private def addJsonBodyToRequest(req: FakeRequest[_], body: JsValue): FakeRequest[_] =
+    req.withJsonBody(body).withHeaders(req.headers.headers :+ (CONTENT_TYPE -> "application/json"): _*)
+
+  private def executeJsonRequest(iteratee: Iteratee[Array[Byte], Result], body: JsValue): Future[Result] =
+    iteratee.feed(Input.El(body.toString().getBytes)).flatMap(_.run)
 }
