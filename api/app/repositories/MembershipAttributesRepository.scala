@@ -15,9 +15,10 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
 
   lazy val NotFoundError = ApiErrors(List(ApiError("Not Found", "No membership attributes found for user", 404)))
 
-  private def handleError[MembershipAttributes](t: Throwable): Either[ApiErrors, MembershipAttributes] ={
-    logger.error("Unexpected error", t)
-    scala.Left(ApiErrors(List(ApiError.unexpected(t.getMessage))))
+  val handleError: PartialFunction[Throwable, Either[ApiErrors, MembershipAttributes]] = {
+    case t: Throwable =>
+      logger.error("Unexpected error", t)
+      scala.Left(ApiErrors(List(ApiError.unexpected(t.getMessage))))
   }
 
   def getAttributes(userId: String): ApiResponse[MembershipAttributes] = {

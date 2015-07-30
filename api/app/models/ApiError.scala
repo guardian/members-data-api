@@ -4,7 +4,6 @@ import models.ApiResponse._
 import play.api.libs.json._
 import play.api.mvc.Result
 
-
 case class ApiError(message: String, friendlyMessage: String,
                     statusCode: Int, context: Option[String] = None)
 

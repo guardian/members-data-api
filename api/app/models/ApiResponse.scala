@@ -58,12 +58,8 @@ object ApiResponse extends Results {
 
     private val logger = Logger(this.getClass)
 
-    def apply[A](underlying: Future[Either[ApiErrors, A]], recovery: Throwable => Either[ApiErrors, A]): ApiResponse[A] =
-      ApiResponse(
-        underlying recover { case err =>
-          recovery(err)
-        }
-      )
+    def apply[A](underlying: Future[Either[ApiErrors, A]], recovery: PartialFunction[Throwable, Either[ApiErrors, A]]): ApiResponse[A] =
+      ApiResponse(underlying recover recovery)
 
     /**
      * Create an ApiResponse from a Future of a good value.
