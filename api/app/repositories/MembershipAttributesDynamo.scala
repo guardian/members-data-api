@@ -1,6 +1,6 @@
 package repositories
 
-import _root_.models.MembershipAttributes
+import models.MembershipAttributes
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb._
 import org.joda.time.LocalDate
