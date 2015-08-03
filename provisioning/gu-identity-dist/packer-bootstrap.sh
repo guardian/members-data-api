@@ -14,8 +14,8 @@ wget https://dl.bintray.com/mitchellh/packer/$PACKER_VERSION
 unzip $PACKER_VERSION
 
 #Build the AMI
-aws s3 cp s3://gu-identity-packer-dist/packer-ami-java8-jvm.json .
-time ./packer build packer-ami-hvm.json >> $LOGGER 2>&1
+aws s3 cp s3://gu-identity-packer-dist/packer-ami-java8-hvm.json .
+time ./packer build packer-ami-java8-hvm.json >> $LOGGER 2>&1
 
 #Send the build log via email
 SNS_MESSAGE=$(cat $LOGGER)
