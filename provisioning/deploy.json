@@ -1,0 +1,70 @@
+{
+  "defaultStacks": [ "identity" ],
+  "packages": {
+    "gu-membership-attribute-service-dist": {
+      "type": "aws-s3",
+      "data": {
+        "bucket": "gu-membership-attribute-service-dist",
+        "prefixPackage": false,
+        "prefixStage": false,
+        "prefixStack": false,
+        "publicReadAcl": false,
+        "cacheControl": "max-age=600"
+      }
+    },
+
+    "gu-identity-dist": {
+      "type": "aws-s3",
+      "data": {
+        "bucket": "gu-identity-dist",
+        "prefixPackage": false,
+        "prefixStage": false,
+        "publicReadAcl": false,
+        "prefixStack": false,
+        "cacheControl": "max-age=600"
+      }
+    },
+
+    "gu-identity-packer-dist": {
+      "type": "aws-s3",
+      "data": {
+        "bucket": "gu-identity-packer-dist",
+        "prefixPackage": false,
+        "prefixStage": false,
+        "prefixStack": false,
+        "publicReadAcl": false,
+        "cacheControl": "max-age=600"
+      }
+    }
+
+  },
+
+  "recipes": {
+    "default": {
+      "depends": [
+        "deployGuIdentityDist",
+        "deployGuIdentityPackerDist",
+        "deployGuMembershipAttributeServiceDist"
+      ]
+    },
+
+    "deployGuIdentityDistDist": {
+      "actionsBeforeApp": [
+        "gu-identity-dist.uploadStaticFiles"
+      ]
+    },
+
+    "deployGuIdentityPackerDist": {
+      "actionsBeforeApp": [
+        "gu-identity-packer-dist.uploadStaticFiles"
+      ]
+    },
+
+    "deployGuMembershipAttributeServiceDist": {
+      "actionsBeforeApp": [
+        "gu-membership-attribute-service.uploadStaticFiles"
+      ]
+    }
+
+  }
+}
