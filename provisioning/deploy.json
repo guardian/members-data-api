@@ -62,7 +62,7 @@
 
     "deployGuMembershipAttributeServiceDist": {
       "actionsBeforeApp": [
-        "gu-membership-attribute-service.uploadStaticFiles"
+        "gu-membership-attribute-service-dist.uploadStaticFiles"
       ]
     }
 
