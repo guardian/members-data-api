@@ -7,7 +7,7 @@ import sbt.Keys._
 import sbt._
 import sbtbuildinfo.Plugin._
 
-trait UserAttributeService {
+trait MembershipAttributeService {
 
   val appVersion = "1.0-SNAPSHOT"
 
@@ -58,8 +58,8 @@ trait UserAttributeService {
     .settings(dynamoDBLocalSettings)
 }
 
-object UserAttributeService extends Build with UserAttributeService {
-  val api = app("api")
+object MembershipAttributeService extends Build with MembershipAttributeService {
+  val api = app("membership-attribute-service")
                 .settings(libraryDependencies ++= apiDependencies)
                 .settings(routesGenerator := InjectedRoutesGenerator)
                 .settings(addCommandAlias("devrun", "run -Dconfig.resource=dev.conf 9100"): _*)
