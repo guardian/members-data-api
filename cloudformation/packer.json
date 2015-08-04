@@ -45,7 +45,7 @@
     "VpcId": {
       "Description": "ID of the VPC onto which to launch the application",
       "Type": "AWS::EC2::VPC::Id",
-      "Default": "vpc-9f1fb9fa"
+      "Default": "vpc-0b86566e"
     },
     "VpcSubnets" : {
       "Description": "Subnets to use in VPC",
