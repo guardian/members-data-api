@@ -267,12 +267,12 @@
               "chmod +x cwlogs-setup.sh\n",
               "./cwlogs-setup.sh\n",
 
-              "aws s3 cp s3://gu-identity-dist/membership-attributes-service-bootstrap.sh .\n",
-              "chmod +x membership-attributes-service-bootstrap.sh\n",
-              "./membership-attributes-service-bootstrap.sh\n",
+              "aws s3 cp s3://gu-identity-dist/membership-attribute-service-bootstrap.sh .\n",
+              "chmod +x membership-attribute-service-bootstrap.sh\n",
+              "./membership-attribute-service-bootstrap.sh\n",
 
 
-              "start membership-attributes-service\n",
+              "service membership-attribute-service start\n",
               "sleep 20s\n"
             ]]
           }
