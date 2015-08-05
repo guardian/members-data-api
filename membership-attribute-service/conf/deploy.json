@@ -1,5 +1,5 @@
 {
-  "defaultStacks": ["identity"],
+  "defaultStacks": ["identity-membership-attribute-service"],
   "packages":{
     "gu-membership-attribute-service":{
       "type":"autoscaling",
