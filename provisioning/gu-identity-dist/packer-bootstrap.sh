@@ -3,7 +3,7 @@
 PACKER_VERSION=packer_0.8.1_linux_amd64.zip
 LOGGER=/tmp/packer.log
 TOPIC=arn:aws:sns:eu-west-1:942464564246:Packer-PackerLogsTopic-1FY28BPRYC1Q7
-SNS_SUBJECT="Subject: Packer.IO AMI Build Summary`date +%d-%m-%Y`"
+SNS_SUBJECT="Subject: Packer.IO AMI Build Summary `date +%d-%m-%Y`"
 
 REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone |sed 's/.$//'`
 ASGNAME=`aws autoscaling describe-auto-scaling-groups --region $REGION | grep "AutoScalingGroupName.*Packer" |sed -e 's/^.*: *"\([^"]*\)".*$/\1/'`

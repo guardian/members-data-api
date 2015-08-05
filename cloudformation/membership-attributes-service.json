@@ -111,12 +111,12 @@
               {
                 "Effect": "Allow",
                 "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::identity-*/*"
+                "Resource": "arn:aws:s3:::gu-identity-*/*"
               },
               {
                 "Effect": "Allow",
                 "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::membership-*/*"
+                "Resource": "arn:aws:s3:::gu-membership-*/*"
               },
               {
                 "Effect": "Allow",
