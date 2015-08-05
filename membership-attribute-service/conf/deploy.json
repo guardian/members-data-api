@@ -1,7 +1,7 @@
 {
   "defaultStacks": ["identity-membership-attribute-service"],
   "packages":{
-    "gu-membership-attribute-service":{
+    "membership-attribute-service":{
       "type":"autoscaling",
       "data":{
         "bucket": "gu-membership-attribute-service-dist"
