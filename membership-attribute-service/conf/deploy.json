@@ -10,10 +10,10 @@
   },
   "recipes":{
     "default":{
-      "actionsBeforeApp": ["gu-membership-attribute-service.uploadArtifacts", "gu-membership-attribute-service.deploy"]
+      "actionsBeforeApp": ["membership-attribute-service.uploadArtifacts", "membership-attribute-service.deploy"]
     },
     "artifactUploadOnly": {
-      "actions": [ "gu-membership-attribute-service.uploadArtifacts" ]
+      "actions": [ "membership-attribute-service.uploadArtifacts" ]
     }
   }
 }
