@@ -1,7 +1,6 @@
 package repositories
 
 import models.MembershipAttributes
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb._
 import org.joda.time.LocalDate
 
@@ -24,16 +23,6 @@ object MembershipAttributesDynamo {
     val tier  = "Tier"
     val joinDate = "JoinDate"
   }
-
-  val tableRequest =
-    new CreateTableRequest()
-      .withTableName(MembershipAttributesDynamo.tableName)
-      .withProvisionedThroughput(
-        Schema.provisionedThroughput(10L, 5L))
-      .withAttributeDefinitions(
-        Schema.stringAttribute(Attributes.userId))
-      .withKeySchema(
-        Schema.hashKey(Attributes.userId))
 
   implicit object membershipAttributesSerializer
     extends DynamoDBSerializer[MembershipAttributesDynamo] {

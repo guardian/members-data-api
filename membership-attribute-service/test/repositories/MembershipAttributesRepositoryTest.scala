@@ -4,10 +4,12 @@ import java.util.UUID
 
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
-import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
+import com.github.dwhjames.awswrap.dynamodb.{Schema, AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
 import models.MembershipAttributes
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
+import repositories.MembershipAttributesDynamo.Attributes
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -25,7 +27,18 @@ class MembershipAttributesRepositoryTest extends Specification {
   val dynamoClient    = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
   val repo = new MembershipAttributesRepository(dynamoMapper)
-  val createTableResult = Await.result(dynamoClient.createTable(MembershipAttributesDynamo.tableRequest), 5.seconds)
+
+  val tableRequest =
+    new CreateTableRequest()
+      .withTableName(MembershipAttributesDynamo.tableName)
+      .withProvisionedThroughput(
+        Schema.provisionedThroughput(10L, 5L))
+      .withAttributeDefinitions(
+        Schema.stringAttribute(Attributes.userId))
+      .withKeySchema(
+        Schema.hashKey(Attributes.userId))
+
+  val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
 
   "getAttributes" should {
     "retrieve attributes for given user" in {
