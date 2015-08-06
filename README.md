@@ -70,7 +70,7 @@ These credentials are required for accessing the DynamoDB table. When running te
 
 To start the service use:
 
-    sbt api/run
+    sbt membership-attribute-service/run
 
 The service will be starting on Play's default port of 9000.
 
