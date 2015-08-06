@@ -218,6 +218,11 @@
             "PropagateAtLaunch": "true"
           },
           {
+            "Key": "Name",
+            "Value": "Packer",
+            "PropagateAtLaunch": "true"
+          },
+          {
             "Key": "Stack",
             "Value": "identity",
             "PropagateAtLaunch": "true"
