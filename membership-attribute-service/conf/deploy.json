@@ -1,0 +1,19 @@
+{
+  "defaultStacks": ["identity"],
+  "packages":{
+    "membership-attribute-service":{
+      "type":"autoscaling",
+      "data":{
+        "bucket": "gu-membership-attribute-service-dist"
+      }
+    }
+  },
+  "recipes":{
+    "default":{
+      "actionsBeforeApp": ["membership-attribute-service.uploadArtifacts", "membership-attribute-service.deploy"]
+    },
+    "artifactUploadOnly": {
+      "actions": [ "membership-attribute-service.uploadArtifacts" ]
+    }
+  }
+}

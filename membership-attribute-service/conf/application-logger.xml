@@ -1,0 +1,24 @@
+<configuration>
+
+    <contextName>membership-attribute-service</contextName>
+
+    <appender name="LOGFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/membership-attribute-service.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/membership-attribute-service.log.%d{yyyy-MM-dd}.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%date [%thread] %-5level %logger{36} - %msg%n%xException{3}</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.google.api.client.http" level="WARN" />
+
+    <root level="INFO">
+        <appender-ref ref="LOGFILE"/>
+    </root>
+
+</configuration>

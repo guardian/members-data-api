@@ -1,0 +1,309 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "PackerIO template",
+  "Parameters": {
+    "KeyName": {
+      "Description": "The EC2 Key Pair to allow SSH access to the instances",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "Stage": {
+      "Description": "Environment name",
+      "Type": "String",
+      "AllowedValues": [ "CODE", "PROD" ]
+    },
+    "InstanceType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "c3.large",
+        "c3.xlarge",
+        "c3.2xlarge",
+        "c3.4xlarge",
+        "c3.8xlarge",
+        "g2.2xlarge",
+        "r3.large",
+        "r3.xlarge",
+        "r3.2xlarge",
+        "r3.4xlarge",
+        "r3.8xlarge",
+        "i2.xlarge",
+        "i2.2xlarge",
+        "i2.4xlarge",
+        "i2.8xlarge",
+        "hs1.8xlarge"
+      ],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    },
+    "VpcId": {
+      "Description": "ID of the VPC onto which to launch the application",
+      "Type": "AWS::EC2::VPC::Id",
+      "Default": "vpc-0b86566e"
+    },
+    "VpcSubnets" : {
+      "Description": "Subnets to use in VPC",
+      "Type": "CommaDelimitedList",
+      "Default": "subnet-a774fdc2,subnet-bc09bfcb,subnet-efa369b6"
+    },
+    "AmiId": {
+      "Description": "Custom AMI to use for instances, created using Packer",
+      "Type": "String"
+    },
+    "OperatorEmail": {
+      "Description": "Email address where to send the packer build logs",
+      "Type": "String"
+    }
+  },
+
+  "Mappings": {
+    "StageVariables": {
+      "PROD": {
+        "AutoscalingNotificationsARN": "arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsPROD"
+      },
+      "CODE": {
+        "AutoscalingNotificationsARN": "arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsCODE"
+      }
+    }
+  },
+
+  "Resources": {
+    "GuardianAccessSecurityGroup" : {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "SSH and management server access from Guardian network",
+        "VpcId": { "Ref": "VpcId" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "77.91.248.0/21"
+          }
+        ]
+      }
+    },
+
+    "PackerLogsTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "Subscription": [
+          {
+            "Endpoint": { "Ref": "OperatorEmail" },
+            "Protocol": "email"
+          }
+        ]
+      }
+    },
+
+    "DistributionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [ "ec2.amazonaws.com" ]
+              },
+              "Action": [ "sts:AssumeRole" ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [ {
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::gu-identity-*/*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::identity-*/*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "ec2:DescribeTags",
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "autoscaling:DescribeAutoScalingGroups",
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "autoscaling:UpdateAutoScalingGroup",
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "sns:Publish",
+                "Resource": { "Ref": "PackerLogsTopic" }
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "cloudwatch:*",
+                  "logs:*"
+                ],
+                "Resource": [
+                  "*"
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action" : [
+                  "ec2:AttachVolume",
+                  "ec2:CreateVolume",
+                  "ec2:DeleteVolume",
+                  "ec2:CreateKeypair",
+                  "ec2:DeleteKeypair",
+                  "ec2:CreateSecurityGroup",
+                  "ec2:DeleteSecurityGroup",
+                  "ec2:AuthorizeSecurityGroupIngress",
+                  "ec2:CreateImage",
+                  "ec2:RunInstances",
+                  "ec2:TerminateInstances",
+                  "ec2:StopInstances",
+                  "ec2:DescribeVolumes",
+                  "ec2:DetachVolume",
+                  "ec2:DescribeInstances",
+                  "ec2:CreateSnapshot",
+                  "ec2:DeleteSnapshot",
+                  "ec2:DescribeSnapshots",
+                  "ec2:DescribeImages",
+                  "ec2:RegisterImage",
+                  "ec2:CreateTags",
+                  "ec2:ModifyImageAttribute"
+                ],
+                "Resource" : "*"
+              }
+            ]
+          }
+        } ]
+      }
+    },
+
+    "DistributionInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ {"Ref": "DistributionRole"} ]
+      }
+    },
+
+    "PackerAutoscalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "AvailabilityZones": { "Fn::GetAZs": "" },
+        "LaunchConfigurationName": { "Ref": "PackerLaunchConfig" },
+        "MinSize": "0",
+        "MaxSize": "1",
+        "DesiredCapacity": "0",
+        "Tags": [
+          {
+            "Key": "Stage",
+            "Value": { "Ref": "Stage" },
+            "PropagateAtLaunch": "true"
+          },
+          {
+            "Key": "Name",
+            "Value": "Packer",
+            "PropagateAtLaunch": "true"
+          },
+          {
+            "Key": "Stack",
+            "Value": "identity",
+            "PropagateAtLaunch": "true"
+          },
+          {
+            "Key": "App",
+            "Value": "packer",
+            "PropagateAtLaunch": "true"
+          }
+        ],
+        "NotificationConfiguration" : {
+          "TopicARN" : {
+            "Fn::FindInMap": ["StageVariables", {
+              "Ref": "Stage"
+            }, "AutoscalingNotificationsARN"]
+          },
+          "NotificationTypes":  [
+            "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+            "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+          ]
+        },
+        "VPCZoneIdentifier": {
+          "Ref": "VpcSubnets"
+        }
+      }
+    },
+
+    "PackerLaunchConfig": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "KeyName": {"Ref": "KeyName"},
+        "ImageId": {"Ref": "AmiId"},
+        "SecurityGroups": [
+          {"Ref": "PackerInstanceSecurityGroup"},
+          {"Ref": "GuardianAccessSecurityGroup"}
+        ],
+        "InstanceType": {"Ref": "InstanceType"},
+        "IamInstanceProfile": {"Ref": "DistributionInstanceProfile"},
+        "AssociatePublicIpAddress": "True",
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": ["", [
+              "#!/bin/bash -ev\n",
+
+              "apt-get update\n",
+              "apt-get -y install python-pip\n",
+              "pip install awscli\n",
+
+              "aws s3 cp s3://gu-identity-dist/set-ssh-keys.sh .\n",
+              "chmod +x set-ssh-keys.sh\n",
+              "./set-ssh-keys.sh\n",
+
+              "aws s3 cp s3://gu-identity-dist/packer-bootstrap.sh .\n",
+              "chmod +x packer-bootstrap.sh\n",
+              "./packer-bootstrap.sh\n"
+            ]]
+          }
+        }
+      }
+    },
+
+    "PackerInstanceSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": { "Ref": "VpcId" },
+        "GroupDescription": "Open up HTTP access to load balancer",
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "443",
+            "ToPort": "443",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    }
+  }
+}

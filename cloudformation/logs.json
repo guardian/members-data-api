@@ -1,0 +1,74 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation Template for the Identity stack Logs.",
+  "Parameters": {
+    "OperatorEmail": {
+      "Description": "Email address to notify if there are any alarm events",
+      "Type": "String"
+    },
+    "Stage": {
+      "Description": "Environment name",
+      "Type": "String",
+      "AllowedValues": [ "CODE", "PROD" ]
+    }
+  },
+
+  "Resources": {
+    "membershipAttributesServiceRequests": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri, took=took, time, ms=ms, and=and, returned=returned, statusCode]",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricName": "requests",
+            "MetricValue": 1
+          }
+        ]
+      }
+    },
+
+    "membershipAttributesServiceLatency": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri, took=took, time, ms=ms, and=and, returned=returned, statusCode]",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricName": "request_latency",
+            "MetricValue": "$time"
+          }
+        ]
+      }
+    },
+
+    "membershipAttributesServiceErrors": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "ERROR",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricName": "errors",
+            "MetricValue": 1
+          }
+        ]
+      }
+    },
+
+    "alarmNotificationTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "Subscription": [
+          {
+            "Endpoint": { "Ref": "OperatorEmail" },
+            "Protocol": "email"
+          }
+        ]
+      }
+    }
+  }
+}
