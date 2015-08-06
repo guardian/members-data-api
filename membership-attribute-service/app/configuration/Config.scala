@@ -16,8 +16,6 @@ object Config {
 
   val config = ConfigFactory.load()
 
-  val stage = config.getString("stage")
-
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
 
   lazy val awsCredentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider("identity"), new InstanceProfileCredentialsProvider())
