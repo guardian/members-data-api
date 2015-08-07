@@ -14,30 +14,87 @@
   },
 
   "Resources": {
-    "membershipAttributesServiceRequests": {
+    "membershipAttributesServiceRequests2xx": {
       "Type": "AWS::Logs::MetricFilter",
       "Properties": {
-        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
-        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri, took=took, time, ms=ms, and=and, returned=returned, statusCode]",
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri!=\"/healthcheck\", took=took, time, ms=ms, and=and, returned=returned, statusCode=2*]",
         "MetricTransformations": [
           {
-            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
-            "MetricName": "requests",
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
+            "MetricName": "requests_2xx",
             "MetricValue": 1
           }
         ]
       }
     },
-
-    "membershipAttributesServiceLatency": {
+    "membershipAttributesServiceRequests4xx": {
       "Type": "AWS::Logs::MetricFilter",
       "Properties": {
-        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
-        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri, took=took, time, ms=ms, and=and, returned=returned, statusCode]",
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri!=\"/healthcheck\", took=took, time, ms=ms, and=and, returned=returned, statusCode=4*]",
         "MetricTransformations": [
           {
-            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
-            "MetricName": "request_latency",
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
+            "MetricName": "requests_4xx",
+            "MetricValue": 1
+          }
+        ]
+      }
+    },
+    "membershipAttributesServiceRequests5xx": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri!=\"/healthcheck\", took=took, time, ms=ms, and=and, returned=returned, statusCode=5*]",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
+            "MetricName": "requests_5xx",
+            "MetricValue": 1
+          } 
+        ] 
+      } 
+    },
+
+
+    "membershipAttributesServiceLatency2xx": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri!=\"/healthcheck\", took=took, time, ms=ms, and=and, returned=returned, statusCode=2*]",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
+            "MetricName": "request_latency_2xx",
+            "MetricValue": "$time"
+          }
+        ]
+      }
+    },    
+    "membershipAttributesServiceLatency4xx": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri!=\"/healthcheck\", took=took, time, ms=ms, and=and, returned=returned, statusCode=4*]",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
+            "MetricName": "request_latency_4xx",
+            "MetricValue": "$time"
+          }
+        ]
+      }
+    },
+    "membershipAttributesServiceLatency5xx": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
+        "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri!=\"/healthcheck\", took=took, time, ms=ms, and=and, returned=returned, statusCode=5*]",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
+            "MetricName": "request_latency_5xx",
             "MetricValue": "$time"
           }
         ]
@@ -47,11 +104,11 @@
     "membershipAttributesServiceErrors": {
       "Type": "AWS::Logs::MetricFilter",
       "Properties": {
-        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
         "FilterPattern": "ERROR",
         "MetricTransformations": [
           {
-            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
             "MetricName": "errors",
             "MetricValue": 1
           }
