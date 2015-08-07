@@ -17,11 +17,11 @@
     "membershipAttributesServiceRequests": {
       "Type": "AWS::Logs::MetricFilter",
       "Properties": {
-        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
         "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri, took=took, time, ms=ms, and=and, returned=returned, statusCode]",
         "MetricTransformations": [
           {
-            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
             "MetricName": "requests",
             "MetricValue": 1
           }
@@ -32,11 +32,11 @@
     "membershipAttributesServiceLatency": {
       "Type": "AWS::Logs::MetricFilter",
       "Properties": {
-        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
         "FilterPattern": "[..., type=REQUEST, remoteAddr, method, uri, took=took, time, ms=ms, and=and, returned=returned, statusCode]",
         "MetricTransformations": [
           {
-            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
             "MetricName": "request_latency",
             "MetricValue": "$time"
           }
@@ -47,11 +47,11 @@
     "membershipAttributesServiceErrors": {
       "Type": "AWS::Logs::MetricFilter",
       "Properties": {
-        "LogGroupName": { "Fn::Join": [ "", [ "membership-attributes-service-", { "Ref": "Stage" } ]]},
+        "LogGroupName": { "Fn::Join": [ "", [ "identity-membership-attribute-service-", { "Ref": "Stage" } ]]},
         "FilterPattern": "ERROR",
         "MetricTransformations": [
           {
-            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/"] ]},
+            "MetricNamespace": { "Fn::Join": [ "", [ { "Ref": "Stage" }, "/user-attributes"] ]},
             "MetricName": "errors",
             "MetricValue": 1
           }
