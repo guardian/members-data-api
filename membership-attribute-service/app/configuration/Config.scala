@@ -14,9 +14,12 @@ object Config {
 
   private val logger = Logger(this.getClass)
 
+  logger.info(s"Stage=${config.getString("stage")}")
+
   val config = ConfigFactory.load()
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
+  val dynamoTable = config.getString("dynamodb.table")
 
   lazy val awsCredentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider("identity"), new InstanceProfileCredentialsProvider())
 
