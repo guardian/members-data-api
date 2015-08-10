@@ -13,10 +13,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object Config {
 
   private val logger = Logger(this.getClass)
+  
+  val config = ConfigFactory.load()
 
   logger.info(s"Stage=${config.getString("stage")}")
-
-  val config = ConfigFactory.load()
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val dynamoTable = config.getString("dynamodb.table")
