@@ -46,6 +46,10 @@
       ],
       "ConstraintDescription": "must be a valid EC2 instance type."
     },
+    "PlayAppSecret": {
+      "Description": "Application secret for the play application for crypto",
+      "Type": "String"
+    },
     "MaxInstances" : {
       "Description": "Maximum number of instances. This should be (at least) double the desired capacity.",
       "Type": "Number",
@@ -229,6 +233,11 @@
           {
             "Key": "Stage",
             "Value": { "Ref": "Stage" },
+            "PropagateAtLaunch": "true"
+          },
+          {
+            "Key": "PlayAppSecret",
+            "Value": { "Ref": "PlayAppSecret" },
             "PropagateAtLaunch": "true"
           },
           {

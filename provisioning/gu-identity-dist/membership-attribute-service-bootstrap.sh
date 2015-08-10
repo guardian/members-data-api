@@ -4,7 +4,7 @@ source set-env.sh
 
 adduser --home /$apptag --disabled-password --gecos \"\" $apptag
 
-secrettag=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$instanceid" "Name=resource-type,Values=instance" "Name=key,Values=PLAY_APP_SECRET" --region $region | grep -oP "(?<=\"Value\": \")[^\"]+")
+secrettag=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$instanceid" "Name=resource-type,Values=instance" "Name=key,Values=PlayAppSecret" --region $region | grep -oP "(?<=\"Value\": \")[^\"]+")
 
 
 aws s3 cp s3://gu-membership-attribute-service-dist/upstart.conf /etc/init/$apptag.conf
