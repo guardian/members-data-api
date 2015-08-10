@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object Config {
 
   private val logger = Logger(this.getClass)
-  
+
   val config = ConfigFactory.load()
 
   logger.info(s"Stage=${config.getString("stage")}")
@@ -21,12 +21,14 @@ object Config {
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val dynamoTable = config.getString("dynamodb.table")
 
-  lazy val awsCredentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider("identity"), new InstanceProfileCredentialsProvider())
+  lazy val dynamoMapper = {
+    val awsCredentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider("identity"), new InstanceProfileCredentialsProvider())
 
-  val awsDynamoClient = new AmazonDynamoDBAsyncClient(awsCredentialsProvider.getCredentials)
-  awsDynamoClient.configureRegion(Regions.EU_WEST_1)
-  val dynamoClient    = new AmazonDynamoDBScalaClient(awsDynamoClient)
-  val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
+    val awsDynamoClient = new AmazonDynamoDBAsyncClient(awsCredentialsProvider.getCredentials)
+    awsDynamoClient.configureRegion(Regions.EU_WEST_1)
+    val dynamoClient    = new AmazonDynamoDBScalaClient(awsDynamoClient)
+    AmazonDynamoDBScalaMapper(dynamoClient)
+  }
 
 
 }
