@@ -1,5 +1,6 @@
 package repositories
 
+import configuration.Config
 import models.MembershipAttributes
 import com.github.dwhjames.awswrap.dynamodb._
 import org.joda.time.LocalDate
@@ -15,7 +16,7 @@ object MembershipAttributesDynamo {
   def apply(userId: String, m: MembershipAttributes): MembershipAttributesDynamo =
     MembershipAttributesDynamo(userId, m.joinDate, m.tier, m.membershipNumber)
 
-  val tableName = "MembershipAttributes"
+  val tableName = Config.dynamoTable
 
   object Attributes {
     val userId     = "UserId"
