@@ -4,7 +4,7 @@ The membership attribute service provides an API for managing and retrieving mem
 
 ## Endpoints
 
-Access to endpoint for a specified id will be protected using an access token (TBD).
+Access to endpoint for a specified id will be protected using an access token (TBD). They are currently not protected at all.
 
 For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the Cookie request header. 
 
@@ -72,5 +72,16 @@ To start the service use:
 
     sbt membership-attribute-service/run
 
-The service will be starting on Play's default port of 9000.
+The service will be starting on Play's default port of 9000 and use the MembershipAttributes-CODE DynamoDB table.
 
+## Metrics and Logs
+
+There is a Membership Attributes Service radiator. This uses standard ELB and DynamoBB CloudWatch metrics for the CloudFormation stack in the chosen stage.
+
+Logs are sent to Cloud Watch in a log group named identity-membership-attribute-service-STAGE. Within the log groups there will be logs for each EC2 instance.
+
+## Provisioning
+
+The packer cloud formation template should be used to create an AMI with Oracle Java 8 installed. The base AMI which should be used with this is Ubuntu Trusty 14.04 (ami-acc41cdb).
+
+The output AMI from packer should be used with the membership-attribute-service cloud formation template. 
