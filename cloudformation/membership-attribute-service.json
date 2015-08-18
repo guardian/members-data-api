@@ -316,7 +316,7 @@
               "chmod +x cwlogs-setup.sh\n",
               "./cwlogs-setup.sh\n",
 
-              "aws s3 cp s3://gu-identity-dist/membership-attribute-service-bootstrap.sh .\n",
+              "aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .\n",
               "chmod +x membership-attribute-service-bootstrap.sh\n",
               "./membership-attribute-service-bootstrap.sh\n",
 
