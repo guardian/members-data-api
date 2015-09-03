@@ -13,7 +13,7 @@
     "Stage": {
       "Description": "Environment name",
       "Type": "String",
-      "AllowedValues": [ "CODE", "PROD" ]
+      "Default" : "PROD"
     },
     "InstanceType": {
       "Description": "EC2 instance type",
@@ -63,12 +63,12 @@
     "VpcId": {
       "Description": "ID of the VPC onto which to launch the application",
       "Type": "AWS::EC2::VPC::Id",
-      "Default": "vpc-0b86566e"
+      "Default": "vpc-e6e00183"
     },
     "VpcSubnets" : {
       "Description": "Subnets to use in VPC",
       "Type": "CommaDelimitedList",
-      "Default": "subnet-a774fdc2,subnet-bc09bfcb,subnet-efa369b6"
+      "Default": "subnet-cb91ae8d,subnet-a7b74ac2,subnet-179e8063"
     },
     "AmiId": {
       "Description": "Custom AMI to use for instances, created using Packer",
@@ -79,26 +79,17 @@
   "Mappings": {
     "StageVariables": {
       "PROD": {
-        "AutoscalingNotificationsARN": "arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsPROD",
         "LatencyAlarmThreshold": 0.5,
         "LatencyAlarmPeriod": 60,
         "NotificationAlarmPeriod": 1200,
         "InstanceName": "PROD:membership-attribute-service",
         "DynamoDBTable": "arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD"
-      },
-      "CODE": {
-        "AutoscalingNotificationsARN": "arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsCODE",
-        "LatencyAlarmThreshold": 5,
-        "LatencyAlarmPeriod": 1200,
-        "NotificationAlarmPeriod": 1200,
-        "InstanceName": "CODE:membership-attribute-service",
-        "DynamoDBTable": "arn:aws:dynamodb:*:*:table/MembershipAttributes-CODE"
       }
     }
   },
 
   "Resources": {
-    "IdentityRole": {
+    "MembershipRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "AssumeRolePolicyDocument": {
@@ -116,11 +107,6 @@
 
           "PolicyDocument": {
             "Statement": [
-              {
-                "Effect": "Allow",
-                "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::gu-identity-*/*"
-              },
               {
                 "Effect": "Allow",
                 "Action": "s3:GetObject",
@@ -176,7 +162,7 @@
       "Type": "AWS::IAM::InstanceProfile",
       "Properties": {
         "Path": "/",
-        "Roles": [ {"Ref": "IdentityRole"} ]
+        "Roles": [ {"Ref": "MembershipRole"} ]
       }
     },
 
@@ -251,7 +237,7 @@
           },
           {
             "Key": "Stack",
-            "Value": "identity",
+            "Value": "membership",
             "PropagateAtLaunch": "true"
           },
           {
@@ -270,17 +256,6 @@
             "PropagateAtLaunch": "true"
           }
         ],
-        "NotificationConfiguration" : {
-          "TopicARN" : {
-            "Fn::FindInMap": ["StageVariables", {
-              "Ref": "Stage"
-            }, "AutoscalingNotificationsARN"]
-          },
-          "NotificationTypes":  [
-            "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
-            "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
-          ]
-        },
         "VPCZoneIdentifier": {
           "Ref": "VpcSubnets"
         }
@@ -303,23 +278,17 @@
           "Fn::Base64": {
             "Fn::Join": ["", [
               "#!/bin/bash -ev\n",
-
-              "export IDENTITY_stage='", {
-                "Ref": "Stage"
-              }, "'\n",
-
-              "aws s3 cp s3://gu-identity-dist/set-ssh-keys.sh .\n",
-              "chmod +x set-ssh-keys.sh\n",
-              "./set-ssh-keys.sh\n",
-
-              "aws s3 cp s3://gu-identity-dist/cwlogs-setup.sh .\n",
-              "chmod +x cwlogs-setup.sh\n",
-              "./cwlogs-setup.sh\n",
+              "aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .\n",
+              "chmod +x set-env.sh\n",
+              "./set-env.sh\n",
 
               "aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .\n",
               "chmod +x membership-attribute-service-bootstrap.sh\n",
               "./membership-attribute-service-bootstrap.sh\n",
 
+              "aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .\n",
+              "chmod +x set-ssh-keys.sh\n",
+              "./set-ssh-keys.sh\n",
 
               "service membership-attribute-service start\n",
               "sleep 20s\n"

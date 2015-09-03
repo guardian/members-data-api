@@ -57,7 +57,7 @@ Error responses:
 
 Ensure that your ~/.aws/credentials file contains the following:
 
-    [identity]
+    [membership]
     aws_access_key_id=YOUR_ACCESS_KEY
     aws_secret_access_key=YOUR_SECRET_KEY
     
@@ -65,15 +65,17 @@ These credentials are required for accessing the DynamoDB table. When running te
 
 To start the service use:
 
-    sbt membership-attribute-service/run
+```
+    $ sbt
+    > project membership-attribute-service
+    > devrun
+```
 
-The service will be starting on Play's default port of 9000 and use the MembershipAttributes-CODE DynamoDB table.
+The service will be starting on 9100 and use the MembershipAttributes-DEV DynamoDB table.
 
 ## Metrics and Logs
 
 There is a Membership Attributes Service radiator. This uses standard ELB and DynamoBB CloudWatch metrics for the CloudFormation stack in the chosen stage.
-
-Logs are sent to Cloud Watch in a log group named identity-membership-attribute-service-STAGE. Within the log groups there will be logs for each EC2 instance.
 
 ## Provisioning
 

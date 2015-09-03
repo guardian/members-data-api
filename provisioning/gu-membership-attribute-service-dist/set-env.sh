@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ev
 
 if [ ! -f facts.txt ]; then
 instanceid=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
