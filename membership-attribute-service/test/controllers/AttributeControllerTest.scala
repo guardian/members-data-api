@@ -6,16 +6,16 @@ import models.{ApiResponse, MembershipAttributes}
 import org.joda.time.LocalDate
 import org.mockito.Mockito._
 import org.specs2.mutable.Specification
-import play.api.libs.iteratee.{Iteratee, Input}
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.iteratee.{Input, Iteratee}
+import play.api.libs.json.JsValue
 import play.api.mvc.Security.AuthenticatedBuilder
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.AttributeService
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification {
 
@@ -56,19 +56,6 @@ class AttributeControllerTest extends Specification {
     }
   }
 
-  "setAttributes" should {
-    "update attributes for the given user id" in {
-      val attributes = MembershipAttributes(LocalDate.now, "patron", "abc")
-      val apiResponse = ApiResponse.Right(attributes)
-      val attributesJson = Json.toJson(attributes)
-      when(attributeService.setAttributes(userId, attributes)).thenReturn(apiResponse)
-
-      val req = addJsonBodyToRequest(FakeRequest(), attributesJson)
-      val result = executeJsonRequest(controller.setAttributes(userId)(req), attributesJson)
-      verifySuccessfulResult(result)
-    }
-  }
-
   "getMyAttributes" should {
     "return unauthorised when cookies not provided" in {
       val result = controller.getMyAttributes(FakeRequest())
@@ -84,30 +71,6 @@ class AttributeControllerTest extends Specification {
 
       val req = FakeRequest().withHeaders("Cookie" -> s"GU_U=$guCookie;SC_GU_U=$scGuCookie")
       val result = controller.getMyAttributes(req)
-      verifySuccessfulResult(result)
-    }
-  }
-
-  "setMyAttributes" should {
-    val attributes = MembershipAttributes(LocalDate.now, "patron", "abc")
-    val attributesJson = Json.toJson(attributes)
-
-    "return unauthorised when cookies not provided" in {
-      val req = addJsonBodyToRequest(FakeRequest(), attributesJson)
-      val result = executeJsonRequest(controller.setMyAttributes(req), attributesJson)
-      status(result) shouldEqual UNAUTHORIZED
-    }
-
-    "set attributes for user in cookie" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
-      when(attributeService.setAttributes(userId, attributes)).thenReturn(apiResponse)
-
-      val guCookie = "gu_cookie"
-      val scGuCookie = "sc_gu_cookie"
-
-      val req = addJsonBodyToRequest(FakeRequest().withHeaders("Cookie" -> s"GU_U=$guCookie;SC_GU_U=$scGuCookie"), attributesJson)
-
-      val result = executeJsonRequest(controller.setMyAttributes(req), attributesJson)
       verifySuccessfulResult(result)
     }
   }

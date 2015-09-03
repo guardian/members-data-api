@@ -19,9 +19,9 @@ object MembershipAttributesDynamo {
   val tableName = Config.dynamoTable
 
   object Attributes {
-    val userId     = "UserId"
+    val userId = "UserId"
     val membershipNumber = "MembershipNumber"
-    val tier  = "Tier"
+    val tier = "Tier"
     val joinDate = "JoinDate"
   }
 
@@ -36,17 +36,17 @@ object MembershipAttributesDynamo {
 
     override def toAttributeMap(membershipAttributes: MembershipAttributesDynamo) =
       Map(
-        mkAttribute(Attributes.userId     -> membershipAttributes.userId),
+        mkAttribute(Attributes.userId -> membershipAttributes.userId),
         mkAttribute(Attributes.membershipNumber -> membershipAttributes.membershipNumber),
-        mkAttribute(Attributes.tier  -> membershipAttributes.tier),
+        mkAttribute(Attributes.tier -> membershipAttributes.tier),
         mkAttribute(Attributes.joinDate -> membershipAttributes.joinDate.toString)
       )
 
     override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) =
       MembershipAttributesDynamo(
-        userId     = item(Attributes.userId),
+        userId = item(Attributes.userId),
         membershipNumber = item(Attributes.membershipNumber),
-        tier  = item(Attributes.tier),
+        tier = item(Attributes.tier),
         joinDate = LocalDate.parse(item(Attributes.joinDate))
       )
   }

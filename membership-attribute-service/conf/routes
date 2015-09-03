@@ -5,5 +5,3 @@ GET         /healthcheck                                @controllers.HealthCheck
 
 GET         /user-attributes/me/membership              @controllers.AttributeController.getMyAttributes
 GET         /user-attributes/:userId/membership         @controllers.AttributeController.getAttributes(userId)
-PUT         /user-attributes/me/membership              @controllers.AttributeController.setMyAttributes
-PUT         /user-attributes/:userId/membership         @controllers.AttributeController.setAttributes(userId)

@@ -13,11 +13,6 @@ For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the 
     GET /user-attributes/USER_ID/membership
     GET /user-attributes/me/membership
  
-### Write endpoints
-    
-    PUT /user-attributes/USER_ID/membership
-    PUT /user-attributes/me/membership
-    
 The request body must contain JSON in the following structure:
 
     {
