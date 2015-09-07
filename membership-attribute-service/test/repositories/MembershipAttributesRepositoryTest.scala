@@ -53,7 +53,6 @@ class MembershipAttributesRepositoryTest extends Specification {
     }
 
     "retrieve not found api error when attributes not found for user" in {
-      val attributes = MembershipAttributes(LocalDate.parse("2015-07-28"), "patron", "abc")
       val result = for {
         retrieved <- repo.getAttributes(UUID.randomUUID().toString)
       } yield retrieved

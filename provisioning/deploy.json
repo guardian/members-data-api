@@ -1,5 +1,5 @@
 {
-  "defaultStacks": [ "identity" ],
+  "defaultStacks": [ "membership" ],
   "packages": {
     "gu-membership-attribute-service-dist": {
       "type": "aws-s3",

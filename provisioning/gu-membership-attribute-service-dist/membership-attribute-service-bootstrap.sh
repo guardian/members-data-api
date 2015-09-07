@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ev
 
 source set-env.sh
 

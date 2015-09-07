@@ -1,5 +1,5 @@
 {
-  "defaultStacks": ["identity"],
+  "defaultStacks": ["membership"],
   "packages":{
     "membership-attribute-service":{
       "type":"autoscaling",
