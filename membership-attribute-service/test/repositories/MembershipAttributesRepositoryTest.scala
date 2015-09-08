@@ -23,7 +23,7 @@ class MembershipAttributesRepositoryTest extends Specification {
 
   val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
-  val dynamoClient    = new AmazonDynamoDBScalaClient(awsDynamoClient)
+  val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
   val repo = new MembershipAttributesRepository(dynamoMapper)
 
@@ -42,9 +42,9 @@ class MembershipAttributesRepositoryTest extends Specification {
   "getAttributes" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
-      val attributes = MembershipAttributes("patron", "abc")
+      val attributes = MembershipAttributes(userId, "patron", "abc")
       val result = for {
-        insertResult <- repo.updateAttributes(userId, attributes)
+        insertResult <- repo.updateAttributes(attributes)
         retrieved <- repo.getAttributes(userId)
       } yield retrieved
 

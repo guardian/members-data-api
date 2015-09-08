@@ -2,12 +2,13 @@ package repositories
 
 import javax.inject.Inject
 
-import models._
-import com.github.dwhjames.awswrap.dynamodb.AmazonDynamoDBScalaMapper
-import play.api.Logger
 import com.github.dwhjames.awswrap.dynamodb._
+import com.github.dwhjames.awswrap.dynamodb.AmazonDynamoDBScalaMapper
+import models._
+import play.api.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import MembershipAttributesDynamo.membershipAttributesSerializer
 
 class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMapper) {
 
@@ -23,17 +24,17 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
 
   def getAttributes(userId: String): ApiResponse[MembershipAttributes] = {
     logger.debug(s"Get attributes for userId: $userId")
-    val result = dynamo.loadByKey[MembershipAttributesDynamo](userId).map(x =>
-      x.map(_.toMembershipAttributes).toRight(NotFoundError)
-    )
+    // TODO handle the error case
+    val result = dynamo.loadByKey[MembershipAttributes](userId).map(_.toRight(NotFoundError))
 
     ApiResponse.Async(result, handleError)
   }
 
-  def updateAttributes(userId: String, attributes: MembershipAttributes): ApiResponse[MembershipAttributes] = {
+  def updateAttributes(attributes: MembershipAttributes): ApiResponse[MembershipAttributes] = {
     logger.debug(s"Update attributes: $attributes")
-    val result = dynamo.dump(MembershipAttributesDynamo(userId, attributes)).map(x =>
-      scala.Right(attributes)
+    // TODO handle the error case
+    val result = dynamo.dump(attributes).map(_ =>
+      Right(attributes)
     )
 
     ApiResponse.Async(result, handleError)

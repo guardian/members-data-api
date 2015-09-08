@@ -29,7 +29,7 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      Salesforce.parseOutboundMessage(payload) shouldEqual MembershipAttributes("Supporter", "membership_number").right
+      Salesforce.parseOutboundMessage(payload) shouldEqual MembershipAttributes("identity_id", "Supporter", "membership_number").right
     }
   }
 }

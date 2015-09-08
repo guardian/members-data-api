@@ -51,7 +51,7 @@ class AttributeControllerTest extends Specification {
     }
 
     "retrieve attributes for user in cookie" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes("patron", "abc"))
+      val apiResponse = ApiResponse.Right(MembershipAttributes("123", "patron", "abc"))
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val guCookie = "gu_cookie"

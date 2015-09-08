@@ -26,4 +26,14 @@ case class ApiErrors(errors: List[ApiError]) {
 
 object ApiErrors {
   implicit val format = Json.format[ApiErrors]
+
+  def badRequest(msg: String): ApiErrors = {
+    val error = ApiError(
+      message = "Bad Request",
+      friendlyMessage = msg,
+      statusCode = 400
+    )
+
+    ApiErrors(List(error))
+  }
 }
