@@ -10,7 +10,6 @@ For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the 
 
 ### Read enpoints
 
-    GET /user-attributes/USER_ID/membership
     GET /user-attributes/me/membership
  
 A Content-Type of "application/json" must be provided.
