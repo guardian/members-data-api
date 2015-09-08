@@ -14,11 +14,4 @@ class AttributeController @Inject() (attributeService: AttributeService) extends
       attributeService.getAttributes(request.user.id)
     }
   }
-
-  def getAttributes(userId: String) = NoCacheAction.async { implicit request =>
-    // TODO use access token to authenticate
-    ApiResponse{
-      attributeService.getAttributes(userId)
-    }
-  }
 }

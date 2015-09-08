@@ -3,7 +3,6 @@ package controllers
 import actions._
 import com.gu.identity.play.IdMinimalUser
 import models.{ApiResponse, MembershipAttributes}
-import org.joda.time.LocalDate
 import org.mockito.Mockito._
 import org.specs2.mutable.Specification
 import play.api.libs.iteratee.{Input, Iteratee}
@@ -43,17 +42,6 @@ class AttributeControllerTest extends Specification {
     val jsonBody = contentAsJson(result)
     (jsonBody \ "response" \ "tier").toOption.map(_.as[String]) shouldEqual Some("patron")
     (jsonBody \ "response" \ "membershipNumber").toOption.map(_.as[String]) shouldEqual Some("abc")
-  }
-
-
-  "getAttributes" should {
-    "retrieve attributes for the given user id" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes("patron", "abc"))
-      when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
-
-      val result = controller.getAttributes(userId)(FakeRequest())
-      verifySuccessfulResult(result)
-    }
   }
 
   "getMyAttributes" should {
