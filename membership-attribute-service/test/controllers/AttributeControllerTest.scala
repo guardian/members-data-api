@@ -48,7 +48,7 @@ class AttributeControllerTest extends Specification {
 
   "getAttributes" should {
     "retrieve attributes for the given user id" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
+      val apiResponse = ApiResponse.Right(MembershipAttributes("patron", "abc"))
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val result = controller.getAttributes(userId)(FakeRequest())
@@ -63,7 +63,7 @@ class AttributeControllerTest extends Specification {
     }
 
     "retrieve attributes for user in cookie" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes(LocalDate.now, "patron", "abc"))
+      val apiResponse = ApiResponse.Right(MembershipAttributes("patron", "abc"))
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val guCookie = "gu_cookie"

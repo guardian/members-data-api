@@ -16,11 +16,12 @@ object Dependencies {
   val specs2 = PlayImport.specs2 % "test"
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % "1.9.31"
+  val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
 
   //projects
 
   val apiDependencies = Seq(identityCookie, identityPlayAuth, scalaUri,
-    playWS, playCache, playFilters, awsWrap, awsDynamo,
+    playWS, playCache, playFilters, awsWrap, awsDynamo, scalaz,
     specs2, scalaTest)
 
 }

@@ -43,7 +43,7 @@ class MembershipAttributesRepositoryTest extends Specification {
   "getAttributes" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
-      val attributes = MembershipAttributes(LocalDate.parse("2015-07-28"), "patron", "abc")
+      val attributes = MembershipAttributes("patron", "abc")
       val result = for {
         insertResult <- repo.updateAttributes(userId, attributes)
         retrieved <- repo.getAttributes(userId)

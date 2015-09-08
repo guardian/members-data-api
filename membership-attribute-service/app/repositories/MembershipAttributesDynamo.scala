@@ -1,20 +1,19 @@
 package repositories
 
+import com.github.dwhjames.awswrap.dynamodb._
 import configuration.Config
 import models.MembershipAttributes
-import com.github.dwhjames.awswrap.dynamodb._
-import org.joda.time.LocalDate
 
-case class MembershipAttributesDynamo(userId: String, joinDate: LocalDate, tier: String, membershipNumber: String) {
+case class MembershipAttributesDynamo(userId: String, tier: String, membershipNumber: String) {
 
   def toMembershipAttributes: MembershipAttributes =
-    MembershipAttributes(joinDate, tier, membershipNumber)
+    MembershipAttributes(tier, membershipNumber)
 }
 
 object MembershipAttributesDynamo {
 
   def apply(userId: String, m: MembershipAttributes): MembershipAttributesDynamo =
-    MembershipAttributesDynamo(userId, m.joinDate, m.tier, m.membershipNumber)
+    MembershipAttributesDynamo(userId, m.tier, m.membershipNumber)
 
   val tableName = Config.dynamoTable
 
@@ -38,16 +37,14 @@ object MembershipAttributesDynamo {
       Map(
         mkAttribute(Attributes.userId -> membershipAttributes.userId),
         mkAttribute(Attributes.membershipNumber -> membershipAttributes.membershipNumber),
-        mkAttribute(Attributes.tier -> membershipAttributes.tier),
-        mkAttribute(Attributes.joinDate -> membershipAttributes.joinDate.toString)
+        mkAttribute(Attributes.tier -> membershipAttributes.tier)
       )
 
     override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) =
       MembershipAttributesDynamo(
         userId = item(Attributes.userId),
         membershipNumber = item(Attributes.membershipNumber),
-        tier = item(Attributes.tier),
-        joinDate = LocalDate.parse(item(Attributes.joinDate))
+        tier = item(Attributes.tier)
       )
   }
 
