@@ -11,10 +11,8 @@ class ApiErrorTest extends Specification {
       Json.toJson(ApiError("message", "details", 400)) shouldEqual
         Json.parse("""
           | {
-          |   "error": {
-          |     "message": "message",
-          |     "details": "details"
-          |   }
+          |   "message": "message",
+          |   "details": "details"
           | }
         """.stripMargin)
     }

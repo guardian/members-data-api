@@ -28,10 +28,8 @@ Success responses:
 Error responses:
 
     {
-      "error": {
-        "message": "Bad Request",
-        "details": "Json validation error List((obj.membershipNumber,List(ValidationError(List(error.expected.jsstring),WrappedArray()))))"
-      }
+      "message": "Bad Request",
+      "details": "Detailed error message"
     }
     
     
