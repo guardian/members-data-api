@@ -2,11 +2,11 @@ package controllers
 
 import actions._
 import com.gu.identity.play.IdMinimalUser
-import models.{ApiResponse, MembershipAttributes}
+import models.MembershipAttributes
 import org.mockito.Mockito._
 import org.specs2.mutable.Specification
 import play.api.libs.iteratee.{Input, Iteratee}
-import play.api.libs.json.JsValue
+import play.api.libs.json.{Json, JsValue}
 import play.api.mvc.Security.AuthenticatedBuilder
 import play.api.mvc._
 import play.api.test.FakeRequest
@@ -14,7 +14,8 @@ import play.api.test.Helpers._
 import services.AttributeService
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 
 class AttributeControllerTest extends Specification {
 
@@ -40,8 +41,13 @@ class AttributeControllerTest extends Specification {
   def verifySuccessfulResult(result: Future[Result]) = {
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
-    (jsonBody \ "response" \ "tier").toOption.map(_.as[String]) shouldEqual Some("patron")
-    (jsonBody \ "response" \ "membershipNumber").toOption.map(_.as[String]) shouldEqual Some("abc")
+    jsonBody shouldEqual
+      Json.parse("""
+        | {
+        |   "tier": "patron",
+        |   "membershipNumber": "abc"
+        | }
+      """.stripMargin)
   }
 
   "getMyAttributes" should {
@@ -51,14 +57,14 @@ class AttributeControllerTest extends Specification {
     }
 
     "retrieve attributes for user in cookie" in {
-      val apiResponse = ApiResponse.Right(MembershipAttributes("123", "patron", "abc"))
+      val apiResponse = Future { Some(MembershipAttributes("123", "patron", "abc")) }
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
       val guCookie = "gu_cookie"
       val scGuCookie = "sc_gu_cookie"
 
       val req = FakeRequest().withHeaders("Cookie" -> s"GU_U=$guCookie;SC_GU_U=$scGuCookie")
-      val result = controller.getMyAttributes(req)
+      val result: Future[Result] = controller.getMyAttributes(req)
       verifySuccessfulResult(result)
     }
   }

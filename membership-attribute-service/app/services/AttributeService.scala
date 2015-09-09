@@ -2,14 +2,13 @@ package services
 
 import javax.inject.Inject
 
-import models.{ApiResponse, MembershipAttributes}
+import models.MembershipAttributes
 import repositories.MembershipAttributesRepository
 
-class AttributeService @Inject() (membershipAttributesRepo: MembershipAttributesRepository) {
+import scala.concurrent.Future
 
-  def getAttributes(userId: String): ApiResponse[MembershipAttributes] =
-    membershipAttributesRepo.getAttributes(userId)
+class AttributeService @Inject() (repo: MembershipAttributesRepository) {
+  def getAttributes(userId: String): Future[Option[MembershipAttributes]] = repo.getAttributes(userId)
 
-  def setAttributes(attributes: MembershipAttributes): ApiResponse[MembershipAttributes] =
-    membershipAttributesRepo.updateAttributes(attributes)
+  def setAttributes(attributes: MembershipAttributes): Future[Unit] = repo.updateAttributes(attributes)
 }

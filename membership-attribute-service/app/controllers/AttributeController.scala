@@ -3,15 +3,19 @@ package controllers
 import javax.inject._
 
 import actions.CommonActions
-import models.ApiResponse
+import models.ApiError
+import play.api.libs.concurrent.Execution.Implicits._
 import services.AttributeService
-
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class AttributeController @Inject() (attributeService: AttributeService) extends CommonActions {
   def getMyAttributes = AuthenticatedAction.async { implicit request =>
-    ApiResponse {
-      attributeService.getAttributes(request.user.id)
+    attributeService.getAttributes(request.user.id).map {
+      case None => ApiError(
+        message = "Unauthorized",
+        details = "Failed to authenticate",
+        statusCode = 401
+      )
+      case Some(attrs) => attrs
     }
   }
 }

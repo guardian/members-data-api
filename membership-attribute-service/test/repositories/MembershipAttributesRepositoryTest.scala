@@ -48,7 +48,7 @@ class MembershipAttributesRepositoryTest extends Specification {
         retrieved <- repo.getAttributes(userId)
       } yield retrieved
 
-      Await.result(result.asFuture, 5.seconds) shouldEqual scala.Right(attributes)
+      Await.result(result, 5.seconds) shouldEqual Some(attributes)
     }
 
     "retrieve not found api error when attributes not found for user" in {
@@ -56,7 +56,7 @@ class MembershipAttributesRepositoryTest extends Specification {
         retrieved <- repo.getAttributes(UUID.randomUUID().toString)
       } yield retrieved
 
-      Await.result(result.asFuture, 5.seconds) shouldEqual scala.Left(repo.NotFoundError)
+      Await.result(result, 5.seconds) shouldEqual None
     }
   }
 
