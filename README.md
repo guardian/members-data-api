@@ -21,25 +21,17 @@ All responses will have a JSON body.
 Success responses:
 
     {
-      "status": "ok",
-      "response": {
-        "membershipNumber": "1234567abcdef",
-        "tier": "patron"
-      }
+      "membershipNumber": "1234567abcdef",
+      "tier": "patron"
     }
 
 Error responses:
 
     {
-      "status": "error",
-      "statusCode": 400,
-      "errors": [
-        {
-          "message": "Bad Request",
-          "friendlyMessage": "Json validation error List((obj.membershipNumber,List(ValidationError(List(error.expected.jsstring),WrappedArray()))))",
-          "statusCode": 400
-        }
-      ]
+      "error": {
+        "message": "Bad Request",
+        "details": "Json validation error List((obj.membershipNumber,List(ValidationError(List(error.expected.jsstring),WrappedArray()))))"
+      }
     }
     
     

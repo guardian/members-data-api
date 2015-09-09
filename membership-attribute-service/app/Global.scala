@@ -1,10 +1,10 @@
-import controllers.{NoCache, Cached}
-import filters.{LogRequestsFilter, AddEC2InstanceHeader}
-import models.{MembershipAttributes, ApiError, ApiErrors, ApiResponse}
+import filters.{AddEC2InstanceHeader, LogRequestsFilter}
+import models.ApiErrors._
 import play.api.Logger
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.{RequestHeader, Result, WithFilters}
 import play.filters.csrf._
-import scala.concurrent.ExecutionContext.Implicits.global
+
 import scala.concurrent.Future
 
 object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader, LogRequestsFilter) {
@@ -13,22 +13,16 @@ object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader, LogRequest
 
   override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
     logger.debug(s"Bad request: $request, error: $error")
-    ApiResponse {
-      ApiResponse.Left[MembershipAttributes](ApiErrors(List(ApiError("Bad Request", error, 400))))
-    } map { NoCache(_) }
+    Future { badRequest(error) }
   }
 
   override def onHandlerNotFound(request: RequestHeader): Future[Result] = {
     logger.debug(s"Handler not found for request: $request")
-    ApiResponse {
-      ApiResponse.Left[MembershipAttributes](ApiErrors(List(ApiError("Not Found", s"Handler not found for request: $request", 404))))
-    } map { Cached(_) }
+    Future { notFound }
   }
 
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
     logger.error(s"Error handling request request: $request", ex)
-    ApiResponse {
-      ApiResponse.Left[MembershipAttributes](ApiErrors(List(ApiError("Error", s"Error handling request request: $request", 500))))
-    } map { NoCache(_) }
+    Future { internalError }
   }
 }

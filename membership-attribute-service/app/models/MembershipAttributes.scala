@@ -1,6 +1,10 @@
 package models
 
 import play.api.libs.json._
+import play.api.mvc.Result
+import play.api.mvc.Results.Ok
+
+import scala.language.implicitConversions
 
 case class MembershipAttributes(userId: String, tier: String, membershipNumber: String)
 
@@ -11,4 +15,7 @@ object MembershipAttributes {
       "membershipNumber" -> o.membershipNumber
     )
   }
+
+  implicit def membershipAttributes2Result(attrs: MembershipAttributes): Result =
+    Ok(Json.toJson(attrs))
 }
