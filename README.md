@@ -10,17 +10,8 @@ For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the 
 
 ### Read enpoints
 
-    GET /user-attributes/USER_ID/membership
     GET /user-attributes/me/membership
  
-The request body must contain JSON in the following structure:
-
-    {
-    "membershipNumber": "1234567abcdef",
-    "tier": "patron",
-    "joinDate": "2015-04-01"
-    }
-    
 A Content-Type of "application/json" must be provided.
 
 ### Responses
@@ -33,8 +24,7 @@ Success responses:
       "status": "ok",
       "response": {
         "membershipNumber": "1234567abcdef",
-        "tier": "patron",
-        "joinDate": "2015-04-01"
+        "tier": "patron"
       }
     }
 

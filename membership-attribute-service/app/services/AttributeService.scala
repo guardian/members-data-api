@@ -10,7 +10,6 @@ class AttributeService @Inject() (membershipAttributesRepo: MembershipAttributes
   def getAttributes(userId: String): ApiResponse[MembershipAttributes] =
     membershipAttributesRepo.getAttributes(userId)
 
-  def setAttributes(userId: String, attributes: MembershipAttributes): ApiResponse[MembershipAttributes] =
-    membershipAttributesRepo.updateAttributes(userId, attributes)
-
+  def setAttributes(attributes: MembershipAttributes): ApiResponse[MembershipAttributes] =
+    membershipAttributesRepo.updateAttributes(attributes)
 }
