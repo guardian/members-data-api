@@ -30,7 +30,7 @@ block
 
 - Redirect traffic from your subdomain to your local machine by adding this line to `/etc/hosts`:
 
-`127.0.0.1   members-data-api-local.thegulocal.com`
+`127.0.0.1   members-data-api-local.theguardian.com`
 
 - Launch the app by going back to your workspace and running
 
