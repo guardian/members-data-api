@@ -27,7 +27,7 @@ object Functions extends Results {
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = block(request).map(f)
   }
 
-  private def unauthenticated(request: RequestHeader): Result = ApiErrors.unauthorized
+  private def unauthenticated(request: RequestHeader): Result = ApiErrors.cookiesRequired
 
   val authenticatedExceptionHandler = new ActionFunction[AuthRequest, AuthRequest] {
     override def invokeBlock[A](request: AuthRequest[A], block: (AuthRequest[A]) => Future[Result]): Future[Result] =

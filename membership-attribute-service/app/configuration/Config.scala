@@ -21,6 +21,7 @@ object Config {
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val dynamoTable = config.getString("dynamodb.table")
+  val useFixtures = config.getBoolean("use-fixtures")
 
   lazy val dynamoMapper = {
     val awsProfile = config.getString("aws-profile")
@@ -31,6 +32,4 @@ object Config {
     val dynamoClient    = new AmazonDynamoDBScalaClient(awsDynamoClient)
     AmazonDynamoDBScalaMapper(dynamoClient)
   }
-
-
 }

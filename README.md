@@ -53,6 +53,18 @@ To start the service use:
 
 The service will be starting on 9100 and use the MembershipAttributes-DEV DynamoDB table.
 
+## Using fixtures
+
+You can use pre-canned responses by launching the app like so:
+
+```
+    $ sbt
+    > project membership-attribute-service
+    > devrun -Duse-fixtures=true
+```
+
+You can edit the pre-canned response by altering the file `app/models/Fixtures.scala`
+
 ## Metrics and Logs
 
 There is a Membership Attributes Service radiator. This uses standard ELB and DynamoBB CloudWatch metrics for the CloudFormation stack in the chosen stage.

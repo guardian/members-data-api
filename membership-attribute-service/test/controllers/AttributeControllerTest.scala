@@ -6,7 +6,7 @@ import models.MembershipAttributes
 import org.mockito.Mockito._
 import org.specs2.mutable.Specification
 import play.api.libs.iteratee.{Input, Iteratee}
-import play.api.libs.json.{Json, JsValue}
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.Security.AuthenticatedBuilder
 import play.api.mvc._
 import play.api.test.FakeRequest
@@ -14,8 +14,7 @@ import play.api.test.Helpers._
 import services.AttributeService
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
+import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification {
 
