@@ -8,24 +8,30 @@ object ApiErrors {
       statusCode = 400
     )
 
-  def notFound: ApiError =
+  val notFound: ApiError =
     ApiError(
       message = "Not found",
       details = "Not Found",
       statusCode = 404
     )
 
-  def internalError: ApiError =
+  val internalError: ApiError =
     ApiError(
       message = "Internal Server Error",
       details = "Internal Server Error",
       statusCode = 500
     )
 
-  def unauthorized: ApiError =
+  val cookiesRequired: ApiError =
     ApiError(
       message = "Unauthorised",
       details = "Valid GU_U and SC_GU_U cookies are required.",
       statusCode = 401
     )
+
+  val unauthorized = ApiError(
+    message = "Unauthorized",
+    details = "Failed to authenticate",
+    statusCode = 401
+  )
 }
