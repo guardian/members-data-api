@@ -114,6 +114,11 @@
               },
               {
                 "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::members-data-api-private/*"
+              },
+              {
+                "Effect": "Allow",
                 "Action": "ec2:DescribeTags",
                 "Resource": "*"
               },
