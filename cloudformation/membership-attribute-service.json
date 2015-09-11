@@ -280,7 +280,6 @@
               "#!/bin/bash -ev\n",
               "aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .\n",
               "chmod +x set-env.sh\n",
-              "./set-env.sh\n",
 
               "aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .\n",
               "chmod +x membership-attribute-service-bootstrap.sh\n",
