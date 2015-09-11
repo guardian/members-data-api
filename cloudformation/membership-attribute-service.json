@@ -290,6 +290,12 @@
               "chmod +x set-ssh-keys.sh\n",
               "./set-ssh-keys.sh\n",
 
+              "mkdir -p /etc/gu",
+
+              {"Fn::Join":["", ["aws --region ", { "Ref": "AWS::Region" }, " s3 cp s3://members-data-api-private/", { "Ref" : "Stage" }, "/members-data-api.conf /etc/gu"]]},
+              "chown subscriptions /etc/gu/members-data-api.conf\n",
+              "chmod 0600 /etc/gu/members-data-api.conf\n",
+
               "service membership-attribute-service start\n",
               "sleep 20s\n"
             ]]
