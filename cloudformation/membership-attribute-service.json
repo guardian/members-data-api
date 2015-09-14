@@ -114,6 +114,11 @@
               },
               {
                 "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::members-data-api-private/*"
+              },
+              {
+                "Effect": "Allow",
                 "Action": "ec2:DescribeTags",
                 "Resource": "*"
               },
@@ -280,7 +285,6 @@
               "#!/bin/bash -ev\n",
               "aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .\n",
               "chmod +x set-env.sh\n",
-              "./set-env.sh\n",
 
               "aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .\n",
               "chmod +x membership-attribute-service-bootstrap.sh\n",
@@ -289,6 +293,12 @@
               "aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .\n",
               "chmod +x set-ssh-keys.sh\n",
               "./set-ssh-keys.sh\n",
+
+              "mkdir -p /etc/gu\n",
+
+              {"Fn::Join":["", ["aws --region ", { "Ref": "AWS::Region" }, " s3 cp s3://members-data-api-private/", { "Ref" : "Stage" }, "/members-data-api.conf /etc/gu\n"]]},
+              "chown membership-attribute-service /etc/gu/members-data-api.conf\n",
+              "chmod 0600 /etc/gu/members-data-api.conf\n",
 
               "service membership-attribute-service start\n",
               "sleep 20s\n"
