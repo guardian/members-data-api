@@ -12,20 +12,18 @@ import services.AttributeService
 
 class AttributeController @Inject() (attributeService: AttributeService) extends CommonActions {
   def getMyAttributes =
-    if (Config.useFixtures)
-      getMyAttributesFromFixtures
-    else
-      getMyAttributesFromCookie
+    if (Config.useFixtures) attributesFromFixtures
+    else attributesFromCookie
 
-  private def getMyAttributesFromCookie =
+  private def attributesFromCookie =
     AuthenticatedAction.async { implicit request =>
       attributeService.getAttributes(request.user.id).map {
         case Some(attrs) => attrs
-        case None => unauthorized
+        case None =>  unauthorized("Unauthorized")
       }
     }
 
-  private def getMyAttributesFromFixtures = Action {
+  private def attributesFromFixtures = Action {
     Fixtures.membershipAttributes
   }
 }

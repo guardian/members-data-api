@@ -22,16 +22,12 @@ object ApiErrors {
       statusCode = 500
     )
 
-  val cookiesRequired: ApiError =
+  def unauthorized(msg: String) =
     ApiError(
       message = "Unauthorised",
-      details = "Valid GU_U and SC_GU_U cookies are required.",
+      details = msg,
       statusCode = 401
     )
 
-  val unauthorized = ApiError(
-    message = "Unauthorized",
-    details = "Failed to authenticate",
-    statusCode = 401
-  )
+  val cookiesRequired: ApiError = unauthorized("Valid GU_U and SC_GU_U cookies are required.")
 }
