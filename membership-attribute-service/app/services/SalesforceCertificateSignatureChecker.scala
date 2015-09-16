@@ -1,22 +1,13 @@
 package services
 
 import java.security.Signature
-import java.security.cert.CertificateFactory
+import java.security.cert.Certificate
 import java.util.Base64
-
-import configuration.Config
-import play.api.Play
-import play.api.Play.current
 
 import scala.util.{Success, Try}
 
 object SalesforceCertificateSignatureChecker extends SalesforceSignatureChecker{
-  lazy val salesforceCert = {
-    val resource = Play.resourceAsStream(Config.salesforceCert).get
-    CertificateFactory.getInstance("X.509").generateCertificate(resource)
-  }
-
-  override def check(payload: String)(signatureBase64: String): SalesforceSignatureCheck = {
+  override def check(payload: String)(signatureBase64: String)(implicit salesforceCert: Certificate): SalesforceSignatureCheck = {
     val pubKey = salesforceCert.getPublicKey
     val checker = Signature.getInstance("SHA256withRSA")
     checker.initVerify(pubKey)

@@ -1,5 +1,7 @@
 package actions
 
+import java.security.cert.Certificate
+
 import org.specs2.mutable._
 import play.api.mvc.Action
 import services._
@@ -13,7 +15,7 @@ class SalesforceSignedActionTest extends Specification {
   private val wrongFormatSignature = "wrong format"
 
   implicit val fakeSignatureChecker = new SalesforceSignatureChecker {
-    override def check(payload: String)(signature: String): SalesforceSignatureCheck =
+    override def check(payload: String)(signature: String)(implicit cert: Certificate): SalesforceSignatureCheck =
       if (signature == rightSignature) CheckSuccessful
       else if (signature == wrongFormatSignature) FormatError
       else WrongSignature
