@@ -8,11 +8,11 @@ import services.{CheckSuccessful, FormatError, SalesforceSignatureChecker, Wrong
 
 import scala.concurrent.Future
 
-case class SalesforceSignedAction(action: Action[String]) extends Action[String] {
+case class SalesforceSignedAction(action: Action[String])(implicit signatureChecker: SalesforceSignatureChecker) extends Action[String] {
   val salesforceSignatureHeader = "X-SALESFORCE-SIGNATURE"
   override def apply(request: Request[String]) = {
     val headerSignature = request.headers.get(salesforceSignatureHeader)
-    val signatureCheck = headerSignature.map(SalesforceSignatureChecker.check(request.body))
+    val signatureCheck = headerSignature.map(signatureChecker.check(request.body))
 
     signatureCheck match {
       case Some(CheckSuccessful) =>
