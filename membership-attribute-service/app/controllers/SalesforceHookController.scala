@@ -14,8 +14,9 @@ import services._
 import scala.concurrent.Future
 import scala.util.{Success, Try}
 
-
 class SalesforceHookController @Inject() (attrService: AttributeService) {
+  implicit val signatureChecker = SalesforceCertificateSignatureChecker
+
   def createAttributes = SalesforceSignedAction {
     Action.async(parse.tolerantText) { request =>
       Try(Json.parse(request.body).as(contactReads)) match {

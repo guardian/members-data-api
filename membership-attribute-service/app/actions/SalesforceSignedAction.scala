@@ -1,5 +1,8 @@
 package actions
 
+import java.security.cert.CertificateFactory
+
+import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
 import play.api.mvc.BodyParsers.parse
@@ -8,11 +11,16 @@ import services.{CheckSuccessful, FormatError, SalesforceSignatureChecker, Wrong
 
 import scala.concurrent.Future
 
-case class SalesforceSignedAction(action: Action[String]) extends Action[String] {
+case class SalesforceSignedAction(action: Action[String])(implicit signatureChecker: SalesforceSignatureChecker) extends Action[String] {
   val salesforceSignatureHeader = "X-SALESFORCE-SIGNATURE"
+  implicit lazy val salesforceCert = {
+    val resource = getClass.getResourceAsStream(Config.salesforceCert)
+    CertificateFactory.getInstance("X.509").generateCertificate(resource)
+  }
+
   override def apply(request: Request[String]) = {
     val headerSignature = request.headers.get(salesforceSignatureHeader)
-    val signatureCheck = headerSignature.map(SalesforceSignatureChecker.check(request.body))
+    val signatureCheck = headerSignature.map(signatureChecker.check(request.body))
 
     signatureCheck match {
       case Some(CheckSuccessful) =>
