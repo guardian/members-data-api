@@ -410,18 +410,6 @@
         "Cooldown": "3600",
         "ScalingAdjustment": "-1"
       }
-    },
-
-    "ELBDNSrecord" : {
-      "Type" : "AWS::Route53::RecordSet",
-      "Properties" : {
-        "HostedZoneId" : "/hostedzone/Z1E4V12LQGXFEC",
-        "Comment" : "CNAME for AWS ELB",
-        "Name" : "members-data-api.guardianapis.com.",
-        "Type" : "CNAME",
-        "TTL" : "120",
-        "ResourceRecords" : [ {"Fn::GetAtt": ["LoadBalancer", "DNSName"]} ]
-      }
     }
   },
 
