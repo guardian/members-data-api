@@ -1,5 +1,7 @@
 package configuration
 
+import java.security.cert.CertificateFactory
+
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentialsProvider}
 import com.amazonaws.regions.Regions
@@ -7,7 +9,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.typesafe.config.ConfigFactory
-import play.api.Logger
+import play.api.{Play, Logger}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -22,7 +24,7 @@ object Config {
   val dynamoTable = config.getString("dynamodb.table")
   val useFixtures = config.getBoolean("use-fixtures")
 
-  val salesforceSecret = config.getString("salesforce.hook-secret")
+  val salesforceCert = config.getString("salesforce.certificate")
 
   lazy val dynamoMapper = {
     val awsProfile = config.getString("aws-profile")

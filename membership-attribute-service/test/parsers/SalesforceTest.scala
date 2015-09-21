@@ -2,34 +2,38 @@ package parsers
 
 import models.MembershipAttributes
 import org.specs2.mutable.Specification
-import scalaz.syntax.either._
+import play.api.libs.json._
 
 class SalesforceTest extends Specification {
-  "parseOutboundMessage" should {
-    "deserialize a valid Salesforce Outbound Message" in {
-      val payload =
-        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-          <soapenv:Body>
-            <notifications xmlns="http://soap.sforce.com/2005/09/outbound">
-              <OrganizationId>org_id</OrganizationId>
-              <ActionId>action_id</ActionId>
-              <SessionId xsi:nil="true"/>
-              <EnterpriseUrl>https://cs17.salesforce.com/services/Soap/c/34.0/enterprise_id</EnterpriseUrl>
-              <PartnerUrl>https://cs17.salesforce.com/services/Soap/u/34.0/enterprise_id</PartnerUrl>
-              <Notification>
-                <Id>notification_id</Id>
-                <sObject xsi:type="sf:Contact" xmlns:sf="urn:sobject.enterprise.soap.sforce.com">
-                  <sf:Id>id</sf:Id>
-                  <sf:IdentityID__c>identity_id</sf:IdentityID__c>
-                  <sf:Membership_Number__c>membership_number</sf:Membership_Number__c>
-                  <sf:Membership_Tier__c>Supporter</sf:Membership_Tier__c>
-                </sObject>
-              </Notification>
-            </notifications>
-          </soapenv:Body>
-        </soapenv:Envelope>
+  "contactReads" should {
+    "deserialize a valid Salesforce contact JSON representation" in {
+      val memberNumber = "1234"
+      val memberTier = "Patron"
+      val identityId = "4567"
 
-      Salesforce.parseOutboundMessage(payload) shouldEqual MembershipAttributes("identity_id", "Supporter", "membership_number").right
+      val raw_payload =
+        s"""
+          |{
+          |  "attributes": {
+          |    "type": "Contact",
+          |    "url": "/services/data/v35.0/sobjects/Contact/123"
+          |  },
+          |  "Membership_Number__c": "$memberNumber",
+          |  "Membership_Tier__c": "$memberTier",
+          |  "IdentityID__c": "$identityId",
+          |  "Id": "123"
+          |}
+        """.stripMargin
+
+      val payload = Json.parse(raw_payload)
+
+      payload.validate[MembershipAttributes](Salesforce.contactReads) shouldEqual JsSuccess(
+        MembershipAttributes(
+          userId = identityId,
+          tier = memberTier,
+          membershipNumber = memberNumber
+        )
+      )
     }
   }
 }
