@@ -10,6 +10,11 @@
       "Description": "The EC2 Key Pair to allow SSH access to the instances",
       "Type": "AWS::EC2::KeyPair::KeyName"
     },
+    "SiteDomain" : {
+      "Description" : "Site domain Name",
+      "Type" : "String",
+      "Default" : "members-data-api.theguardian.com"
+    },
     "Stage": {
       "Description": "Environment name",
       "Type": "String",
@@ -191,9 +196,10 @@
       "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
       "Properties": {
         "Listeners": [{
-          "LoadBalancerPort": "80",
+          "LoadBalancerPort": "443",
           "InstancePort": "9000",
-          "Protocol": "HTTP"
+          "Protocol": "HTTPS",
+          "SSLCertificateId" : { "Fn::Join" : [ "", [ "arn:aws:iam::", {"Ref":"AWS::AccountId"}, ":server-certificate/", { "Ref" : "SiteDomain" } ] ] }
         }],
         "CrossZone": "true",
         "HealthCheck": {
@@ -312,12 +318,12 @@
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
         "VpcId": { "Ref": "VpcId" },
-        "GroupDescription": "Open up HTTP access to load balancer",
+        "GroupDescription": "Open up HTTPS access to load balancer",
         "SecurityGroupIngress": [
           {
             "IpProtocol": "tcp",
-            "FromPort": "80",
-            "ToPort": "80",
+            "FromPort": "443",
+            "ToPort": "443",
             "CidrIp": "0.0.0.0/0"
           }
         ],
@@ -351,8 +357,8 @@
         "SecurityGroupEgress": [
           {
             "IpProtocol": "tcp",
-            "FromPort": "80",
-            "ToPort": "80",
+            "FromPort": "443",
+            "ToPort": "443",
             "CidrIp": "0.0.0.0/0"
           }
         ]
