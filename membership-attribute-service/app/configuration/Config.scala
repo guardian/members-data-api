@@ -24,11 +24,14 @@ object Config {
 
   val salesforceSecret = config.getString("salesforce.hook-secret")
 
-  lazy val dynamoMapper = {
-    val awsProfile = config.getString("aws-profile")
-    val awsCredentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(awsProfile), new InstanceProfileCredentialsProvider())
+  object AWS {
+    val profile = config.getString("aws-profile")
+    val credentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(profile), new InstanceProfileCredentialsProvider())
+    val credentials = credentialsProvider.getCredentials
+  }
 
-    val awsDynamoClient = new AmazonDynamoDBAsyncClient(awsCredentialsProvider.getCredentials)
+  lazy val dynamoMapper = {
+    val awsDynamoClient = new AmazonDynamoDBAsyncClient(AWS.credentials)
     awsDynamoClient.configureRegion(Regions.EU_WEST_1)
     val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
     AmazonDynamoDBScalaMapper(dynamoClient)
