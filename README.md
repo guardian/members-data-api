@@ -65,6 +65,20 @@ You can use pre-canned responses by launching the app like so:
 
 You can edit the pre-canned response by altering the file `app/models/Fixtures.scala`
 
+## Loading initial dataset
+
+- Download a CSV report file from Salesforce containing the required fields. The header should be
+
+```
+    "IdentityID","Membership Number","Membership Tier","Last Modified Date"
+```
+
+- Increase the write throughput of you dynamoDB instance (100 should be enough)
+
+- run `sbt -Dconfig.resource=[DEV|PROD].conf ";project membership-attribute-service ;batch-load <path/to/csvfile.csv>"`
+
+- Decrease the write throughput of you dynamoDB instance to 1
+
 ## Metrics and Logs
 
 There is a Membership Attributes Service radiator. This uses standard ELB and DynamoBB CloudWatch metrics for the CloudFormation stack in the chosen stage.
