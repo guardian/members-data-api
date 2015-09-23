@@ -67,6 +67,10 @@ You can edit the pre-canned response by altering the file `app/models/Fixtures.s
 
 ## Loading initial dataset
 
+- Make sure that the outbound messages are pointing to your instance
+
+- Truncate your DB
+
 - Download a CSV report file from Salesforce containing the required fields. The header should be
 
 ```
@@ -78,6 +82,8 @@ You can edit the pre-canned response by altering the file `app/models/Fixtures.s
 - run `sbt -Dconfig.resource=[DEV|PROD].conf ";project membership-attribute-service ;batch-load <path/to/csvfile.csv>"`
 
 - Decrease the write throughput of you dynamoDB instance to 1
+
+- Check that no records have been altered during the time the command takes to run. It's easy to check via the Membership History object in Salesforce.
 
 ## Metrics and Logs
 
