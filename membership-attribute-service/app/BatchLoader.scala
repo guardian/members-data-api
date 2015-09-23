@@ -7,6 +7,8 @@ import configuration.Config._
 import models.MembershipAttributes
 import org.slf4j.LoggerFactory
 import sources.SalesforceCSVExport
+import repositories.MembershipAttributesDynamo.membershipAttributesSerializer
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.collection.JavaConverters._
 
@@ -35,7 +37,7 @@ object BatchLoader {
       sys.exit(1)
     })({ path =>
       val file = new File(path)
-      dynamoMapper.scan[MembershipAttributes](Map.empty).map { existing =>
+      dynamoMapper.scan[MembershipAttributes](Map.empty).onSuccess { case existing =>
         val existingIds = existing.map(_.userId).toSet
         val requests = SalesforceCSVExport
           .membersAttributes(file)
