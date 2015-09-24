@@ -55,7 +55,7 @@ To start the service use:
     > devrun
 ```
 
-The service will be starting on 9100 and use the MembershipAttributes-DEV DynamoDB table.
+The service will be starting on 9400 and use the MembershipAttributes-DEV DynamoDB table.
 
 ## Using fixtures
 

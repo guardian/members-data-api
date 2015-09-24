@@ -63,7 +63,7 @@ object MembershipAttributeService extends Build with MembershipAttributeService 
                 .settings(libraryDependencies ++= apiDependencies)
                 .settings(routesGenerator := InjectedRoutesGenerator)
                 .settings(
-                  addCommandAlias("devrun", "run -Dconfig.resource=DEV.conf 9100"),
+                  addCommandAlias("devrun", "run -Dconfig.resource=DEV.conf 9400"),
                   addCommandAlias("batch-load", "runMain BatchLoader")
                 )
 

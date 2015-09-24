@@ -16,21 +16,21 @@ http {
 
 block
 
-- Copy the `doc/members-data-api-local.conf` file from this repo to `sites-enabled`
+- Copy the `doc/members-data-api.conf` file from this repo to `sites-enabled`
 
 - Generate a self-signed certificate for this subdomain in your Nginx folder i.e. `/usr/local/etc/nginx`:
 
 ```bash
-    openssl genrsa -out "members-data-api-local.key" 2048
-    openssl req -new -key "members-data-api-local.key" -out "members-data-api-local.csr"
-    openssl x509 -req -in "members-data-api-local.csr" -signkey "members-data-api-local.key" -out "members-data-api-local.crt"
+    openssl genrsa -out "members-data-api.key" 2048
+    openssl req -new -key "members-data-api.key" -out "members-data-api.csr"
+    openssl x509 -req -in "members-data-api.csr" -signkey "members-data-api.key" -out "members-data-api.crt"
 ```
 
 - Reload Nginx: `nginx -s reload`
 
 - Redirect traffic from your subdomain to your local machine by adding this line to `/etc/hosts`:
 
-`127.0.0.1   members-data-api-local.theguardian.com`
+`127.0.0.1   members-data-api.theguardian.com`
 
 - Launch the app by going back to your workspace and running
 
@@ -40,4 +40,4 @@ block
     > devrun
 ```
 
-- The application should be available from `https://members-data-api-local.theguardian.com` after you ignore the warning for the bogu certificate.
+- The application should be available from `https://members-data-api.theguardian.com` after you ignore the warning for the bogu certificate.
