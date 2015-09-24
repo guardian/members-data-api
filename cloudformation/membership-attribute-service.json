@@ -58,7 +58,7 @@
     "MaxInstances" : {
       "Description": "Maximum number of instances. This should be (at least) double the desired capacity.",
       "Type": "Number",
-      "Default": 12
+      "Default": 6
     },
     "MinInstances" : {
       "Description": "Minimum number of instances",
