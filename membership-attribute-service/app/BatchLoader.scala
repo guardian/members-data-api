@@ -43,7 +43,7 @@ object BatchLoader {
           .membersAttributes(file)
           .filterNot { attrs => existingIds.contains(attrs.userId) }
           .map(writeRequest)
-        val loader = new SingleThreadedBatchWriter(dynamoTable, AWS.credentials)
+        val loader = new SingleThreadedBatchWriter(dynamoTable, AWS.credentialsProvider)
         loader.client.withRegion(Regions.EU_WEST_1)
         loader.run(requests)
       }

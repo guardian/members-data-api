@@ -27,11 +27,10 @@ object Config {
   object AWS {
     val profile = config.getString("aws-profile")
     val credentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(profile), new InstanceProfileCredentialsProvider())
-    val credentials = credentialsProvider.getCredentials
   }
 
   lazy val dynamoMapper = {
-    val awsDynamoClient = new AmazonDynamoDBAsyncClient(AWS.credentials)
+    val awsDynamoClient = new AmazonDynamoDBAsyncClient(AWS.credentialsProvider)
     awsDynamoClient.configureRegion(Regions.EU_WEST_1)
     val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
     AmazonDynamoDBScalaMapper(dynamoClient)
