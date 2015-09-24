@@ -2,6 +2,10 @@
 
 The membership attribute service provides an API for managing and retrieving membership attributes associated with a user. 
 
+## Nginx configuration
+
+https://github.com/guardian/membership-attribute-service/blob/update-doc/doc/nginx-setup.md
+
 ## Endpoints
 
 Access to endpoint for a specified id will be protected using an access token (TBD). They are currently not protected at all.
