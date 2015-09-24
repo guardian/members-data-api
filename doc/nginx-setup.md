@@ -18,7 +18,7 @@ block
 
 - Copy the `doc/members-data-api-local.conf` file from this repo to `sites-enabled`
 
-- Generate a self-signed certificate for this subdomain:
+- Generate a self-signed certificate for this subdomain in your Nginx folder i.e. `/usr/local/etc/nginx`:
 
 ```bash
     openssl genrsa -out "members-data-api-local.key" 2048
