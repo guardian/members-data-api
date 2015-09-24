@@ -156,6 +156,15 @@
               },
               {
                 "Effect": "Allow",
+                "Action": "dynamodb:DeleteItem",
+                "Resource": {
+                  "Fn::FindInMap": ["StageVariables", {
+                    "Ref": "Stage"
+                  }, "DynamoDBTable"]
+                }
+              },
+              {
+                "Effect": "Allow",
                 "Action": [
                   "cloudwatch:*",
                   "logs:*"

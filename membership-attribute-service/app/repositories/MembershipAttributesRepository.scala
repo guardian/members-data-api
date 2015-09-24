@@ -18,8 +18,13 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
     dynamo.loadByKey[MembershipAttributes](userId)
   }
 
-  def updateAttributes(attributes: MembershipAttributes): Future[Unit] = {
-    logger.debug(s"Update attributes: $attributes")
-    dynamo.dump(attributes)
-  }
+  def updateAttributes(attributes: MembershipAttributes): Future[Unit] =
+    if (attributes.tier.isEmpty) {
+      logger.debug(s"Delete attributes: $attributes")
+      dynamo.delete(attributes)
+    }
+    else {
+      logger.debug(s"Update attributes: $attributes")
+      dynamo.dump(attributes)
+    }
 }
