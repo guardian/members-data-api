@@ -4,7 +4,7 @@ The membership attribute service provides an API for managing and retrieving mem
 
 ## Nginx configuration
 
-https://github.com/guardian/membership-attribute-service/blob/update-doc/doc/nginx-setup.md
+Follow these [nginx setup](doc/nginx-setup.md) instructions
 
 ## Endpoints
 
