@@ -1,4 +1,4 @@
-This setup allows you to run the app on your local machine, relying on reverse proxying via Nginx to simulate a call to theguardian.com domain. This is needed as the API uses cookies from this domain.
+This setup allows you to run the app on your local machine.
 
 - Install Nginx: `brew install nginx` or `apt-get install nginx`
 
@@ -30,7 +30,7 @@ block
 
 - Redirect traffic from your subdomain to your local machine by adding this line to `/etc/hosts`:
 
-`127.0.0.1   members-data-api.theguardian.com`
+`127.0.0.1   members-data-api.thegulocal.com`
 
 - Launch the app by going back to your workspace and running
 
@@ -40,4 +40,4 @@ block
     > devrun
 ```
 
-- The application should be available from `https://members-data-api.theguardian.com` after you ignore the warning for the bogu certificate.
+- The application should be available from `https://members-data-api.thegulocal.com` after you ignore the warning for the bogus certificate.
