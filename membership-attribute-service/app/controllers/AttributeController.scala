@@ -4,7 +4,7 @@ import javax.inject._
 
 import actions.CommonActions
 import configuration.Config
-import models.ApiErrors.unauthorized
+import models.ApiErrors.notFound
 import models.Fixtures
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
@@ -27,7 +27,7 @@ class AttributeController @Inject() (attributeService: AttributeService) extends
     AuthenticatedAction.async { implicit request =>
       attributeService.getAttributes(request.user.id).map {
         case Some(attrs) => attrs
-        case None => unauthorized
+        case None => notFound
       }
     }
 
