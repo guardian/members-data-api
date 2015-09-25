@@ -44,8 +44,7 @@ class AttributeController @Inject() (attributeService: AttributeService) extends
       AuthenticationService.authenticatedUserFor(request)
         .fold(Future(adfreeResponse(false))){ minUser =>
           attributeService.getAttributes(minUser.id).map { attrs =>
-            val isFreeTier = attrs.exists(_.tier.equalsIgnoreCase("friend"))
-            adfreeResponse(!isFreeTier)
+            adfreeResponse(attrs.exists(_.isPaidTier))
           }
         }
     }
