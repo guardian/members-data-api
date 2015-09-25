@@ -20,8 +20,9 @@ object Salesforce {
       obj <- (payload \\ "Notification").getTag("sObject")
       id <- obj.getText("IdentityID__c")
       tier <- obj.getText("Membership_Tier__c")
-      num <- obj.getText("Membership_Number__c")
-      numOpt = if (num.isEmpty) None else Some(num)
-    } yield MembershipAttributes(id, tier, numOpt)
+    } yield {
+      val num = (obj \ "Membership_Number__c").headOption.map(_.text)
+      MembershipAttributes(id, tier, num)
+    }
   }
 }
