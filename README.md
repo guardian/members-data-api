@@ -8,19 +8,9 @@ Follow these [nginx setup](doc/nginx-setup.md) instructions
 
 ## Endpoints
 
-Access to endpoint for a specified id will be protected using an access token (TBD). They are currently not protected at all.
+For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the Cookie request header.
 
-For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the Cookie request header. 
-
-### Read enpoints
-
-    GET /user-attributes/me/membership
- 
-A Content-Type of "application/json" must be provided.
-
-### Responses
-
-All responses will have a JSON body.
+### GET /user-attributes/me/membership
 
 Success responses:
 
@@ -35,8 +25,16 @@ Error responses:
       "message": "Bad Request",
       "details": "Detailed error message"
     }
-    
-    
+
+### GET /user-attributes/me/adfree
+Responses:
+
+    {
+      "adfree": "true",
+    }
+
+This also drops an unsigned `gu_adfree_user` cookie.
+
 ## Running Locally
 
 Ensure that your ~/.aws/credentials file contains the following:
