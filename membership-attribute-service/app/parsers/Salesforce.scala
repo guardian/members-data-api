@@ -21,6 +21,7 @@ object Salesforce {
       id <- obj.getText("IdentityID__c")
       tier <- obj.getText("Membership_Tier__c")
       num <- obj.getText("Membership_Number__c")
-    } yield MembershipAttributes(id, tier, num)
+      numOpt = if (num.isEmpty) None else Some(num)
+    } yield MembershipAttributes(id, tier, numOpt)
   }
 }
