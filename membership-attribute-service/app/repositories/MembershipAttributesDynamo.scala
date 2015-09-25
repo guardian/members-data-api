@@ -25,16 +25,18 @@ object MembershipAttributesDynamo {
     override def toAttributeMap(membershipAttributes: MembershipAttributes) =
       Map(
         mkAttribute(Attributes.userId -> membershipAttributes.userId),
-        mkAttribute(Attributes.membershipNumber -> membershipAttributes.membershipNumber),
+        mkAttribute(Attributes.membershipNumber -> membershipAttributes.membershipNumber.getOrElse("")),
         mkAttribute(Attributes.tier -> membershipAttributes.tier)
       )
 
-    override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) =
+    override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) = {
+      val numOpt = if (Attributes.membershipNumber.isEmpty) None else Some(Attributes.membershipNumber)
+
       MembershipAttributes(
         userId = item(Attributes.userId),
-        membershipNumber = item(Attributes.membershipNumber),
+        membershipNumber = numOpt.map(item.apply),
         tier = item(Attributes.tier)
       )
+    }
   }
-
 }

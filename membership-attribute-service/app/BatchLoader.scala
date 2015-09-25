@@ -23,7 +23,7 @@ object BatchLoader {
             Map(
               "UserId" -> attrs.userId,
               "Tier" -> attrs.tier,
-              "MembershipNumber" -> attrs.membershipNumber
+              "MembershipNumber" -> attrs.membershipNumber.getOrElse("")
             ).mapValues(new AttributeValue(_)).asJava
           )
       )

@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 import scala.io.Source
 
 object SalesforceCSVExport {
-  private val re = """"(\w+)","(\w+)","(\w+)","(.+)"""".r
+  private val re = """"(\w+)","(\w*)","(\w+)","(.+)"""".r
   private val logger = LoggerFactory.getLogger(getClass)
 
   def membersAttributes(file: File): Iterator[MembershipAttributes] = {
@@ -16,7 +16,8 @@ object SalesforceCSVExport {
       .getLines().drop(1) // The export file comes with CSV headers
       .map {
         case re(id, num, tier, date) =>
-          Some(MembershipAttributes(id, tier, num))
+          val numOpt = if (num.isEmpty) None else Some(num)
+          Some(MembershipAttributes(id, tier, numOpt))
         case str =>
           logger.error(s"Couldn't parse line\n$str\nas a valid members attribute")
           None
