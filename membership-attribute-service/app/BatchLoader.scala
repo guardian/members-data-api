@@ -2,32 +2,23 @@ import java.io.File
 
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.model.{PutRequest, WriteRequest}
-import com.github.dwhjames.awswrap.dynamodb.{AttributeValue, SingleThreadedBatchWriter}
+import com.github.dwhjames.awswrap.dynamodb.SingleThreadedBatchWriter
 import configuration.Config._
 import models.MembershipAttributes
 import org.slf4j.LoggerFactory
-import sources.SalesforceCSVExport
 import repositories.MembershipAttributesDynamo.membershipAttributesSerializer
-import scala.concurrent.ExecutionContext.Implicits.global
+import repositories.MembershipAttributesDynamo.membershipAttributesSerializer.toAttributeMap
+import sources.SalesforceCSVExport
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object BatchLoader {
   val logger = LoggerFactory.getLogger(getClass)
 
-  def writeRequest(attrs: MembershipAttributes) = {
-    new WriteRequest()
-      .withPutRequest(
-        new PutRequest()
-          .withItem(
-            Map(
-              "UserId" -> attrs.userId,
-              "Tier" -> attrs.tier,
-              "MembershipNumber" -> attrs.membershipNumber.getOrElse("")
-            ).mapValues(new AttributeValue(_)).asJava
-          )
-      )
-  }
+  def writeRequest(attrs: MembershipAttributes) =
+    new WriteRequest().withPutRequest(
+      new PutRequest().withItem(toAttributeMap(attrs).asJava))
 
   // This only works on a DB that contains only fresher records
   // than the ones in the CSV

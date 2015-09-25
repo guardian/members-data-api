@@ -7,7 +7,9 @@ import play.api.mvc.Results.Ok
 import scala.language.implicitConversions
 
 case class MembershipAttributes(userId: String, tier: String, membershipNumber: Option[String]) {
-  require(tier.nonEmpty && userId.nonEmpty)
+  require(tier.nonEmpty)
+  require(userId.nonEmpty)
+
   lazy val isFriendTier = tier.equalsIgnoreCase("friend")
   lazy val isPaidTier = !isFriendTier
 }
