@@ -1,17 +1,14 @@
 package controllers
 
-import actions._
-import com.gu.identity.play.IdMinimalUser
 import models.MembershipAttributes
 import org.mockito.Mockito._
 import org.specs2.mutable.Specification
 import play.api.libs.iteratee.{Input, Iteratee}
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.Security.AuthenticatedBuilder
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.AttributeService
+import services.{AttributeService, AuthenticationService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -21,20 +18,10 @@ class AttributeControllerTest extends Specification {
   val userId = "123"
 
   val attributeService = mock(classOf[AttributeService])
+  val authService = mock(classOf[AuthenticationService])
+
   val controller = new AttributeController(attributeService) {
-    private def authenticatedUserFor[A](request: RequestHeader): Option[IdMinimalUser] = for {
-      scGuU <- request.cookies.get("SC_GU_U")
-      guU <- request.cookies.get("GU_U")
-    } yield IdMinimalUser(userId, None)
-
-    def unauthenticated(request: RequestHeader): Result = Results.Unauthorized
-
-    def authenticated(onUnauthenticated: RequestHeader => Result = unauthenticated): ActionBuilder[AuthRequest] = {
-      import Functions.authenticatedExceptionHandler
-      new AuthenticatedBuilder(authenticatedUserFor, onUnauthenticated) andThen authenticatedExceptionHandler
-    }
-
-    override val AuthenticatedAction = NoCacheAction andThen authenticated()
+    override lazy val authenticationService = authService
   }
 
   def verifySuccessfulResult(result: Future[Result]) = {
@@ -51,7 +38,10 @@ class AttributeControllerTest extends Specification {
 
   "getMyAttributes" should {
     "return unauthorised when cookies not provided" in {
-      val result = controller.getMyAttributes(FakeRequest())
+      val req = FakeRequest()
+      when(authService.userId(req)).thenReturn(None)
+      val result = controller.getMyAttributes(req)
+
       status(result) shouldEqual UNAUTHORIZED
     }
 
@@ -59,10 +49,9 @@ class AttributeControllerTest extends Specification {
       val apiResponse = Future { Some(MembershipAttributes("123", "patron", Some("abc"))) }
       when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
 
-      val guCookie = "gu_cookie"
-      val scGuCookie = "sc_gu_cookie"
+      val req = FakeRequest()
+      when(authService.userId(req)).thenReturn(Some(userId))
 
-      val req = FakeRequest().withHeaders("Cookie" -> s"GU_U=$guCookie;SC_GU_U=$scGuCookie")
       val result: Future[Result] = controller.getMyAttributes(req)
       verifySuccessfulResult(result)
     }

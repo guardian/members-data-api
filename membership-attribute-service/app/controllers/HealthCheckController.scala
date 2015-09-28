@@ -1,12 +1,11 @@
 package controllers
 
-import actions.CommonActions
 import play.api.Logger
 import play.api.mvc.{Action, Results}
 
 case class Test(name: String, result: () => Boolean)
 
-class HealthCheckController extends CommonActions with Results {
+class HealthCheckController extends Results {
 
   // TODO add a meaningful test
   val tests: Seq[Test] = Nil

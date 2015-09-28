@@ -1,21 +1,22 @@
 package controllers
 
 import javax.inject._
-
-import actions.CommonActions
 import configuration.Config
-import models.ApiErrors.notFound
+import models.ApiErrors._
+import models.ApiError._
+import models.MembershipAttributes._
 import models.Fixtures
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc.Results.Ok
-import play.api.mvc.{Action, Cookie}
-import services.{AttributeService, AuthenticationService}
+import play.api.mvc.{Result, Action, Cookie}
+import services.{AuthenticationService, AttributeService, IdentityAuthService}
 
 import scala.concurrent.Future
 
-class AttributeController @Inject() (attributeService: AttributeService) extends CommonActions {
+class AttributeController @Inject() (attributeService: AttributeService) {
   val ADFREE_COOKIE_MAX_AGE = 60 * 60 * 6 // 6 hours
+  lazy val authenticationService: AuthenticationService = IdentityAuthService
 
   def getMyAttributes =
     if (Config.useFixtures)
@@ -23,13 +24,15 @@ class AttributeController @Inject() (attributeService: AttributeService) extends
     else
       getMyAttributesFromCookie
 
-  private def getMyAttributesFromCookie =
-    AuthenticatedAction.async { implicit request =>
-      attributeService.getAttributes(request.user.id).map {
-        case Some(attrs) => attrs
-        case None => notFound
-      }
-    }
+  private def getMyAttributesFromCookie = Action.async { implicit request =>
+    authenticationService.userId
+      .map[Future[Result]] { id =>
+        attributeService.getAttributes(id).map {
+          case Some(attrs) => attrs
+          case None => notFound
+        }
+      }.getOrElse(Future(unauthorized))
+  }
 
   private def getMyAttributesFromFixtures = Action {
     Fixtures.membershipAttributes
@@ -41,11 +44,11 @@ class AttributeController @Inject() (attributeService: AttributeService) extends
 
   def adFree =
     Action.async { implicit request =>
-      AuthenticationService.authenticatedUserFor(request)
-        .fold(Future(adfreeResponse(false))){ minUser =>
-          attributeService.getAttributes(minUser.id).map { attrs =>
+      authenticationService.userId
+        .map { id =>
+          attributeService.getAttributes(id).map { attrs =>
             adfreeResponse(attrs.exists(_.isPaidTier))
           }
-        }
+        }.getOrElse(Future(adfreeResponse(false)))
     }
 }
