@@ -7,20 +7,23 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.typesafe.config.ConfigFactory
+import net.kencochrane.raven.dsn.Dsn
 import play.api.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Try
 
 object Config {
   private val logger = Logger(this.getClass)
 
   val config = ConfigFactory.load()
 
-  logger.info(s"Stage=${config.getString("stage")}")
+  val stage = config.getString("stage")
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val dynamoTable = config.getString("dynamodb.table")
   val useFixtures = config.getBoolean("use-fixtures")
+  lazy val sentryDsn = Try(new Dsn(config.getString("sentry.dsn")))
 
   val salesforceSecret = config.getString("salesforce.hook-secret")
 

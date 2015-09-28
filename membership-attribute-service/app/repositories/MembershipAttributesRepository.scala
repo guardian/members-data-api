@@ -21,10 +21,14 @@ class MembershipAttributesRepository @Inject() (dynamo: AmazonDynamoDBScalaMappe
   def updateAttributes(attributes: MembershipAttributes): Future[Unit] =
     if (attributes.tier.isEmpty) {
       logger.debug(s"Delete attributes: $attributes")
-      dynamo.delete(attributes)
+      dynamo.delete(attributes).recover {
+        case t => Logger.error(s"Failed to delete attributes $attributes", t)
+      }
     }
     else {
       logger.debug(s"Update attributes: $attributes")
-      dynamo.dump(attributes)
+      dynamo.dump(attributes).recover {
+        case t => Logger.error(s"Failed to update attributes $attributes", t)
+      }
     }
 }
