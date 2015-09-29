@@ -8,15 +8,12 @@ import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDy
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.typesafe.config.ConfigFactory
 import net.kencochrane.raven.dsn.Dsn
-import play.api.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 object Config {
   val applicationName = "CASProxy"
-
-  private val logger = Logger(this.getClass)
 
   val config = ConfigFactory.load()
 
