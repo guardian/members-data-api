@@ -17,11 +17,12 @@ class AttributeControllerTest extends Specification {
 
   val userId = "123"
 
-  val attributeService = mock(classOf[AttributeService])
+  val attrService = mock(classOf[AttributeService])
   val authService = mock(classOf[AuthenticationService])
 
-  val controller = new AttributeController(attributeService) {
+  val controller = new AttributeController {
     override lazy val authenticationService = authService
+    override lazy val attributeService = attrService
   }
 
   def verifySuccessfulResult(result: Future[Result]) = {
@@ -47,7 +48,7 @@ class AttributeControllerTest extends Specification {
 
     "retrieve attributes for user in cookie" in {
       val apiResponse = Future { Some(MembershipAttributes("123", "patron", Some("abc"))) }
-      when(attributeService.getAttributes(userId)).thenReturn(apiResponse)
+      when(attrService.get(userId)).thenReturn(apiResponse)
 
       val req = FakeRequest()
       when(authService.userId(req)).thenReturn(Some(userId))
