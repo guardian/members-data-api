@@ -18,7 +18,7 @@ object SalesforceAuthAction extends ActionBuilder[Request] {
       block(request)
     }
     else {
-      Logger.error(s"Invalid secret for request: '${request.uri}'")
+      Logger.error(s"Invalid secret for request")
       Future(unauthorized)
     }
   }
