@@ -9,6 +9,7 @@ import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDy
 import models.MembershipAttributes
 import org.specs2.mutable.Specification
 import repositories.MembershipAttributesDynamo.Attributes
+import services.DynamoAttributeService
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -19,13 +20,13 @@ import scala.concurrent.duration._
  *
  * Amazon's embedded version doesn't work with an async client, so using https://github.com/grahamar/sbt-dynamodb
  */
-class MembershipAttributesRepositoryTest extends Specification {
+class DynamoAttributeServiceTest extends Specification {
 
   val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
   val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
-  val repo = new MembershipAttributesRepository(dynamoMapper)
+  val repo = DynamoAttributeService(dynamoMapper)
 
   val tableRequest =
     new CreateTableRequest()
@@ -39,13 +40,13 @@ class MembershipAttributesRepositoryTest extends Specification {
 
   val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
 
-  "getAttributes" should {
+  "get" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
       val attributes = MembershipAttributes(userId, "patron", Some("abc"))
       val result = for {
-        insertResult <- repo.updateAttributes(attributes)
-        retrieved <- repo.getAttributes(userId)
+        insertResult <- repo.set(attributes)
+        retrieved <- repo.get(userId)
       } yield retrieved
 
       Await.result(result, 5.seconds) shouldEqual Some(attributes)
@@ -53,7 +54,7 @@ class MembershipAttributesRepositoryTest extends Specification {
 
     "retrieve not found api error when attributes not found for user" in {
       val result = for {
-        retrieved <- repo.getAttributes(UUID.randomUUID().toString)
+        retrieved <- repo.get(UUID.randomUUID().toString)
       } yield retrieved
 
       Await.result(result, 5.seconds) shouldEqual None
