@@ -1,21 +1,22 @@
 package controllers
 
-import javax.inject._
-
-import actions.CommonActions
 import configuration.Config
-import models.ApiErrors.notFound
+import models.ApiError._
+import models.ApiErrors._
 import models.Fixtures
+import models.MembershipAttributes._
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc.Results.Ok
-import play.api.mvc.{Action, Cookie}
-import services.{AttributeService, IdentityService}
+import play.api.mvc.{Action, Cookie, Result}
+import services.{AttributeService, AuthenticationService, DynamoAttributeService, IdentityAuthService}
 
 import scala.concurrent.Future
 
-class AttributeController @Inject() (attributeService: AttributeService) extends CommonActions {
+class AttributeController {
   val ADFREE_COOKIE_MAX_AGE = 60 * 60 * 6 // 6 hours
+  lazy val authenticationService: AuthenticationService = IdentityAuthService
+  lazy val attributeService: AttributeService = DynamoAttributeService()
 
   def getMyAttributes =
     if (Config.useFixtures)
@@ -23,26 +24,31 @@ class AttributeController @Inject() (attributeService: AttributeService) extends
     else
       getMyAttributesFromCookie
 
-  private def getMyAttributesFromCookie = AuthenticatedAction.async { implicit request =>
-    attributeService.getAttributes(request.user.id).map {
-      case Some(attrs) => attrs
-      case None => notFound
-    }
+  private def getMyAttributesFromCookie = Action.async { implicit request =>
+    authenticationService.userId
+      .map[Future[Result]] { id =>
+        attributeService.get(id).map {
+          case Some(attrs) => attrs
+          case None => notFound
+        }
+      }.getOrElse(Future(unauthorized))
   }
 
   private def getMyAttributesFromFixtures = Action {
     Fixtures.membershipAttributes
   }
 
-  private def adfreeResponse(adfree: Boolean) = Ok(Json.obj("adfree" -> adfree))
-    .withCookies(Cookie("gu_adfree_user", adfree.toString, maxAge = Some(ADFREE_COOKIE_MAX_AGE)))
+  private def adfreeResponse(adfree: Boolean) =
+    Ok(Json.obj("adfree" -> adfree))
+      .withCookies(Cookie("gu_adfree_user", adfree.toString, maxAge = Some(ADFREE_COOKIE_MAX_AGE)))
 
-  def adFree = Action.async { implicit request =>
-    IdentityService.authenticatedUserFor(request)
-      .fold(Future(adfreeResponse(false))) { minUser =>
-      attributeService.getAttributes(minUser.id).map { attrs =>
-        adfreeResponse(attrs.exists(_.isPaidTier))
-      }
+  def adFree =
+    Action.async { implicit request =>
+      authenticationService.userId
+        .map { id =>
+          attributeService.get(id).map { attrs =>
+            adfreeResponse(attrs.exists(_.isPaidTier))
+          }
+        }.getOrElse(Future(adfreeResponse(false)))
     }
-  }
 }
