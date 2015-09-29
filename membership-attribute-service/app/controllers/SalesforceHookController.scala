@@ -13,7 +13,7 @@ import scala.concurrent.Future
 import scalaz.{-\/, \/-}
 
 class SalesforceHookController {
-  lazy val attributeService: AttributeService = DynamoAttributeService
+  lazy val attributeService: AttributeService = DynamoAttributeService()
   def createAttributes = SalesforceAuthAction.async(parse.xml) { request =>
     SFParser.parseOutboundMessage(request.body) match {
       case \/-(attrs) if attrs.tier.isEmpty => attributeService.delete(attrs.userId).map(const(Ok))

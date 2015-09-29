@@ -26,7 +26,7 @@ class DynamoAttributeServiceTest extends Specification {
   awsDynamoClient.setEndpoint("http://localhost:8000")
   val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
-  val repo = DynamoAttributeService
+  val repo = DynamoAttributeService(dynamoMapper)
 
   val tableRequest =
     new CreateTableRequest()

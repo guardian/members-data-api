@@ -10,22 +10,25 @@ import repositories.MembershipAttributesDynamo.membershipAttributesSerializer
 import scala.Function.const
 import scala.concurrent.Future
 
-object DynamoAttributeService extends AttributeService {
-  private val dynamo = Config.dynamoMapper
+object DynamoAttributeService {
+  def apply(): DynamoAttributeService = DynamoAttributeService(Config.dynamoMapper)
+}
+
+case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper) extends AttributeService {
   private val logger = Logger(this.getClass)
 
   def get(userId: String): Future[Option[MembershipAttributes]] = {
     logger.debug(s"Get attributes for userId: $userId")
-    dynamo.loadByKey[MembershipAttributes](userId)
+    mapper.loadByKey[MembershipAttributes](userId)
   }
 
   def delete(userId: String): Future[Unit] = {
     logger.debug(s"Delete user id: $userId")
-    dynamo.deleteByKey(userId).map(const(()))
+    mapper.deleteByKey(userId).map(const(()))
   }
 
   def set(attributes: MembershipAttributes): Future[Unit] = {
     logger.debug(s"Update attributes: $attributes")
-    dynamo.dump(attributes)
+    mapper.dump(attributes)
   }
 }

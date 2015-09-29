@@ -16,7 +16,7 @@ import scala.concurrent.Future
 class AttributeController {
   val ADFREE_COOKIE_MAX_AGE = 60 * 60 * 6 // 6 hours
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val attributeService: AttributeService = DynamoAttributeService
+  lazy val attributeService: AttributeService = DynamoAttributeService()
 
   def getMyAttributes =
     if (Config.useFixtures)
