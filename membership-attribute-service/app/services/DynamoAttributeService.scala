@@ -19,16 +19,24 @@ case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper) extends Att
 
   def get(userId: String): Future[Option[MembershipAttributes]] = {
     logger.debug(s"Get attributes for userId: $userId")
-    mapper.loadByKey[MembershipAttributes](userId)
+    mapper.loadByKey[MembershipAttributes](userId).recoverWith {
+      case t =>
+        Logger.error(s"Failed to get attributes for userId: $userId", t)
+        Future.failed(t)
+    }
   }
 
   def delete(userId: String): Future[Unit] = {
     logger.debug(s"Delete user id: $userId")
-    mapper.deleteByKey(userId).map(const(()))
+    mapper.deleteByKey(userId).map(const(())).recover {
+      case t => Logger.error(s"Failed to delete for userId: $userId", t)
+    }
   }
 
   def set(attributes: MembershipAttributes): Future[Unit] = {
     logger.debug(s"Update attributes: $attributes")
-    mapper.dump(attributes)
+    mapper.dump(attributes).recover {
+      case t => Logger.error(s"Failed to delete attributes $attributes", t)
+    }
   }
 }
