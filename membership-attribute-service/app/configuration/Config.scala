@@ -14,6 +14,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 object Config {
+  val applicationName = "CASProxy"
+
   private val logger = Logger(this.getClass)
 
   val config = ConfigFactory.load()
@@ -30,11 +32,12 @@ object Config {
   object AWS {
     val profile = config.getString("aws-profile")
     val credentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(profile), new InstanceProfileCredentialsProvider())
+    val region = Regions.EU_WEST_1
   }
 
   lazy val dynamoMapper = {
     val awsDynamoClient = new AmazonDynamoDBAsyncClient(AWS.credentialsProvider)
-    awsDynamoClient.configureRegion(Regions.EU_WEST_1)
+    awsDynamoClient.configureRegion(AWS.region)
     val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
     AmazonDynamoDBScalaMapper(dynamoClient)
   }

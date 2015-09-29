@@ -6,7 +6,7 @@ import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc.Security.AuthenticatedBuilder
 import play.api.mvc._
-import services.AuthenticationService._
+import services.IdentityService._
 
 import scala.concurrent.Future
 
