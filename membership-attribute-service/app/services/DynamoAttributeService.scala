@@ -17,26 +17,28 @@ object DynamoAttributeService {
 case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper) extends AttributeService {
   private val logger = Logger(this.getClass)
 
+  implicit class FutureLogging[T](f: Future[T]) {
+    def withErrorLogging(message: String) = {
+      f.onFailure { case t => Logger.error(message, t) }
+      f
+    }
+  }
+
   def get(userId: String): Future[Option[MembershipAttributes]] = {
     logger.debug(s"Get attributes for userId: $userId")
-    mapper.loadByKey[MembershipAttributes](userId).recoverWith {
-      case t =>
-        Logger.error(s"Failed to get attributes for userId: $userId", t)
-        Future.failed(t)
-    }
+    mapper.loadByKey[MembershipAttributes](userId)
+      .withErrorLogging(s"Failed to get attributes for userId: $userId")
   }
 
   def delete(userId: String): Future[Unit] = {
     logger.debug(s"Delete user id: $userId")
-    mapper.deleteByKey(userId).map(const(())).recover {
-      case t => Logger.error(s"Failed to delete for userId: $userId", t)
-    }
+    mapper.deleteByKey(userId).map(const(()))
+      .withErrorLogging(s"Failed to delete for userId: $userId")
   }
 
   def set(attributes: MembershipAttributes): Future[Unit] = {
     logger.debug(s"Update attributes: $attributes")
-    mapper.dump(attributes).recover {
-      case t => Logger.error(s"Failed to delete attributes $attributes", t)
-    }
+    mapper.dump(attributes)
+      .withErrorLogging(s"Failed to delete attributes $attributes")
   }
 }
