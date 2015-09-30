@@ -6,7 +6,7 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.handlers.AsyncHandler
 import com.amazonaws.regions.{Region, ServiceAbbreviations}
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient
-import com.amazonaws.services.cloudwatch.model.{MetricDatum, PutMetricDataRequest, Dimension}
+import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest}
 import configuration.Config
 import play.Logger
 
@@ -55,5 +55,5 @@ object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, Void] {
 }
 
 object CloudWatch {
-  def apply(service: String) = new CloudWatch(Config.AWS.region, Config.stage, Config.applicationName, service)
+  def apply(service: String) = new CloudWatch(Region.getRegion(Config.AWS.region), Config.stage, Config.applicationName, service)
 }
