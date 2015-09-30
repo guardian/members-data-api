@@ -39,6 +39,6 @@ case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper) extends Att
   def set(attributes: MembershipAttributes): Future[Unit] = {
     logger.debug(s"Update attributes: $attributes")
     mapper.dump(attributes)
-      .withErrorLogging(s"Failed to delete attributes $attributes")
+      .withErrorLogging(s"Failed to update attributes $attributes")
   }
 }
