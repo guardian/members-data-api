@@ -39,16 +39,15 @@ class AttributeController {
   }
 
   private def adfreeResponse(adfree: Boolean) =
-    Ok(Json.obj("adfree" -> adfree))
+    Ok(Json.obj("adfree" -> adfree, "issuedAt" -> scala.compat.Platform.currentTime))
       .withCookies(Cookie("gu_adfree_user", adfree.toString, maxAge = Some(ADFREE_COOKIE_MAX_AGE)))
 
-  def adFree =
-    Action.async { implicit request =>
-      authenticationService.userId
-        .map { id =>
-          attributeService.get(id).map { attrs =>
-            adfreeResponse(attrs.exists(_.isPaidTier))
-          }
-        }.getOrElse(Future(adfreeResponse(false)))
-    }
+  def adFree = Action.async { implicit request =>
+    authenticationService.userId
+      .map { id =>
+      attributeService.get(id).map { attrs =>
+        adfreeResponse(attrs.exists(_.isPaidTier))
+      }
+    }.getOrElse(Future(adfreeResponse(false)))
+  }
 }
