@@ -15,7 +15,7 @@ class SalesforceAuthActionTest extends Specification {
     }
 
     "let through a request with the Salesforce shared secret in the query string" in {
-      val result = call(action, fakeRequest(Some(Config.salesforceSecret)))
+      val result = call(action, fakeRequest(Some(Config.Salesforce.secret)))
       status(result) mustEqual OK
     }
 

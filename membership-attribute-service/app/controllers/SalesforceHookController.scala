@@ -1,8 +1,10 @@
 package controllers
 
 import actions.SalesforceAuthAction
+import configuration.Config
 import models.ApiErrors
 import monitoring.CloudWatch
+import parsers.Salesforce.{OrgIdMatchingError, ParsingError}
 import parsers.{Salesforce => SFParser}
 import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
@@ -18,16 +20,19 @@ class SalesforceHookController {
   lazy val attributeService: AttributeService = DynamoAttributeService()
   val metrics = CloudWatch("SalesforceHookController")
   def createAttributes = SalesforceAuthAction.async(parse.xml) { request =>
-    SFParser.parseOutboundMessage(request.body) match {
+    SFParser.parseOutboundMessage(request.body, Config.Salesforce.organizationId) match {
       case \/-(attrs) if attrs.tier.isEmpty =>
         metrics.put("Delete", 1)
         attributeService.delete(attrs.userId).map(const(Ok))
       case \/-(attrs) =>
         metrics.put("Update", 1)
         attributeService.set(attrs).map(const(attrs))
-      case -\/(msg) =>
-        Logger.error(s"Web hook payload unrecognised ${request.body}")
+      case -\/(ParsingError(msg)) =>
+        Logger.error(s"Could not parse payload ${request.body}")
         Future { ApiErrors.badRequest(msg) }
+      case -\/(OrgIdMatchingError(orgId)) =>
+        Logger.error(s"Wrong organization Id: $orgId")
+        Future { ApiErrors.unauthorized.copy("Wrong organization Id") }
     }
   }
 }

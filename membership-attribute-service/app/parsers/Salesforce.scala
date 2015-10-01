@@ -8,15 +8,29 @@ import scalaz.\/
 
 object Salesforce {
   type UserId = String
-  def parseOutboundMessage(payload: NodeSeq): String \/ MembershipAttributes = {
-    implicit class NodeSeqOps(ns: NodeSeq) {
-      def getTag(tag: String): String \/ Node =
-        (ns \ tag).headOption \/> s"Error while parsing the outbound message: $tag not found.\n $payload"
 
-      def getText(tag: String): String \/ String = getTag(tag).map(_.text)
+  sealed trait OutboundMessageParseError
+  case class OrgIdMatchingError(organizationId: String) extends OutboundMessageParseError
+  case class ParsingError(msg: String) extends OutboundMessageParseError
+
+  /**
+   * @param payload The outbound message content coming from Salesforce
+   * @param organizationId  The id that qualifies the originating Salesforce account. This is to make sure that
+   *                        the service do not process outbound messages from SF environments created by dupicating
+   *                        Prod
+   * @return
+   */
+  def parseOutboundMessage(payload: NodeSeq, organizationId: String): OutboundMessageParseError \/ MembershipAttributes = {
+    implicit class NodeSeqOps(ns: NodeSeq) {
+      def getTag(tag: String): OutboundMessageParseError \/ Node =
+        (ns \ tag).headOption \/> ParsingError(s"Error while parsing the outbound message: $tag not found.\n $payload")
+
+      def getText(tag: String): OutboundMessageParseError \/ String = getTag(tag).map(_.text)
     }
 
     for {
+      orgId <- (payload \\ "notifications").getText("OrganizationId")
+      _ <- if (orgId === organizationId) ().right else OrgIdMatchingError(orgId).left
       obj <- (payload \\ "Notification").getTag("sObject")
       id <- obj.getText("IdentityID__c")
       tier <- obj.getText("Membership_Tier__c")
