@@ -19,14 +19,27 @@ import scalaz.{-\/, \/-}
 class SalesforceHookController {
   lazy val attributeService: AttributeService = DynamoAttributeService()
   val metrics = CloudWatch("SalesforceHookController")
+
+  private val ack = Ok(
+    <?xml version="1.0" encoding="UTF-8"?>
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+      <soapenv:Body>
+        <notificationsResponse xmlns="http://soap.sforce.com/2005/09/outbound">
+          <Ack>true
+          </Ack>
+        </notificationsResponse>
+      </soapenv:Body>
+    </soapenv:Envelope>
+  )
+
   def createAttributes = SalesforceAuthAction.async(parse.xml) { request =>
     SFParser.parseOutboundMessage(request.body, Config.Salesforce.organizationId) match {
       case \/-(attrs) if attrs.tier.isEmpty =>
         metrics.put("Delete", 1)
-        attributeService.delete(attrs.userId).map(const(Ok))
+        attributeService.delete(attrs.userId).map(const(ack))
       case \/-(attrs) =>
         metrics.put("Update", 1)
-        attributeService.set(attrs).map(const(attrs))
+        attributeService.set(attrs).map(const(ack))
       case -\/(ParsingError(msg)) =>
         Logger.error(s"Could not parse payload ${request.body}")
         Future { ApiErrors.badRequest(msg) }
