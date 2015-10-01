@@ -12,7 +12,7 @@ object SalesforceAuthAction extends ActionBuilder[Request] {
   private val salesforceSecretParam = "secret"
 
   override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
-    val secretMatches = request.getQueryString(salesforceSecretParam).contains(Config.salesforceSecret)
+    val secretMatches = request.getQueryString(salesforceSecretParam).contains(Config.Salesforce.secret)
 
     if (secretMatches) {
       block(request)

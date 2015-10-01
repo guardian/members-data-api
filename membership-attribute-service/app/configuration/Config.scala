@@ -24,7 +24,10 @@ object Config {
   val useFixtures = config.getBoolean("use-fixtures")
   lazy val sentryDsn = Try(new Dsn(config.getString("sentry.dsn")))
 
-  val salesforceSecret = config.getString("salesforce.hook-secret")
+  object Salesforce {
+    val secret = config.getString("salesforce.hook-secret")
+    val organizationId = config.getString("salesforce.organization-id")
+  }
 
   object AWS {
     val profile = config.getString("aws-profile")
