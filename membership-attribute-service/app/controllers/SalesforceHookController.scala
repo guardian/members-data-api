@@ -21,12 +21,10 @@ class SalesforceHookController {
   val metrics = CloudWatch("SalesforceHookController")
 
   private val ack = Ok(
-    <?xml version="1.0" encoding="UTF-8"?>
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
       <soapenv:Body>
         <notificationsResponse xmlns="http://soap.sforce.com/2005/09/outbound">
-          <Ack>true
-          </Ack>
+          <Ack>true</Ack>
         </notificationsResponse>
       </soapenv:Body>
     </soapenv:Envelope>
