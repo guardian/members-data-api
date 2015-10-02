@@ -4,7 +4,7 @@ import actions.SalesforceAuthAction
 import configuration.Config
 import models.ApiErrors
 import monitoring.CloudWatch
-import parsers.Salesforce.{OrgIdMatchingError, ParsingError}
+import parsers.Salesforce.{MembershipUpdate, MembershipDeletion, OrgIdMatchingError, ParsingError}
 import parsers.{Salesforce => SFParser}
 import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
@@ -32,14 +32,14 @@ class SalesforceHookController {
 
   def createAttributes = SalesforceAuthAction.async(parse.xml) { request =>
     SFParser.parseOutboundMessage(request.body, Config.Salesforce.organizationId) match {
-      case \/-(attrs) if attrs.tier.isEmpty =>
+      case \/-(MembershipDeletion(userId))  =>
         metrics.put("Delete", 1)
-        attributeService.delete(attrs.userId).map(const(ack))
-      case \/-(attrs) =>
+        attributeService.delete(userId).map(const(ack))
+      case \/-(MembershipUpdate(attrs)) =>
         metrics.put("Update", 1)
         attributeService.set(attrs).map(const(ack))
       case -\/(ParsingError(msg)) =>
-        Logger.error(s"Could not parse payload ${request.body}")
+        Logger.error(s"Could not parse payload ${request.body}:\n$msg")
         Future { ApiErrors.badRequest(msg) }
       case -\/(OrgIdMatchingError(orgId)) =>
         Logger.error(s"Wrong organization Id: $orgId")
