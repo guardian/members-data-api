@@ -1,6 +1,7 @@
 package controllers
 
 import play.api.Logger
+import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
 
 case class Test(name: String, result: () => Boolean)
@@ -18,7 +19,10 @@ class HealthCheckController extends Results {
         result
       }
 
-      if (serviceOk) Ok("OK") else ServiceUnavailable("Service Unavailable")
+      if (serviceOk)
+        Ok(Json.obj("status" -> "ok", "gitCommitId" -> app.BuildInfo.gitCommitId))
+      else
+        ServiceUnavailable("Service Unavailable")
     }
   }
 
