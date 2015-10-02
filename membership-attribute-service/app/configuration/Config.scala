@@ -5,7 +5,9 @@ import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentia
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
+import com.github.nscala_time.time.Imports._
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
+import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import net.kencochrane.raven.dsn.Dsn
 
@@ -13,21 +15,35 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 object Config {
-  val applicationName = "CASProxy"
-
   val config = ConfigFactory.load()
+
+  case class SalesforceConfig(secret: String, organizationId: String)
+  case class BackendConfig(dynamoTable: String, salesforceConfig: SalesforceConfig)
+
+  object BackendConfig {
+    private def forEnvironment(env: String): BackendConfig = {
+      if (!Seq("default", "test").contains(env)) throw new IllegalArgumentException("The environment should be either default or test")
+      val backendEnv = config.getString(s"touchpoint.backend.$env")
+      val backendConf = config.getConfig(s"touchpoint.backend.environments.$backendEnv")
+      val dynamoTable = backendConf.getString("dynamodb.table")
+      val salesforceConfig = SalesforceConfig(
+        secret = backendConf.getString("salesforce.hook-secret"),
+        organizationId = backendConf.getString("salesforce.organization-id")
+      )
+      BackendConfig(dynamoTable, salesforceConfig)
+    }
+
+    lazy val default = BackendConfig.forEnvironment("default")
+    lazy val test = BackendConfig.forEnvironment("test")
+  }
+
+  val applicationName = "members-data-api"
 
   val stage = config.getString("stage")
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
-  val dynamoTable = config.getString("dynamodb.table")
   val useFixtures = config.getBoolean("use-fixtures")
   lazy val sentryDsn = Try(new Dsn(config.getString("sentry.dsn")))
-
-  object Salesforce {
-    val secret = config.getString("salesforce.hook-secret")
-    val organizationId = config.getString("salesforce.organization-id")
-  }
 
   object AWS {
     val profile = config.getString("aws-profile")
@@ -41,4 +57,6 @@ object Config {
     val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
     AmazonDynamoDBScalaMapper(dynamoClient)
   }
+
+  lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), 2.days.toStandardDuration)
 }

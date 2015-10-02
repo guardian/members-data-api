@@ -6,19 +6,20 @@ import com.github.dwhjames.awswrap.dynamodb.SingleThreadedBatchWriter
 import configuration.Config._
 import models.MembershipAttributes
 import org.slf4j.LoggerFactory
-import repositories.MembershipAttributesDynamo.membershipAttributesSerializer
-import repositories.MembershipAttributesDynamo.membershipAttributesSerializer.toAttributeMap
 import sources.SalesforceCSVExport
-
+import repositories.MembershipAttributesSerializer
 import scala.collection.JavaConverters._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object BatchLoader {
-  val logger = LoggerFactory.getLogger(getClass)
+  private val table = BackendConfig.default.dynamoTable
+  private val logger = LoggerFactory.getLogger(getClass)
+  private implicit val serializer = MembershipAttributesSerializer(table)
 
   def writeRequest(attrs: MembershipAttributes) =
     new WriteRequest().withPutRequest(
-      new PutRequest().withItem(toAttributeMap(attrs).asJava))
+      new PutRequest().withItem(serializer.toAttributeMap(attrs).asJava))
 
   // This only works on a DB that contains only fresher records
   // than the ones in the CSV
@@ -34,7 +35,7 @@ object BatchLoader {
           .membersAttributes(file)
           .filterNot { attrs => existingIds.contains(attrs.userId) }
           .map(writeRequest)
-        val loader = new SingleThreadedBatchWriter(dynamoTable, AWS.credentialsProvider)
+        val loader = new SingleThreadedBatchWriter(table, AWS.credentialsProvider)
         loader.client.withRegion(Regions.EU_WEST_1)
         loader.run(requests)
       }
