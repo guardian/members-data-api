@@ -8,7 +8,7 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper, Schema}
 import models.MembershipAttributes
 import org.specs2.mutable.Specification
-import repositories.MembershipAttributesDynamo.Attributes
+import repositories.MembershipAttributesSerializer.Attributes
 import services.DynamoAttributeService
 
 import scala.concurrent.Await
@@ -22,15 +22,18 @@ import scala.concurrent.duration._
  */
 class DynamoAttributeServiceTest extends Specification {
 
-  val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
+  private val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
-  val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
-  val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
-  val repo = DynamoAttributeService(dynamoMapper)
+
+  private val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
+  private val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
+  private val testTable = "MembershipAttributes-TEST"
+  implicit private val serializer = MembershipAttributesSerializer(testTable)
+  private val repo = DynamoAttributeService(dynamoMapper)(serializer)
 
   val tableRequest =
     new CreateTableRequest()
-      .withTableName(MembershipAttributesDynamo.tableName)
+      .withTableName(testTable)
       .withProvisionedThroughput(
         Schema.provisionedThroughput(10L, 5L))
       .withAttributeDefinitions(

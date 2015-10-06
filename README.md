@@ -55,18 +55,6 @@ To start the service use:
 
 The service will be starting on 9400 and use the MembershipAttributes-DEV DynamoDB table.
 
-## Using fixtures
-
-You can use pre-canned responses by launching the app like so:
-
-```
-    $ sbt
-    > project membership-attribute-service
-    > devrun -Duse-fixtures=true
-```
-
-You can edit the pre-canned response by altering the file `app/models/Fixtures.scala`
-
 ## Loading initial dataset
 
 - Make sure that the outbound messages are pointing to your instance

@@ -5,16 +5,15 @@ import configuration.Config
 import models._
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
-import repositories.MembershipAttributesDynamo.membershipAttributesSerializer
 
 import scala.Function.const
 import scala.concurrent.Future
 
 object DynamoAttributeService {
-  def apply(): DynamoAttributeService = DynamoAttributeService(Config.dynamoMapper)
+  def apply(implicit serializer: DynamoDBSerializer[MembershipAttributes]): DynamoAttributeService = DynamoAttributeService(Config.dynamoMapper)
 }
 
-case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper) extends AttributeService {
+case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper)(implicit serializer: DynamoDBSerializer[MembershipAttributes]) extends AttributeService {
   private val logger = Logger(this.getClass)
 
   implicit class FutureLogging[T](f: Future[T]) {

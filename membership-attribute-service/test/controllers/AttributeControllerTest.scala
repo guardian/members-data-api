@@ -1,28 +1,51 @@
 package controllers
 
+import actions.BackendRequest
+import configuration.Config.BackendConfig
 import models.MembershipAttributes
-import org.mockito.Mockito._
 import org.specs2.mutable.Specification
-import play.api.libs.iteratee.{Input, Iteratee}
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.{AttributeService, AuthenticationService}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification {
+  private val validUserId = "123"
+  private val invalidUserId = "456"
+  private val attributes = MembershipAttributes(validUserId, "patron", Some("abc"))
 
-  val userId = "123"
+  private val validUserCookie = Cookie("validUser", "true")
+  private val invalidUserCookie = Cookie("invalidUser", "true")
 
-  val attrService = mock(classOf[AttributeService])
-  val authService = mock(classOf[AuthenticationService])
+  private val fakeAuthService = new AuthenticationService {
+    override def username(implicit request: RequestHeader) = ???
+    override def userId(implicit request: RequestHeader) = request.cookies.headOption match {
+      case Some(c) if c == validUserCookie => Some(validUserId)
+      case Some(c) if c == invalidUserCookie => Some(invalidUserId)
+      case _ => None
+    }
+  }
 
-  val controller = new AttributeController {
-    override lazy val authenticationService = authService
-    override lazy val attributeService = attrService
+  // Succeeds for the valid user id
+  private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
+    override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
+      val attrService = new AttributeService {
+        override def set(attributes: MembershipAttributes) = ???
+        override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
+        override def delete(userId: String) = ???
+      }
+
+      Future(Right(new BackendRequest[A](BackendConfig.test, attrService, request)))
+    }
+  }
+
+  private val controller = new AttributeController {
+    override lazy val authenticationService = fakeAuthService
+    override lazy val backendAction = Action andThen FakeWithBackendAction
   }
 
   def verifySuccessfulResult(result: Future[Result]) = {
@@ -40,27 +63,23 @@ class AttributeControllerTest extends Specification {
   "getMyAttributes" should {
     "return unauthorised when cookies not provided" in {
       val req = FakeRequest()
-      when(authService.userId(req)).thenReturn(None)
       val result = controller.getMyAttributes(req)
 
       status(result) shouldEqual UNAUTHORIZED
     }
 
-    "retrieve attributes for user in cookie" in {
-      val apiResponse = Future { Some(MembershipAttributes("123", "patron", Some("abc"))) }
-      when(attrService.get(userId)).thenReturn(apiResponse)
-
-      val req = FakeRequest()
-      when(authService.userId(req)).thenReturn(Some(userId))
-
+    "return not found for unknown users" in {
+      val req = FakeRequest().withCookies(invalidUserCookie)
       val result: Future[Result] = controller.getMyAttributes(req)
+
+      status(result) shouldEqual NOT_FOUND
+    }
+
+    "retrieve attributes for user in cookie" in {
+      val req = FakeRequest().withCookies(validUserCookie)
+      val result: Future[Result] = controller.getMyAttributes(req)
+
       verifySuccessfulResult(result)
     }
   }
-
-  private def addJsonBodyToRequest(req: FakeRequest[_], body: JsValue): FakeRequest[_] =
-    req.withJsonBody(body).withHeaders(req.headers.headers :+ (CONTENT_TYPE -> "application/json"): _*)
-
-  private def executeJsonRequest(iteratee: Iteratee[Array[Byte], Result], body: JsValue): Future[Result] =
-    iteratee.feed(Input.El(body.toString().getBytes)).flatMap(_.run)
 }
