@@ -88,7 +88,8 @@
         "LatencyAlarmPeriod": 60,
         "NotificationAlarmPeriod": 1200,
         "InstanceName": "PROD:membership-attribute-service",
-        "DynamoDBTable": "arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD"
+        "DynamoDBTable": "arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD",
+        "DynamoDBTableTestUsers": "arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT"
       }
     }
   },
@@ -129,7 +130,13 @@
               },
               {
                 "Effect": "Allow",
-                "Action": "dynamodb:PutItem",
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem"
+
+                ],
                 "Resource": {
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
@@ -138,29 +145,17 @@
               },
               {
                 "Effect": "Allow",
-                "Action": "dynamodb:GetItem",
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem"
+
+                ],
                 "Resource": {
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
-                  }, "DynamoDBTable"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:UpdateItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTable"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:DeleteItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTable"]
+                  }, "DynamoDBTableTestUsers"]
                 }
               },
               {
