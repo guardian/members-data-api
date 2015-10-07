@@ -130,7 +130,13 @@
               },
               {
                 "Effect": "Allow",
-                "Action": "dynamodb:PutItem",
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem"
+
+                ],
                 "Resource": {
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
@@ -139,61 +145,13 @@
               },
               {
                 "Effect": "Allow",
-                "Action": "dynamodb:GetItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTable"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:UpdateItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTable"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:DeleteItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTable"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:PutItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTableTestUsers"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:GetItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTableTestUsers"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:UpdateItem",
-                "Resource": {
-                  "Fn::FindInMap": ["StageVariables", {
-                    "Ref": "Stage"
-                  }, "DynamoDBTableTestUsers"]
-                }
-              },
-              {
-                "Effect": "Allow",
-                "Action": "dynamodb:DeleteItem",
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem"
+
+                ],
                 "Resource": {
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
