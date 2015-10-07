@@ -3,11 +3,13 @@ import models.ApiErrors._
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.{RequestHeader, Result, WithFilters}
+import play.filters.cors.CORSFilter
 import play.filters.csrf._
+import configuration.Config.corsConfig
 
 import scala.concurrent.Future
 
-object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader, LogRequestsFilter) {
+object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader, LogRequestsFilter, CORSFilter(corsConfig)) {
 
   private val logger = Logger(this.getClass)
 
