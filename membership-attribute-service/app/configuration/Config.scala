@@ -17,7 +17,12 @@ import scala.util.Try
 object Config {
   val config = ConfigFactory.load()
 
-  case class SalesforceConfig(secret: String, organizationId: String)
+  case class SalesforceConfig(secret: String, organizationId: String) {
+    // Salesforce provides a "display" id, 15 characters long, and a "real" id, with 3 characters appended.
+    // They don't provide a particular name to distinguish between the two.
+    require(organizationId.length == 18)
+  }
+
   case class BackendConfig(dynamoTable: String, salesforceConfig: SalesforceConfig)
 
   object BackendConfig {
