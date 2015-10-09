@@ -10,6 +10,8 @@ import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import net.kencochrane.raven.dsn.Dsn
+import play.api.Configuration
+import play.filters.cors.CORSConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
@@ -64,4 +66,6 @@ object Config {
   }
 
   lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), 2.days.toStandardDuration)
+
+  val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
 }
