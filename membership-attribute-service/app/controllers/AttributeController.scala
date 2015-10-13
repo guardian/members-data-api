@@ -13,7 +13,7 @@ import services.{AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 
 class AttributeController {
-  val ADFREE_COOKIE_MAX_AGE = 60 * 60 * 6 // 6 hours
+  val ADFREE_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 * 3 // about 3 months
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val backendAction = BackendFromCookieAction
 
