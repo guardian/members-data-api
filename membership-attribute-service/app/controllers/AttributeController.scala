@@ -29,7 +29,10 @@ class AttributeController {
 
   private def adfreeResponse(adfree: Boolean) =
     Ok(Json.obj("adfree" -> adfree, "issuedAt" -> scala.compat.Platform.currentTime))
-      .withCookies(Cookie("gu_adfree_user", adfree.toString, maxAge = Some(ADFREE_COOKIE_MAX_AGE)))
+      .withCookies(
+        Cookie("gu_adfree_user", adfree.toString, maxAge = Some(ADFREE_COOKIE_MAX_AGE)),
+        Cookie("gu_adblock_message", adfree.toString, maxAge = Some(ADFREE_COOKIE_MAX_AGE))
+      )
 
   def adFree = backendAction.async { implicit request =>
     authenticationService.userId
