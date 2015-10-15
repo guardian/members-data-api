@@ -16,7 +16,8 @@ Success responses:
 
     {
       "membershipNumber": "1234567abcdef",
-      "tier": "patron"
+      "tier": "patron",
+      "userId": "123"
     }
 
 Error responses:
@@ -26,14 +27,14 @@ Error responses:
       "details": "Detailed error message"
     }
 
-### GET /user-attributes/me/adfree
+### GET /user-attributes/me/features
 Responses:
 
     {
-      "adfree": "true",
+      "adfree": true,
+      "adblockMessage": false,
+      "userId": "123"
     }
-
-This also drops an unsigned `gu_adfree_user` cookie.
 
 ## Running Locally
 

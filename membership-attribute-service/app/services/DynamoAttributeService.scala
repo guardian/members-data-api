@@ -10,10 +10,10 @@ import scala.Function.const
 import scala.concurrent.Future
 
 object DynamoAttributeService {
-  def apply(implicit serializer: DynamoDBSerializer[MembershipAttributes]): DynamoAttributeService = DynamoAttributeService(Config.dynamoMapper)
+  def apply(implicit serializer: DynamoDBSerializer[Attributes]): DynamoAttributeService = DynamoAttributeService(Config.dynamoMapper)
 }
 
-case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper)(implicit serializer: DynamoDBSerializer[MembershipAttributes]) extends AttributeService {
+case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper)(implicit serializer: DynamoDBSerializer[Attributes]) extends AttributeService {
   private val logger = Logger(this.getClass)
 
   implicit class FutureLogging[T](f: Future[T]) {
@@ -23,9 +23,9 @@ case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper)(implicit se
     }
   }
 
-  def get(userId: String): Future[Option[MembershipAttributes]] = {
+  def get(userId: String): Future[Option[Attributes]] = {
     logger.debug(s"Get attributes for userId: $userId")
-    mapper.loadByKey[MembershipAttributes](userId)
+    mapper.loadByKey[Attributes](userId)
       .withErrorLogging(s"Failed to get attributes for userId: $userId")
   }
 
@@ -35,7 +35,7 @@ case class DynamoAttributeService(mapper: AmazonDynamoDBScalaMapper)(implicit se
       .withErrorLogging(s"Failed to delete for userId: $userId")
   }
 
-  def set(attributes: MembershipAttributes): Future[Unit] = {
+  def set(attributes: Attributes): Future[Unit] = {
     logger.debug(s"Update attributes: $attributes")
     mapper.dump(attributes)
       .withErrorLogging(s"Failed to update attributes $attributes")

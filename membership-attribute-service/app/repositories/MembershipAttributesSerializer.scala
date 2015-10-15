@@ -1,10 +1,10 @@
 package repositories
 
 import com.github.dwhjames.awswrap.dynamodb._
-import models.MembershipAttributes
+import models.Attributes
 
 object MembershipAttributesSerializer {
-  object Attributes {
+  object AttributeNames {
     val userId = "UserId"
     val membershipNumber = "MembershipNumber"
     val tier = "Tier"
@@ -12,25 +12,25 @@ object MembershipAttributesSerializer {
 }
 
 case class MembershipAttributesSerializer(tableName: String)
-  extends DynamoDBSerializer[MembershipAttributes] {
+  extends DynamoDBSerializer[Attributes] {
   import MembershipAttributesSerializer._
 
-  override val hashAttributeName = Attributes.userId
+  override val hashAttributeName = AttributeNames.userId
 
-  override def primaryKeyOf(membershipAttributes: MembershipAttributes) =
-    Map(mkAttribute(Attributes.userId -> membershipAttributes.userId))
+  override def primaryKeyOf(membershipAttributes: Attributes) =
+    Map(mkAttribute(AttributeNames.userId -> membershipAttributes.userId))
 
-  override def toAttributeMap(membershipAttributes: MembershipAttributes) =
+  override def toAttributeMap(membershipAttributes: Attributes) =
     Map(
-      Attributes.userId -> membershipAttributes.userId,
-      Attributes.membershipNumber -> membershipAttributes.membershipNumber.getOrElse(""),
-      Attributes.tier -> membershipAttributes.tier
+      AttributeNames.userId -> membershipAttributes.userId,
+      AttributeNames.membershipNumber -> membershipAttributes.membershipNumber.getOrElse(""),
+      AttributeNames.tier -> membershipAttributes.tier
     ).filter(_._2.nonEmpty).map(mkAttribute[String])
 
   override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) =
-    MembershipAttributes(
-      userId = item(Attributes.userId),
-      membershipNumber = item.get(Attributes.membershipNumber).map(_.getS),
-      tier = item(Attributes.tier)
+    Attributes(
+      userId = item(AttributeNames.userId),
+      membershipNumber = item.get(AttributeNames.membershipNumber).map(_.getS),
+      tier = item(AttributeNames.tier)
     )
 }

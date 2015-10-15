@@ -4,7 +4,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.model.{PutRequest, WriteRequest}
 import com.github.dwhjames.awswrap.dynamodb.SingleThreadedBatchWriter
 import configuration.Config._
-import models.MembershipAttributes
+import models.Attributes
 import org.slf4j.LoggerFactory
 import sources.SalesforceCSVExport
 import repositories.MembershipAttributesSerializer
@@ -17,7 +17,7 @@ object BatchLoader {
   private val logger = LoggerFactory.getLogger(getClass)
   private implicit val serializer = MembershipAttributesSerializer(table)
 
-  def writeRequest(attrs: MembershipAttributes) =
+  def writeRequest(attrs: Attributes) =
     new WriteRequest().withPutRequest(
       new PutRequest().withItem(serializer.toAttributeMap(attrs).asJava))
 
@@ -29,7 +29,7 @@ object BatchLoader {
       sys.exit(1)
     })({ path =>
       val file = new File(path)
-      dynamoMapper.scan[MembershipAttributes](Map.empty).onSuccess { case existing =>
+      dynamoMapper.scan[Attributes](Map.empty).onSuccess { case existing =>
         val existingIds = existing.map(_.userId).toSet
         val requests = SalesforceCSVExport
           .membersAttributes(file)
