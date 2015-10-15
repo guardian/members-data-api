@@ -2,10 +2,10 @@ package models
 
 import org.specs2.mutable.Specification
 
-class MembershipAttributesTest extends Specification {
+class AttributesTest extends Specification {
 
   "MembershipAttributesTest" should {
-    val attrs = MembershipAttributes("123", "tier", None)
+    val attrs = Attributes("123", "tier", None)
 
     "isPaidTier returns" should {
       "true if the user is not a Guardian Friend" in {

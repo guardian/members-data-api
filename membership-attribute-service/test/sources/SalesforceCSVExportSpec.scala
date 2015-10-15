@@ -2,7 +2,7 @@ package sources
 
 import java.io.File
 
-import models.MembershipAttributes
+import models.Attributes
 import org.specs2.mutable.Specification
 
 class SalesforceCSVExportSpec extends Specification {
@@ -16,9 +16,9 @@ class SalesforceCSVExportSpec extends Specification {
         val attributes = SalesforceCSVExport.membersAttributes(file).toList
 
         attributes shouldEqual List(
-          MembershipAttributes("323479263", "Partner", Some("292451")),
-          MembershipAttributes("323479267", "Patron", Some("292454")),
-          MembershipAttributes("323479268", "Friend", None)
+          Attributes("323479263", "Partner", Some("292451")),
+          Attributes("323479267", "Patron", Some("292454")),
+          Attributes("323479268", "Friend", None)
         )
       }
     }

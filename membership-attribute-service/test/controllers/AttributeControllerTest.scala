@@ -2,7 +2,7 @@ package controllers
 
 import actions.BackendRequest
 import configuration.Config.BackendConfig
-import models.MembershipAttributes
+import models.Attributes
 import org.specs2.mutable.Specification
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
@@ -16,7 +16,7 @@ import scala.concurrent.Future
 class AttributeControllerTest extends Specification {
   private val validUserId = "123"
   private val invalidUserId = "456"
-  private val attributes = MembershipAttributes(validUserId, "patron", Some("abc"))
+  private val attributes = Attributes(validUserId, "patron", Some("abc"))
 
   private val validUserCookie = Cookie("validUser", "true")
   private val invalidUserCookie = Cookie("invalidUser", "true")
@@ -34,7 +34,7 @@ class AttributeControllerTest extends Specification {
   private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
     override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
       val attrService = new AttributeService {
-        override def set(attributes: MembershipAttributes) = ???
+        override def set(attributes: Attributes) = ???
         override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
         override def delete(userId: String) = ???
       }
@@ -55,7 +55,8 @@ class AttributeControllerTest extends Specification {
       Json.parse("""
         | {
         |   "tier": "patron",
-        |   "membershipNumber": "abc"
+        |   "membershipNumber": "abc",
+        |   "userId": "123"
         | }
       """.stripMargin)
   }
@@ -63,21 +64,21 @@ class AttributeControllerTest extends Specification {
   "getMyAttributes" should {
     "return unauthorised when cookies not provided" in {
       val req = FakeRequest()
-      val result = controller.getMyAttributes(req)
+      val result = controller.membership(req)
 
       status(result) shouldEqual UNAUTHORIZED
     }
 
     "return not found for unknown users" in {
       val req = FakeRequest().withCookies(invalidUserCookie)
-      val result: Future[Result] = controller.getMyAttributes(req)
+      val result: Future[Result] = controller.membership(req)
 
       status(result) shouldEqual NOT_FOUND
     }
 
     "retrieve attributes for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
-      val result: Future[Result] = controller.getMyAttributes(req)
+      val result: Future[Result] = controller.membership(req)
 
       verifySuccessfulResult(result)
     }

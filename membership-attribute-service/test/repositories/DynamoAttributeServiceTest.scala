@@ -6,9 +6,9 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper, Schema}
-import models.MembershipAttributes
+import models.Attributes
 import org.specs2.mutable.Specification
-import repositories.MembershipAttributesSerializer.Attributes
+import repositories.MembershipAttributesSerializer.AttributeNames
 import services.DynamoAttributeService
 
 import scala.concurrent.Await
@@ -37,16 +37,16 @@ class DynamoAttributeServiceTest extends Specification {
       .withProvisionedThroughput(
         Schema.provisionedThroughput(10L, 5L))
       .withAttributeDefinitions(
-        Schema.stringAttribute(Attributes.userId))
+        Schema.stringAttribute(AttributeNames.userId))
       .withKeySchema(
-        Schema.hashKey(Attributes.userId))
+        Schema.hashKey(AttributeNames.userId))
 
   val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
 
   "get" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
-      val attributes = MembershipAttributes(userId, "patron", Some("abc"))
+      val attributes = Attributes(userId, "patron", Some("abc"))
       val result = for {
         insertResult <- repo.set(attributes)
         retrieved <- repo.get(userId)

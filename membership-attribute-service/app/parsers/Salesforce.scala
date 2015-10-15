@@ -1,6 +1,6 @@
 package parsers
 
-import models.MembershipAttributes
+import models.Attributes
 
 import scala.xml._
 import scalaz.Scalaz._
@@ -10,7 +10,7 @@ object Salesforce {
   type UserId = String
 
   sealed trait OutboundMessageChange
-  case class MembershipUpdate(attributes: MembershipAttributes) extends OutboundMessageChange
+  case class MembershipUpdate(attributes: Attributes) extends OutboundMessageChange
   case class MembershipDeletion(userId: String) extends OutboundMessageChange
 
   sealed trait OutboundMessageParseError
@@ -41,7 +41,7 @@ object Salesforce {
       val tier = (obj \ "Membership_Tier__c").map(_.text).headOption
       tier.fold[OutboundMessageChange](MembershipDeletion(id)) { t =>
         val num = (obj \ "Membership_Number__c").headOption.map(_.text)
-        MembershipUpdate(MembershipAttributes(id, t, num))
+        MembershipUpdate(Attributes(id, t, num))
       }
     }
   }

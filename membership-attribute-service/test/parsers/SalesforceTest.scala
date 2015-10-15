@@ -1,6 +1,6 @@
 package parsers
 
-import models.MembershipAttributes
+import models.Attributes
 import org.specs2.mutable.Specification
 import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingError}
 import scalaz.syntax.either._
@@ -31,7 +31,7 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val updateAction = MembershipUpdate(MembershipAttributes("identity_id", "Supporter", Some("membership_number")))
+      val updateAction = MembershipUpdate(Attributes("identity_id", "Supporter", Some("membership_number")))
       Salesforce.parseOutboundMessage(payload, orgId) shouldEqual updateAction.right
     }
 
@@ -57,7 +57,7 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val updateAction = MembershipUpdate(MembershipAttributes("identity_id", "Supporter", None))
+      val updateAction = MembershipUpdate(Attributes("identity_id", "Supporter", None))
       Salesforce.parseOutboundMessage(payload, orgId) shouldEqual updateAction.right
     }
 
