@@ -84,8 +84,6 @@
   "Mappings": {
     "StageVariables": {
       "PROD": {
-        "LatencyAlarmThreshold": 0.5,
-        "LatencyAlarmPeriod": 60,
         "NotificationAlarmPeriod": 1200,
         "InstanceName": "PROD:membership-attribute-service",
         "DynamoDBTable": "arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD",
@@ -366,53 +364,6 @@
             "CidrIp": "0.0.0.0/0"
           }
         ]
-      }
-    },
-
-    "HighLatencyAlarm": {
-      "Type": "AWS::CloudWatch::Alarm",
-      "Properties": {
-        "AlarmDescription": {"Fn::Join" : [ " ", [
-          "Scale-Up if latency is greater than",
-          {"Fn::FindInMap": ["StageVariables", { "Ref": "Stage" }, "LatencyAlarmThreshold" ]},
-          "seconds over last",
-          {"Fn::FindInMap": ["StageVariables", { "Ref": "Stage" }, "LatencyAlarmPeriod" ]},
-          "seconds"
-        ]]},
-        "Namespace": "AWS/ELB",
-        "MetricName": "Latency",
-        "Statistic": "Average",
-        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-        "Dimensions": [ { "Name": "LoadBalancerName", "Value": { "Ref": "LoadBalancer" } } ],
-        "Threshold": { "Fn::FindInMap": ["StageVariables", { "Ref": "Stage" }, "LatencyAlarmThreshold" ]},
-        "Period": { "Fn::FindInMap": ["StageVariables", { "Ref": "Stage" }, "LatencyAlarmPeriod" ]},
-        "EvaluationPeriods": "1",
-        "AlarmActions": [
-          { "Ref": "ScaleUpPolicy" }
-        ],
-        "OKActions": [
-          { "Ref": "ScaleDownPolicy" }
-        ]
-      }
-    },
-
-    "ScaleUpPolicy": {
-      "Type": "AWS::AutoScaling::ScalingPolicy",
-      "Properties": {
-        "AutoScalingGroupName": { "Ref": "AutoscalingGroup" },
-        "AdjustmentType": "PercentChangeInCapacity",
-        "ScalingAdjustment": "100",
-        "Cooldown": "300"
-      }
-    },
-
-    "ScaleDownPolicy": {
-      "Type": "AWS::AutoScaling::ScalingPolicy",
-      "Properties": {
-        "AdjustmentType": "ChangeInCapacity",
-        "AutoScalingGroupName": { "Ref": "AutoscalingGroup" },
-        "Cooldown": "3600",
-        "ScalingAdjustment": "-1"
       }
     }
   },
