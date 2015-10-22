@@ -4,7 +4,7 @@ import org.specs2.mutable.Specification
 
 class AttributesTest extends Specification {
 
-  "MembershipAttributesTest" should {
+  "AttributesTest" should {
     val attrs = Attributes("123", "tier", None)
 
     "isPaidTier returns" should {
