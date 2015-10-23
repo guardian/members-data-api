@@ -1,5 +1,6 @@
 package models
 
+import configuration.Config
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
@@ -12,11 +13,16 @@ object Features {
   implicit def toResult(attrs: Features): Result =
     Ok(Json.toJson(attrs))
 
-  def fromAttributes(attributes: Attributes) = Features(
-    userId = Some(attributes.userId),
-    adFree = attributes.isPaidTier,
-    adblockMessage = !attributes.isPaidTier
-  )
+  def fromAttributes(attributes: Attributes) = {
+    // TODO: remove the second condition once the adfree feature is generally available to the public
+    val adfree = attributes.isPaidTier && Config.preReleaseUsersIds.contains(attributes.userId)
+
+    Features(
+      userId = Some(attributes.userId),
+      adFree = adfree,
+      adblockMessage = !adfree
+    )
+  }
 
   val unauthenticated = Features(None, adFree = false, adblockMessage = true)
 }
