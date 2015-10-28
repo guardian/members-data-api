@@ -1,6 +1,5 @@
 package models
 
-import configuration.Config
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
@@ -14,8 +13,7 @@ object Features {
     Ok(Json.toJson(attrs))
 
   def fromAttributes(attributes: Attributes) = {
-    // TODO: remove the second condition once the adfree feature is generally available to the public
-    val adfree = attributes.isPaidTier && Config.preReleaseUsersIds.contains(attributes.userId)
+    val adfree = attributes.isPaidTier
 
     Features(
       userId = Some(attributes.userId),
