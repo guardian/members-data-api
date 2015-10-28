@@ -15,7 +15,6 @@ import play.filters.cors.CORSConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
-import scala.collection.JavaConverters._
 
 object Config {
   val config = ConfigFactory.load()
@@ -69,7 +68,4 @@ object Config {
   lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), 2.days.toStandardDuration)
 
   val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
-
-  // TODO: remove once the adfree feature is generally available to the public
-  val preReleaseUsersIds = config.getStringList("identity.prerelease-users").asScala.toSet
 }
