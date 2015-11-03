@@ -2,6 +2,7 @@
 
 GET        /healthcheck                          @controllers.HealthCheckController.healthCheck
 
-GET        /user-attributes/me/membership        @controllers.AttributeController.membership
 GET        /user-attributes/me/features          @controllers.AttributeController.features
+GET        /user-attributes/me/digital           @controllers.AttributeController.digitalPackDetails
+GET        /user-attributes/me/membership        @controllers.AttributeController.membershipDetails
 POST       /salesforce-hook                      @controllers.SalesforceHookController.createAttributes
