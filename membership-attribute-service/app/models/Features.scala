@@ -14,8 +14,9 @@ object Features {
     Ok(Json.toJson(attrs))
 
   def fromAttributes(attributes: Attributes) = {
-    // TODO: Change to a proper user preference evaluation once launched
-    val adfreeEnabled = Config.preReleaseUsersIds.contains(attributes.userId)
+    // TODO: Once this officially launches, this should be:
+    // attributes.isPaidTier && (user has opted INTO the ad free experience)
+    val adfreeEnabled = attributes.isPaidTier && Config.preReleaseUsersIds.contains(attributes.userId)
     
     Features(
       userId = Some(attributes.userId),
