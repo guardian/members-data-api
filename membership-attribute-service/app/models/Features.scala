@@ -15,12 +15,12 @@ object Features {
 
   def fromAttributes(attributes: Attributes) = {
     // TODO: remove the second condition once the adfree feature is generally available to the public
-    val adfree = attributes.isPaidTier && Config.preReleaseUsersIds.contains(attributes.userId)
+    val adfree = Config.preReleaseUsersIds.contains(attributes.userId)
 
     Features(
       userId = Some(attributes.userId),
       adFree = adfree,
-      adblockMessage = !adfree
+      adblockMessage = !(attributes.isPaidTier)
     )
   }
 
