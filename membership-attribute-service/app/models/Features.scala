@@ -14,12 +14,12 @@ object Features {
     Ok(Json.toJson(attrs))
 
   def fromAttributes(attributes: Attributes) = {
-    // TODO: remove the second condition once the adfree feature is generally available to the public
-    val adfree = Config.preReleaseUsersIds.contains(attributes.userId)
-
+    // TODO: Change to a proper user preference evaluation once launched
+    val adfreeEnabled = Config.preReleaseUsersIds.contains(attributes.userId)
+    
     Features(
       userId = Some(attributes.userId),
-      adFree = adfree,
+      adFree = adfreeEnabled,
       adblockMessage = !(attributes.isPaidTier)
     )
   }
