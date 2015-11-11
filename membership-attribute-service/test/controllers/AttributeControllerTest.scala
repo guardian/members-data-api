@@ -56,7 +56,8 @@ class AttributeControllerTest extends Specification {
         | {
         |   "tier": "patron",
         |   "membershipNumber": "abc",
-        |   "userId": "123"
+        |   "userId": "123",
+        |   "contentAccess":{"member":true,"paidMember":true}
         | }
       """.stripMargin)
   }
