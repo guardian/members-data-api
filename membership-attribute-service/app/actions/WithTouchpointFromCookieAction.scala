@@ -1,11 +1,10 @@
 package actions
-
 import com.gu.membership.touchpoint.TouchpointBackendConfig
 import com.gu.monitoring.ServiceMetrics
 import configuration.Config
 import play.api.mvc.{Result, Request, ActionRefiner}
 import services.IdentityAuthService
-
+import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
 
 object WithTouchpointFromCookieAction extends ActionRefiner[Request, TouchpointRequest] {
