@@ -3,7 +3,7 @@ package controllers
 import com.gu.membership.salesforce.ContactDeserializer.Keys
 import com.gu.monitoring.ServiceMetrics
 import configuration.Config
-import actions.BackendFromCookieAction
+import actions._
 import com.gu.membership.salesforce._
 import com.gu.membership.salesforce.Contact._
 import com.gu.membership.stripe.StripeService
@@ -62,43 +62,26 @@ class AttributeController extends Controller {
   def membershipDetails = paymentDetails("Membership")
   def digitalPackDetails = paymentDetails("Digital Pack")
 
-  def paymentDetails(service: String) = backendAction.async { implicit request =>
+  def paymentDetails(service: String) = TouchpointFromCookieAction.async { implicit request =>
 
     authenticationService.userId.map({userId =>
-
-      val config = Config.config.getConfig("touchpoint.backend")
-      val tpConfig: TouchpointBackendConfig = TouchpointBackendConfig.byEnv("UAT", config)
-      val tempServiceMetrics = new ServiceMetrics(Config.stage, "members-data-api",_: String)
-
-      val soapClient = new soap.Client(tpConfig.zuoraSoap, tempServiceMetrics("zuora-soap"), Akka.system)
-      val restClient = new rest.Client(tpConfig.zuoraRest, tempServiceMetrics("zuora-rest"))
+      val soapClient = new soap.Client(request.config.zuoraSoap, request.metrics("zuora-soap"), Akka.system)
+      val restClient = new rest.Client(request.config.zuoraRest, request.metrics("zuora-rest"))
 
       val subService = new SubscriptionService(soapClient, restClient)
-      val stripeService: StripeService = new StripeService(tpConfig.stripe, tempServiceMetrics("stripe"))
+      val stripeService: StripeService = new StripeService(request.config.stripe, request.metrics("stripe"))
       val ps = new PaymentService(stripeService, subService)
 
-      val simpleSalesForce = new SimpleContactRepository(tpConfig.salesforce,Akka.system().scheduler, "API")
+      val simpleSalesForce = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, "API")
 
       (for {
         member <- simpleSalesForce.get(userId) flatMap {a => a.future}
         paymentDetails <- ps.paymentDetails(member, service)
-      } yield Ok(basicDetails(member)++toJson(paymentDetails)))
-        .recover {
-          case e: IllegalStateException => NotFound
-        }
+      } yield Ok(memberDetails(member) ++ toJson(paymentDetails)))
+        .recover {case e: IllegalStateException => NotFound}
 
     }).getOrElse(Future{Forbidden})
   }
-
-  def basicDetails(member: Contact[MemberStatus, PaymentMethod]): JsObject = Json.obj(
-    "userId" -> member.identityId,
-    "firstName" -> member.firstName,
-    "joinDate" -> member.joinDate,
-    "benefits" -> Json.obj(
-      "discountedEventTickets" -> false, //todo!
-      "complimentaryEventTickets" -> false //todo also!
-    )
-  )
 
   def memberDetails(contact: Contact[MemberStatus, PaymentMethod]): JsObject = contact.memberStatus match {
     case m: Member => Json.obj("regNumber" -> m.regNumber.mkString, "tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
