@@ -54,7 +54,7 @@ class AttributeController {
   def digitalPackDetails = paymentDetails("Digital Pack")
 
   def paymentDetails(service: String) = TouchpointFromCookieAction.async { implicit request =>
-    authenticationService.userId.fold[Future[Result]](Future(cookiesRequired))({ userId =>
+    authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
       val soapClient = new soap.Client(request.config.zuoraSoap, request.metrics("zuora-soap"), Akka.system)
       val restClient = new rest.Client(request.config.zuoraRest, request.metrics("zuora-rest"))
 
@@ -63,10 +63,13 @@ class AttributeController {
       val contacts = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, Config.applicationName)
       val ps = new PaymentService(stripeService, subService)
 
-      (for {
-        contact <- contacts.get(userId) map { m => m.getOrElse(throw new IllegalStateException())}
-        paymentDetails <- ps.paymentDetails(contact, service)
-      } yield (contact, paymentDetails).toResult).recover {case e: IllegalStateException => notFound}
-      })
+      contacts.get(userId) flatMap { optContact =>
+        optContact.fold[Future[Result]](Future(notFound)) { contact =>
+          ps.paymentDetails(contact, service) map { paymentDetails =>
+            (contact, paymentDetails).toResult
+          }
+        }
+      }
+    }
   }
 }
