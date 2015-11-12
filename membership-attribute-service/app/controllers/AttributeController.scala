@@ -7,6 +7,7 @@ import com.gu.membership.zuora.SubscriptionService
 import com.gu.membership.zuora.soap
 import com.gu.membership.zuora.rest
 import com.gu.services.PaymentService
+import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -21,7 +22,6 @@ import models.AccountDetails._
 import scala.concurrent.Future
 
 class AttributeController {
-
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val backendAction = BackendFromCookieAction
   lazy val metrics = CloudWatch("AttributesController")
@@ -54,15 +54,14 @@ class AttributeController {
   def digitalPackDetails = paymentDetails("Digital Pack")
 
   def paymentDetails(service: String) = TouchpointFromCookieAction.async { implicit request =>
-    authenticationService.userId.fold[Future[Result]](Future(cookiesRequired))({userId =>
+    authenticationService.userId.fold[Future[Result]](Future(cookiesRequired))({ userId =>
       val soapClient = new soap.Client(request.config.zuoraSoap, request.metrics("zuora-soap"), Akka.system)
       val restClient = new rest.Client(request.config.zuoraRest, request.metrics("zuora-rest"))
 
       val subService = new SubscriptionService(soapClient, restClient)
       val stripeService: StripeService = new StripeService(request.config.stripe, request.metrics("stripe"))
+      val contacts = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, Config.applicationName)
       val ps = new PaymentService(stripeService, subService)
-
-      val contacts = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, "API")
 
       (for {
         contact <- contacts.get(userId) map { m => m.getOrElse(throw new IllegalStateException())}

@@ -14,6 +14,6 @@ object WithTouchpointFromCookieAction extends ActionRefiner[Request, TouchpointR
         TouchpointBackendConfig.byEnv(Config.testTouchpointBackendStage, Config.config.getConfig("touchpoint.backend"))
       else
         TouchpointBackendConfig.byEnv(Config.defaultTouchpointBackendStage, Config.config.getConfig("touchpoint.backend"))
-    Right(new TouchpointRequest[A](backendConf, new ServiceMetrics(backendConf.zuoraRest.envName, "members-data-api",_: String), request))
+    Right(new TouchpointRequest[A](backendConf, new ServiceMetrics(backendConf.zuoraRest.envName, Config.applicationName,_: String), request))
   }
 }
