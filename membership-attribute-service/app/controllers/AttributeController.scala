@@ -13,14 +13,14 @@ import models.Features._
 import models.{Attributes, Features}
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.mvc.{Controller, Result}
+import play.api.mvc.Result
 import play.libs.Akka
 import services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 
 import scala.concurrent.Future
 
-class AttributeController extends Controller {
+class AttributeController {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val backendAction = BackendFromCookieAction
@@ -54,7 +54,7 @@ class AttributeController extends Controller {
   def digitalPackDetails = paymentDetails("Digital Pack")
 
   def paymentDetails(service: String) = TouchpointFromCookieAction.async { implicit request =>
-    authenticationService.userId.fold[Future[Result]](Future(Forbidden))({userId =>
+    authenticationService.userId.fold[Future[Result]](Future(cookiesRequired))({userId =>
       val soapClient = new soap.Client(request.config.zuoraSoap, request.metrics("zuora-soap"), Akka.system)
       val restClient = new rest.Client(request.config.zuoraRest, request.metrics("zuora-rest"))
 
@@ -67,7 +67,7 @@ class AttributeController extends Controller {
       (for {
         contact <- contacts.get(userId) map { m => m.getOrElse(throw new IllegalStateException())}
         paymentDetails <- ps.paymentDetails(contact, service)
-      } yield (contact, paymentDetails).toResult).recover {case e: IllegalStateException => NotFound}
+      } yield (contact, paymentDetails).toResult).recover {case e: IllegalStateException => notFound}
       })
   }
 }
