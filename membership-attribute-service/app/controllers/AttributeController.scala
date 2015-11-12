@@ -29,12 +29,8 @@ class AttributeController extends Controller {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val backendAction = BackendFromCookieAction
-  lazy val metrics = CloudWatch("AttributesCoentroller")
+  lazy val metrics = CloudWatch("AttributesController")
 
-  implicit class FutureLike[T](arg: Option[T]) {
-    def future: Future[T] = Future { arg.getOrElse(throw new IllegalStateException()) }
-  }
-  
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) =
     backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
@@ -63,8 +59,7 @@ class AttributeController extends Controller {
   def digitalPackDetails = paymentDetails("Digital Pack")
 
   def paymentDetails(service: String) = TouchpointFromCookieAction.async { implicit request =>
-
-    authenticationService.userId.map({userId =>
+    authenticationService.userId.fold[Future[Result]](Future(Forbidden))({userId =>
       val soapClient = new soap.Client(request.config.zuoraSoap, request.metrics("zuora-soap"), Akka.system)
       val restClient = new rest.Client(request.config.zuoraRest, request.metrics("zuora-rest"))
 
@@ -72,15 +67,14 @@ class AttributeController extends Controller {
       val stripeService: StripeService = new StripeService(request.config.stripe, request.metrics("stripe"))
       val ps = new PaymentService(stripeService, subService)
 
-      val simpleSalesForce = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, "API")
+      val contacts = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, "API")
 
       (for {
-        member <- simpleSalesForce.get(userId) flatMap {a => a.future}
-        paymentDetails <- ps.paymentDetails(member, service)
-      } yield Ok(basicDetails(member) ++ memberDetails(member) ++ toJson(paymentDetails)))
+        contact <- contacts.get(userId) map { m => m.getOrElse(throw new IllegalStateException())}
+        paymentDetails <- ps.paymentDetails(contact, service)
+      } yield Ok(basicDetails(contact) ++ memberDetails(contact) ++ toJson(paymentDetails)))
         .recover {case e: IllegalStateException => NotFound}
-
-    }).getOrElse(Future{Forbidden})
+      })
   }
 
   def memberDetails(contact: Contact[MemberStatus, PaymentMethod]): JsObject = contact.memberStatus match {
