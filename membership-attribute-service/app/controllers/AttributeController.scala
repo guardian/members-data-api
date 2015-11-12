@@ -1,27 +1,22 @@
 package controllers
 
-import com.gu.membership.salesforce.ContactDeserializer.Keys
-import com.gu.monitoring.ServiceMetrics
-import configuration.Config
 import actions._
 import com.gu.membership.salesforce._
-import com.gu.membership.salesforce.Contact._
 import com.gu.membership.stripe.StripeService
-import com.gu.membership.touchpoint.TouchpointBackendConfig
 import com.gu.membership.zuora.SubscriptionService
 import com.gu.membership.zuora.soap
 import com.gu.membership.zuora.rest
-import com.gu.services.{PaymentService, PaymentDetails}
+import com.gu.services.PaymentService
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models.{Attributes, Features}
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.{Controller, Result}
 import play.libs.Akka
 import services.{AuthenticationService, IdentityAuthService}
+import models.AccountDetails._
 
 import scala.concurrent.Future
 
@@ -72,41 +67,7 @@ class AttributeController extends Controller {
       (for {
         contact <- contacts.get(userId) map { m => m.getOrElse(throw new IllegalStateException())}
         paymentDetails <- ps.paymentDetails(contact, service)
-      } yield Ok(basicDetails(contact) ++ memberDetails(contact) ++ toJson(paymentDetails)))
-        .recover {case e: IllegalStateException => NotFound}
+      } yield (contact, paymentDetails).toResult).recover {case e: IllegalStateException => NotFound}
       })
-  }
-
-  def memberDetails(contact: Contact[MemberStatus, PaymentMethod]): JsObject = contact.memberStatus match {
-    case m: Member => Json.obj("regNumber" -> m.regNumber.mkString, "tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
-    case _ => Json.obj()
-  }
-
-  def basicDetails(contact: Contact[MemberStatus, PaymentMethod]) = Json.obj("joinDate" -> contact.joinDate)
-
-  private def toJson(paymentDetails: PaymentDetails): JsObject = {
-
-    val card = paymentDetails.plan.card.fold(Json.obj())(card => Json.obj(
-      "card" -> Json.obj(
-        "last4" -> card.last4,
-        "type" -> card.`type`
-      )
-    ))
-
-    Json.obj(
-      "optIn" -> !paymentDetails.pendingCancellation,
-      "subscription" -> (card ++ Json.obj(
-        "start" -> paymentDetails.startDate,
-        "end" -> paymentDetails.termEndDate,
-        "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
-        "nextPaymentDate" -> paymentDetails.nextPaymentDate,
-        "renewalDate" -> paymentDetails.termEndDate,
-        "cancelledAt" -> paymentDetails.pendingAmendment,
-        "plan" -> Json.obj(
-          "name" -> paymentDetails.plan.name,
-          "amount" -> paymentDetails.plan.amount,
-          "interval" -> (if (paymentDetails.plan.interval.getOrElse("") == "Annual") "year" else "month")
-        )))
-    )
   }
 }
