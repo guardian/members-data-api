@@ -77,7 +77,7 @@ class AttributeController extends Controller {
       (for {
         member <- simpleSalesForce.get(userId) flatMap {a => a.future}
         paymentDetails <- ps.paymentDetails(member, service)
-      } yield Ok(memberDetails(member) ++ toJson(paymentDetails)))
+      } yield Ok(basicDetails(member) ++ memberDetails(member) ++ toJson(paymentDetails)))
         .recover {case e: IllegalStateException => NotFound}
 
     }).getOrElse(Future{Forbidden})
@@ -87,6 +87,8 @@ class AttributeController extends Controller {
     case m: Member => Json.obj("regNumber" -> m.regNumber.mkString, "tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
     case _ => Json.obj()
   }
+
+  def basicDetails(contact: Contact[MemberStatus, PaymentMethod]) = Json.obj("joinDate" -> contact.joinDate)
 
   private def toJson(paymentDetails: PaymentDetails): JsObject = {
 
