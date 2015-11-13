@@ -1,6 +1,6 @@
 package models
-import com.gu.membership.salesforce.{Member, Contact, MemberStatus, PaymentMethod}
-import com.gu.services.PaymentDetails
+import com.gu.membership.salesforce._
+import com.gu.services.model._
 import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
@@ -14,7 +14,8 @@ object AccountDetails {
     }
 
     private def memberDetails(contact: Contact[MemberStatus, PaymentMethod]): JsObject = contact.memberStatus match {
-      case m: Member => Json.obj("regNumber" -> m.regNumber.mkString, "tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
+      case m: PaidTierMember => Json.obj("regNumber" -> m.regNumber.mkString, "tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
+      case m: FreeTierMember => Json.obj("tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
       case _ => Json.obj()
     }
 

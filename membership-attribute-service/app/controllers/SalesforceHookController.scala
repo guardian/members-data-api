@@ -1,6 +1,6 @@
 package controllers
 
-import actions.BackendFromSalesforceAction
+import configuration.Config.SalesforceConfig
 import models.ApiErrors
 import monitoring.CloudWatch
 import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingError, ParsingError}
@@ -9,12 +9,14 @@ import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.Results.Ok
+import services.DynamoAttributeService
+import play.api.mvc.Action
 
 import scala.Function.const
 import scala.concurrent.Future
 import scalaz.{-\/, \/-}
 
-class SalesforceHookController {
+class SalesforceHookController(attributes: DynamoAttributeService, sfConfig: SalesforceConfig) {
   val metrics = CloudWatch("SalesforceHookController")
 
   private val ack = Ok(
@@ -27,17 +29,16 @@ class SalesforceHookController {
     </soapenv:Envelope>
   )
 
-  def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
-    val validOrgId = request.backendConfig.salesforceConfig.organizationId
-    val attributeService = request.attributeService
+  def createAttributes = Action.async(parse.xml) { request =>
+    val validOrgId = sfConfig.organizationId
 
     SFParser.parseOutboundMessage(request.body, validOrgId) match {
       case \/-(MembershipDeletion(userId)) =>
         metrics.put("Delete", 1)
-        attributeService.delete(userId).map(const(ack))
+        attributes.delete(userId).map(const(ack))
       case \/-(MembershipUpdate(attrs)) =>
         metrics.put("Update", 1)
-        attributeService.set(attrs).map(const(ack))
+        attributes.set(attrs).map(const(ack))
       case -\/(ParsingError(msg)) =>
         Logger.error(s"Could not parse payload ${request.body}:\n$msg")
         Future(ApiErrors.badRequest(msg))

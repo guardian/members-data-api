@@ -1,13 +1,10 @@
 package controllers
 
-import actions._
-import com.gu.membership.salesforce._
-import com.gu.membership.stripe.StripeService
-import com.gu.membership.zuora.SubscriptionService
-import com.gu.membership.zuora.soap
-import com.gu.membership.zuora.rest
+import com.gu.config.ProductFamily
+import com.gu.config.{DigitalPack, Membership, ProductFamily}
+import com.gu.membership.salesforce.ContactRepository
 import com.gu.services.PaymentService
-import configuration.Config
+import play.api.mvc.Action
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -15,21 +12,18 @@ import models.{Attributes, Features}
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.Result
-import play.libs.Akka
-import services.{AuthenticationService, IdentityAuthService}
+import services.{AttributeService, AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
-
 import scala.concurrent.Future
 
-class AttributeController {
+class AttributeController(payments: PaymentService, contacts: ContactRepository, attributes: AttributeService, mem: Membership, subs: DigitalPack) {
+  
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val backendAction = BackendFromCookieAction
   lazy val metrics = CloudWatch("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) =
-    backendAction.async { request =>
+  private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = Action.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
-        request.attributeService.get(id).map {
+        attributes.get(id).map {
           case Some(attrs) =>
             metrics.put(s"$endpointDescription-lookup-successful", 1)
             onSuccess(attrs)
@@ -50,26 +44,20 @@ class AttributeController {
     onNotFound = Features.unauthenticated
   )
 
-  def membershipDetails = paymentDetails("Membership")
-  def digitalPackDetails = paymentDetails("Digital Pack")
+  def membershipDetails = paymentDetails(mem)
+  def digitalPackDetails = paymentDetails(subs)
 
-  def paymentDetails(service: String) = TouchpointFromCookieAction.async { implicit request =>
+  def paymentDetails(product: ProductFamily) = Action.async { implicit request =>
     authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
-      val soapClient = new soap.Client(request.config.zuoraSoap, request.metrics("zuora-soap"), Akka.system)
-      val restClient = new rest.Client(request.config.zuoraRest, request.metrics("zuora-rest"))
-
-      val subService = new SubscriptionService(soapClient, restClient)
-      val stripeService: StripeService = new StripeService(request.config.stripe, request.metrics("stripe"))
-      val contacts = new SimpleContactRepository(request.config.salesforce,Akka.system().scheduler, Config.applicationName)
-      val ps = new PaymentService(stripeService, subService)
-
       contacts.get(userId) flatMap { optContact =>
         optContact.fold[Future[Result]](Future(notFound)) { contact =>
-          ps.paymentDetails(contact, service) map { paymentDetails =>
+          payments.paymentDetails(contact, product) map { paymentDetails =>
             (contact, paymentDetails).toResult
           }
         }
       }
+    }.recover {
+      case e:IllegalStateException => notFound
     }
   }
 }
