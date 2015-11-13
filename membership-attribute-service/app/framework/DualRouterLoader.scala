@@ -5,9 +5,7 @@ import components._
 import monitoring.SentryLogging
 import play.api.ApplicationLoader.Context
 import play.api._
-import play.api.libs.ws.ning.NingWSComponents
 import play.api.routing.Router
-import play.filters.csrf.CSRFComponents
 import router.Routes
 
 /*
@@ -18,7 +16,7 @@ import router.Routes
 class DualRouterLoader extends ApplicationLoader {
 
   // we have to override application so it picks up the DualHttpRequestHandler rather than the lazy val in BuiltInComponents
-  class DualRouterComponents(components: BuiltInComponents, prodRouter: Router, testRouter: Router) extends ClonedComponents(components)  { self: HttpFilterComponents =>
+  class DualRouterComponents(components: AllComponentTraits, prodRouter: Router, testRouter: Router) extends AllComponents(components)  { self: HttpFilterComponents =>
     override lazy val httpRequestHandler = new DualHttpRequestHandler(prodRouter, testRouter, httpErrorHandler, httpConfiguration, httpFilters:_*)
     override lazy val httpErrorHandler = new JsonHttpErrorHandler()
     override lazy val application: Application = new DefaultApplication(environment, applicationLifecycle, injector, configuration, httpRequestHandler, httpErrorHandler, actorSystem, Plugins.empty)
@@ -33,14 +31,10 @@ class DualRouterLoader extends ApplicationLoader {
       lazy val prefix = "/"
     }
 
-    trait Common extends ConfigComponents with HttpFilterComponents with CSRFComponents with NingWSComponents {
-      self: BuiltInComponents => // test / prod users will still get their own instances of these components
-    }
-
-    val components = new BuiltInComponentsFromContext(context) { val router: Router = Router.empty }
-    val prod = new ClonedComponents(components) with Common with NormalTouchpointComponents with ControllerComponents with InjectedRouter
-    val test = new ClonedComponents(components) with Common with TestTouchpointComponents with ControllerComponents with InjectedRouter
-    (new DualRouterComponents(components, prod.router, test.router) with Common).application
+    val components = new BuiltInComponentsFromContext(context) with AllComponentTraits { override val router: Router = Router.empty }
+    val prod = new AllComponents(components) with NormalTouchpointComponents with ControllerComponents with InjectedRouter
+    val test = new AllComponents(components) with TestTouchpointComponents with ControllerComponents with InjectedRouter
+    (new DualRouterComponents(components, prod.router, test.router) with HttpFilterComponents).application
   }
 }
 

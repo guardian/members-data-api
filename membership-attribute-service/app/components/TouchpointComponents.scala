@@ -13,7 +13,7 @@ import repositories.MembershipAttributesSerializer
 import play.api.libs.concurrent.Execution.Implicits._
 import services.DynamoAttributeService
 
-trait TouchpointComponents { self: BuiltInComponents with ConfigComponents with NingWSComponents =>
+trait TouchpointComponents extends ConfigComponents{ self: BuiltInComponents with NingWSComponents =>
   val stage: String
   val sfConfig: SalesforceConfig
   lazy val conf = config.config.getConfig("touchpoint.backend")
