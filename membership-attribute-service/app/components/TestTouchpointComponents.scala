@@ -1,6 +1,5 @@
 package components
 
-import components.ConfigComponents
 import configuration.Config.BackendConfig
 import play.api.BuiltInComponents
 import play.api.libs.ws.ning.NingWSComponents

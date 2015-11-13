@@ -26,5 +26,4 @@ trait TouchpointComponents { self: BuiltInComponents with ConfigComponents with 
   lazy val subService = new SubscriptionService(soapClient, restClient)
   lazy val paymentService = new PaymentService(stripeService, subService)
   lazy val attrService = DynamoAttributeService(MembershipAttributesSerializer(conf.getString(s"environments.$stage.dynamodb.table")))
-
 }

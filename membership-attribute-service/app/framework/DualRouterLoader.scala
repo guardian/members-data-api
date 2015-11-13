@@ -2,10 +2,12 @@ package framework
 
 import com.softwaremill.macwire._
 import components._
+import monitoring.SentryLogging
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.libs.ws.ning.NingWSComponents
 import play.api.routing.Router
+import play.filters.csrf.CSRFComponents
 import router.Routes
 
 /*
@@ -16,25 +18,29 @@ import router.Routes
 class DualRouterLoader extends ApplicationLoader {
 
   // we have to override application so it picks up the DualHttpRequestHandler rather than the lazy val in BuiltInComponents
-  class DualRouterComponents(components: BuiltInComponents, prodRouter: Router, testRouter: Router) extends ClonedComponents(components)  {
+  class DualRouterComponents(components: BuiltInComponents, prodRouter: Router, testRouter: Router) extends ClonedComponents(components)  { self: HttpFilterComponents =>
+    override lazy val httpRequestHandler = new DualHttpRequestHandler(prodRouter, testRouter, httpErrorHandler, httpConfiguration, httpFilters:_*)
+    override lazy val httpErrorHandler = new JsonHttpErrorHandler()
     override lazy val application: Application = new DefaultApplication(environment, applicationLifecycle, injector, configuration, httpRequestHandler, httpErrorHandler, actorSystem, Plugins.empty)
-    override lazy val httpRequestHandler = new DualHttpRequestHandler(prodRouter, testRouter, httpErrorHandler, httpConfiguration)
   }
 
   def load(context: Context) = {
+    Logger.configure(context.environment)
+    SentryLogging.init()
 
     trait InjectedRouter { self: ControllerComponents with BuiltInComponents =>
       override lazy val router: Router = wire[Routes]
       lazy val prefix = "/"
     }
 
-    //instances within these traits will only be loaded once
-    trait Common extends ConfigComponents with NingWSComponents
-    val components = new BuiltInComponentsFromContext(context) { val router: Router = Router.empty }
+    trait Common extends ConfigComponents with HttpFilterComponents with CSRFComponents with NingWSComponents {
+      self: BuiltInComponents => // test / prod users will still get their own instances of these components
+    }
 
-    val prod = new ClonedComponents(components) with Common with  NormalTouchpointComponents with ControllerComponents with InjectedRouter
+    val components = new BuiltInComponentsFromContext(context) { val router: Router = Router.empty }
+    val prod = new ClonedComponents(components) with Common with NormalTouchpointComponents with ControllerComponents with InjectedRouter
     val test = new ClonedComponents(components) with Common with TestTouchpointComponents with ControllerComponents with InjectedRouter
-    new DualRouterComponents(components, prod.router, test.router).application
+    (new DualRouterComponents(components, prod.router, test.router) with Common).application
   }
 }
 
