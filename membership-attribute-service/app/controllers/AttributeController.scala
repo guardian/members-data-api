@@ -10,20 +10,16 @@ import models.{Attributes, Features}
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.Result
-
-import services.{DynamoAttributeService, AuthenticationService, IdentityAuthService}
+import services.{AttributeService, AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
-
 import scala.concurrent.Future
 
-class AttributeController(payments: PaymentService, contacts: ContactRepository, attributes: DynamoAttributeService) {
+class AttributeController(payments: PaymentService, contacts: ContactRepository, attributes: AttributeService) {
   
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = CloudWatch("AttributesController")
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = Action.async { request =>
-
-
       authenticationService.userId(request).map[Future[Result]] { id =>
         attributes.get(id).map {
           case Some(attrs) =>

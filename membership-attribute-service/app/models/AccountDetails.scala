@@ -1,6 +1,6 @@
 package models
 import com.gu.membership.salesforce.{Member, Contact, MemberStatus, PaymentMethod}
-import com.gu.services.PaymentDetails
+import com.gu.services.model._
 import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
