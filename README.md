@@ -17,7 +17,8 @@ Success responses:
     {
       "membershipNumber": "1234567abcdef",
       "tier": "patron",
-      "userId": "123"
+      "userId": "123",
+      "contentAccess":{ "member":true, "paidMember":true }
     }
 
 Error responses:

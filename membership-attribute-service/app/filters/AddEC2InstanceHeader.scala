@@ -9,11 +9,13 @@ import scala.concurrent.Future
 class AddEC2InstanceHeader(ws: WSAPI) extends Filter {
 
   // http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
-  lazy val instanceIdOptF = ws.url("http://169.254.169.254/latest/meta-data/instance-id").get().map(resp => Some(resp.body).filter(_.nonEmpty)).recover { case _ => None }
+  lazy val instanceIdF = ws.url("http://169.254.169.254/latest/meta-data/instance-id").get().map(_.body)
 
   def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = for {
     result <- nextFilter(requestHeader)
-    instanceIdOpt <- instanceIdOptF
-  } yield instanceIdOpt.fold(result)(instanceId => result.withHeaders("X-EC2-instance-id" -> instanceId))
+  } yield {
+    val instanceIdOpt = instanceIdF.value.flatMap(_.toOption) // We don't want to block if the value is not available
+    instanceIdOpt.fold(result)(instanceId => result.withHeaders("X-EC2-instance-id" -> instanceId))
+  }
 
 }
