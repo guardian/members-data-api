@@ -1,5 +1,6 @@
 package mocks
 
+import com.gu.config.ProductFamily
 import com.gu.membership.salesforce.{PaymentMethod, MemberStatus, Contact}
 import com.gu.services.PaymentService
 import com.gu.services.model.PaymentDetails
@@ -18,5 +19,5 @@ class PaymentServiceStub extends PaymentService {
 
   val plan = Plan("plan name", 10, None, None)
   val paymentDetails = PaymentDetails(pendingCancellation = false, start, acceptance, 10, nextPayment, termEnd, pendingAmendment = false, plan)
-  def paymentDetails(contact: Contact[MemberStatus, PaymentMethod], productType: String) = Future(paymentDetails)
+  def paymentDetails(contact: Contact[MemberStatus, PaymentMethod], productType: ProductFamily) = Future(paymentDetails)
 }

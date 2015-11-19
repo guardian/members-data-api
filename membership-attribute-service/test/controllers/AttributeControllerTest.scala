@@ -1,4 +1,6 @@
 package controllers
+
+import com.gu.config.{LegacyMembership, Membership, DigitalPack, ProductFamily}
 import mocks.{AuthenticationServiceFake, AttributeServiceFake, ContactRepositoryDummy, PaymentServiceStub}
 import models.Attributes
 import org.specs2.mutable.Specification
@@ -17,7 +19,9 @@ class AttributeControllerTest extends Specification {
   val contactRepo = new ContactRepositoryDummy
   val paymentService = new PaymentServiceStub
 
-  val controller = new AttributeController(paymentService,contactRepo, attrService) {
+  val digipack = new DigitalPack("1", "2", "3")
+  val membership = new Membership("1","1","1","1","1","1","1","1", new LegacyMembership("1","1","1","1","1","1","1"))
+  val controller = new AttributeController(paymentService,contactRepo, attrService, membership, digipack) {
     override lazy val authenticationService = authService
   }
 
