@@ -1,28 +1,59 @@
 package controllers
-import mocks.{AuthenticationServiceFake, AttributeServiceFake, ContactRepositoryDummy, PaymentServiceStub}
+
+import actions.BackendRequest
+import components.{NormalTouchpointComponents, TouchpointComponents}
+import configuration.Config.{SalesforceConfig, BackendConfig}
 import models.Attributes
 import org.specs2.mutable.Specification
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import services.{AttributeService, AuthenticationService}
 
 import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification {
+  private val validUserId = "123"
+  private val invalidUserId = "456"
+  private val attributes = Attributes(validUserId, "patron", Some("abc"))
 
-  val authService = new AuthenticationServiceFake
-  val attributes = Seq(Attributes(authService.validUserId, "patron", Some("abc")))
-  val attrService = new AttributeServiceFake(attributes)
-  val contactRepo = new ContactRepositoryDummy
-  val paymentService = new PaymentServiceStub
+  private val validUserCookie = Cookie("validUser", "true")
+  private val invalidUserCookie = Cookie("invalidUser", "true")
 
-  val controller = new AttributeController(paymentService,contactRepo, attrService) {
-    override lazy val authenticationService = authService
+  private val fakeAuthService = new AuthenticationService {
+    override def username(implicit request: RequestHeader) = ???
+    override def userId(implicit request: RequestHeader) = request.cookies.headOption match {
+      case Some(c) if c == validUserCookie => Some(validUserId)
+      case Some(c) if c == invalidUserCookie => Some(invalidUserId)
+      case _ => None
+    }
+  }
+
+  // Succeeds for the valid user id
+  private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
+    override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
+      val a = new AttributeService {
+        override def set(attributes: Attributes) = ???
+        override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
+        override def delete(userId: String) = ???
+      }
+
+      val components = new NormalTouchpointComponents {
+        override val attrService = a
+      }
+
+      Future(Right(new BackendRequest[A](components, request)))
+    }
+  }
+
+  private val controller = new AttributeController {
+    override lazy val authenticationService = fakeAuthService
+    override lazy val backendAction = Action andThen FakeWithBackendAction
   }
 
   def verifySuccessfulResult(result: Future[Result]) = {
-
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
@@ -45,13 +76,14 @@ class AttributeControllerTest extends Specification {
     }
 
     "return not found for unknown users" in {
-      val req = FakeRequest().withCookies(authService.invalidUserCookie)
+      val req = FakeRequest().withCookies(invalidUserCookie)
       val result: Future[Result] = controller.membership(req)
+
       status(result) shouldEqual NOT_FOUND
     }
 
     "retrieve attributes for user in cookie" in {
-      val req = FakeRequest().withCookies(authService.validUserCookie)
+      val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.membership(req)
 
       verifySuccessfulResult(result)

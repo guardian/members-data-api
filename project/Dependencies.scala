@@ -19,10 +19,7 @@ object Dependencies {
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % "1.9.31"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
-  val membershipCommon = "com.gu" %% "membership-common" % "0.104"
-  val macWireMacros = "com.softwaremill.macwire" %% "macros" % "2.1.0" % "provided"
-  val macWireUtil = "com.softwaremill.macwire" %% "util" % "2.1.0"
-  val macwireProxy = "com.softwaremill.macwire" %% "proxy" % "2.1.0"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.105"
 
 
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
@@ -30,7 +27,7 @@ object Dependencies {
   //projects
 
   val apiDependencies = Seq(sentryRavenLogback, identityCookie, identityPlayAuth, identityTestUsers, scalaUri,
-    playWS, playCache, playFilters, awsWrap, awsDynamo, awsCloudWatch, scalaz, membershipCommon, macWireMacros, macWireUtil, macwireProxy,
+    playWS, playCache, playFilters, awsWrap, awsDynamo, awsCloudWatch, scalaz, membershipCommon,
     specs2, scalaTest)
 
 }

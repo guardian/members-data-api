@@ -1,13 +1,11 @@
 package components
 
-import components.ConfigComponents
+import configuration.Config
 import configuration.Config.BackendConfig
-import framework.AllComponentTraits
-import play.api.BuiltInComponents
-import play.api.libs.ws.ning.NingWSComponents
 
-trait TestTouchpointComponents extends TouchpointComponents { self: AllComponentTraits with ConfigComponents =>
+class TestTouchpointComponents extends TouchpointComponents {
   override lazy val sfConfig = BackendConfig.test.salesforceConfig
-  override lazy val stage = config.testTouchpointBackendStage
-
+  override lazy val stage = Config.testTouchpointBackendStage
 }
+object TestTouchpointComponents extends TestTouchpointComponents
+

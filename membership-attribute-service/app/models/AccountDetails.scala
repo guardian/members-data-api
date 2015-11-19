@@ -40,10 +40,12 @@ object AccountDetails {
           "nextPaymentDate" -> paymentDetails.nextPaymentDate,
           "renewalDate" -> paymentDetails.termEndDate,
           "cancelledAt" -> paymentDetails.pendingAmendment,
+          "subscriberId" -> paymentDetails.subscriberId,
+          "trialLength" -> paymentDetails.remainingTrialLength,
           "plan" -> Json.obj(
             "name" -> paymentDetails.plan.name,
             "amount" -> paymentDetails.plan.amount,
-            "interval" -> (if (paymentDetails.plan.interval.getOrElse("") == "Annual") "year" else "month")
+            "interval" -> paymentDetails.plan.interval.mkString
           )))
       )
     }
