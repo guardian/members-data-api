@@ -18,11 +18,11 @@ class DualRouterLoader extends ApplicationLoader {
       lazy val prefix = "/"
     }
 
-    val components = new BuiltInComponentsFromContext(context) with AllComponentTraits { override val router: Router = Router.empty }
-    val prod = new AllComponents(components) with NormalTouchpointComponents with ControllerComponents with InjectedRouter
-    val test = new AllComponents(components) with TestTouchpointComponents with ControllerComponents with InjectedRouter
+    val common = new BuiltInComponentsFromContext(context) with AllComponentTraits { override val router: Router = Router.empty }
+    val prod = new AllComponents(common) with NormalTouchpointComponents with ControllerComponents with InjectedRouter
+    val test = new AllComponents(common) with TestTouchpointComponents with ControllerComponents with InjectedRouter
 
-    new AllComponents(prod) with HttpFilterComponents {
+    new AllComponents(common) with HttpFilterComponents {
       override lazy val router: Router = new DualRouter(prod.router, test.router)
       override lazy val httpRequestHandler = wire[DefaultHttpRequestHandler]
       override lazy val httpErrorHandler = wire[JsonHttpErrorHandler]

@@ -1,6 +1,7 @@
 package framework
 import configuration.Config
 import configuration.Config.BackendConfig._
+import play.api.Logger
 import play.api.mvc.RequestHeader
 import play.api.routing.Router
 import services.IdentityAuthService
@@ -11,13 +12,10 @@ object RouterSwitcher
   private val salesforceSecretParam = "secret"
 
   private def routerFromCookie(prodRouter: Router, testRouter: Router, request: RequestHeader): Router = {
-    if (IdentityAuthService.username(request).exists(Config.testUsernames.isValid)) {
-      println("UAT")
+    if (IdentityAuthService.username(request).exists(Config.testUsernames.isValid))
       testRouter
-    } else {
-      println("PROD")
-      testRouter
-    }
+     else
+      prodRouter
   }
 
   /**
