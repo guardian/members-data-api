@@ -16,10 +16,11 @@ import play.api.libs.concurrent.Execution.Implicits._
 import services.DynamoAttributeService
 import com.softwaremill.macwire._
 
-trait TouchpointComponents extends ConfigComponents { self: AllComponentTraits =>
+trait TouchpointComponents { self: AllComponentTraits =>
 
   val stage: String
   val sfConfig: SalesforceConfig
+  lazy val config: Config.type = Config
 
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val digitalPackConf = conf.getConfig(s"environments.$stage.zuora.ratePlanIds")

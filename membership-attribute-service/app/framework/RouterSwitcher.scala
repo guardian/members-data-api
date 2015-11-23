@@ -11,10 +11,13 @@ object RouterSwitcher
   private val salesforceSecretParam = "secret"
 
   private def routerFromCookie(prodRouter: Router, testRouter: Router, request: RequestHeader): Router = {
-    if (IdentityAuthService.username(request).exists(Config.testUsernames.isValid))
+    if (IdentityAuthService.username(request).exists(Config.testUsernames.isValid)) {
+      println("UAT")
       testRouter
-    else
-      prodRouter
+    } else {
+      println("PROD")
+      testRouter
+    }
   }
 
   /**
