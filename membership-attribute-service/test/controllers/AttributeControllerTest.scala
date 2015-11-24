@@ -1,54 +1,32 @@
 package controllers
 
-import actions.BackendRequest
-import configuration.Config.BackendConfig
+import com.gu.config.{LegacyMembership, Membership, DigitalPack, ProductFamily}
+import mocks.{AuthenticationServiceFake, AttributeServiceFake, ContactRepositoryDummy, PaymentServiceStub}
 import models.Attributes
 import org.specs2.mutable.Specification
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.{AttributeService, AuthenticationService}
 
 import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification {
-  private val validUserId = "123"
-  private val invalidUserId = "456"
-  private val attributes = Attributes(validUserId, "patron", Some("abc"))
 
-  private val validUserCookie = Cookie("validUser", "true")
-  private val invalidUserCookie = Cookie("invalidUser", "true")
+  val authService = new AuthenticationServiceFake
+  val attributes = Seq(Attributes(authService.validUserId, "patron", Some("abc")))
+  val attrService = new AttributeServiceFake(attributes)
+  val contactRepo = new ContactRepositoryDummy
+  val paymentService = new PaymentServiceStub
 
-  private val fakeAuthService = new AuthenticationService {
-    override def username(implicit request: RequestHeader) = ???
-    override def userId(implicit request: RequestHeader) = request.cookies.headOption match {
-      case Some(c) if c == validUserCookie => Some(validUserId)
-      case Some(c) if c == invalidUserCookie => Some(invalidUserId)
-      case _ => None
-    }
-  }
-
-  // Succeeds for the valid user id
-  private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
-    override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
-      val attrService = new AttributeService {
-        override def set(attributes: Attributes) = ???
-        override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
-        override def delete(userId: String) = ???
-      }
-
-      Future(Right(new BackendRequest[A](BackendConfig.test, attrService, request)))
-    }
-  }
-
-  private val controller = new AttributeController {
-    override lazy val authenticationService = fakeAuthService
-    override lazy val backendAction = Action andThen FakeWithBackendAction
+  val digipack = new DigitalPack("1", "2", "3")
+  val membership = new Membership("1","1","1","1","1","1","1","1", new LegacyMembership("1","1","1","1","1","1","1"))
+  val controller = new AttributeController(paymentService,contactRepo, attrService, membership, digipack) {
+    override lazy val authenticationService = authService
   }
 
   def verifySuccessfulResult(result: Future[Result]) = {
+
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
@@ -71,14 +49,13 @@ class AttributeControllerTest extends Specification {
     }
 
     "return not found for unknown users" in {
-      val req = FakeRequest().withCookies(invalidUserCookie)
+      val req = FakeRequest().withCookies(authService.invalidUserCookie)
       val result: Future[Result] = controller.membership(req)
-
       status(result) shouldEqual NOT_FOUND
     }
 
     "retrieve attributes for user in cookie" in {
-      val req = FakeRequest().withCookies(validUserCookie)
+      val req = FakeRequest().withCookies(authService.validUserCookie)
       val result: Future[Result] = controller.membership(req)
 
       verifySuccessfulResult(result)

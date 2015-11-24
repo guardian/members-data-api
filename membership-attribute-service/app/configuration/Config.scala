@@ -68,6 +68,9 @@ object Config {
 
   lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), 2.days.toStandardDuration)
 
+  val defaultTouchpointBackendStage = config.getString("touchpoint.backend.default")
+  val testTouchpointBackendStage = config.getString("touchpoint.backend.test")
+
   val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
 
   // TODO: remove once the adfree feature is generally available to the public

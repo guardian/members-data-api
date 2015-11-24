@@ -1,7 +1,10 @@
 # Healthcheck
 
-GET        /healthcheck                          @controllers.HealthCheckController.healthCheck
+GET        /healthcheck                          controllers.HealthCheckController.healthCheck
 
-GET        /user-attributes/me/membership        @controllers.AttributeController.membership
-GET        /user-attributes/me/features          @controllers.AttributeController.features
-POST       /salesforce-hook                      @controllers.SalesforceHookController.createAttributes
+GET        /user-attributes/me/membership        controllers.AttributeController.membership
+GET        /user-attributes/me/features          controllers.AttributeController.features
+
+GET        /user-attributes/me/mma-digitalpack   controllers.AttributeController.digitalPackDetails
+GET        /user-attributes/me/mma-membership    controllers.AttributeController.membershipDetails
+POST       /salesforce-hook                      controllers.SalesforceHookController.createAttributes
