@@ -18,6 +18,16 @@ class PaymentServiceStub extends PaymentService {
   val termEnd = new DateTime("2015-12-31T11:59:59Z")
 
   val plan = Plan("plan name", 10, None, None)
-  val paymentDetails = PaymentDetails(pendingCancellation = false, start, acceptance, 10, nextPayment, termEnd, pendingAmendment = false, plan)
+  val paymentDetails = PaymentDetails(
+    subscriberId = "A-1234",
+    pendingCancellation = false,
+    pendingAmendment = false,
+    startDate = start,
+    customerAcceptanceDate = acceptance,
+    nextPaymentDate = Some(nextPayment),
+    nextPaymentPrice = Some(10),
+    termEndDate = termEnd,
+    remainingTrialLength = 5,
+    plan = plan)
   def paymentDetails(contact: Contact[MemberStatus, PaymentMethod], productType: ProductFamily) = Future(paymentDetails)
 }
