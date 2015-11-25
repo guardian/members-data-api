@@ -1,21 +1,15 @@
 package controllers
 
-import actions.WithBackendFromCookieAction
 import com.gu.config.ProductFamily
-import com.gu.config.{DigitalPack, Membership, ProductFamily}
-import com.gu.membership.salesforce.ContactRepository
-import com.gu.services.PaymentService
-import components.TouchpointComponents
-import play.api.mvc.Action
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import actions._
-import models.{Attributes, Features}
+import models._
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.Result
-import services.{AttributeService, AuthenticationService, IdentityAuthService}
+import services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
 
@@ -48,14 +42,16 @@ class AttributeController {
     onNotFound = Features.unauthenticated
   )
 
-  def membershipDetails = paymentDetails({t: TouchpointComponents => t.membershipPlans})
-  def digitalPackDetails = paymentDetails({t: TouchpointComponents => t.digitalPackPlans})
+  def membershipDetails = paymentDetails(Membership)
+  def digitalPackDetails = paymentDetails(DigitalPack)
 
-  def paymentDetails(func: (TouchpointComponents)=>ProductFamily) = backendAction.async { implicit request =>
+  def paymentDetails(product: ProductFamilyName) = backendAction.async { implicit request =>
+
+    val productFamily = request.touchpoint.ratePlanIds(product)
     authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
       request.touchpoint.contactRepo.get(userId) flatMap { optContact =>
         optContact.fold[Future[Result]](Future(notFound)) { contact =>
-          request.touchpoint.paymentService.paymentDetails(contact, func(request.touchpoint)) map { paymentDetails =>
+          request.touchpoint.paymentService.paymentDetails(contact, productFamily) map { paymentDetails =>
             (contact, paymentDetails).toResult
           }
         }
