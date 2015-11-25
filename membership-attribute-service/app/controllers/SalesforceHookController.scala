@@ -28,7 +28,7 @@ class SalesforceHookController {
   )
 
   def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
-    val validOrgId = request.touchpoint.sfConfig.organizationId
+    val validOrgId = request.touchpoint.sfOrganisationId
     val attributeService = request.touchpoint.attrService
 
     SFParser.parseOutboundMessage(request.body, validOrgId) match {

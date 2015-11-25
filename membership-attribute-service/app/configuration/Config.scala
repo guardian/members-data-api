@@ -19,32 +19,6 @@ import scala.collection.JavaConverters._
 
 object Config {
   val config = ConfigFactory.load()
-
-  case class SalesforceConfig(secret: String, organizationId: String) {
-    // Salesforce provides a "display" id, 15 characters long, and a "real" id, with 3 characters appended.
-    // They don't provide a particular name to distinguish between the two.
-    require(organizationId.length == 18)
-  }
-
-  case class BackendConfig(dynamoTable: String, salesforceConfig: SalesforceConfig)
-
-  object BackendConfig {
-    private def forEnvironment(env: String): BackendConfig = {
-      if (!Seq("default", "test").contains(env)) throw new IllegalArgumentException("The environment should be either default or test")
-      val backendEnv = config.getString(s"touchpoint.backend.$env")
-      val backendConf = config.getConfig(s"touchpoint.backend.environments.$backendEnv")
-      val dynamoTable = backendConf.getString("dynamodb.table")
-      val salesforceConfig = SalesforceConfig(
-        secret = backendConf.getString("salesforce.hook-secret"),
-        organizationId = backendConf.getString("salesforce.organization-id")
-      )
-      BackendConfig(dynamoTable, salesforceConfig)
-    }
-
-    lazy val default = BackendConfig.forEnvironment("default")
-    lazy val test = BackendConfig.forEnvironment("test")
-  }
-
   val applicationName = "members-data-api"
 
   val stage = config.getString("stage")

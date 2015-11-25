@@ -1,8 +1,8 @@
 package controllers
 
 import actions.BackendRequest
-import components.{NormalTouchpointComponents, TouchpointComponents}
-import configuration.Config.{SalesforceConfig, BackendConfig}
+import components.TouchpointComponents
+import configuration.Config
 import models.Attributes
 import org.specs2.mutable.Specification
 import play.api.libs.concurrent.Execution.Implicits._
@@ -40,8 +40,8 @@ class AttributeControllerTest extends Specification {
         override def delete(userId: String) = ???
       }
 
-      val components = new NormalTouchpointComponents {
-        override val attrService = a
+      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {
+        override lazy val attrService = a
       }
 
       Future(Right(new BackendRequest[A](components, request)))
