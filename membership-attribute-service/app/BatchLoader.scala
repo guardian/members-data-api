@@ -3,6 +3,7 @@ import java.io.File
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.model.{PutRequest, WriteRequest}
 import com.github.dwhjames.awswrap.dynamodb.SingleThreadedBatchWriter
+import components.NormalTouchpointComponents
 import configuration.Config._
 import models.Attributes
 import org.slf4j.LoggerFactory
@@ -13,7 +14,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object BatchLoader {
-  private val table = BackendConfig.default.dynamoTable
+  private val table = NormalTouchpointComponents.dynamoTable
   private val logger = LoggerFactory.getLogger(getClass)
   private implicit val serializer = MembershipAttributesSerializer(table)
 

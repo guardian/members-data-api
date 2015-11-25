@@ -1,7 +1,8 @@
 package controllers
 
 import actions.BackendRequest
-import configuration.Config.BackendConfig
+import components.TouchpointComponents
+import configuration.Config
 import models.Attributes
 import org.specs2.mutable.Specification
 import play.api.libs.concurrent.Execution.Implicits._
@@ -33,13 +34,17 @@ class AttributeControllerTest extends Specification {
   // Succeeds for the valid user id
   private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
     override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
-      val attrService = new AttributeService {
+      val a = new AttributeService {
         override def set(attributes: Attributes) = ???
         override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
         override def delete(userId: String) = ???
       }
 
-      Future(Right(new BackendRequest[A](BackendConfig.test, attrService, request)))
+      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {
+        override lazy val attrService = a
+      }
+
+      Future(Right(new BackendRequest[A](components, request)))
     }
   }
 

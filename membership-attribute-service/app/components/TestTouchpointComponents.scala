@@ -1,0 +1,3 @@
+package components
+import configuration.Config
+object TestTouchpointComponents extends TouchpointComponents(Config.testTouchpointBackendStage)

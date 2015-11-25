@@ -1,0 +1,3 @@
+package components
+import configuration.Config
+object NormalTouchpointComponents extends TouchpointComponents(Config.defaultTouchpointBackendStage)

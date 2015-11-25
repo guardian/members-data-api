@@ -1,6 +1,6 @@
 package actions
 
-import configuration.Config.BackendConfig
+import components.{TestTouchpointComponents, NormalTouchpointComponents}
 import org.specs2.mutable._
 import play.api.mvc.Action
 import play.api.mvc.Results.Ok
@@ -17,15 +17,14 @@ class WithBackendFromSalesforceActionTest extends Specification {
     }
 
     val orgIdAction = (Action andThen BackendFromSalesforceAction) {
-      request => Ok(request.backendConfig.salesforceConfig.organizationId)
+      request => Ok(request.touchpoint.sfOrganisationId)
     }
 
     "selects the backend that matches the secret in the query string" in {
-      val testConfig = BackendConfig.test.salesforceConfig
-      val result = call(orgIdAction, fakeRequest(testConfig.secret.some))
+      val result = call(orgIdAction, fakeRequest(TestTouchpointComponents.sfSecret.some))
 
       status(result) mustEqual OK
-      contentAsString(result) mustEqual testConfig.organizationId
+      contentAsString(result) mustEqual TestTouchpointComponents.sfOrganisationId
     }
 
     "block a request" should {
