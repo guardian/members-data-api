@@ -1,6 +1,7 @@
 package controllers
 
 import com.gu.config.ProductFamily
+import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -9,6 +10,7 @@ import models._
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.Result
+import play.filters.cors.CORSActionBuilder
 import services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
@@ -16,7 +18,11 @@ import scala.concurrent.Future
 class AttributeController {
   
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val backendAction = BackendFromCookieAction
+  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig)
+  lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
+
+  lazy val backendAction = corsFilter andThen BackendFromCookieAction
+  lazy val mmaAction = mmaCorsFilter andThen BackendFromCookieAction
   lazy val metrics = CloudWatch("AttributesController")
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = backendAction.async { request =>
@@ -45,8 +51,7 @@ class AttributeController {
   def membershipDetails = paymentDetails(Membership)
   def digitalPackDetails = paymentDetails(DigitalPack)
 
-  def paymentDetails(product: ProductFamilyName) = backendAction.async { implicit request =>
-
+  def paymentDetails(product: ProductFamilyName) = mmaAction.async { implicit request =>
     val productFamily = request.touchpoint.ratePlanIds(product)
     authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
       request.touchpoint.contactRepo.get(userId) flatMap { optContact =>

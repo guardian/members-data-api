@@ -44,9 +44,11 @@ object Config {
 
   val defaultTouchpointBackendStage = config.getString("touchpoint.backend.default")
   val testTouchpointBackendStage = config.getString("touchpoint.backend.test")
-
   val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
 
+  val mmaCorsConfig = CORSConfig.denyAll.copy(
+    allowedOrigins = config.getStringList("mma.cors.allowedOrigins").asScala.toSet
+  )
   // TODO: remove once the adfree feature is generally available to the public
   val preReleaseUsersIds = config.getStringList("identity.prerelease-users").asScala.toSet
 }
