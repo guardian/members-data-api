@@ -24,7 +24,7 @@ object AccountDetails {
 
     private def toJson(paymentDetails: PaymentDetails): JsObject = {
 
-      val card = paymentDetails.plan.card.fold(Json.obj())(card => Json.obj(
+      val card = paymentDetails.card.fold(Json.obj())(card => Json.obj(
         "card" -> Json.obj(
           "last4" -> card.last4,
           "type" -> card.`type`
@@ -44,7 +44,8 @@ object AccountDetails {
           "trialLength" -> paymentDetails.remainingTrialLength,
           "plan" -> Json.obj(
             "name" -> paymentDetails.plan.name,
-            "amount" -> paymentDetails.plan.amount,
+            "amount" -> paymentDetails.plan.amount.amount * 100,
+            "currency" -> paymentDetails.plan.amount.currency.glyph,
             "interval" -> paymentDetails.plan.interval.mkString
           )))
       )
