@@ -45,6 +45,7 @@ object AccountDetails {
           "plan" -> Json.obj(
             "name" -> paymentDetails.plan.name,
             "amount" -> paymentDetails.plan.amount.amount * 100,
+            "currency" -> paymentDetails.plan.amount.currency.glyph,
             "interval" -> paymentDetails.plan.interval.mkString
           )))
       )
