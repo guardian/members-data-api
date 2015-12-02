@@ -42,7 +42,7 @@ case class TouchpointComponents(stage: String) {
 
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, Akka.system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = DynamoAttributeService(MembershipAttributesSerializer(dynamoTable))
-  lazy val subService = new SubscriptionService(soapClient, restClient)
+  lazy val subService = new SubscriptionService(soapClient, restClient, stripeService)
   lazy val paymentService = new ZuoraPaymentService(stripeService, subService)
 
   def ratePlanIds(familyName: ProductFamilyName): ProductFamily = familyName match {
