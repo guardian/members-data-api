@@ -49,6 +49,13 @@ object Config {
   val mmaCorsConfig = CORSConfig.denyAll.copy(
     allowedOrigins = config.getStringList("mma.cors.allowedOrigins").asScala.toSet
   )
+
+  lazy val mmaCardCorsConfig = Config.mmaCorsConfig.copy(
+    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token").contains(_),
+    isHttpMethodAllowed = _ == "POST",
+    supportsCredentials = true
+  )
+
   // TODO: remove once the adfree feature is generally available to the public
   val preReleaseUsersIds = config.getStringList("identity.prerelease-users").asScala.toSet
 }

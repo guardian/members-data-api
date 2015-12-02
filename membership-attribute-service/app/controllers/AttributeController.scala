@@ -11,13 +11,12 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import play.api.mvc.{Action, Result}
+import play.api.mvc.Result
 import play.filters.cors.CORSActionBuilder
 import services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
 import scalaz.OptionT
-import scalaz.syntax.std.option._
 import scalaz.std.scalaFuture._
 import play.api.mvc.Results.Ok
 
@@ -25,11 +24,12 @@ class AttributeController {
   
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig)
-  lazy val mmaCorsPostFilter = CORSActionBuilder(CORSConfig()) //FIXME!
-  lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
 
+  lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
+  lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig)
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val mmaAction = mmaCorsFilter andThen BackendFromCookieAction
+  lazy val mmaCardAction = corsCardFilter andThen BackendFromCookieAction
   lazy val metrics = CloudWatch("AttributesController")
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = backendAction.async { request =>
@@ -57,11 +57,8 @@ class AttributeController {
 
   def membershipUpdateCard = updateCard(Membership)
   def digitalPackUpdateCard = updateCard(DigitalPack)
-  def mmaPreflight = (Action andThen mmaCorsPostFilter) {
-    Ok("")
-  }
 
-  def updateCard(product: ProductFamilyName) = mmaAction.async { implicit request =>
+  def updateCard(product: ProductFamilyName) = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
     val productFamily = request.touchpoint.ratePlanIds(product)
     val tp = request.touchpoint
@@ -71,10 +68,10 @@ class AttributeController {
       sfUser <- OptionT(tp.contactRepo.get(user))
       subscription <- OptionT(tp.subService.findByProductFamily(sfUser, productFamily))
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
-      currentStripe <- OptionT(tp.subService.getStripePaymentMethodByAccount(subscription.accountId))
-      newStripeDetails <- OptionT(tp.stripeService.Customer.updateCard(currentStripe.customerId, stripeCardToken).map(_.some))
-      newPmId <- OptionT(tp.subService.setAccountPaymentMethod(subscription.accountId, currentStripe.copy(cardId = newStripeDetails.card.id)).map(_.some))
-    } yield Ok("")).run.map(_.getOrElse(Ok("")))
+      result <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
+      pmNow <- OptionT(tp.subService.getPaymentCardByAccount(subscription.accountId))
+    } yield Ok(Json.obj("last4" -> pmNow.lastFourDigits, "cardType" -> pmNow.cardType, "type" -> pmNow.cardType)))
+      .run.map(_.getOrElse(notFound))
   }
 
   def membershipDetails = paymentDetails(Membership)
