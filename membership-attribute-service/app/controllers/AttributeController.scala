@@ -1,6 +1,5 @@
 package controllers
 
-import com.gu.config.ProductFamily
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -9,11 +8,13 @@ import actions._
 import models._
 import monitoring.CloudWatch
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.filters.cors.CORSActionBuilder
 import services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
+import play.api.mvc.Results.Ok
 
 class AttributeController {
   
@@ -52,17 +53,20 @@ class AttributeController {
   def digitalPackDetails = paymentDetails(DigitalPack)
 
   def paymentDetails(product: ProductFamilyName) = mmaAction.async { implicit request =>
+
+    val notSubscribed = Ok(Json.obj("msg" -> "not subscribed"))
     val productFamily = request.touchpoint.ratePlanIds(product)
+
     authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
       request.touchpoint.contactRepo.get(userId) flatMap { optContact =>
-        optContact.fold[Future[Result]](Future(notFound)) { contact =>
+        optContact.fold[Future[Result]](Future(notSubscribed)) { contact =>
           request.touchpoint.paymentService.paymentDetails(contact, productFamily) map { paymentDetails =>
             (contact, paymentDetails).toResult
           }
         }
       }
     }.recover {
-      case e:IllegalStateException => notFound
+      case e:IllegalStateException => notSubscribed
     }
   }
 }
