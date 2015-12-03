@@ -68,7 +68,7 @@ class AttributeController {
       sfUser <- OptionT(tp.contactRepo.get(user))
       subscription <- OptionT(tp.subService.findByProductFamily(sfUser, productFamily))
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
-      result <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
+      _ <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
       pmNow <- OptionT(tp.subService.getPaymentCardByAccount(subscription.accountId))
     } yield Ok(Json.obj("last4" -> pmNow.lastFourDigits, "cardType" -> pmNow.cardType, "type" -> pmNow.cardType)))
       .run.map(_.getOrElse(notFound))
