@@ -1,5 +1,5 @@
 package controllers
-
+import com.gu.membership.model.{CardUpdateFailure, CardUpdateSuccess}
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -18,7 +18,7 @@ import models.AccountDetails._
 import scala.concurrent.Future
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
-import play.api.mvc.Results.Ok
+import play.api.mvc.Results.{Ok, Forbidden}
 
 class AttributeController {
   
@@ -68,10 +68,12 @@ class AttributeController {
       sfUser <- OptionT(tp.contactRepo.get(user))
       subscription <- OptionT(tp.subService.findByProductFamily(sfUser, productFamily))
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
-      _ <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
+      updateResult <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
       pmNow <- OptionT(tp.subService.getPaymentCardByAccount(subscription.accountId))
-    } yield Ok(Json.obj("last4" -> pmNow.lastFourDigits, "cardType" -> pmNow.cardType, "type" -> pmNow.cardType)))
-      .run.map(_.getOrElse(notFound))
+    } yield updateResult match {
+      case CardUpdateSuccess => Ok(Json.obj("last4" -> pmNow.lastFourDigits, "cardType" -> pmNow.cardType, "type" -> pmNow.cardType))
+      case CardUpdateFailure(errType, errMsg, errCode) => Forbidden(Json.obj("type" -> errType, "message" -> errMsg, "code" -> errCode))
+    }).run.map(_.getOrElse(notFound))
   }
 
   def membershipDetails = paymentDetails(Membership)
