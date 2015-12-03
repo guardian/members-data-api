@@ -60,8 +60,10 @@ class AttributeController {
     authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
       request.touchpoint.contactRepo.get(userId) flatMap { optContact =>
         optContact.fold[Future[Result]](Future(notSubscribed)) { contact =>
-          request.touchpoint.paymentService.paymentDetails(contact, productFamily) map { paymentDetails =>
-            (contact, paymentDetails).toResult
+          request.touchpoint.paymentService.paymentDetails(contact, productFamily).map { details =>
+            details.fold(notSubscribed) { paymentDetails =>
+              (contact, paymentDetails).toResult
+            }
           }
         }
       }
