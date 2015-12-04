@@ -72,7 +72,7 @@ class AttributeController {
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
       updateResult <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
     } yield updateResult match {
-      case success: CardUpdateSuccess => Forbidden(Json.toJson(success))
+      case success: CardUpdateSuccess => Ok(Json.toJson(success))
       case failure: CardUpdateFailure => Forbidden(Json.toJson(failure))
     }).run.map(_.getOrElse(notFound))
   }
