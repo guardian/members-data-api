@@ -39,7 +39,7 @@ object AccountDetails {
           "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
           "nextPaymentDate" -> paymentDetails.nextPaymentDate,
           "renewalDate" -> paymentDetails.termEndDate,
-          "cancelledAt" -> paymentDetails.pendingAmendment,
+          "cancelledAt" -> (paymentDetails.pendingAmendment || paymentDetails.pendingCancellation),
           "subscriberId" -> paymentDetails.subscriberId,
           "trialLength" -> paymentDetails.remainingTrialLength,
           "plan" -> Json.obj(
