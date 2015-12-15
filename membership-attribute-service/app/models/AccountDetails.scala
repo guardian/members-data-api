@@ -1,5 +1,5 @@
 package models
-import com.gu.membership.salesforce._
+import com.gu.salesforce._
 import com.gu.services.model._
 import play.api.libs.json._
 import play.api.mvc.Results.Ok

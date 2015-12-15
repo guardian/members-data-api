@@ -62,7 +62,7 @@ class AttributeController {
 
   def updateCard(product: ProductFamilyName) = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
-    val productFamily = request.touchpoint.ratePlanIds(product)
+    val productFamily = request.touchpoint.productRatePlanIds(product)
     val tp = request.touchpoint
 
     (for {
@@ -81,7 +81,7 @@ class AttributeController {
   def digitalPackDetails = paymentDetails(DigitalPack)
 
   def paymentDetails(product: ProductFamilyName) = mmaAction.async { implicit request =>
-    val productFamily = request.touchpoint.ratePlanIds(product)
+    val productFamily = request.touchpoint.productRatePlanIds(product)
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
       contact <- OptionT(request.touchpoint.contactRepo.get(user))
