@@ -10,7 +10,7 @@ object AccountDetails {
     def toResult = {
       val contact = details._1
       val paymentDetails = details._2
-      Ok(basicDetails(contact) ++ memberDetails(contact) ++ toJson(paymentDetails))
+      Ok(memberDetails(contact) ++ toJson(paymentDetails))
     }
 
     private def memberDetails(contact: Contact[MemberStatus, PaymentMethod]): JsObject = contact.memberStatus match {
@@ -18,9 +18,6 @@ object AccountDetails {
       case m: FreeTierMember => Json.obj("tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
       case _ => Json.obj()
     }
-
-    private def basicDetails(contact: Contact[MemberStatus, PaymentMethod]) =
-      Json.obj("joinDate" -> contact.joinDate)
 
     private def toJson(paymentDetails: PaymentDetails): JsObject = {
 
@@ -32,6 +29,7 @@ object AccountDetails {
       ))
 
       Json.obj(
+        "joinDate" -> paymentDetails.startDate,
         "optIn" -> !paymentDetails.pendingCancellation,
         "subscription" -> (card ++ Json.obj(
           "start" -> paymentDetails.startDate,
