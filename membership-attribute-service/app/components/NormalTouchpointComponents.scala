@@ -1,3 +1,6 @@
 package components
 import configuration.Config
-object NormalTouchpointComponents extends TouchpointComponents(Config.defaultTouchpointBackendStage)
+import play.libs.Akka.system
+import play.api.Play.current
+
+object NormalTouchpointComponents extends TouchpointComponents(Config.defaultTouchpointBackendStage)(system)

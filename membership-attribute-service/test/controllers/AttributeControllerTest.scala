@@ -1,10 +1,12 @@
 package controllers
 
 import actions.BackendRequest
+import akka.actor.ActorSystem
 import components.TouchpointComponents
 import configuration.Config
 import models.Attributes
 import org.specs2.mutable.Specification
+import org.specs2.specification.AfterAll
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -14,7 +16,9 @@ import services.{AttributeService, AuthenticationService}
 
 import scala.concurrent.Future
 
-class AttributeControllerTest extends Specification {
+class AttributeControllerTest extends Specification with AfterAll {
+  implicit val as: ActorSystem = ActorSystem("test")
+
   private val validUserId = "123"
   private val invalidUserId = "456"
   private val attributes = Attributes(validUserId, "patron", Some("abc"))
@@ -89,4 +93,6 @@ class AttributeControllerTest extends Specification {
       verifySuccessfulResult(result)
     }
   }
+
+  override def afterAll() = as.shutdown()
 }

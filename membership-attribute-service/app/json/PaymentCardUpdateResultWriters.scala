@@ -1,7 +1,8 @@
 package json
+
+import com.gu.membership.{CardUpdateFailure, CardUpdateSuccess, PaymentCard}
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
-import com.gu.membership.model.{CardUpdateFailure, PaymentCard, CardUpdateSuccess}
 
 object PaymentCardUpdateResultWriters {
 

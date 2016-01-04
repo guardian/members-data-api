@@ -42,8 +42,8 @@ object AccountDetails {
           "trialLength" -> paymentDetails.remainingTrialLength,
           "plan" -> Json.obj(
             "name" -> paymentDetails.plan.name,
-            "amount" -> paymentDetails.plan.amount.amount * 100,
-            "currency" -> paymentDetails.plan.amount.currency.glyph,
+            "amount" -> paymentDetails.plan.price.amount * 100,
+            "currency" -> paymentDetails.plan.price.currency.glyph,
             "interval" -> paymentDetails.plan.interval.mkString
           )))
       )

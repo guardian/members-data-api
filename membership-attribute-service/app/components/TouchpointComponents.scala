@@ -1,22 +1,23 @@
 package components
 
+import akka.actor.ActorSystem
 import com.gu.config
 import com.gu.config.ProductFamily
+import com.gu.membership.services.CatalogService
 import com.gu.memsub.services.{PaymentService, SubscriptionService}
 import com.gu.monitoring.ServiceMetrics
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.{rest, soap}
+import com.gu.zuora.soap.ClientWithFeatureSupplier
+import com.gu.zuora.{ZuoraService, rest}
 import configuration.Config
 import models.{DigitalPack, Membership, ProductFamilyName}
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
 import repositories.MembershipAttributesSerializer
 import services.{AttributeService, DynamoAttributeService}
-import play.api.libs.concurrent.Execution.Implicits._
 
-case class TouchpointComponents(stage: String) {
+class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
+  implicit val ec = system.dispatcher
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")
 
@@ -27,22 +28,25 @@ case class TouchpointComponents(stage: String) {
   lazy val dynamoTable = environmentConf.getString("dynamodb.table")
 
   lazy val digitalPackPlans = config.DigitalPack.fromConfig(digitalPackConf)
-  lazy val membershipPlans = config.Membership.fromConfig(membershipConf)
+  lazy val productFamily = config.Membership.fromConfig(membershipConf)
 
   lazy val tpConfig = TouchpointBackendConfig.byEnv(stage, conf)
+  implicit lazy val _bt = tpConfig
   lazy val metrics = new ServiceMetrics(tpConfig.zuoraRest.envName, Config.applicationName,_: String)
 
   lazy val stripeService = new StripeService(tpConfig.stripe, metrics("stripe"))
-  lazy val soapClient = new soap.Client(tpConfig.zuoraSoap, metrics("zuora-soap"), Akka.system)
+  lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"), system)
   lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
 
-  lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, Akka.system.scheduler, Config.applicationName)
+  lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = DynamoAttributeService(MembershipAttributesSerializer(dynamoTable))
-  lazy val subService = new SubscriptionService(soapClient, restClient, stripeService)
-  lazy val paymentService = new PaymentService(stripeService, subService)
+  lazy val zuoraService = new ZuoraService(soapClient, restClient, productFamily)
+  lazy val catalogService = CatalogService(restClient, productFamily, stage)
+  lazy val subscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService)
+  lazy val paymentService = new PaymentService(stripeService, subscriptionService, zuoraService, catalogService)
 
   def productRatePlanIds(familyName: ProductFamilyName): ProductFamily = familyName match {
     case DigitalPack => digitalPackPlans
-    case Membership => membershipPlans
+    case Membership => productFamily
   }
 }

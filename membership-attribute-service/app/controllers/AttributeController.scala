@@ -1,6 +1,6 @@
 package controllers
 
-import com.gu.membership.model.{CardUpdateFailure, CardUpdateSuccess}
+import com.gu.membership.{CardUpdateFailure, CardUpdateSuccess}
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -62,15 +62,14 @@ class AttributeController {
 
   def updateCard(product: ProductFamilyName) = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
-    val productFamily = request.touchpoint.productRatePlanIds(product)
     val tp = request.touchpoint
 
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
       sfUser <- OptionT(tp.contactRepo.get(user))
-      subscription <- OptionT(tp.subService.findByProductFamily(sfUser, productFamily))
+      subscription <- OptionT(tp.subscriptionService.get(sfUser))
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
-      updateResult <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
+      updateResult <- OptionT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
     } yield updateResult match {
       case success: CardUpdateSuccess => Ok(Json.toJson(success))
       case failure: CardUpdateFailure => Forbidden(Json.toJson(failure))

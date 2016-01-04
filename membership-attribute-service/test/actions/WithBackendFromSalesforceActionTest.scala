@@ -1,10 +1,10 @@
 package actions
 
-import components.{TestTouchpointComponents, NormalTouchpointComponents}
+import components.TestTouchpointComponents
 import org.specs2.mutable._
 import play.api.mvc.Action
 import play.api.mvc.Results.Ok
-import play.api.test.FakeRequest
+import play.api.test.{WithApplication, FakeRequest}
 import play.api.test.Helpers._
 
 import scalaz.syntax.std.option._
@@ -20,7 +20,7 @@ class WithBackendFromSalesforceActionTest extends Specification {
       request => Ok(request.touchpoint.sfOrganisationId)
     }
 
-    "selects the backend that matches the secret in the query string" in {
+    "selects the backend that matches the secret in the query string" in new WithApplication {
       val result = call(orgIdAction, fakeRequest(TestTouchpointComponents.sfSecret.some))
 
       status(result) mustEqual OK
