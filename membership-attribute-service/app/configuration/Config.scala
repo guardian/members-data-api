@@ -51,7 +51,7 @@ object Config {
   )
 
   lazy val mmaCardCorsConfig = Config.mmaCorsConfig.copy(
-    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token").contains(_),
+    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
     isHttpMethodAllowed = _ == "POST",
     supportsCredentials = true
   )
