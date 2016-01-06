@@ -1,6 +1,6 @@
 package controllers
 
-import com.gu.membership.{CardUpdateFailure, CardUpdateSuccess}
+import com.gu.memsub._
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -14,7 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.filters.cors.CORSActionBuilder
-import services.{AuthenticationService, IdentityAuthService}
+import _root_.services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
 import scalaz.OptionT
@@ -57,10 +57,10 @@ class AttributeController {
     onNotFound = Features.unauthenticated
   )
 
-  def membershipUpdateCard = updateCard(Membership)
-  def digitalPackUpdateCard = updateCard(DigitalPack)
+  def membershipUpdateCard = updateCard(ProductFamily.membership)
+  def digitalPackUpdateCard = updateCard(ProductFamily.digipack)
 
-  def updateCard(product: ProductFamilyName) = mmaCardAction.async { implicit request =>
+  def updateCard(implicit product: ProductFamily) = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
     val tp = request.touchpoint
 
@@ -76,15 +76,14 @@ class AttributeController {
     }).run.map(_.getOrElse(notFound))
   }
 
-  def membershipDetails = paymentDetails(Membership)
-  def digitalPackDetails = paymentDetails(DigitalPack)
+  def membershipDetails = paymentDetails(ProductFamily.membership)
+  def digitalPackDetails = paymentDetails(ProductFamily.digipack)
 
-  def paymentDetails(product: ProductFamilyName) = mmaAction.async { implicit request =>
-    val productFamily = request.touchpoint.productRatePlanIds(product)
+  def paymentDetails(implicit product: ProductFamily) = mmaAction.async { implicit request =>
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
       contact <- OptionT(request.touchpoint.contactRepo.get(user))
-      details <- OptionT(request.touchpoint.paymentService.paymentDetails(contact, productFamily))
+      details <- OptionT(request.touchpoint.paymentService.paymentDetails(contact))
     } yield (contact, details).toResult).run.map(_ getOrElse Ok(Json.obj()))
   }
 }
