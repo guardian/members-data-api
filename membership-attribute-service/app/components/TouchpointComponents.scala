@@ -18,7 +18,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")
 
-  lazy val digitalPackConf = environmentConf.getConfig(s"zuora.ratePlanIds")
+  lazy val digitalPackConf = environmentConf.getConfig(s"zuora.ratePlanIds.digitalpack")
   lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
   lazy val sfOrganisationId = environmentConf.getString("salesforce.organization-id")
   lazy val sfSecret = environmentConf.getString("salesforce.hook-secret")
