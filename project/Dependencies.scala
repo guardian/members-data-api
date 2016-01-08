@@ -19,7 +19,7 @@ object Dependencies {
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % "1.9.31"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
-  val membershipCommon = "com.gu" %% "membership-common" % "0.122"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.124"
 
 
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
