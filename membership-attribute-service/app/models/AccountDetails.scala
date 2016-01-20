@@ -5,22 +5,18 @@ import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
 object AccountDetails {
-  implicit class ResultLike(details: (Contact[MemberStatus, PaymentMethod], PaymentDetails)) {
+  implicit class ResultLike(details: (Contact, PaymentDetails)) {
 
     def toResult = {
       val contact = details._1
       val paymentDetails = details._2
-      Ok(memberDetails(contact) ++ toJson(paymentDetails))
+      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails))
     }
-
-    private def memberDetails(contact: Contact[MemberStatus, PaymentMethod]): JsObject = contact.memberStatus match {
-      case m: PaidTierMember => Json.obj("regNumber" -> m.regNumber.mkString, "tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
-      case m: FreeTierMember => Json.obj("tier" -> m.tier.name, "isPaidTier" -> m.tier.isPaid)
-      case _ => Json.obj()
-    }
+    private def memberDetails(contact: Contact, paymentDetails: PaymentDetails) =
+      Json.obj("tier" -> paymentDetails.plan.name, "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)) ++
+        contact.regNumber.fold(Json.obj())({m => Json.obj("regNumber" -> m)})
 
     private def toJson(paymentDetails: PaymentDetails): JsObject = {
-
       val card = paymentDetails.card.fold(Json.obj())(card => Json.obj(
         "card" -> Json.obj(
           "last4" -> card.last4,
