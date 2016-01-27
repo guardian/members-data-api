@@ -57,8 +57,8 @@ class AttributeController {
     onNotFound = Features.unauthenticated
   )
 
-  def membershipUpdateCard = updateCard(ProductFamily.membership)
-  def digitalPackUpdateCard = updateCard(ProductFamily.digipack)
+  def membershipUpdateCard = updateCard(Membership)
+  def digitalPackUpdateCard = updateCard(Digipack)
 
   def updateCard(implicit product: ProductFamily) = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
@@ -76,8 +76,8 @@ class AttributeController {
     }).run.map(_.getOrElse(notFound))
   }
 
-  def membershipDetails = paymentDetails(ProductFamily.membership)
-  def digitalPackDetails = paymentDetails(ProductFamily.digipack)
+  def membershipDetails = paymentDetails(Membership)
+  def digitalPackDetails = paymentDetails(Digipack)
 
   def paymentDetails(implicit product: ProductFamily) = mmaAction.async { implicit request =>
     (for {
