@@ -32,7 +32,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val metrics = new ServiceMetrics(tpConfig.zuoraRest.envName, Config.applicationName,_: String)
 
   lazy val stripeService = new StripeService(tpConfig.stripe, metrics("stripe"))
-  lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"), system)
+  lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"))
   lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
 
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
