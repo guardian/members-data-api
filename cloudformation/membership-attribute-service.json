@@ -128,6 +128,11 @@
               },
               {
                 "Effect": "Allow",
+                "Action": ["logs:*"],
+                "Resource": ["arn:aws:logs:*:*:*"]
+              },
+              {
+                "Effect": "Allow",
                 "Action": [
                   "dynamodb:PutItem",
                   "dynamodb:GetItem",
@@ -289,27 +294,37 @@
         "IamInstanceProfile": {"Ref": "InstanceProfile"},
         "UserData": {
           "Fn::Base64": {
-            "Fn::Join": ["", [
-              "#!/bin/bash -ev\n",
-              "aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .\n",
-              "chmod +x set-env.sh\n",
+            "Fn::Join": ["\n", [
+              "#!/bin/bash -ev",
 
-              "aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .\n",
-              "chmod +x membership-attribute-service-bootstrap.sh\n",
-              "./membership-attribute-service-bootstrap.sh\n",
+              "CONF_DIR=/membership-attribute-service/membership-attribute-service-1.0-SNAPSHOT/conf",
 
-              "aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .\n",
-              "chmod +x set-ssh-keys.sh\n",
-              "./set-ssh-keys.sh\n",
+              "aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .",
+              "chmod +x set-env.sh",
 
-              "mkdir -p /etc/gu\n",
+              "aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .",
+              "chmod +x membership-attribute-service-bootstrap.sh",
+              "./membership-attribute-service-bootstrap.sh",
 
-              {"Fn::Join":["", ["aws --region ", { "Ref": "AWS::Region" }, " s3 cp s3://members-data-api-private/", { "Ref" : "Stage" }, "/members-data-api.conf /etc/gu\n"]]},
-              "chown membership-attribute-service /etc/gu/members-data-api.conf\n",
-              "chmod 0600 /etc/gu/members-data-api.conf\n",
+              "aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .",
+              "chmod +x set-ssh-keys.sh",
+              "./set-ssh-keys.sh",
 
-              "service membership-attribute-service start\n",
-              "sleep 20s\n"
+              "mkdir -p /etc/gu",
+
+              {"Fn::Join":["", ["aws --region ", { "Ref": "AWS::Region" }, " s3 cp s3://members-data-api-private/", { "Ref" : "Stage" }, "/members-data-api.conf /etc/gu"]]},
+              "chown membership-attribute-service /etc/gu/members-data-api.conf",
+              "chmod 0600 /etc/gu/members-data-api.conf",
+
+              "wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py",
+              {"Fn::Join": ["", ["sed -i",
+                " -e \"s/__DATE/$(date +%F)/\"",
+                " -e 's/__STAGE/", { "Ref": "Stage" }, "/'",
+                " $CONF_DIR/logger.conf"]]},
+              {"Fn::Join": [" ", ["python awslogs-agent-setup.py -nr", { "Ref": "AWS::Region" }, "-c $CONF_DIR/logger.conf" ]]},
+
+              "service membership-attribute-service start",
+              "sleep 20s"
             ]]
           }
         }
