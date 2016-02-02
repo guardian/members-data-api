@@ -3,26 +3,36 @@ package controllers
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
+import components.NormalTouchpointComponents
+import com.github.nscala_time.time.Imports._
 
-case class Test(name: String, result: () => Boolean)
+trait Test {
+  def ok: Boolean
+  def messages: Seq[String] = Nil
+}
+
+class BoolTest(name: String, exec: () => Boolean) extends Test {
+  override def messages = List(s"Test $name failed, health check will fail")
+  override def ok = exec()
+}
 
 class HealthCheckController extends Results {
+  val zuora = NormalTouchpointComponents.zuoraService
 
-  // TODO add a meaningful test
-  val tests: Seq[Test] = Nil
+  val tests: Seq[Test] = Seq(
+    new BoolTest("ZuoraPing", () => zuora.lastPingTimeWithin(2.minutes))
+  )
 
   def healthCheck() = Action {
     Cached(1) {
-      val serviceOk = tests.forall { test =>
-        val result = test.result()
-        if (!result) Logger.warn(s"${test.name} test failed, health check will fail")
-        result
-      }
+      val failures = tests.filterNot(_.ok)
 
-      if (serviceOk)
+      if (failures.isEmpty) {
         Ok(Json.obj("status" -> "ok", "gitCommitId" -> app.BuildInfo.gitCommitId))
-      else
+      } else {
+        failures.flatMap(_.messages).foreach(msg => Logger.warn(msg))
         ServiceUnavailable("Service Unavailable")
+      }
     }
   }
 
