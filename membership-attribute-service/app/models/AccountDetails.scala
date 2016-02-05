@@ -28,7 +28,7 @@ object AccountDetails {
         "joinDate" -> paymentDetails.startDate,
         "optIn" -> !paymentDetails.pendingCancellation,
         "subscription" -> (card ++ Json.obj(
-          "start" -> paymentDetails.startDate,
+          "start" -> paymentDetails.lastPaymentDate,
           "end" -> paymentDetails.termEndDate,
           "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
           "nextPaymentDate" -> paymentDetails.nextPaymentDate,
