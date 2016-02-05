@@ -61,7 +61,6 @@ trait MembershipAttributeService {
 object MembershipAttributeService extends Build with MembershipAttributeService {
   val api = app("membership-attribute-service")
                 .settings(libraryDependencies ++= apiDependencies)
-                .settings(routesGenerator := InjectedRoutesGenerator)
                 .settings(
                   addCommandAlias("devrun", "run -Dconfig.resource=DEV.conf 9400"),
                   addCommandAlias("batch-load", "runMain BatchLoader")

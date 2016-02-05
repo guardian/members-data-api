@@ -2,7 +2,7 @@ package controllers
 
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc.{Action, Results}
+import play.api.mvc.{Controller, Action, Results}
 import components.NormalTouchpointComponents
 import com.github.nscala_time.time.Imports._
 
@@ -16,7 +16,7 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
   override def ok = exec()
 }
 
-class HealthCheckController extends Results {
+object HealthCheckController extends Controller with Results {
   val zuora = NormalTouchpointComponents.zuoraService
 
   val tests: Seq[Test] = Seq(
