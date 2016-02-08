@@ -12,18 +12,17 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import play.api.mvc.{Controller, Result}
+import play.api.mvc.Result
 import play.filters.cors.CORSActionBuilder
 import _root_.services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
+import play.api.mvc.Results.{Ok, Forbidden}
 import json.PaymentCardUpdateResultWriters._
 
-object AttributeController extends AttributeController
-
-trait AttributeController extends Controller {
+class AttributeController {
   
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig)

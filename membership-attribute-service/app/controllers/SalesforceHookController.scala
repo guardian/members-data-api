@@ -7,13 +7,14 @@ import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingEr
 import parsers.{Salesforce => SFParser}
 import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.mvc.Controller
+import play.api.mvc.BodyParsers.parse
+import play.api.mvc.Results.Ok
 
 import scala.Function.const
 import scala.concurrent.Future
 import scalaz.{-\/, \/-}
 
-object SalesforceHookController extends Controller {
+class SalesforceHookController {
   val metrics = CloudWatch("SalesforceHookController")
 
   private val ack = Ok(
