@@ -2,7 +2,7 @@ package components
 
 import akka.actor.ActorSystem
 import com.gu.config
-import com.gu.memsub.services.{CatalogService, PaymentService, SubscriptionService}
+import com.gu.memsub.services.{PromoService, CatalogService, PaymentService, SubscriptionService}
 import com.gu.monitoring.ServiceMetrics
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
@@ -34,10 +34,10 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val stripeService = new StripeService(tpConfig.stripe, metrics("stripe"))
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"))
   lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
-
+  lazy val promoService = new PromoService(Nil) // promotions don't exist for us yet
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = DynamoAttributeService(MembershipAttributesSerializer(dynamoTable))
-  lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans)
+  lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans, promoService)
   lazy val catalogService = CatalogService(restClient, membershipPlans, digitalPackPlans, stage)
   lazy val subscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService)
   lazy val paymentService = new PaymentService(stripeService, subscriptionService, zuoraService, catalogService)
