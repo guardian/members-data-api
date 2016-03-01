@@ -12,7 +12,7 @@ object IdentityAuthService extends AuthenticationService {
     override lazy val authenticatedIdUserProvider =
       AuthenticatedIdUser.provider(
         AccessCredentials.Cookies.authProvider(identityKeys),
-        AccessCredentials.Token.authProvider(identityKeys,"members-data-api")
+        AccessCredentials.Token.authProvider(identityKeys,"membership")
       )
   }
 
