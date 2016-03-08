@@ -17,6 +17,11 @@ object AccountDetails {
         contact.regNumber.fold(Json.obj())({m => Json.obj("regNumber" -> m)})
 
     private def toJson(paymentDetails: PaymentDetails): JsObject = {
+
+      val endDate = paymentDetails.chargedThroughDate
+        .map(_.toDateTimeAtStartOfDay)
+        .getOrElse(paymentDetails.termEndDate)
+
       val card = paymentDetails.card.fold(Json.obj())(card => Json.obj(
         "card" -> Json.obj(
           "last4" -> card.last4,
@@ -29,7 +34,7 @@ object AccountDetails {
         "optIn" -> !paymentDetails.pendingCancellation,
         "subscription" -> (card ++ Json.obj(
           "start" -> paymentDetails.lastPaymentDate,
-          "end" -> paymentDetails.termEndDate,
+          "end" -> endDate,
           "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
           "nextPaymentDate" -> paymentDetails.nextPaymentDate,
           "renewalDate" -> paymentDetails.termEndDate,
