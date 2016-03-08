@@ -7,8 +7,8 @@ object Dependencies {
   val awsClientVersion = "1.9.30"
   //libraries
   val sentryRavenLogback = "net.kencochrane.raven" % "raven-logback" % "6.0.0"
-  val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.44"
-  val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "0.13"
+  val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.51"
+  val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "0.17"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.5"
   val scalaUri = "com.netaporter" %% "scala-uri" % "0.4.6"
   val playWS = PlayImport.ws
@@ -19,7 +19,7 @@ object Dependencies {
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % "1.9.31"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
-  val membershipCommon = "com.gu" %% "membership-common" % "0.161"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.169"
 
 
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
