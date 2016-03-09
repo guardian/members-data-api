@@ -1,6 +1,7 @@
 package controllers
 
 import com.gu.memsub._
+import com.gu.services.model.PaymentDetails
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -83,7 +84,9 @@ class AttributeController {
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
       contact <- OptionT(request.touchpoint.contactRepo.get(user))
-      details <- OptionT(request.touchpoint.paymentService.paymentDetails(contact))
+      sub <- OptionT(request.touchpoint.subscriptionService.getEither(contact))
+      details <- OptionT(request.touchpoint.paymentService.paymentDetails(sub).map[Option[PaymentDetails]](Some(_)))
+
     } yield (contact, details).toResult).run.map(_ getOrElse Ok(Json.obj()))
   }
 }
