@@ -17,8 +17,8 @@ object Dependencies {
   val scalaTest =  "org.scalatestplus" %% "play" % "1.4.0-M3" % "test"
   val specs2 = PlayImport.specs2 % "test"
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
-  val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % "1.9.31"
-  val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
+  val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
+  val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.176"
 
 
