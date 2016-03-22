@@ -19,7 +19,6 @@ object AccountDetails {
     private def toJson(paymentDetails: PaymentDetails): JsObject = {
 
       val endDate = paymentDetails.chargedThroughDate
-        .map(_.toDateTimeAtStartOfDay)
         .getOrElse(paymentDetails.termEndDate)
 
       val card = paymentDetails.card.fold(Json.obj())(card => Json.obj(
