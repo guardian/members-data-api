@@ -4,7 +4,7 @@ import play.sbt.PlayImport
 object Dependencies {
 
   //versions
-  val awsClientVersion = "1.9.30"
+  val awsClientVersion = "1.10.62"
   //libraries
   val sentryRavenLogback = "net.kencochrane.raven" % "raven-logback" % "6.0.0"
   val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.51"
