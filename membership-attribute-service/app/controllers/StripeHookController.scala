@@ -30,7 +30,8 @@ class StripeHookController extends Controller with LazyLogging {
         tp.contactRepo.upsert(contact.identityId, Json.obj(Keys.ALLOW_GU_RELATED_MAIL -> allowMarketing))
         logger.info(s"${contact.identityId} marketing -> $allowMarketing")
       }).run
-      .map(_.fold[Result](BadRequest)(_ => Ok(Json.obj("success" -> true))))
+      .map(_.fold[Result](Ok(Json.obj("updated" -> false)))
+                         (_ => Ok(Json.obj("updated" -> true))))
     }
   }
 }
