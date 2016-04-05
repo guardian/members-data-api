@@ -2,6 +2,7 @@ package components
 
 import akka.actor.ActorSystem
 import com.gu.config
+import com.gu.memsub.{Digipack, Membership, ProductFamily}
 import com.gu.memsub.services.{PromoService, CatalogService, PaymentService, SubscriptionService}
 import com.gu.monitoring.ServiceMetrics
 import com.gu.salesforce.SimpleContactRepository
@@ -32,12 +33,20 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val metrics = new ServiceMetrics(tpConfig.zuoraRest.envName, Config.applicationName,_: String)
 
   lazy val stripeService = new StripeService(tpConfig.stripe, metrics("stripe"))
+  lazy val giraffeStripeService = new StripeService(tpConfig.giraffe, metrics("stripe"))
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"))
   lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = DynamoAttributeService(MembershipAttributesSerializer(dynamoTable))
   lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans)
   lazy val catalogService = CatalogService(restClient, membershipPlans, digitalPackPlans, stage)
-  lazy val subscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService)
-  lazy val paymentService = new PaymentService(stripeService, subscriptionService, zuoraService, catalogService)
+  lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.membershipCatalog)
+  lazy val membershipSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
+
+  def subService(implicit pf: ProductFamily) = pf match {
+    case Membership => membershipSubscriptionService
+    case Digipack => digipackSubscriptionService
+  }
+
+  lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService)
 }
