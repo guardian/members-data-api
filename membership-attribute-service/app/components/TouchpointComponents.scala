@@ -40,8 +40,8 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val attrService: AttributeService = DynamoAttributeService(MembershipAttributesSerializer(dynamoTable))
   lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans)
   lazy val catalogService = CatalogService(restClient, membershipPlans, digitalPackPlans, stage)
-  lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.membershipCatalog)
-  lazy val membershipSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
+  lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
+  lazy val membershipSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.membershipCatalog)
 
   def subService(implicit pf: ProductFamily) = pf match {
     case Membership => membershipSubscriptionService
