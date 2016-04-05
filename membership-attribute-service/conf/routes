@@ -14,3 +14,4 @@ POST       /user-attributes/me/digitalpack-update-card      controllers.Attribut
 OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AttributeController.digitalPackUpdateCard
 
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
+POST       /stripe-hook                                     controllers.StripeHookController.process

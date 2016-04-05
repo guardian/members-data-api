@@ -68,7 +68,7 @@ class AttributeController {
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
       sfUser <- OptionT(tp.contactRepo.get(user))
-      subscription <- OptionT(tp.subscriptionService.get(sfUser))
+      subscription <- OptionT(tp.subService.get(sfUser))
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
       updateResult <- OptionT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
     } yield updateResult match {
@@ -84,7 +84,7 @@ class AttributeController {
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
       contact <- OptionT(request.touchpoint.contactRepo.get(user))
-      sub <- OptionT(request.touchpoint.subscriptionService.getEither(contact))
+      sub <- OptionT(request.touchpoint.subService.getEither(contact))
       details <- OptionT(request.touchpoint.paymentService.paymentDetails(sub).map[Option[PaymentDetails]](Some(_)))
 
     } yield (contact, details).toResult).run.map(_ getOrElse Ok(Json.obj()))
