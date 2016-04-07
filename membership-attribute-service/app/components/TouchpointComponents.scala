@@ -10,15 +10,23 @@ import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.{ZuoraService, rest}
+import com.squareup.okhttp.OkHttpClient
 import configuration.Config
 import repositories.MembershipAttributesSerializer
-import services.{AttributeService, DynamoAttributeService}
+import services.IdentityService.IdentityConfig
+import services.{IdentityService, AttributeService, DynamoAttributeService}
 
 class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   implicit val ec = system.dispatcher
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")
 
+  lazy val identityConfig = new IdentityConfig {
+    override def token: String = environmentConf.getString("identity.marketingToken")
+    override def url: String = environmentConf.getString("identity.apiUrl")
+  }
+
+  lazy val identityService = new IdentityService(identityConfig, new OkHttpClient())
   lazy val digitalPackConf = environmentConf.getConfig(s"zuora.ratePlanIds.digitalpack")
   lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
   lazy val sfOrganisationId = environmentConf.getString("salesforce.organization-id")
