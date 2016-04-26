@@ -1,6 +1,8 @@
 package controllers
 
 import actions.BackendFromSalesforceAction
+import com.gu.memsub.Membership
+import com.typesafe.scalalogging.LazyLogging
 import models.ApiErrors
 import monitoring.CloudWatch
 import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingError, ParsingError}
@@ -12,9 +14,10 @@ import play.api.mvc.Results.Ok
 
 import scala.Function.const
 import scala.concurrent.Future
-import scalaz.{-\/, \/-}
+import scalaz.std.scalaFuture._
+import scalaz.{-\/, OptionT, \/-}
 
-class SalesforceHookController {
+class SalesforceHookController extends LazyLogging {
   val metrics = CloudWatch("SalesforceHookController")
 
   private val ack = Ok(
@@ -28,16 +31,29 @@ class SalesforceHookController {
   )
 
   def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
-    val validOrgId = request.touchpoint.sfOrganisationId
-    val attributeService = request.touchpoint.attrService
+    val touchpoint = request.touchpoint
+    val validOrgId = touchpoint.sfOrganisationId
+    val attributeService = touchpoint.attrService
+    implicit val pf = Membership
 
     SFParser.parseOutboundMessage(request.body, validOrgId) match {
       case \/-(MembershipDeletion(userId)) =>
         metrics.put("Delete", 1)
         attributeService.delete(userId).map(const(ack))
       case \/-(MembershipUpdate(attrs)) =>
-        metrics.put("Update", 1)
-        attributeService.set(attrs).map(const(ack))
+        (for {
+          sfId <- OptionT(touchpoint.contactRepo.get(attrs.userId))
+          membershipSubscription <- OptionT(touchpoint.membershipSubscriptionService.get(sfId))
+        } yield {
+          val tierFromSalesforceWebhook = attrs.tier
+          val tierFromZuora = membershipSubscription.plan.tier.name
+          if (tierFromZuora != tierFromSalesforceWebhook) logger.info(s"Differing tier info for $sfId : webhook=$tierFromSalesforceWebhook zuora=$tierFromZuora")
+          attrs.copy(tier = tierFromZuora)
+        }).run.map { attrsUpdatedWithZuoraOpt =>
+          if (attrsUpdatedWithZuoraOpt.isEmpty) logger.error(s"Couldn't update $attrs with information from Zuora")
+          attributeService.set(attrsUpdatedWithZuoraOpt.getOrElse(attrs)).foreach(_ => metrics.put("Update", 1))
+          ack
+        }
       case -\/(ParsingError(msg)) =>
         Logger.error(s"Could not parse payload ${request.body}:\n$msg")
         Future(ApiErrors.badRequest(msg))
