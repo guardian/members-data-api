@@ -18,10 +18,12 @@ import play.filters.cors.CORSActionBuilder
 import _root_.services.{AuthenticationService, IdentityAuthService}
 import models.AccountDetails._
 import scala.concurrent.Future
-import scalaz.OptionT
+import scalaz.{\/, EitherT, OptionT}
 import scalaz.std.scalaFuture._
 import play.api.mvc.Results.{Ok, Forbidden}
 import json.PaymentCardUpdateResultWriters._
+import scalaz.syntax.std.option._
+
 
 class AttributeController {
   
@@ -34,6 +36,25 @@ class AttributeController {
   lazy val mmaAction = mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaCardAction = corsCardFilter andThen BackendFromCookieAction
   lazy val metrics = CloudWatch("AttributesController")
+
+  def updateAttributes() = BackendFromCookieAction.async { implicit request =>
+
+    case class Err(cause: String)
+    val NoSubscription = Err("No subscription")
+    val NoSalesforce = Err("No contact")
+    val NoIdentity = Err("No user")
+
+    val res = (for {
+      identityId <- EitherT(Future.successful(authenticationService.userId \/> NoIdentity))
+      contact <- EitherT(request.touchpoint.contactRepo.get(identityId).map(_ \/> NoSalesforce))
+      sub <- EitherT(request.touchpoint.membershipSubscriptionService.get(contact)(Membership).map(_ \/> NoSubscription))
+      attrs = Attributes(identityId, sub.plan.tier.name, contact.regNumber)
+      res <- EitherT(request.touchpoint.attrService.set(attrs).map(\/.right))
+    } yield attrs).run
+
+    res.map(_.fold[Result](e => ApiErrors.badRequest(e.cause), a => Ok(Json.obj("updated" -> true))))
+       .recover { case _ => ApiErrors.internalError }
+  }
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
