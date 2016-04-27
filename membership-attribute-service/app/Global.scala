@@ -7,7 +7,7 @@ import play.api.mvc.{RequestHeader, Result, WithFilters}
 import play.filters.csrf._
 import scala.concurrent.Future
 
-object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader, LogRequestsFilter) {
+object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader) {
 
   private val logger = Logger(this.getClass)
 
