@@ -1,7 +1,6 @@
 package controllers
-
 import com.gu.memsub._
-import com.gu.services.model.PaymentDetails
+import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -9,31 +8,45 @@ import models.Features._
 import actions._
 import models._
 import monitoring.CloudWatch
-import play.api.data.Form
-import play.api.data.Forms._
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import play.api.mvc.Result
-import play.filters.cors.CORSActionBuilder
+import play.api.mvc.{Controller, Result}
 import _root_.services.{AuthenticationService, IdentityAuthService}
-import models.AccountDetails._
+import play.filters.cors.CORSActionBuilder
 import scala.concurrent.Future
-import scalaz.OptionT
+import scalaz.{\/, EitherT}
 import scalaz.std.scalaFuture._
-import play.api.mvc.Results.{Ok, Forbidden}
-import json.PaymentCardUpdateResultWriters._
+import scalaz.syntax.std.option._
 
-class AttributeController {
-  
-  lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig)
+
+class AttributeController extends Controller with LazyLogging {
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
-  lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig)
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
-  lazy val mmaAction = mmaCorsFilter andThen BackendFromCookieAction
-  lazy val mmaCardAction = corsCardFilter andThen BackendFromCookieAction
+  lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = CloudWatch("AttributesController")
+
+  def update = BackendFromCookieAction.async { implicit request =>
+
+    val result: EitherT[Future, String, Attributes] = for {
+      id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
+      contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
+      sub <- EitherT(request.touchpoint.membershipSubscriptionService.get(contact)(Membership).map(_ \/> s"No sub for $id"))
+      attributes = Attributes(id, sub.plan.tier.name, contact.regNumber)
+      res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
+    } yield attributes
+
+    result.run.map(_.fold(
+      error => {
+        logger.error(s"Failed to update attributes - $error")
+        ApiErrors.badRequest(error)
+      },
+      attributes => {
+        logger.info(s"${attributes.userId} -> ${attributes.tier}")
+        Ok(Json.obj("updated" -> true))
+      }
+    ))
+  }
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
@@ -52,41 +65,5 @@ class AttributeController {
     }
 
   def membership = lookup("membership", identity[Attributes])
-
-  def features = lookup("features",
-    onSuccess = Features.fromAttributes,
-    onNotFound = Features.unauthenticated
-  )
-
-  def membershipUpdateCard = updateCard(Membership)
-  def digitalPackUpdateCard = updateCard(Digipack)
-
-  def updateCard(implicit product: ProductFamily) = mmaCardAction.async { implicit request =>
-    val updateForm = Form { single("stripeToken" -> nonEmptyText) }
-    val tp = request.touchpoint
-
-    (for {
-      user <- OptionT(Future.successful(authenticationService.userId))
-      sfUser <- OptionT(tp.contactRepo.get(user))
-      subscription <- OptionT(tp.subService.get(sfUser))
-      stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
-      updateResult <- OptionT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
-    } yield updateResult match {
-      case success: CardUpdateSuccess => Ok(Json.toJson(success))
-      case failure: CardUpdateFailure => Forbidden(Json.toJson(failure))
-    }).run.map(_.getOrElse(notFound))
-  }
-
-  def membershipDetails = paymentDetails(Membership)
-  def digitalPackDetails = paymentDetails(Digipack)
-
-  def paymentDetails(implicit product: ProductFamily) = mmaAction.async { implicit request =>
-    (for {
-      user <- OptionT(Future.successful(authenticationService.userId))
-      contact <- OptionT(request.touchpoint.contactRepo.get(user))
-      sub <- OptionT(request.touchpoint.subService.getEither(contact))
-      details <- OptionT(request.touchpoint.paymentService.paymentDetails(sub).map[Option[PaymentDetails]](Some(_)))
-
-    } yield (contact, details).toResult).run.map(_ getOrElse Ok(Json.obj()))
-  }
+  def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Features.unauthenticated)
 }

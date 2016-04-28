@@ -3,15 +3,16 @@ GET        /healthcheck                                     controllers.HealthCh
 
 GET        /user-attributes/me/membership                   controllers.AttributeController.membership
 GET        /user-attributes/me/features                     controllers.AttributeController.features
+POST       /user-attributes/me/update                       controllers.AttributeController.update
 
-GET        /user-attributes/me/mma-digitalpack              controllers.AttributeController.digitalPackDetails
-GET        /user-attributes/me/mma-membership               controllers.AttributeController.membershipDetails
+GET        /user-attributes/me/mma-digitalpack              controllers.AccountController.digitalPackDetails
+GET        /user-attributes/me/mma-membership               controllers.AccountController.membershipDetails
 
-POST       /user-attributes/me/membership-update-card       controllers.AttributeController.membershipUpdateCard
-OPTIONS    /user-attributes/me/membership-update-card       controllers.AttributeController.membershipUpdateCard
+POST       /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
+OPTIONS    /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
 
-POST       /user-attributes/me/digitalpack-update-card      controllers.AttributeController.digitalPackUpdateCard
-OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AttributeController.digitalPackUpdateCard
+POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
+OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
 POST       /stripe-hook                                     controllers.StripeHookController.process
