@@ -16,3 +16,5 @@ OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountC
 
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
 POST       /stripe-hook                                     controllers.StripeHookController.process
+
+GET        /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
