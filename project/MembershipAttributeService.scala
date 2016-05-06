@@ -1,6 +1,6 @@
 import Dependencies._
 import PlayArtifact._
-import com.teambytes.sbt.dynamodb.DynamoDBLocal
+import com.localytics.sbt.dynamodb.DynamoDBLocalKeys._
 import play.sbt.PlayScala
 import play.sbt.routes.RoutesKeys._
 import sbt.Keys._
@@ -34,7 +34,6 @@ trait MembershipAttributeService {
       "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
       "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
       "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
-      "DynamoDB local" at "http://dynamodb-local.s3-website-us-west-2.amazonaws.com/release",
       Resolver.bintrayRepo("dwhjames", "maven"),
       Resolver.sonatypeRepo("releases")),
     sources in (Compile,doc) := Seq.empty,
@@ -44,10 +43,11 @@ trait MembershipAttributeService {
     javaOptions in Test += "-Dconfig.resource=DEV.conf"
   ) ++ buildInfoPlugin
 
-  lazy val dynamoDBLocalSettings = DynamoDBLocal.settings ++ Seq(
-    DynamoDBLocal.Keys.dynamoDBLocalDownloadDirectory := file("dynamodb-local"),
-    DynamoDBLocal.Keys.dynamoDBLocalVersion := "2014-10-07",
-    test in Test <<= (test in Test).dependsOn(DynamoDBLocal.Keys.startDynamoDBLocal)
+  lazy val dynamoDBLocalSettings = Seq(
+    dynamoDBLocalDownloadDir := file("dynamodb-local"),
+    startDynamoDBLocal <<= startDynamoDBLocal.dependsOn(compile in Test),
+    test in Test <<= (test in Test).dependsOn(startDynamoDBLocal),
+    testOptions in Test <+= dynamoDBLocalTestCleanup
   )
 
   def lib(name: String) = Project(name, file(name)).enablePlugins(PlayScala).settings(commonSettings: _*)
