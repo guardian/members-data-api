@@ -17,7 +17,7 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
 }
 
 class HealthCheckController extends Results {
-  val zuora = NormalTouchpointComponents.zuoraService
+  lazy val zuora = NormalTouchpointComponents.zuoraService
 
   val tests: Seq[Test] = Seq(
     new BoolTest("ZuoraPing", () => zuora.lastPingTimeWithin(2.minutes))
