@@ -6,6 +6,7 @@ import play.sbt.routes.RoutesKeys._
 import sbt.Keys._
 import sbt._
 import sbtbuildinfo.Plugin._
+import com.typesafe.sbt.packager.universal.UniversalPlugin.autoImport.useNativeZip
 
 trait MembershipAttributeService {
 
@@ -56,6 +57,7 @@ trait MembershipAttributeService {
     .settings(playArtifactDistSettings: _*)
     .settings(magentaPackageName := name)
     .settings(dynamoDBLocalSettings)
+    .settings(useNativeZip)
 }
 
 object MembershipAttributeService extends Build with MembershipAttributeService {
@@ -70,3 +72,4 @@ object MembershipAttributeService extends Build with MembershipAttributeService 
 
   val root = Project("root", base=file(".")).aggregate(api)
 }
+
