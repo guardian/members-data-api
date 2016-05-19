@@ -1,7 +1,12 @@
 package repositories
 
-import com.amazonaws.services.dynamodbv2.model.{ComparisonOperator, Condition, QueryRequest}
-import com.github.dwhjames.awswrap.dynamodb._
+import java.time.Instant
+import java.time.temporal.ChronoUnit.DAYS
+
+import cats.data.Xor
+import com.gu.scanamo._
+import com.gu.scanamo.syntax._
+import com.gu.scanamo.error.DynamoReadError
 import configuration.Config
 
 import scala.collection.convert.decorateAsScala._
@@ -10,28 +15,32 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object BrowserIdStats {
+
+  implicit val instantMillisFormat = DynamoFormat.coercedXmap[Instant, Long, IllegalArgumentException](Instant.ofEpochMilli)(_.toEpochMilli)
+
+  case class StoredPageViews(browserId: String, userId: String, pageViewsByTag: Map[String, Map[String, Instant]])
+
   val BrowserId = "browserId"
 
-  val tableName: String = s"friendly-tailor-${Config.stage}"
+  val table = Table[StoredPageViews](s"friendly-tailor-${Config.stage}")
+
+  val client = Config.dynamoMapper.client.client
 
   def getPathsByTagFor(browserId: String, tags: Set[String]): Future[Map[String, Set[String]]]= {
-    val condition = new Condition()
-      .withComparisonOperator(ComparisonOperator.EQ)
-      .withAttributeValueList(new AttributeValue().withS(browserId))
-
-    val q = new QueryRequest()
-        .withTableName(tableName)
-        .addKeyConditionsEntry(BrowserId, condition)
+    val recencyThreshold = Instant.now().minus(7, DAYS)
 
     for {
-      queryResult <- Config.dynamoMapper.client.query(q)
-    } yield (for {
+      result: Traversable[Xor[DynamoReadError, StoredPageViews]] <- ScanamoAsync.exec(client)(table.query('browserId -> browserId))
+    } yield {
+      val storedPageViewsList: List[StoredPageViews] = result.toList.flatMap(_.toOption)
+      (for {
         tag <- tags
       } yield tag -> (for {
-        item <- queryResult.getItems.map(_.asScala)
-        pathSet <- item.get(tag).toSeq
-        path: String <- pathSet.getSS
+        item <- storedPageViewsList
+        timesByPath <- item.pageViewsByTag.get(tag).toSeq
+        (path, time) <- timesByPath if time.isAfter(recencyThreshold)
       } yield path).toSet
-    ).toMap
+        ).toMap
+    }
   }
 }
