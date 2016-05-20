@@ -27,6 +27,7 @@ class StripeHookController extends Controller with LazyLogging {
       } yield {
         tp.identityService.setMarketingPreference(identityId, allowMarketing)
         logger.info(s"$identityId marketing -> $allowMarketing")
+        tp.snsGiraffeService.publish(eventFromStripe.`object`)
       }).run
       .map(_.fold[Result](Ok(Json.obj("updated" -> false)))
                          (_ => Ok(Json.obj("updated" -> true))))
