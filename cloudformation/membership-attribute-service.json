@@ -409,16 +409,14 @@
   "TopicGiraffe": {
     "Type": "AWS::SNS::Topic",
     "Properties": {
-      "DisplayName": "Giraffe",
-      "TopicName": "Giraffe"
+      "TopicName": "giraffe-prod"
     }
   },
 
   "TopicGiraffeUAT": {
     "Type": "AWS::SNS::Topic",
     "Properties": {
-      "DisplayName": "GiraffeUAT",
-      "TopicName": "GiraffeUAT"
+      "TopicName": "giraffe-pre-prod"
       }
     }
 }
