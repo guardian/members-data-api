@@ -18,3 +18,4 @@ POST       /salesforce-hook                                 controllers.Salesfor
 POST       /stripe-hook                                     controllers.StripeHookController.process
 
 GET        /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
+OPTIONS    /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])

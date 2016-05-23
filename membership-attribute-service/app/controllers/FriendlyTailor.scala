@@ -13,7 +13,7 @@ import scala.concurrent.Future
 
 class FriendlyTailor extends Controller with LazyLogging {
 
-  def lookup(tags: Seq[String]) = CORSActionBuilder(Config.corsConfig).async { request =>
+  def lookup(tags: Seq[String]) = CORSActionBuilder(Config.ftCorsConfig).async { request =>
     require(tags.nonEmpty)
     require(tags.size < 5)
 

@@ -50,6 +50,10 @@ object Config {
     allowedOrigins = config.getStringList("mma.cors.allowedOrigins").asScala.toSet
   )
 
+  val ftCorsConfig = CORSConfig.denyAll.copy(
+    allowedOrigins = config.getStringList("ft.cors.allowedOrigins").asScala.toSet
+  )
+
   lazy val mmaCardCorsConfig = Config.mmaCorsConfig.copy(
     isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
     isHttpMethodAllowed = _ == "POST",
