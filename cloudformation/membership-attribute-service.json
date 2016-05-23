@@ -176,7 +176,7 @@
               {
                 "Effect":"Allow",
                 "Action":["sns:Publish"],
-                "Resource":{"Ref":"TopicGiraffePreProd"}
+                "Resource":{"Ref":"TopicGiraffeUAT"}
               },
               {
                 "Effect": "Allow",
@@ -409,16 +409,16 @@
   "TopicGiraffe": {
     "Type": "AWS::SNS::Topic",
     "Properties": {
-      "DisplayName": "TopicGiraffe",
-      "TopicName": "TopicGiraffe"
+      "DisplayName": "Giraffe",
+      "TopicName": "Giraffe"
     }
   },
 
-  "TopicGiraffePreProd": {
+  "TopicGiraffeUAT": {
     "Type": "AWS::SNS::Topic",
     "Properties": {
-      "DisplayName": "TopicGiraffePreProd",
-      "TopicName": "TopicGiraffePreProd"
+      "DisplayName": "GiraffeUAT",
+      "TopicName": "GiraffeUAT"
       }
     }
 }
