@@ -25,11 +25,13 @@ object BrowserIdStats {
 
   val table = Table[StoredPageViews](s"friendly-tailor-${Config.stage}")
 
+  val userIdIndex = table.index("userIdIndexKey-browserId-index")
+
   val client = Config.dynamoMapper.client.client
 
   def getStatsForBrowserId(browserId: String) = getStoredPageViewsByTag(table.query('browserId -> browserId)) _
 
-  def getStatsForUserId(userId: String) = getStoredPageViewsByTag(table.query('userIdIndexKey -> userId)) _
+  def getStatsForUserId(userId: String) = getStoredPageViewsByTag(userIdIndex.query('userIdIndexKey -> userId)) _
 
   def getStoredPageViewsByTag(pageViewsQuery: ScanamoOps[Stream[Xor[DynamoReadError,StoredPageViews]]])(tags: Set[String]): Future[Map[String, Set[String]]]= {
     val recencyThreshold = Instant.now().minus(7, DAYS)
