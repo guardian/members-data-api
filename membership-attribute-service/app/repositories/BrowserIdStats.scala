@@ -7,6 +7,7 @@ import cats.data.Xor
 import com.gu.scanamo._
 import com.gu.scanamo.syntax._
 import com.gu.scanamo.error.DynamoReadError
+import com.gu.scanamo.ops._
 import configuration.Config
 
 import scala.collection.convert.decorateAsScala._
@@ -26,11 +27,15 @@ object BrowserIdStats {
 
   val client = Config.dynamoMapper.client.client
 
-  def getPathsByTagFor(browserId: String, tags: Set[String]): Future[Map[String, Set[String]]]= {
+  def getStatsForBrowserId(browserId: String) = getStoredPageViewsByTag(table.query('browserId -> browserId)) _
+
+  def getStatsForUserId(userId: String) = getStoredPageViewsByTag(table.query('userIdIndexKey -> userId)) _
+
+  def getStoredPageViewsByTag(pageViewsQuery: ScanamoOps[Stream[Xor[DynamoReadError,StoredPageViews]]])(tags: Set[String]): Future[Map[String, Set[String]]]= {
     val recencyThreshold = Instant.now().minus(7, DAYS)
 
     for {
-      result: Traversable[Xor[DynamoReadError, StoredPageViews]] <- ScanamoAsync.exec(client)(table.query('browserId -> browserId))
+      result: Traversable[Xor[DynamoReadError, StoredPageViews]] <- ScanamoAsync.exec(client)(pageViewsQuery)
     } yield {
       val storedPageViewsList: List[StoredPageViews] = result.toList.flatMap(_.toOption)
       (for {
