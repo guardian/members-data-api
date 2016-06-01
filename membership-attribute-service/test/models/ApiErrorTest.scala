@@ -12,7 +12,8 @@ class ApiErrorTest extends Specification {
         Json.parse("""
           | {
           |   "message": "message",
-          |   "details": "details"
+          |   "details": "details",
+          |   "statusCode": 400
           | }
         """.stripMargin)
     }

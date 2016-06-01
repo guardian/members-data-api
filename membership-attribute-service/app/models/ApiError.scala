@@ -11,7 +11,8 @@ object ApiError {
   implicit val apiErrorWrites = new Writes[ApiError] {
     override def writes(o: ApiError): JsValue = Json.obj(
       "message" -> o.message,
-      "details" -> o.details
+      "details" -> o.details,
+      "statusCode" -> o.statusCode
     )
   }
   implicit def apiErrorToResult(err: ApiError): Result = {
