@@ -169,6 +169,16 @@
                 "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD"
               },
               {
+                "Effect":"Allow",
+                "Action":["sns:Publish"],
+                "Resource":{"Ref":"TopicGiraffe"}
+              },
+              {
+                "Effect":"Allow",
+                "Action":["sns:Publish"],
+                "Resource":{"Ref":"TopicGiraffeUAT"}
+              },
+              {
                 "Effect": "Allow",
                 "Action": [
                   "dynamodb:Query"
@@ -401,5 +411,19 @@
     "LoadBalancerUrl": {
       "Value": { "Fn::GetAtt": ["LoadBalancer", "DNSName"] }
     }
-  }
+  },
+
+  "TopicGiraffe": {
+    "Type": "AWS::SNS::Topic",
+    "Properties": {
+      "TopicName": "giraffe-prod"
+    }
+  },
+
+  "TopicGiraffeUAT": {
+    "Type": "AWS::SNS::Topic",
+    "Properties": {
+      "TopicName": "giraffe-pre-prod"
+      }
+    }
 }
