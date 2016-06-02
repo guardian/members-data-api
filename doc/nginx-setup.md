@@ -26,6 +26,9 @@ block
     openssl x509 -req -in "members-data-api.csr" -signkey "members-data-api.key" -out "members-data-api.crt"
 ```
 
+- When prompted for "information that will be incorporated into your certificate request" you can leave all the fields
+blank except for Common Name, which much be members-data-api.thegulocal.com
+
 - Reload Nginx: `nginx -s reload`
 
 - Redirect traffic from your subdomain to your local machine by adding this line to `/etc/hosts`:
