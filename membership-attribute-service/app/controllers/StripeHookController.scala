@@ -17,23 +17,39 @@ import scalaz.OptionT
 
 class StripeHookController extends Controller with LazyLogging {
 
-  def process = Action.async { implicit request =>
+  def updatePrefs = Action.async { implicit request =>
     request.body.asJson.map(Json.fromJson[Event[StripeObject]](_)).fold[Future[Result]] {
       Future.successful(BadRequest("No JSON found in request body"))
     } { event =>
       (for {
         e <- OptionT(Future.successful(event.asOpt))
         tp = if (e.liveMode) NormalTouchpointComponents else TestTouchpointComponents
-        //eventFromStripe <- OptionT(tp.giraffeStripeService.Event.findCharge(e.id))
-      //   identityId <- OptionT(tp.identityService.user(eventFromStripe.`object`.receipt_email))
-      //  allowMarketing <- OptionT(Future.successful(eventFromStripe.`object`.metadata.get("marketing-opt-in").map(_ == "true")))
+        eventFromStripe <- OptionT(tp.giraffeStripeService.Event.findCharge(e.id))
+        identityId <- OptionT(tp.identityService.user(eventFromStripe.`object`.receipt_email))
+        allowMarketing <- OptionT(Future.successful(eventFromStripe.`object`.metadata.get("marketing-opt-in").map(_ == "true")))
       } yield {
-        //  tp.identityService.setMarketingPreference(identityId, allowMarketing)
-        //  logger.info(s"$identityId marketing -> $allowMarketing")
-        tp.snsGiraffeService.publish(new Stripe.Charge("123", "jonny@hu.com", Map("idTest" -> "er")))
+          tp.identityService.setMarketingPreference(identityId, allowMarketing)
+          logger.info(s"$identityId marketing -> $allowMarketing")
       }).run
         .map(_.fold[Result](Ok(Json.obj("updated" -> false)))
           (_ => Ok(Json.obj("updated" -> true))))
+    }
+  }
+
+
+  def publishToSns = Action.async { implicit request =>
+    request.body.asJson.map(Json.fromJson[Event[StripeObject]](_)).fold[Future[Result]] {
+      Future.successful(BadRequest("No JSON found in request body"))
+    } { event =>
+      (for {
+        e <- OptionT(Future.successful(event.asOpt))
+        tp = if (e.liveMode) NormalTouchpointComponents else TestTouchpointComponents
+        eventFromStripe <- OptionT(tp.giraffeStripeService.Event.findCharge(e.id))
+      } yield {
+        tp.snsGiraffeService.publish(eventFromStripe.`object`)
+      }).run
+        .map(_.fold[Result](Ok(Json.obj("event found" -> false)))
+          (_ => Ok(Json.obj("event found" -> true))))
     }
   }
 
