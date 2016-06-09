@@ -6,6 +6,8 @@ import play.api.mvc.Result
 import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
 
 case class ContentAccess(member: Boolean, paidMember: Boolean)
 
@@ -25,8 +27,13 @@ case class Attributes(UserId: String, Tier: String, MembershipNumber: Option[Str
 }
 
 object Attributes {
-  implicit val jsWrite: Writes[Attributes] =
-    Json.writes[Attributes].asInstanceOf[OWrites[Attributes]].addField("contentAccess", _.contentAccess)
+
+  implicit val jsWrite: OWrites[Attributes] = (
+      (__ \ "userId").write[String] and
+        (__ \ "tier").write[String] and
+        (__ \ "membershipNumber").writeNullable[String] and
+    (__ \ "isPublic").writeNullable[Boolean]
+  )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
