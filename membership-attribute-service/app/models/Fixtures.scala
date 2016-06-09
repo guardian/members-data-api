@@ -2,8 +2,8 @@ package models
 
 object Fixtures {
   val membershipAttributes = Attributes(
-    userId = "123",
-    tier = "Patron",
-    membershipNumber = Some("456")
+    UserId = "123",
+    Tier = "Patron",
+    MembershipNumber = Some("456")
   )
 }

@@ -16,10 +16,10 @@ object Features {
   def fromAttributes(attributes: Attributes) = {
     // TODO: Once this officially launches, this should be:
     // attributes.isPaidTier && (user has opted INTO the ad free experience)
-    val adfreeEnabled = attributes.isPaidTier && Config.preReleaseUsersIds.contains(attributes.userId)
+    val adfreeEnabled = attributes.isPaidTier && Config.preReleaseUsersIds.contains(attributes.UserId)
     
     Features(
-      userId = Some(attributes.userId),
+      userId = Some(attributes.UserId),
       adFree = adfreeEnabled,
       adblockMessage = !(attributes.isPaidTier)
     )

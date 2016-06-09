@@ -9,11 +9,11 @@ class AttributesTest extends Specification {
 
     "isPaidTier returns" should {
       "true if the user is not a Guardian Friend" in {
-        attrs.copy(tier = "Paid tier").isPaidTier shouldEqual true
+        attrs.copy(Tier = "Paid tier").isPaidTier shouldEqual true
       }
 
       "false if the user is a Guardian Friend" in {
-        attrs.copy(tier = "Friend").isPaidTier shouldEqual false
+        attrs.copy(Tier = "Friend").isPaidTier shouldEqual false
       }
     }
   }

@@ -21,14 +21,14 @@ class TierPublicityController extends Controller {
       user <- OptionT(Future.successful(authenticationService.userId))
       formData <- OptionT(Future.successful(form.bindFromRequest.value))
       currentAttributes <- OptionT(service.get(userId = user))
-      newAttributes = currentAttributes.copy(publicTierOptIn = formData.some)
+      newAttributes = currentAttributes.copy(PublicTier = formData.some)
       pres <- OptionT(service.set(newAttributes).map(_.some))
     } yield pres).fold(_ => Ok, BadRequest)
   }
 
   def tierDetails(ids: List[String]) = BackendFromCookieAction.async { r =>
     ids.headOption.fold(Future.successful(Ok(Json.toJson(Map.empty[String, String]))))(_ => r.touchpoint.attrService.getMany(ids).map { attrs =>
-      attrs.filter(_.allowsPublicTierDisplay).map(a => a.userId -> a.tier).toMap
+      attrs.filter(_.allowsPublicTierDisplay).map(a => a.UserId -> a.Tier).toMap
     }.map(ids => Ok(Json.toJson(ids))))
   }
 }
