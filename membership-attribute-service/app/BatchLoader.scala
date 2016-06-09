@@ -31,10 +31,10 @@ object BatchLoader {
     })({ path =>
       val file = new File(path)
       dynamoMapper.scan[Attributes](Map.empty).onSuccess { case existing =>
-        val existingIds = existing.map(_.userId).toSet
+        val existingIds = existing.map(_.UserId).toSet
         val requests = SalesforceCSVExport
           .membersAttributes(file)
-          .filterNot { attrs => existingIds.contains(attrs.userId) }
+          .filterNot { attrs => existingIds.contains(attrs.UserId) }
           .map(writeRequest)
         val loader = new SingleThreadedBatchWriter(table, AWS.credentialsProvider)
         loader.client.withRegion(Regions.EU_WEST_1)

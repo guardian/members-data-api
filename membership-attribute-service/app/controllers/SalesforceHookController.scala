@@ -42,13 +42,13 @@ class SalesforceHookController extends LazyLogging {
         attributeService.delete(userId).map(const(ack))
       case \/-(MembershipUpdate(attrs)) =>
         (for {
-          sfId <- OptionT(touchpoint.contactRepo.get(attrs.userId))
+          sfId <- OptionT(touchpoint.contactRepo.get(attrs.UserId))
           membershipSubscription <- OptionT(touchpoint.membershipSubscriptionService.get(sfId))
         } yield {
-          val tierFromSalesforceWebhook = attrs.tier
+          val tierFromSalesforceWebhook = attrs.Tier
           val tierFromZuora = membershipSubscription.plan.tier.name
           if (tierFromZuora != tierFromSalesforceWebhook) logger.info(s"Differing tier info for $sfId : webhook=$tierFromSalesforceWebhook zuora=$tierFromZuora")
-          attrs.copy(tier = tierFromZuora)
+          attrs.copy(Tier = tierFromZuora)
         }).run.map { attrsUpdatedWithZuoraOpt =>
           if (attrsUpdatedWithZuoraOpt.isEmpty) logger.error(s"Couldn't update $attrs with information from Zuora")
           attributeService.set(attrsUpdatedWithZuoraOpt.getOrElse(attrs)).foreach(_ => metrics.put("Update", 1))

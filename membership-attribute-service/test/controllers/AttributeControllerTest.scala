@@ -42,6 +42,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         override def set(attributes: Attributes) = ???
         override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
         override def delete(userId: String) = ???
+        override def getMany(userIds: List[String]): Future[Seq[Attributes]] = ???
       }
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {

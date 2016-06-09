@@ -42,7 +42,7 @@ class AttributeController extends Controller with LazyLogging {
         ApiErrors.badRequest(error)
       },
       attributes => {
-        logger.info(s"${attributes.userId} -> ${attributes.tier}")
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier}")
         Ok(Json.obj("updated" -> true))
       }
     ))

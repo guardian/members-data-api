@@ -1,9 +1,11 @@
 package components
 
 import akka.actor.ActorSystem
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.gu.config
 import com.gu.memsub.{Digipack, Membership, ProductFamily}
-import com.gu.memsub.services.{PromoService, CatalogService, PaymentService, SubscriptionService}
+import com.gu.memsub.services.{CatalogService, PaymentService, PromoService, SubscriptionService}
 import com.gu.monitoring.ServiceMetrics
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
@@ -12,9 +14,8 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.{ZuoraService, rest}
 import com.squareup.okhttp.OkHttpClient
 import configuration.Config
-import repositories.MembershipAttributesSerializer
 import services.IdentityService.IdentityConfig
-import services.{IdentityService, AttributeService, DynamoAttributeService}
+import services.{AttributeService, IdentityService, ScanamoAttributeService}
 
 class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   implicit val ec = system.dispatcher
@@ -45,7 +46,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"))
   lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
-  lazy val attrService: AttributeService = DynamoAttributeService(MembershipAttributesSerializer(dynamoTable))
+  lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient().withRegion(Regions.EU_WEST_1), dynamoTable)
   lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans)
   lazy val catalogService = CatalogService(restClient, membershipPlans, digitalPackPlans, stage)
   lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
