@@ -12,14 +12,14 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String) 
   def run[T] = ScanamoAsync.exec[T](client) _
 
   override def get(userId: String): Future[Option[Attributes]] =
-    run(scanamo.get('userId -> userId).map(_.flatMap(_.toOption)))
+    run(scanamo.get('UserId -> userId).map(_.flatMap(_.toOption)))
 
   def getMany(userIds: List[String]): Future[Seq[Attributes]] =
-    run(scanamo.getAll('userid -> userIds)).map(_.flatMap(_.toOption))
+    run(scanamo.getAll('UserId -> userIds)).map(_.flatMap(_.toOption))
 
   override def set(attributes: Attributes): Future[Unit] =
     run(scanamo.put(attributes)).map(_ => Unit)
 
   override def delete(userId: String): Future[Unit] =
-    run(scanamo.delete('userId -> userId)).map(_ => Unit)
+    run(scanamo.delete('UserId -> userId)).map(_ => Unit)
 }

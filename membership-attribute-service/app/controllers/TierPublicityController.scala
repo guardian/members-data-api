@@ -26,9 +26,10 @@ class TierPublicityController extends Controller {
     } yield pres).fold(_ => Ok, BadRequest)
   }
 
-  def tierDetails(identityIds: List[String]) = BackendFromCookieAction.async { r =>
-    r.touchpoint.attrService.getMany(identityIds).map { ids =>
-      ids.filter(_.allowsPublicTierDisplay).map(a => a.userId -> a.tier).toMap
+  def tierDetails(ids: List[String]) = BackendFromCookieAction.async { r =>
+    println(ids)
+    r.touchpoint.attrService.getMany(ids).map { attrs =>
+      attrs.filter(_.allowsPublicTierDisplay).map(a => a.userId -> a.tier).toMap
     }.map(ids => Ok(Json.toJson(ids)))
   }
 }

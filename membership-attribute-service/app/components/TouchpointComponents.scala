@@ -1,6 +1,7 @@
 package components
 
 import akka.actor.ActorSystem
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.gu.config
 import com.gu.memsub.{Digipack, Membership, ProductFamily}
@@ -45,7 +46,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, metrics("zuora-soap"))
   lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
-  lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(), dynamoTable)
+  lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient().withRegion(Regions.EU_WEST_1), dynamoTable)
   lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans)
   lazy val catalogService = CatalogService(restClient, membershipPlans, digitalPackPlans, stage)
   lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
