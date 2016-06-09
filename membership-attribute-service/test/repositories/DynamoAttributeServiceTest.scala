@@ -75,14 +75,11 @@ class DynamoAttributeServiceTest extends Specification {
     )
 
     "Fetch many people by user id" in {
-      Await.result(Future.sequence(testUsers.map(repo.set)), 5.seconds)/*
+      Await.result(Future.sequence(testUsers.map(repo.set)), 5.seconds)
       Await.result(repo.getMany(List("1234", "3456", "abcd")), 5.seconds) mustEqual Seq(
         Attributes("1234", "Partner", None),
         Attributes("3456", "Partner", None)
-      )*/
-      true mustEqual true
+      )
     }
-
   }
-
 }
