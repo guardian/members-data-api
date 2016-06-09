@@ -29,9 +29,9 @@ case class Attributes(UserId: String, Tier: String, MembershipNumber: Option[Str
 object Attributes {
 
   implicit val jsWrite: OWrites[Attributes] = (
-      (__ \ "userId").write[String] and
-        (__ \ "tier").write[String] and
-        (__ \ "membershipNumber").writeNullable[String] and
+    (__ \ "userId").write[String] and
+    (__ \ "tier").write[String] and
+    (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "isPublic").writeNullable[Boolean]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
