@@ -40,7 +40,7 @@ class TierPublicityController extends Controller {
     } yield pres).fold(_ => Ok, BadRequest)
   }
 
-  def tierDetails(ids: List[String]) = BackendFromCookieAction.async { r =>
+  def tierDetails(ids: List[String]) = publicTierGetAction.async { r =>
     getPublicTiers(ids, r.touchpoint.attrService).map(ids => Ok(Json.toJson(ids)))
   }
 }
