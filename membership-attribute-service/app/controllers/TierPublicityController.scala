@@ -23,7 +23,7 @@ class TierPublicityController extends Controller {
       currentAttributes <- OptionT(service.get(userId = user))
       newAttributes = currentAttributes.copy(publicTierOptIn = formData.some)
       pres <- OptionT(service.set(newAttributes).map(_.some))
-    } yield pres).fold(_ => Ok("Fine"), BadRequest)
+    } yield pres).fold(_ => Ok, BadRequest)
   }
 
   def tierDetails(identityIds: List[String]) = BackendFromCookieAction.async { r =>
