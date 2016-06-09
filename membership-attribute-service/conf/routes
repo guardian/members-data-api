@@ -1,6 +1,10 @@
 # Healthcheck
 GET        /healthcheck                                     controllers.HealthCheckController.healthCheck
 
+
+GET        /user-attributes/tier/public                     controllers.TierPublicityController.tierDetails(identityIds: List[String])
+POST       /user-attributes/tier/public                     controllers.TierPublicityController.allowPublic
+
 GET        /user-attributes/me/membership                   controllers.AttributeController.membership
 GET        /user-attributes/me/features                     controllers.AttributeController.features
 POST       /user-attributes/me/update                       controllers.AttributeController.update

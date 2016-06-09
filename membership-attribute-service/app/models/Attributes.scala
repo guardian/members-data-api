@@ -13,10 +13,11 @@ object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 
-case class Attributes(userId: String, tier: String, membershipNumber: Option[String]) {
+case class Attributes(userId: String, tier: String, membershipNumber: Option[String], publicTierOptIn: Option[Boolean] = None) {
   require(tier.nonEmpty)
   require(userId.nonEmpty)
 
+  lazy val allowsPublicTierDisplay = publicTierOptIn.exists(identity)
   lazy val isFriendTier = tier.equalsIgnoreCase("friend")
   lazy val isPaidTier = !isFriendTier
 

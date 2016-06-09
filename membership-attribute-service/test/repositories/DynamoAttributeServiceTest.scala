@@ -9,7 +9,7 @@ import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDy
 import models.Attributes
 import org.specs2.mutable.Specification
 import repositories.MembershipAttributesSerializer.AttributeNames
-import services.DynamoAttributeService
+import services.ScanamoAttributeService
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -25,11 +25,9 @@ class DynamoAttributeServiceTest extends Specification {
   private val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
 
-  private val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
-  private val dynamoMapper = AmazonDynamoDBScalaMapper(dynamoClient)
   private val testTable = "MembershipAttributes-TEST"
   implicit private val serializer = MembershipAttributesSerializer(testTable)
-  private val repo = DynamoAttributeService(dynamoMapper)(serializer)
+  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
   val tableRequest =
     new CreateTableRequest()
@@ -41,6 +39,7 @@ class DynamoAttributeServiceTest extends Specification {
       .withKeySchema(
         Schema.hashKey(AttributeNames.userId))
 
+  private val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
 
   "get" should {
@@ -62,6 +61,25 @@ class DynamoAttributeServiceTest extends Specification {
 
       Await.result(result, 5.seconds) shouldEqual None
     }
+  }
+
+  "getMany" should {
+
+    val testUsers = Seq(
+      Attributes("1234", "Partner", None),
+      Attributes("2345", "Partner", None),
+      Attributes("3456", "Partner", None),
+      Attributes("4567", "Partner", None)
+    )
+
+    "Fetch many people by user id" in {
+      testUsers.map(repo.set)
+      repo.getMany(List("1234", "3456", "abcd")) mustEqual Seq(
+        Attributes("1234", "Partner", None),
+        Attributes("3456", "Partner", None)
+      )
+    }
+
   }
 
 }
