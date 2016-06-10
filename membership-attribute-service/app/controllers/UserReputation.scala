@@ -2,10 +2,12 @@ package controllers
 
 import com.gu.identity.play.AuthenticatedIdUser
 import com.typesafe.scalalogging.LazyLogging
+import configuration.Config
 import controllers.UVAuth._
 import play.api.libs.json.Json.toJson
 import play.api.mvc.Security.{AuthenticatedBuilder, AuthenticatedRequest}
 import play.api.mvc.{ActionBuilder, Controller}
+import play.filters.cors.CORSActionBuilder
 import repositories.Reputation
 import services.IdentityAuthService
 
@@ -21,7 +23,7 @@ object UVAuth {
 
 class UserReputation extends Controller with LazyLogging {
 
-  def reputation()  = authenticated().async { idRequest =>
+  def reputation()  = (CORSActionBuilder(Config.ftCorsConfig) andThen authenticated()).async { idRequest =>
     Reputation.getUserVerification(idRequest.user.id).map(v => Ok(toJson(v)))
   }
 
