@@ -22,7 +22,7 @@ class TierPublicityController extends Controller {
   lazy val publicTierSetAction = publicTierSetCorsFilter andThen BackendFromCookieAction
 
   lazy val publicTierGetCorsFilter = CORSActionBuilder(Config.publicTierGetCorsConfig)
-  lazy val publicTierGetAction = publicTierGetCorsFilter andThen BackendFromCookieAction
+  lazy val publicTierGetAction = publicTierGetCorsFilter andThen BackendFromSalesforceAction
 
   def getPublicTiers(ids: List[String], dynamo: AttributeService): Future[Map[String, String]] =
     ids.headOption.fold(Future.successful(Map.empty[String, String]))(_ => dynamo.getMany(ids).map { attrs =>
