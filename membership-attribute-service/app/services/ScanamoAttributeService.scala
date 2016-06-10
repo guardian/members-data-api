@@ -15,7 +15,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String) 
     run(scanamo.get('UserId -> userId).map(_.flatMap(_.toOption)))
 
   def getMany(userIds: List[String]): Future[Seq[Attributes]] =
-    run(scanamo.getAll('UserId -> userIds)).map(_.flatMap(_.toOption))
+    run(scanamo.getAll('UserId -> userIds.toSet.toList)).map(_.flatMap(_.toOption))
 
   override def set(attributes: Attributes): Future[Unit] =
     run(scanamo.put(attributes)).map(_ => Unit)
