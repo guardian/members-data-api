@@ -164,6 +164,14 @@
               {
                 "Effect": "Allow",
                 "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem"
+                ],
+                "Resource": "arn:aws:dynamodb:*:*:table/hackday-user-reputation"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
                   "dynamodb:Query"
                 ],
                 "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD"
