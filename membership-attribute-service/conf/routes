@@ -24,3 +24,6 @@ POST       /stripe-hook                                     controllers.StripeHo
 
 GET        /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
 OPTIONS    /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
+
+GET        /verify/justgiving                               controllers.UserReputation.verifyJustGiving(jgDonationId: Long, returnUrl)
+GET        /reputation                                      controllers.UserReputation.reputation()
