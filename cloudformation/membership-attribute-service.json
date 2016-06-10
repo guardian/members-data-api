@@ -137,8 +137,8 @@
                   "dynamodb:PutItem",
                   "dynamodb:GetItem",
                   "dynamodb:UpdateItem",
-                  "dynamodb:DeleteItem"
-
+                  "dynamodb:DeleteItem",
+                  "dynamodb:BatchGetItem"
                 ],
                 "Resource": {
                   "Fn::FindInMap": ["StageVariables", {
@@ -152,8 +152,8 @@
                   "dynamodb:PutItem",
                   "dynamodb:GetItem",
                   "dynamodb:UpdateItem",
-                  "dynamodb:DeleteItem"
-
+                  "dynamodb:DeleteItem",
+                  "dynamodb:BatchGetItem"
                 ],
                 "Resource": {
                   "Fn::FindInMap": ["StageVariables", {
