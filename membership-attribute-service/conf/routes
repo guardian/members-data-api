@@ -4,6 +4,7 @@ GET        /healthcheck                                     controllers.HealthCh
 
 GET        /user-attributes/tier/public                     controllers.TierPublicityController.tierDetails(ids: List[String])
 POST       /user-attributes/tier/public                     controllers.TierPublicityController.allowPublic
+OPTIONS    /user-attributes/tier/public                     controllers.TierPublicityController.allowPublic
 
 GET        /user-attributes/me/membership                   controllers.AttributeController.membership
 GET        /user-attributes/me/features                     controllers.AttributeController.features

@@ -54,6 +54,20 @@ object Config {
     allowedOrigins = config.getStringList("ft.cors.allowedOrigins").asScala.toSet
   )
 
+  val publicTierSetCorsConfig = CORSConfig.denyAll.copy(
+    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin", "x-requested-with").contains(_),
+    allowedOrigins = config.getStringList("publicTierSet.cors.allowedOrigins").asScala.toSet,
+    isHttpMethodAllowed = _ == "POST",
+    supportsCredentials = true
+  )
+
+  val publicTierGetCorsConfig = CORSConfig.denyAll.copy(
+    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
+    allowedOrigins = config.getStringList("publicTierGet.cors.allowedOrigins").asScala.toSet,
+    isHttpMethodAllowed = _ == "GET",
+    supportsCredentials = true
+  )
+
   lazy val mmaCardCorsConfig = Config.mmaCorsConfig.copy(
     isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
     isHttpMethodAllowed = _ == "POST",

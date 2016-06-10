@@ -10,18 +10,26 @@ import scalaz.std.scalaFuture._
 import scala.concurrent.Future
 import scalaz.OptionT
 import actions._
+import configuration.Config
+import play.filters.cors.CORSActionBuilder
 
 class TierPublicityController extends Controller {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   val form = Form(Forms.single("allowPublic" -> Forms.boolean))
 
+  lazy val publicTierSetCorsFilter = CORSActionBuilder(Config.publicTierSetCorsConfig)
+  lazy val publicTierSetAction = publicTierSetCorsFilter andThen BackendFromCookieAction
+
+  lazy val publicTierGetCorsFilter = CORSActionBuilder(Config.publicTierGetCorsConfig)
+  lazy val publicTierGetAction = publicTierGetCorsFilter andThen BackendFromSalesforceAction
+
   def getPublicTiers(ids: List[String], dynamo: AttributeService): Future[Map[String, String]] =
     ids.headOption.fold(Future.successful(Map.empty[String, String]))(_ => dynamo.getMany(ids).map { attrs =>
       attrs.filter(_.allowsPublicTierDisplay).map(a => a.UserId -> a.Tier).toMap
     })
 
-  def allowPublic = BackendFromCookieAction.async { implicit r =>
+  def allowPublic = publicTierSetAction.async { implicit r =>
     val service = r.touchpoint.attrService
     (for {
       user <- OptionT(Future.successful(authenticationService.userId))
@@ -32,7 +40,7 @@ class TierPublicityController extends Controller {
     } yield pres).fold(_ => Ok, BadRequest)
   }
 
-  def tierDetails(ids: List[String]) = BackendFromCookieAction.async { r =>
+  def tierDetails(ids: List[String]) = publicTierGetAction.async { r =>
     getPublicTiers(ids, r.touchpoint.attrService).map(ids => Ok(Json.toJson(ids)))
   }
 }
