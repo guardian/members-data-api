@@ -28,8 +28,8 @@ class StripeHookController extends Controller with LazyLogging {
         identityId <- OptionT(tp.identityService.user(eventFromStripe.`object`.receipt_email))
         allowMarketing <- OptionT(Future.successful(eventFromStripe.`object`.metadata.get("marketing-opt-in").map(_ == "true")))
       } yield {
-          tp.identityService.setMarketingPreference(identityId, allowMarketing)
-          logger.info(s"$identityId marketing -> $allowMarketing")
+        tp.identityService.setMarketingPreference(identityId, allowMarketing)
+        logger.info(s"$identityId marketing -> $allowMarketing")
       }).run
         .map(_.fold[Result](Ok(Json.obj("updated" -> false)))
           (_ => Ok(Json.obj("updated" -> true))))
