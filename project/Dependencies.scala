@@ -18,6 +18,7 @@ object Dependencies {
   val scanamo = "com.gu" %% "scanamo" % "0.4.0"
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
+  val awsSNS = "com.amazonaws" % "aws-java-sdk-sns" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.195"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
@@ -25,7 +26,7 @@ object Dependencies {
   //projects
 
   val apiDependencies = Seq(sentryRavenLogback, identityCookie, identityPlayAuth, identityTestUsers, scalaUri,
-    playWS, playCache, playFilters, scanamo, awsWrap, awsDynamo, awsCloudWatch, scalaz, membershipCommon,
+    playWS, playCache, playFilters, scanamo, awsWrap, awsDynamo, awsSNS, awsCloudWatch, scalaz, membershipCommon,
     specs2)
 
 }

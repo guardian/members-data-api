@@ -20,7 +20,8 @@ POST       /user-attributes/me/digitalpack-update-card      controllers.AccountC
 OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
-POST       /stripe-hook                                     controllers.StripeHookController.process
+POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs
+POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
 
 GET        /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
 OPTIONS    /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
