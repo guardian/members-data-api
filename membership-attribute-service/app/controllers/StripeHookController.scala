@@ -47,9 +47,8 @@ class StripeHookController extends Controller with LazyLogging {
         eventFromStripe <- OptionT(tp.giraffeStripeService.Event.findCharge(e.id))
       } yield {
         tp.snsGiraffeService.publish(eventFromStripe.`object`)
-      }).run
-        .map(_.fold[Result](Ok(Json.obj("event found" -> false)))
-          (_ => Ok(Json.obj("event found" -> true))))
+        Ok(Json.obj("event " + eventFromStripe.id + " found, sent to " + tp.giraffeSns -> true))
+      }).getOrElse(Ok(Json.obj("event found" -> false)))
     }
   }
 
