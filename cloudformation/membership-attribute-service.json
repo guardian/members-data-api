@@ -112,27 +112,30 @@
           "PolicyDocument": {
             "Statement": [
               {
-                "Effect": "Allow",
                 "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::gu-membership-*/*"
+                "Resource": "arn:aws:s3:::gu-membership-*/*",
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
                 "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::members-data-api-private/*"
+                "Resource": "arn:aws:s3:::members-data-api-private/*",
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
                 "Action": "ec2:DescribeTags",
-                "Resource": "*"
+                "Resource": "*",
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
-                "Action": ["logs:*"],
-                "Resource": ["arn:aws:logs:*:*:*"]
+                "Action": [
+                  "logs:*"
+                ],
+                "Resource": [
+                  "arn:aws:logs:*:*:*"
+                ],
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
                 "Action": [
                   "dynamodb:PutItem",
                   "dynamodb:GetItem",
@@ -144,10 +147,10 @@
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
                   }, "DynamoDBTable"]
-                }
+                },
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
                 "Action": [
                   "dynamodb:PutItem",
                   "dynamodb:GetItem",
@@ -159,39 +162,38 @@
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
                   }, "DynamoDBTableTestUsers"]
-                }
+                },
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem"
+                ],
+                "Resource": "arn:aws:dynamodb:*:*:table/hackday-user-reputation",
+                "Effect": "Allow"
+              },
+              {
                 "Action": [
                   "dynamodb:Query"
                 ],
-                "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD"
+                "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD",
+                "Effect": "Allow"
               },
               {
-                "Effect":"Allow",
-                "Action":["sns:Publish"],
-                "Resource":{"Ref":"TopicGiraffe"}
-              },
-              {
-                "Effect":"Allow",
-                "Action":["sns:Publish"],
-                "Resource":{"Ref":"TopicGiraffeUAT"}
-              },
-              {
-                "Effect": "Allow",
                 "Action": [
                   "dynamodb:Query"
                 ],
-                "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD/index/*"
+                "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD/index/*",
+                "Effect": "Allow"
               },
               {
-                "Effect": "Allow",
                 "Action": [
                   "cloudwatch:*",
                   "logs:*"
                 ],
-                "Resource": "*"
+                "Resource": "*",
+                "Effect": "Allow"
               }
             ]
           }
@@ -232,13 +234,17 @@
           "Protocol": "HTTPS",
           "SSLCertificateId" : { "Fn::Join" : [ "", [ "arn:aws:iam::", {"Ref":"AWS::AccountId"}, ":server-certificate/", { "Ref" : "SiteDomain" } ] ] }
         }],
+        "ConnectionDrainingPolicy": {
+          "Enabled" : "true",
+          "Timeout" : "60"
+        },
         "CrossZone": "true",
         "HealthCheck": {
           "Target": "HTTP:9000/healthcheck",
           "HealthyThreshold": "2",
           "UnhealthyThreshold": "10",
-          "Interval": "30",
-          "Timeout": "10"
+          "Interval": "10",
+          "Timeout": "5"
         },
         "Subnets": { "Ref": "VpcSubnets" },
         "SecurityGroups": [
@@ -411,19 +417,5 @@
     "LoadBalancerUrl": {
       "Value": { "Fn::GetAtt": ["LoadBalancer", "DNSName"] }
     }
-  },
-
-  "TopicGiraffe": {
-    "Type": "AWS::SNS::Topic",
-    "Properties": {
-      "TopicName": "giraffe-prod"
-    }
-  },
-
-  "TopicGiraffeUAT": {
-    "Type": "AWS::SNS::Topic",
-    "Properties": {
-      "TopicName": "giraffe-pre-prod"
-      }
-    }
+  }
 }
