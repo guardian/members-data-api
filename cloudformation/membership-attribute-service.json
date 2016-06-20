@@ -420,7 +420,7 @@
     "TopicGiraffe": {
       "Type": "AWS::SNS::Topic",
       "Properties": {
-        "TopicName": "giraffe-dev"
+        "TopicName": "giraffe"
       }
     }
   },
