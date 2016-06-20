@@ -127,6 +127,11 @@
                 "Effect": "Allow"
               },
               {
+                "Effect":"Allow",
+                "Action":["sns:Publish"],
+                "Resource":{"Ref":"TopicGiraffe"}
+              },
+              {
                 "Action": [
                   "logs:*"
                 ],
@@ -409,6 +414,13 @@
             "CidrIp": "0.0.0.0/0"
           }
         ]
+      }
+    },
+
+    "TopicGiraffe": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "giraffe-dev"
       }
     }
   },
