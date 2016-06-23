@@ -12,9 +12,10 @@ object SalesforceCSVExport {
   private val logger = LoggerFactory.getLogger(getClass)
 
   def membersAttributes(file: File): Iterator[Attributes] = {
-    Source.fromFile(file)
-      .getLines().drop(1) // The export file comes with CSV headers
-      .map {
+    val source = Source.fromFile(file)
+    val lines = try {
+      source.getLines().drop(1) // The export file comes with CSV headers
+        .map {
         case re(id, num, tier, date) =>
           val numOpt = if (num.isEmpty) None else Some(num)
           Some(Attributes(id, tier, numOpt))
@@ -22,5 +23,9 @@ object SalesforceCSVExport {
           logger.error(s"Couldn't parse line\n$str\nas a valid members attribute")
           None
       }.collect { case Some(attrs) => attrs }
+    } finally {
+      source.close
+    }
+    lines
   }
 }
