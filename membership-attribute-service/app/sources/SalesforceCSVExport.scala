@@ -13,7 +13,7 @@ object SalesforceCSVExport {
 
   def membersAttributes(file: File): Iterator[Attributes] = {
     val source = Source.fromFile(file)
-    val lines = try {
+    try {
       source.getLines().drop(1) // The export file comes with CSV headers
         .map {
         case re(id, num, tier, date) =>
@@ -26,6 +26,5 @@ object SalesforceCSVExport {
     } finally {
       source.close
     }
-    lines
   }
 }
