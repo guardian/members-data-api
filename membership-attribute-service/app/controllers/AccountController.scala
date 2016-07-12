@@ -52,8 +52,8 @@ class AccountController {
   }
 
   def membershipUpdateCard = updateCard(Membership)
-  def digitalPackUpdateCard = updateCard(Digipack)
+  def digitalPackUpdateCard = updateCard(Subscriptions)
 
   def membershipDetails = paymentDetails(Membership)
-  def digitalPackDetails = paymentDetails(Digipack)
+  def digitalPackDetails = paymentDetails(Subscriptions)
 }
