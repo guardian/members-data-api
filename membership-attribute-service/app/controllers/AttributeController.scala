@@ -52,10 +52,8 @@ class AttributeController extends Controller with LazyLogging {
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
           case Some(attrs) =>
-            metrics.put(s"$endpointDescription-lookup-successful", 1)
             onSuccess(attrs)
           case None =>
-            metrics.put(s"$endpointDescription-user-not-found", 1)
             ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoTable}", 404)
         }
       }.getOrElse {
