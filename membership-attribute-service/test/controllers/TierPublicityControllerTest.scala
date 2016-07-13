@@ -1,4 +1,6 @@
 package controllers
+
+import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult}
 import models.Attributes
 import services.AttributeService
 import scala.concurrent.duration._
@@ -9,8 +11,8 @@ class TierPublicityControllerTest extends Specification {
 
   val ctrl = new TierPublicityController()
   val dynamoStub = new AttributeService {
-    override def delete(userId: String): Future[Unit] = ???
-    override def set(attributes: Attributes): Future[Unit] = ???
+    override def delete(userId: String): Future[DeleteItemResult] = ???
+    override def set(attributes: Attributes): Future[PutItemResult] = ???
     override def get(userId: String): Future[Option[Attributes]] = ???
     override def getMany(userIds: List[String]): Future[Seq[Attributes]] = Future.successful(Seq(
       Attributes("1234", "Partner", None, Some(true)),
