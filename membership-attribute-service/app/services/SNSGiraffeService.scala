@@ -13,9 +13,7 @@ object SNSGiraffeService {
 class SNSGiraffeService(snsClient: AmazonSNSScalaClient, arn: String) {
 
 
-  implicit val writesCharge = Json.writes[Stripe.Charge]
-
-  def publish(charge: Stripe.Charge): Unit = {
+   def publish(charge: Stripe.ChargeWithBalanceAndCountry): Unit = {
     snsClient.publish(arn, Json.toJson(charge).toString)
   }
 
