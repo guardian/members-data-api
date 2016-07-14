@@ -1,5 +1,4 @@
 package controllers
-import com.gu.memsub._
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.ApiError._
@@ -31,7 +30,7 @@ class AttributeController extends Controller with LazyLogging {
     val result: EitherT[Future, String, Attributes] = for {
       id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
       contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
-      sub <- EitherT(request.touchpoint.membershipSubscriptionService.get(contact)(Membership).map(_ \/> s"No sub for $id"))
+      sub <- EitherT(request.touchpoint.membershipSubscriptionService.get(contact).map(_ \/> s"No sub for $id"))
       attributes = Attributes(id, sub.plan.tier.name, contact.regNumber)
       res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
     } yield attributes
