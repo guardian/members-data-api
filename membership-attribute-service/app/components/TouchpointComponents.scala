@@ -51,7 +51,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient().withRegion(Regions.EU_WEST_1), dynamoTable)
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
-  lazy val zuoraService = new ZuoraService(soapClient, restClient, membershipPlans)
+  lazy val zuoraService = new ZuoraService(soapClient, restClient)
   lazy val catalogService = CatalogService(restClient, subsProducts, membershipPlans, digitalPackPlans, stage)
   lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
   lazy val membershipSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.membershipCatalog)
