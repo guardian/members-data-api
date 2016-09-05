@@ -20,7 +20,7 @@ object Dependencies {
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSNS = "com.amazonaws" % "aws-java-sdk-sns" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.248"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.265"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
 
   //projects
