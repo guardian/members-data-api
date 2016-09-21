@@ -2,6 +2,7 @@ package controllers
 
 import actions.BackendFromSalesforceAction
 import com.gu.memsub.Membership
+import com.gu.memsub.subsv2.SubscriptionPlan
 import com.typesafe.scalalogging.LazyLogging
 import models.ApiErrors
 import monitoring.CloudWatch
@@ -11,6 +12,8 @@ import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.Results.Ok
+import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.reads.ChargeListReads._
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, OptionT, \/-}
@@ -55,10 +58,10 @@ class SalesforceHookController extends LazyLogging {
       case \/-(MembershipUpdate(attrs)) =>
         (for {
           sfId <- OptionT(touchpoint.contactRepo.get(attrs.UserId))
-          membershipSubscription <- OptionT(touchpoint.membershipSubscriptionService.get(sfId))
+          membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).map(_.headOption))
         } yield {
           val tierFromSalesforceWebhook = attrs.Tier
-          val tierFromZuora = membershipSubscription.plan.tier.name
+          val tierFromZuora = membershipSubscription.plan.charges.benefit.id
           if (tierFromZuora != tierFromSalesforceWebhook) logger.error(s"Differing tier info for $sfId : sf=$tierFromSalesforceWebhook zuora=$tierFromZuora")
           attrs.copy(Tier = tierFromZuora)
         }).run.flatMap { attrsUpdatedWithZuoraOpt =>

@@ -3,19 +3,23 @@ package components
 import akka.actor.ActorSystem
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
+import scalaz.std.scalaFuture._
 import com.gu.config
-import com.gu.memsub.{Digipack, Membership, ProductFamily, Subscriptions}
-import com.gu.memsub.services.{CatalogService, PaymentService, PromoService, SubscriptionService}
+import com.gu.memsub.services.PaymentService
+import com.gu.memsub.subsv2.services._
 import com.gu.monitoring.ServiceMetrics
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
+import com.gu.zuora.rest.{RequestRunners, SimpleClient}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.{ZuoraService, rest}
 import com.squareup.okhttp.OkHttpClient
 import configuration.Config
 import services.IdentityService.IdentityConfig
 import services.{AttributeService, IdentityService, SNSGiraffeService, ScanamoAttributeService}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   implicit val ec = system.dispatcher
@@ -37,6 +41,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val giraffeSns = environmentConf.getString("giraffe.sns")
 
   lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
+  lazy val productIds = config.SubsV2ProductIds(environmentConf.getConfig("zuora.productIds"))
   lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
@@ -52,14 +57,8 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient().withRegion(Regions.EU_WEST_1), dynamoTable)
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
   lazy val zuoraService = new ZuoraService(soapClient, restClient)
-  lazy val catalogService = CatalogService(restClient, subsProducts, membershipPlans, digitalPackPlans, stage)
-  lazy val digipackSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.digipackCatalog)
-  lazy val membershipSubscriptionService = new SubscriptionService(zuoraService, stripeService, catalogService.membershipCatalog)
-
-  def subService(implicit pf: ProductFamily) = pf match {
-    case Membership => membershipSubscriptionService
-    case Subscriptions => digipackSubscriptionService
-  }
-
-  lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService)
+  lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.futureRunner)
+  lazy val catalogService = new CatalogService[Future](productIds, simpleClient, Await.result(_, 10.seconds), stage)
+  lazy val subService = new SubscriptionService[Future](productIds, catalogService.catalog.map(_.leftMap(_.list.mkString)).map(_.map(_.map)), simpleClient, zuoraService.getAccountIds)
+  lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService.unsafeCatalog.productMap)
 }
