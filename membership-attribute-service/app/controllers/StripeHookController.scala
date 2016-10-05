@@ -45,7 +45,7 @@ class StripeHookController extends Controller with LazyLogging {
         e <- OptionT(Future.successful(event.asOpt))
         tp = if (e.liveMode) NormalTouchpointComponents else TestTouchpointComponents
         eventFromStripe <- OptionT(tp.giraffeStripeService.Event.findCharge(e.id))
-        balanceTransaction <- OptionT(tp.giraffeStripeService.BalanceTransaction.read(eventFromStripe.`object`.balance_transaction))
+        balanceTransaction <- OptionT(tp.giraffeStripeService.BalanceTransaction.read(eventFromStripe.`object`.balance_transaction.mkString))
       } yield {
         tp.snsGiraffeService.publish(eventFromStripe.`object`, balanceTransaction)
         Ok(Json.obj("event " + eventFromStripe.id + " was found, sent to " + tp.giraffeSns -> true))
