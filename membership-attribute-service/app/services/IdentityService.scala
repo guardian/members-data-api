@@ -1,11 +1,13 @@
 package services
 
-import com.squareup.okhttp._
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.{Json, __}
 import play.api.libs.concurrent.Execution.Implicits._
 import java.net.URLEncoder.encode
+
 import IdentityService._
+import com.gu.okhttp.RequestRunners
+import okhttp3.{MediaType, Request, RequestBody, ResponseBody}
 
 import scala.concurrent.Future
 
@@ -42,13 +44,11 @@ object IdentityService {
       .getOrElse(throw new IllegalStateException("Bad response from identity"))
 }
 
-class IdentityService(state: IdentityConfig, client: OkHttpClient) extends LazyLogging {
+class IdentityService(state: IdentityConfig, client: RequestRunners.FutureHttpClient) extends LazyLogging {
 
-  def setMarketingPreference(id: IdentityId, pref: Boolean) = Future {
-    parseUserResponse(client.newCall(marketingRequest(state)(id, pref).build()).execute().body())
-  }
+  def setMarketingPreference(id: IdentityId, pref: Boolean) =
+    client(marketingRequest(state)(id, pref).build).map(response => parseUserResponse(response.body))
 
-  def user(email: String) = Future {
-    parseUserResponse(client.newCall(userRequest(state)(email).build()).execute().body())
-  }
+  def user(email: String) =
+    client(userRequest(state)(email).build).map(response => parseUserResponse(response.body))
 }

@@ -11,9 +11,12 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc.{Controller, Result}
 import _root_.services.{AuthenticationService, IdentityAuthService}
+import com.gu.memsub.subsv2.SubscriptionPlan
 import play.filters.cors.CORSActionBuilder
+import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.reads.ChargeListReads._
 import scala.concurrent.Future
-import scalaz.{\/, EitherT}
+import scalaz.{EitherT, \/}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
 
@@ -30,8 +33,8 @@ class AttributeController extends Controller with LazyLogging {
     val result: EitherT[Future, String, Attributes] = for {
       id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
       contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
-      sub <- EitherT(request.touchpoint.membershipSubscriptionService.get(contact).map(_ \/> s"No sub for $id"))
-      attributes = Attributes(id, sub.plan.tier.name, contact.regNumber)
+      sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
+      attributes = Attributes(id, sub.plan.charges.benefit.id, contact.regNumber)
       res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
     } yield attributes
 
