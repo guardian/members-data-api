@@ -1,14 +1,32 @@
 # Membership Attribute Service
 
-The membership attribute service provides an API for managing and retrieving membership attributes associated with a user. 
+The membership attribute service provides an API for managing and retrieving membership attributes associated with a user. It runs on https://members-data-api.theguardian.com/
 
-## Nginx configuration
+## Setting it up locally
 
 Follow these [nginx setup](doc/nginx-setup.md) instructions
 
-## Endpoints
+Download the config file from s3: members-data-api-private/DEV/ into /etc/gu/ on your machine.
 
-For access to the /me endpoints, valid GU_U and SC_GU_U must be provided in the Cookie request header.
+## Running Locally
+
+Get Janus credentials for membership.
+
+To start the service run ./start-api.sh
+
+The service will be running on 9400 and use the MembershipAttributes-DEV DynamoDB table.
+
+go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership
+
+## Running tests
+
+run sbt and then test.  It will download a dynamodb table from S3 and use that.  Tip: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
+
+## Testing manually
+
+A good strategy for testing your stuff is to run a local identity-frontend, membership-frontend and members-data-api.  Then sign up for membership and hit the above url, which should return the right JSON structure.
+
+The /me endpoints use the GU_U and SC_GU_U from the Cookie request header.
 
 ### GET /user-attributes/me/membership
 
@@ -37,27 +55,7 @@ Responses:
       "userId": "123"
     }
 
-## Running Locally
-
-Ensure that your ~/.aws/credentials file contains the following:
-
-    [membership]
-    aws_access_key_id=YOUR_ACCESS_KEY
-    aws_secret_access_key=YOUR_SECRET_KEY
-    
-These credentials are required for accessing the DynamoDB table. When running tests, a local version of DynamoDB is used.
-
-To start the service use:
-
-```
-    $ sbt
-    > project membership-attribute-service
-    > devrun
-```
-
-The service will be starting on 9400 and use the MembershipAttributes-DEV DynamoDB table.
-
-## Loading initial dataset
+## Loading initial dataset - FIXME when would you want to do that?
 
 - Make sure that the outbound messages are pointing to your instance
 
