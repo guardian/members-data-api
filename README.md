@@ -4,7 +4,7 @@ The membership attribute service provides an API for managing and retrieving mem
 
 ## Setting it up locally
 
-Follow these [nginx setup](doc/nginx-setup.md) instructions
+Run `./setup.sh` in `nginx/`.
 
 Download the config (you may need to `brew install awscli` to get the command.
 `aws s3 cp s3://members-data-api-private/DEV/members-data-api-keys.conf /etc/gu/ --profile membership`
@@ -29,6 +29,15 @@ A good strategy for testing your stuff is to run a local identity-frontend, memb
 
 The /me endpoints use the GU_U and SC_GU_U from the Cookie request header.
 
+###Identity Frontend
+
+Identity frontend is split between [new (profile-origin)](https://github.com/guardian/identity-frontend) and old (profile), which is the identity project in [frontend](https://github.com/guardian/frontend). Only profile uses the membership-attribute-service. Make sure that it's pointing at your local instance.
+
+    devOverrides{
+             guardian.page.userAttributesApiUrl="https://members-data-api.thegulocal.com/user-attributes"
+             id.members-data-api.url="https://members-data-api.thegulocal.com/"
+    }
+ 
 ### GET /user-attributes/me/membership
 
 Success responses:
