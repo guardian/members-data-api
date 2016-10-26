@@ -59,11 +59,10 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
     RequestRunners.loggingRunner(metrics("zuora-soap")),
     RequestRunners.loggingRunner(metrics("zuora-soap"))
   )
-  lazy val restClient = new rest.Client(tpConfig.zuoraRest, metrics("zuora-rest"))
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient().withRegion(Regions.EU_WEST_1), dynamoTable)
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
-  lazy val zuoraService = new ZuoraService(soapClient, restClient)
+  lazy val zuoraService = new ZuoraService(soapClient)
   lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.futureRunner)
   lazy val catalogService = new CatalogService[Future](productIds, simpleClient, Await.result(_, 10.seconds), stage)
 
