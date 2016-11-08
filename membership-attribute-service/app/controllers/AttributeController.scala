@@ -50,13 +50,15 @@ class AttributeController extends Controller with LazyLogging {
     ))
   }
 
-  private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Result = notFound) = backendAction.async { request =>
+  private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Option[Result] = None) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
           case Some(attrs) =>
             onSuccess(attrs)
           case None =>
-            ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoTable}", 404)
+            onNotFound getOrElse {
+              ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoTable}", 404)
+            }
         }
       }.getOrElse {
         metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
@@ -65,5 +67,5 @@ class AttributeController extends Controller with LazyLogging {
     }
 
   def membership = lookup("membership", identity[Attributes])
-  def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Features.unauthenticated)
+  def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Some(Features.unauthenticated))
 }
