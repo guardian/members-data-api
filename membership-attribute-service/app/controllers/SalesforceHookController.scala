@@ -48,7 +48,7 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
 
   def processDeletion(membershipDeletion: MembershipDeletion) = {
     val userId = membershipDeletion.userId
-    attributeService.delete(userId).map { x =>
+    attributeService.delete(userId).map { _ =>
       logger.info(s"Successfully deleted user $userId from ${touchpoint.dynamoTable}.")
       metrics.put("Delete", 1)
       Success
@@ -67,6 +67,7 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       val tierFromSalesforceWebhook = attrs.Tier
       val tierFromZuora = membershipSubscription.plan.charges.benefit.id
       if (tierFromZuora != tierFromSalesforceWebhook) logger.error(s"Differing tier info for $sfId : sf=$tierFromSalesforceWebhook zuora=$tierFromZuora")
+      // If the tier info does not match, we trust the info we get from Zuora, instead of the tier sent to us in the outbound message from Salesforce
       attrs.copy(Tier = tierFromZuora)
     }).run.flatMap { attrsUpdatedWithZuoraOpt =>
       if (attrsUpdatedWithZuoraOpt.isEmpty) logger.error(s"Couldn't update $attrs with information from Zuora")
@@ -92,10 +93,10 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
     case \/-(outboundMessageChanges @ Seq(_*)) =>
       logger.info(s"Parsed Salesforce message successfully. Salesforce sent ${outboundMessageChanges.length} objects to update: $outboundMessageChanges")
       // Take the Seq and apply the appropriate action for each notification item, based on its type
-      val updates = outboundMessageChanges.map( outboundMessage => outboundMessage match {
+      val updates = outboundMessageChanges.map {
         case membershipDelete: MembershipDeletion => processDeletion(membershipDelete)
         case membershipUpdate: MembershipUpdate => processUpdate(membershipUpdate)
-      })
+      }
       // Gather up the results of the futures and check for failures. Only send a success response to Salesforce if every processUpdate/processDeletion for the message succeeds
       Future.sequence(updates).map { updateSeq => if (updateSeq.contains(Failure)) ApiErrors.internalError else ack }
   }

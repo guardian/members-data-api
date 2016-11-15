@@ -35,11 +35,8 @@ object Salesforce {
       def getText(tag: String): OutboundMessageParseError \/ String = getTag(tag).map(_.text)
     }
 
-    def orgIdValidation: OutboundMessageParseError \/ Boolean = {
-      for {
-        orgId <- (payload \\ "notifications").getText("OrganizationId")
-        isValid <- if (orgId === organizationId) true.right else OrgIdMatchingError(orgId).left
-      } yield isValid
+    def orgIdValid: OutboundMessageParseError \/ Unit = {
+      (payload \\ "notifications").getText("OrganizationId").flatMap(orgId => if (orgId != organizationId) OrgIdMatchingError(orgId).left else ().right)
     }
 
     def getSalesforceObjects: OutboundMessageParseError \/ NodeSeq = {
@@ -63,11 +60,11 @@ object Salesforce {
       }
     }
 
-    orgIdValidation match {
-      case -\/(ParsingError(msg)) => ParsingError(msg).left
-      case -\/(OrgIdMatchingError(orgId)) => OrgIdMatchingError(orgId).left
+    orgIdValid match {
       // If we can validate the organization ID, then we get a Right and can attempt to process the notifications.
       case \/-(_) => getSalesforceObjects.map { _.map(sfObject => processSalesforceObject(sfObject)) }
+        // Otherwise we pass on the error
+      case error @ -\/(_) => error
     }
   }
 }
