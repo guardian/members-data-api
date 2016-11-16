@@ -36,7 +36,9 @@ object Salesforce {
     }
 
     def orgIdValid: OutboundMessageParseError \/ Unit = {
-      (payload \\ "notifications").getText("OrganizationId").flatMap(orgId => if (orgId != organizationId) OrgIdMatchingError(orgId).left else ().right)
+      (payload \\ "notifications").getText("OrganizationId").flatMap { orgId =>
+        if (orgId != organizationId) OrgIdMatchingError(orgId).left else ().right
+      }
     }
 
     def getSalesforceObjects: OutboundMessageParseError \/ NodeSeq = {
@@ -47,7 +49,7 @@ object Salesforce {
         else salesforceObjects.right
     }
 
-    def processSalesforceObject(salesforceObject: Node): OutboundMessageChange = {
+    def messageChangeFromSfObject(salesforceObject: Node): OutboundMessageChange = {
       val id = (salesforceObject \ "IdentityID__c").map(_.text).head
       val tier = (salesforceObject \ "Membership_Tier__c").map(_.text).headOption
       val num = (salesforceObject \ "Membership_Number__c").headOption.map(_.text)
@@ -60,11 +62,9 @@ object Salesforce {
       }
     }
 
-    orgIdValid match {
-      // If we can validate the organization ID, then we get a Right and can attempt to process the notifications.
-      case \/-(_) => getSalesforceObjects.map { _.map(sfObject => processSalesforceObject(sfObject)) }
-        // Otherwise we pass on the error
-      case error @ -\/(_) => error
+    orgIdValid.flatMap { _ =>
+      getSalesforceObjects.map { _.map(sfObject => messageChangeFromSfObject(sfObject)) }
     }
+
   }
 }

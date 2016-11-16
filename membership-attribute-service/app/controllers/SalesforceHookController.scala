@@ -46,19 +46,19 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
   val attributeService = touchpoint.attrService
   implicit val pf = Membership
 
-  def processDeletion(membershipDeletion: MembershipDeletion) = {
+  def deleteMemberRecord(membershipDeletion: MembershipDeletion): Future[Object] = {
     val userId = membershipDeletion.userId
-    attributeService.delete(userId).map { _ =>
+    attributeService.delete(userId).map { deleteItemResult =>
       logger.info(s"Successfully deleted user $userId from ${touchpoint.dynamoTable}.")
       metrics.put("Delete", 1)
-      Success
+      deleteItemResult
     }.recover { case e: Throwable =>
       logger.warn(s"Failed to delete user $userId from ${touchpoint.dynamoTable}. Salesforce should retry.", e)
       Failure
     }
   }
 
-  def processUpdate(membershipUpdate: MembershipUpdate) = {
+  def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
     val attrs = membershipUpdate.attributes
     (for {
       sfId <- OptionT(touchpoint.contactRepo.get(attrs.UserId))
@@ -74,7 +74,7 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       attributeService.set(attrsUpdatedWithZuoraOpt.getOrElse(attrs)).map { putItemResult =>
         logger.info(s"Successfully inserted ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoTable}.")
         metrics.put("Update", 1)
-        Success
+        putItemResult
       }.recover { case e: Throwable =>
         logger.warn(s"Failed to insert ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoTable}. Salesforce should retry.", e)
         Failure
@@ -94,11 +94,13 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       logger.info(s"Parsed Salesforce message successfully. Salesforce sent ${outboundMessageChanges.length} objects to update: $outboundMessageChanges")
       // Take the Seq and apply the appropriate action for each notification item, based on its type
       val updates = outboundMessageChanges.map {
-        case membershipDelete: MembershipDeletion => processDeletion(membershipDelete)
-        case membershipUpdate: MembershipUpdate => processUpdate(membershipUpdate)
+        case membershipDelete: MembershipDeletion => deleteMemberRecord(membershipDelete)
+        case membershipUpdate: MembershipUpdate => updateMemberRecord(membershipUpdate)
       }
       // Gather up the results of the futures and check for failures. Only send a success response to Salesforce if every processUpdate/processDeletion for the message succeeds
-      Future.sequence(updates).map { updateSeq => if (updateSeq.contains(Failure)) ApiErrors.internalError else ack }
+      Future.sequence(updates).map { updateSeq =>
+        if (updateSeq.contains(Failure)) ApiErrors.internalError else ack
+      }
   }
  }
 }
