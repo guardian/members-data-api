@@ -7,7 +7,7 @@ The membership attribute service provides an API for managing and retrieving mem
 Run `./setup.sh` in `nginx/`.
 
 Download the config (you may need to `brew install awscli` to get the command.
-`aws s3 cp s3://members-data-api-private/DEV/members-data-api-keys.conf /etc/gu/ --profile membership`
+`aws s3 cp s3://members-data-api-private/DEV/members-data-api.conf /etc/gu/ --profile membership`
 
 ## Running Locally
 
