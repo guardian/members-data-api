@@ -83,6 +83,4 @@ object Config {
     supportsCredentials = true
   )
 
-  // TODO: remove once the adfree feature is generally available to the public
-  val preReleaseUsersIds = config.getStringList("identity.prerelease-users").asScala.toSet
 }
