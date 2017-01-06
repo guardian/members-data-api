@@ -56,7 +56,7 @@ class AttributeController extends Controller with LazyLogging {
           case Some(attrs) =>
             onSuccess(attrs)
           case None =>
-            onNotFound getOrElse ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoTable}", 404)
+            onNotFound getOrElse ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoAttributesTable}", 404)
         }
       }.getOrElse {
         metrics.put(s"$endpointDescription-cookie-auth-failed", 1)

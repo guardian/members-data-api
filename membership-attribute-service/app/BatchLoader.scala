@@ -14,7 +14,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object BatchLoader {
-  private val table = NormalTouchpointComponents.dynamoTable
+  private val table = NormalTouchpointComponents.dynamoAttributesTable
   private val logger = LoggerFactory.getLogger(getClass)
   private implicit val serializer = MembershipAttributesSerializer(table)
 
