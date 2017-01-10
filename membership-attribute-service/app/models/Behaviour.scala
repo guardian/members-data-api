@@ -24,4 +24,6 @@ object Behaviour {
 
   def asJson(bhv: Behaviour) = Json.toJson(bhv)
 
+  def asEmptyJson = asJson(Behaviour("","",""))
+
 }

@@ -14,9 +14,8 @@ OPTIONS    /user-attributes/me/membership-update-card       controllers.AccountC
 POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 
-GET        /user-behaviour/me                               controllers.BehaviourController.behaviours
 POST       /user-behaviour/me/capture/:activity             controllers.BehaviourController.capture(activity)
-POST       /user-behaviour/me/remove                        controllers.BehaviourController.remove
+GET        /user-behaviour/me/remove                        controllers.BehaviourController.remove
 
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
 POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs

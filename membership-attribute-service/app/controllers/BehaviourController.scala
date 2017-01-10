@@ -56,29 +56,10 @@ class BehaviourController extends Controller with LazyLogging {
         ApiErrors.badRequest(error)
       },
       success => {
-        logger.info(s"Recorded activities deleted for user ${result.getOrElse("!not found!")}")
-        Ok(Json.obj("captured" -> true))
+        logger.info("Recorded activities deleted for user")
+        Ok(Behaviour.asEmptyJson)
       }
     ))
   }
-
-  def behaviours = lookup("behaviours")
-
-  private def lookup(endpointDescription: String) = backendAction.async { request =>
-    authenticationService.userId(request).map[Future[Result]] { id =>
-      request.touchpoint.behaviourService.get(id).map {
-        case Some(bhv) =>
-          Behaviour.toResult(bhv)
-        case None =>
-          logger.error(s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoBehaviourTable}")
-          ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoBehaviourTable}", 404)
-      }
-    }.getOrElse {
-      logger.info(s"$endpointDescription-cookie-auth-failed")
-      metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-      Future(unauthorized)
-    }
-  }
-
 
 }
