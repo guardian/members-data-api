@@ -21,6 +21,8 @@ object AccountDetails {
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
 
+      val payPalEmail = paymentDetails.payPalEmail.fold(Json.obj())(e => Json.obj("payPalEmail" -> e))
+
       val card = paymentDetails.card.fold(Json.obj())(card => Json.obj(
         "card" -> Json.obj(
           "last4" -> card.last4,
@@ -31,7 +33,7 @@ object AccountDetails {
       Json.obj(
         "joinDate" -> paymentDetails.startDate,
         "optIn" -> !paymentDetails.pendingCancellation,
-        "subscription" -> (card ++ Json.obj(
+        "subscription" -> (card ++ payPalEmail ++ Json.obj(
           "start" -> paymentDetails.lastPaymentDate,
           "end" -> endDate,
           "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
