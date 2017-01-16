@@ -1,5 +1,5 @@
 package models
-import com.gu.memsub.{PayPalMethod, PaymentCard}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
 import com.gu.salesforce._
 import com.gu.services.model._
 import play.api.libs.json._
@@ -32,6 +32,12 @@ object AccountDetails {
           "card" -> Json.obj(
             "last4" -> card.lastFourDigits,
             "type" -> card.cardType
+          )
+        )
+        case dd: GoCardless => Json.obj(
+          "paymentMethod" -> "DirectDebit",
+          "account" -> Json.obj(
+            "accountName" -> dd.accountName
           )
         )
       }
