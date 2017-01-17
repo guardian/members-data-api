@@ -49,11 +49,11 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
   def deleteMemberRecord(membershipDeletion: MembershipDeletion): Future[Object] = {
     val userId = membershipDeletion.userId
     attributeService.delete(userId).map { deleteItemResult =>
-      logger.info(s"Successfully deleted user $userId from ${touchpoint.dynamoTable}.")
+      logger.info(s"Successfully deleted user $userId from ${touchpoint.dynamoAttributesTable}.")
       metrics.put("Delete", 1)
       deleteItemResult
     }.recover { case e: Throwable =>
-      logger.warn(s"Failed to delete user $userId from ${touchpoint.dynamoTable}. Salesforce should retry.", e)
+      logger.warn(s"Failed to delete user $userId from ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
       Failure
     }
   }
@@ -72,11 +72,11 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
     }).run.flatMap { attrsUpdatedWithZuoraOpt =>
       if (attrsUpdatedWithZuoraOpt.isEmpty) logger.error(s"Couldn't update $attrs with information from Zuora")
       attributeService.set(attrsUpdatedWithZuoraOpt.getOrElse(attrs)).map { putItemResult =>
-        logger.info(s"Successfully inserted ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoTable}.")
+        logger.info(s"Successfully inserted ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoAttributesTable}.")
         metrics.put("Update", 1)
         putItemResult
       }.recover { case e: Throwable =>
-        logger.warn(s"Failed to insert ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoTable}. Salesforce should retry.", e)
+        logger.warn(s"Failed to insert ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
         Failure
       }
     }

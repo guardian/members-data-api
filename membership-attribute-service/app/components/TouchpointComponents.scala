@@ -20,7 +20,7 @@ import com.gu.zuora.{ZuoraService, rest}
 import configuration.Config
 import org.joda.time.LocalDate
 import services.IdentityService.IdentityConfig
-import services.{AttributeService, IdentityService, SNSGiraffeService, ScanamoAttributeService}
+import services._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -41,7 +41,8 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
   lazy val sfOrganisationId = environmentConf.getString("salesforce.organization-id")
   lazy val sfSecret = environmentConf.getString("salesforce.hook-secret")
-  lazy val dynamoTable = environmentConf.getString("dynamodb.table")
+  lazy val dynamoAttributesTable = environmentConf.getString("dynamodb.table")
+  lazy val dynamoBehaviourTable = environmentConf.getString("behaviour.dynamodb.table")
   lazy val giraffeSns = environmentConf.getString("giraffe.sns")
 
   lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
@@ -60,7 +61,8 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
     RequestRunners.loggingRunner(metrics("zuora-soap"))
   )
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
-  lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoTable)
+  lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoAttributesTable)
+  lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoBehaviourTable)
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
   lazy val zuoraService = new ZuoraService(soapClient)
   lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.futureRunner)
