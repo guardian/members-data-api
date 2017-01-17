@@ -1,4 +1,5 @@
 package models
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
 import com.gu.salesforce._
 import com.gu.services.model._
 import play.api.libs.json._
@@ -21,17 +22,30 @@ object AccountDetails {
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
 
-      val card = paymentDetails.card.fold(Json.obj())(card => Json.obj(
-        "card" -> Json.obj(
-          "last4" -> card.last4,
-          "type" -> card.`type`
+      val paymentMethod = paymentDetails.paymentMethod.fold(Json.obj()) {
+        case payPal: PayPalMethod => Json.obj(
+          "paymentMethod" -> "PayPal",
+          "payPalEmail" -> payPal.email
         )
-      ))
+        case card: PaymentCard => Json.obj(
+          "paymentMethod" -> "Card",
+          "card" -> Json.obj(
+            "last4" -> card.lastFourDigits,
+            "type" -> card.cardType
+          )
+        )
+        case dd: GoCardless => Json.obj(
+          "paymentMethod" -> "DirectDebit",
+          "account" -> Json.obj(
+            "accountName" -> dd.accountName
+          )
+        )
+      }
 
       Json.obj(
         "joinDate" -> paymentDetails.startDate,
         "optIn" -> !paymentDetails.pendingCancellation,
-        "subscription" -> (card ++ Json.obj(
+        "subscription" -> (paymentMethod ++ Json.obj(
           "start" -> paymentDetails.lastPaymentDate,
           "end" -> endDate,
           "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
