@@ -25,10 +25,15 @@ class BehaviourController extends Controller with LazyLogging {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = CloudWatch("BehaviourController")
 
-  def capture(activity: String) = BackendFromCookieAction.async { implicit request =>
+  def capture() = BackendFromCookieAction.async { implicit request =>
+    val behaviour = request.body.asJson.map { jval =>
+      val id = (jval \ "userId").as[String]
+      val activity = (jval \ "activity").as[String]
+      val dateTime = (jval \ "dateTime").as[String]
+      Behaviour(id, activity, DateTime.parse(dateTime).toString(ISODateTimeFormat.dateTime.withZoneUTC))
+    }.getOrElse(Behaviour("","",""))
+
     val result: EitherT[Future, String, Behaviour] = for {
-      id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
-      behaviour = Behaviour(id, activity, DateTime.now.toString(ISODateTimeFormat.dateTime.withZoneUTC))
       res <- EitherT(request.touchpoint.behaviourService.set(behaviour).map(\/.right))
     } yield behaviour
 
