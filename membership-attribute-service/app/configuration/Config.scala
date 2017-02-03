@@ -1,5 +1,6 @@
 package configuration
 
+import java.time.Duration
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentialsProvider}
 import com.amazonaws.regions.Regions
@@ -7,7 +8,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
 import com.github.dwhjames.awswrap.sns.AmazonSNSScalaClient
-import com.github.nscala_time.time.Imports._
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
@@ -49,7 +49,7 @@ object Config {
     snsClient
   }
 
-  lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), 2.days.toStandardDuration)
+  lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), Duration.ofDays(2))
 
   val defaultTouchpointBackendStage = config.getString("touchpoint.backend.default")
   val testTouchpointBackendStage = config.getString("touchpoint.backend.test")

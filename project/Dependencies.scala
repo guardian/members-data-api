@@ -9,7 +9,7 @@ object Dependencies {
   val sentryRavenLogback = "net.kencochrane.raven" % "raven-logback" % "6.0.0"
   val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.51"
   val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "0.18"
-  val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.5"
+  val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.6"
   val scalaUri = "com.netaporter" %% "scala-uri" % "0.4.13"
   val playWS = PlayImport.ws
   val playCache = PlayImport.cache
