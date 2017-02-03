@@ -7,10 +7,10 @@ import components.NormalTouchpointComponents
 import configuration.Config._
 import models.Attributes
 import org.slf4j.LoggerFactory
-import sources.SalesforceCSVExport
 import repositories.MembershipAttributesSerializer
-import scala.collection.JavaConverters._
+import sources.SalesforceCSVExport
 
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object BatchLoader {
@@ -36,7 +36,7 @@ object BatchLoader {
           .membersAttributes(file)
           .filterNot { attrs => existingIds.contains(attrs.UserId) }
           .map(writeRequest)
-        val loader = new SingleThreadedBatchWriter(table, AWS.credentialsProvider)
+        val loader = new SingleThreadedBatchWriter(table, com.gu.aws.CredentialsProvider)
         loader.client.withRegion(Regions.EU_WEST_1)
         loader.run(requests)
       }
