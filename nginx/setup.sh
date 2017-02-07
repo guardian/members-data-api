@@ -1,20 +1,12 @@
 #!/bin/bash
 
-GU_KEYS="${HOME}/.gu/keys"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NGINX_HOME=$(nginx -V 2>&1 | grep 'configure arguments:' | sed 's#.*conf-path=\([^ ]*\)/nginx\.conf.*#\1#g')
 
-sudo mkdir -p $NGINX_HOME/sites-enabled
+printf "\nUsing NGINX_HOME=$NGINX_HOME\n\n"
+printf "Note that you need to have already completed the Identity Platform setup:\n"
+printf "https://github.com/guardian/identity-platform#setup-nginx-for-local-development\n\n"
+
 sudo ln -fs $DIR/members-data-api.conf $NGINX_HOME/sites-enabled/members-data-api.conf
 
-cd  ${GU_KEYS}
-openssl genrsa -out "members-data-api.key" 2048
-openssl req -new -key "members-data-api.key" -out "members-data-api.csr"
-openssl x509 -req -in "members-data-api.csr" -signkey "members-data-api.key" -out "members-data-api.crt"
-
-
-sudo ln -fs ${GU_KEYS}/ $NGINX_HOME/keys
-
-sudo nginx -s stop
-sudo nginx
-
+printf "\n\nNow restart Nginx!\n\n"

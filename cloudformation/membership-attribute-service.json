@@ -184,20 +184,6 @@
               },
               {
                 "Action": [
-                  "dynamodb:Query"
-                ],
-                "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD",
-                "Effect": "Allow"
-              },
-              {
-                "Action": [
-                  "dynamodb:Query"
-                ],
-                "Resource": "arn:aws:dynamodb:*:*:table/friendly-tailor-PROD/index/*",
-                "Effect": "Allow"
-              },
-              {
-                "Action": [
                   "cloudwatch:*",
                   "logs:*"
                 ],
