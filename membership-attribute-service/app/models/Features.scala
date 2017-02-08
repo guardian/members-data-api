@@ -11,13 +11,15 @@ object Features {
   implicit val jsWrite = Json.writes[Features]
 
   implicit def toResult(attrs: Features): Result =
-    Ok(Json.toJson(attrs))
+    Ok(Json.toJson(attrs)).withHeaders(
+      "X-Gu-Ad-Free" -> attrs.adFree.toString
+    )
 
   def fromAttributes(attributes: Attributes) = {
     Features(
       userId = Some(attributes.UserId),
       adFree = attributes.isAdFree,
-      adblockMessage = !(attributes.isPaidTier)
+      adblockMessage = !attributes.isPaidTier
     )
   }
 

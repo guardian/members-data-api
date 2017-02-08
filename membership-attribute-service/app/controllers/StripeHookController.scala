@@ -1,5 +1,6 @@
 package controllers
 
+import actions.NoCacheAction
 import com.gu.stripe.Stripe
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.concurrent.Execution.Implicits._
@@ -17,7 +18,7 @@ import scalaz.OptionT
 
 class StripeHookController extends Controller with LazyLogging {
 
-  def updatePrefs = Action.async { implicit request =>
+  def updatePrefs = NoCacheAction.async { implicit request =>
     request.body.asJson.map(Json.fromJson[Event[StripeObject]](_)).fold[Future[Result]] {
       Future.successful(BadRequest("No JSON found in request body"))
     } { event =>
@@ -37,7 +38,7 @@ class StripeHookController extends Controller with LazyLogging {
   }
 
 
-  def publishToSns = Action.async { implicit request =>
+  def publishToSns = NoCacheAction.async { implicit request =>
     request.body.asJson.map(Json.fromJson[Event[StripeObject]](_)).fold[Future[Result]] {
       Future.successful(BadRequest("No JSON found in request body"))
     } { event =>
