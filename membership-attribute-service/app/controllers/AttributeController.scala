@@ -25,7 +25,7 @@ import scalaz.{EitherT, \/}
 class AttributeController extends Controller with LazyLogging {
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
-  lazy val backendAction = corsFilter andThen BackendFromCookieAction
+  lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 

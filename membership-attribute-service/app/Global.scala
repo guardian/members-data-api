@@ -1,13 +1,19 @@
-import filters.{AddEC2InstanceHeader, LogRequestsFilter}
+import filters.AddEC2InstanceHeader
 import models.ApiErrors._
 import monitoring.SentryLogging
-import play.api.{Application, Logger}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.{RequestHeader, Result, WithFilters}
+import play.api.{Application, Logger}
 import play.filters.csrf._
+
 import scala.concurrent.Future
 
-object Global extends WithFilters(CSRFFilter(), AddEC2InstanceHeader) {
+
+object Global extends WithFilters(
+  CheckCacheHeadersFilter,
+  CSRFFilter(),
+  AddEC2InstanceHeader
+) {
 
   private val logger = Logger(this.getClass)
 
