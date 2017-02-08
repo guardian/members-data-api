@@ -3,27 +3,26 @@ package controllers
 import actions._
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
-import models.ApiErrors._
-import models.{ApiErrors, Behaviour, ApiError, Attributes}
-import monitoring.CloudWatch
+import models.{ApiErrors, Behaviour}
+import monitoring.Metrics
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
-import play.api.libs.json.Json
-import play.api.mvc.{Result, Controller}
-import play.filters.cors.CORSActionBuilder
-import services.{IdentityAuthService, AuthenticationService}
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.mvc.Controller
+import play.filters.cors.CORSActionBuilder
+import services.{AuthenticationService, IdentityAuthService}
+
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
-import scalaz.{EitherT, \/}
 import scalaz.syntax.std.option._
+import scalaz.{EitherT, \/}
 
 class BehaviourController extends Controller with LazyLogging {
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val metrics = CloudWatch("BehaviourController")
+  lazy val metrics = Metrics("BehaviourController")
 
   def capture(activity: String) = BackendFromCookieAction.async { implicit request =>
     val result: EitherT[Future, String, Behaviour] = for {
