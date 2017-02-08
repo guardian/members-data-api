@@ -15,7 +15,7 @@ POST       /user-attributes/me/digitalpack-update-card      controllers.AccountC
 OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 
 POST       /user-behaviour/capture                          controllers.BehaviourController.capture
-GET        /user-behaviour/me/remove                        controllers.BehaviourController.remove
+POST       /user-behaviour/remove                           controllers.BehaviourController.remove
 
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
 POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs
