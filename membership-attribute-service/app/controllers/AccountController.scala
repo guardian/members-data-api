@@ -27,8 +27,8 @@ class AccountController {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig)
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig)
-  lazy val mmaAction = mmaCorsFilter andThen BackendFromCookieAction
-  lazy val mmaCardAction = corsCardFilter andThen BackendFromCookieAction
+  lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
+  lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 
   def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }

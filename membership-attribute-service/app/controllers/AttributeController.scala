@@ -25,7 +25,7 @@ import scalaz.{EitherT, \/}
 class AttributeController extends Controller with LazyLogging {
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
-  lazy val backendAction = corsFilter andThen BackendFromCookieAction
+  lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
@@ -55,7 +55,10 @@ class AttributeController extends Controller with LazyLogging {
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
           case Some(attrs) =>
-            onSuccess(attrs)
+            onSuccess(attrs).withHeaders(
+              "X-Gu-Membership-Tier" -> attrs.Tier,
+              "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
+            )
           case None =>
             onNotFound getOrElse ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoAttributesTable}", 404)
         }
