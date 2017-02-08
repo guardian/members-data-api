@@ -3,18 +3,19 @@ package controllers
 import actions.BackendFromSalesforceAction
 import com.gu.memsub.Membership
 import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.reads.ChargeListReads._
+import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.typesafe.scalalogging.LazyLogging
 import models.ApiErrors
-import monitoring.CloudWatch
+import monitoring.Metrics
 import parsers.Salesforce._
 import parsers.{Salesforce => SFParser}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.Results.Ok
-import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.reads.ChargeListReads._
+
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.Failure
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, OptionT, \/-}
 
@@ -27,7 +28,7 @@ import scalaz.{-\/, OptionT, \/-}
   * https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_om_outboundmessaging.htm?search_text=outbound%20message
   */
 class SalesforceHookController extends LazyLogging {
-  val metrics = CloudWatch("SalesforceHookController")
+  val metrics = Metrics("SalesforceHookController")
 
   private val ack = Ok(
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">

@@ -1,24 +1,25 @@
 package controllers
+import _root_.services.{AuthenticationService, IdentityAuthService}
+import actions._
+import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.reads.ChargeListReads._
+import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
-import actions._
 import models._
-import monitoring.CloudWatch
+import monitoring.Metrics
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc.{Controller, Result}
-import _root_.services.{AuthenticationService, IdentityAuthService}
-import com.gu.memsub.subsv2.SubscriptionPlan
 import play.filters.cors.CORSActionBuilder
-import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.reads.ChargeListReads._
+
 import scala.concurrent.Future
-import scalaz.{EitherT, \/}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
+import scalaz.{EitherT, \/}
 
 
 class AttributeController extends Controller with LazyLogging {
@@ -26,7 +27,7 @@ class AttributeController extends Controller with LazyLogging {
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val metrics = CloudWatch("AttributesController")
+  lazy val metrics = Metrics("AttributesController")
 
   def update = BackendFromCookieAction.async { implicit request =>
 
