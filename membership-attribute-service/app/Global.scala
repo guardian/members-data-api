@@ -25,12 +25,12 @@ object Global extends WithFilters(
 
   override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
     logger.debug(s"Bad request: $request, error: $error")
-    Future { AddGuIdentityHeaders.headersFor(request, badRequest(error)) }
+    Future { badRequest(error) }
   }
 
   override def onHandlerNotFound(request: RequestHeader): Future[Result] = {
     logger.debug(s"Handler not found for request: $request")
-    Future { AddGuIdentityHeaders.headersFor(request, notFound) }
+    Future { notFound }
   }
 
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
