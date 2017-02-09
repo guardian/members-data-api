@@ -1,5 +1,6 @@
 package models
 
+import controllers.NoCache
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -16,6 +17,6 @@ object ApiError {
     )
   }
   implicit def apiErrorToResult(err: ApiError): Result = {
-    Results.Status(err.statusCode)(Json.toJson(err))
+    NoCache(Results.Status(err.statusCode)(Json.toJson(err)))
   }
 }
