@@ -91,7 +91,9 @@
         "NotificationAlarmPeriod": 1200,
         "InstanceName": "PROD:membership-attribute-service",
         "DynamoDBTable": "arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD",
-        "DynamoDBTableTestUsers": "arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT"
+        "DynamoDBTableTestUsers": "arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT",
+        "DynamoDBBehaviourTable": "arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD",
+        "DynamoDBBehaviourTableTestUsers": "arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT"
       }
     }
   },
@@ -171,6 +173,36 @@
                   "Fn::FindInMap": ["StageVariables", {
                     "Ref": "Stage"
                   }, "DynamoDBTableTestUsers"]
+                },
+                "Effect": "Allow"
+              },
+              {
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:BatchGetItem"
+                ],
+                "Resource": {
+                  "Fn::FindInMap": ["StageVariables", {
+                    "Ref": "Stage"
+                  }, "DynamoDBBehaviourTable"]
+                },
+                "Effect": "Allow"
+              },
+              {
+                "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:BatchGetItem"
+                ],
+                "Resource": {
+                  "Fn::FindInMap": ["StageVariables", {
+                    "Ref": "Stage"
+                  }, "DynamoDBBehaviourTableTestUsers"]
                 },
                 "Effect": "Allow"
               },

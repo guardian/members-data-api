@@ -18,9 +18,11 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
 
 class HealthCheckController extends Results {
   lazy val zuora = NormalTouchpointComponents.zuoraService
+  lazy val salesforce = NormalTouchpointComponents.contactRepo.salesforce
 
   val tests: Seq[Test] = Seq(
-    new BoolTest("ZuoraPing", () => zuora.lastPingTimeWithin(2.minutes))
+    new BoolTest("ZuoraPing", () => zuora.lastPingTimeWithin(2.minutes)),
+    new BoolTest("Salesforce", () => salesforce.isAuthenticated)
   )
 
   def healthCheck() = Action {
