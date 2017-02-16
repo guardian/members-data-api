@@ -38,7 +38,7 @@ class BehaviourController extends Controller with LazyLogging {
           addItemResult <- request.touchpoint.behaviourService.set(behaviour)
         } yield addItemResult
         addResult.map { r =>
-          logger.info(s"recorded ${behaviour.activity} on ${behaviour.lastObserved} for ${behaviour.userId}")
+          logger.info(s"recorded ${behaviour.activity} on ${behaviour.lastObserved} for ${behaviour.userId} with note ${behaviour.note}")
           Ok(Behaviour.asJson(behaviour))
         }
       case _ =>
@@ -57,8 +57,9 @@ class BehaviourController extends Controller with LazyLogging {
       val id = (jval \ "userId").as[String]
       val activity = (jval \ "activity").as[String]
       val dateTime = (jval \ "dateTime").as[String]
-      Behaviour(id, activity, DateTime.parse(dateTime).toString(ISODateTimeFormat.dateTime.withZoneUTC))
-    }.getOrElse(Behaviour("","",""))
+      val note = (jval \ "note").as[String]
+      Behaviour(id, activity, DateTime.parse(dateTime).toString(ISODateTimeFormat.dateTime.withZoneUTC), note)
+    }.getOrElse(Behaviour("","","",""))
   }
 
 }
