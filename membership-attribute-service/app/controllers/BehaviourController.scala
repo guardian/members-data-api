@@ -46,7 +46,7 @@ class BehaviourController extends Controller with LazyLogging {
           // compile and send the email here
           logger.info(s"### updating behaviour record emailed: true")
           request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(true)))
-          "email sent - reminder record deleted"
+          "email sent - reminder record updated"
         }
       Ok(msg)
     }
@@ -88,7 +88,7 @@ class BehaviourController extends Controller with LazyLogging {
       val activity = (jval \ "activity").asOpt[String]
       val dateTime = (jval \ "dateTime").asOpt[String]
       val note = (jval \ "note").asOpt[String]
-      val emailed = (jval \ "email").asOpt[Boolean]
+      val emailed = (jval \ "emailed").asOpt[Boolean]
       Behaviour(id, activity, dateTime, note, emailed)
     }.getOrElse(Behaviour.empty)
   }
