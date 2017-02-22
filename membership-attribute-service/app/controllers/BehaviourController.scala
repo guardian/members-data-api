@@ -33,10 +33,10 @@ class BehaviourController extends Controller with LazyLogging {
       paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
       user <- request.touchpoint.identityService.user(IdentityId(receivedBehaviour.userId))
       emailAddress = (user \ "user" \ "primaryEmailAddress").as[String]
-      marketingPrefs = true // TODO - needs a PR in identity API to expose in above user <- ... call
+      gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
-        val msg = if (paidTier || !marketingPrefs) {
-          logger.info(s"### NOT sending email because paidTier: $paidTier marketingPrefs: $marketingPrefs")
+        val msg = if (paidTier || !gnmMarketingPrefs) {
+          logger.info(s"### NOT sending email because paidTier: $paidTier gnmMarketingPrefs: $gnmMarketingPrefs")
           request.touchpoint.behaviourService.delete(receivedBehaviour.userId)
           logger.info(s"### deleted reminder record")
           "user has paid or is not accepting emails"
@@ -63,7 +63,6 @@ class BehaviourController extends Controller with LazyLogging {
               activity = receivedBehaviour.activity.orElse(bhv.activity),
               lastObserved = receivedBehaviour.lastObserved.orElse(bhv.lastObserved),
               note = receivedBehaviour.note.orElse(bhv.note),
-              email = receivedBehaviour.email.orElse(bhv.email),
               emailed = receivedBehaviour.emailed.orElse(bhv.emailed))
           }.getOrElse(receivedBehaviour)
           res <- request.touchpoint.behaviourService.set(upserted)
@@ -89,9 +88,8 @@ class BehaviourController extends Controller with LazyLogging {
       val activity = (jval \ "activity").asOpt[String]
       val dateTime = (jval \ "dateTime").asOpt[String]
       val note = (jval \ "note").asOpt[String]
-      val email = (jval \ "email").asOpt[String]
       val emailed = (jval \ "email").asOpt[Boolean]
-      Behaviour(id, activity, dateTime, note, email, emailed)
+      Behaviour(id, activity, dateTime, note, emailed)
     }.getOrElse(Behaviour.empty)
   }
 
