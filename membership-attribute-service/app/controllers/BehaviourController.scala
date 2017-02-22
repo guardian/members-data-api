@@ -9,6 +9,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.JsValue
 import play.api.mvc.{AnyContent, Controller}
 import play.filters.cors.CORSActionBuilder
+import services.IdentityService.IdentityId
 import services.{AuthenticationService, IdentityAuthService}
 
 class BehaviourController extends Controller with LazyLogging {
@@ -24,6 +25,31 @@ class BehaviourController extends Controller with LazyLogging {
 
   def remove = BackendFromCookieAction.async { implicit request =>
     awsAction(request, "delete")
+  }
+
+  def sendCartReminderEmail = backendAction.async { implicit request =>
+    val receivedBehaviour = behaviourFromBody(request.body.asJson)
+    for {
+      paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
+      user <- request.touchpoint.identityService.user(IdentityId(receivedBehaviour.userId))
+      emailAddress = (user \ "user" \ "primaryEmailAddress").as[String]
+      marketingPrefs = true // TODO - needs a PR in identity API to expose in above user <- ... call
+    } yield {
+        val msg = if (paidTier || !marketingPrefs) {
+          logger.info(s"### NOT sending email because paidTier: $paidTier marketingPrefs: $marketingPrefs")
+          request.touchpoint.behaviourService.delete(receivedBehaviour.userId)
+          logger.info(s"### deleted reminder record")
+          "user has paid or is not accepting emails"
+        } else {
+          logger.info(s"### sending email to $emailAddress (TESTING ONLY - NO EMAIL IS ACTUALLY GENERATED YET!)")
+          // TODO!
+          // compile and send the email here
+          logger.info(s"### updating behaviour record emailed: true")
+          request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(true)))
+          "email sent - reminder record deleted"
+        }
+      Ok(msg)
+    }
   }
 
   private def awsAction(request: BackendRequest[AnyContent], action: String) = {
