@@ -32,22 +32,25 @@ class BehaviourController extends Controller with LazyLogging {
     for {
       paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
       user <- request.touchpoint.identityService.user(IdentityId(receivedBehaviour.userId))
-      emailAddress = (user \ "user" \ "primaryEmailAddress").as[String]
+      emailAddress = (user \ "user" \ "primaryEmailAddress").asOpt[String]
       gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
         val msg = if (paidTier || !gnmMarketingPrefs) {
           logger.info(s"### NOT sending email because paidTier: $paidTier gnmMarketingPrefs: $gnmMarketingPrefs")
           request.touchpoint.behaviourService.delete(receivedBehaviour.userId)
           logger.info(s"### deleted reminder record")
-          "user has paid or is not accepting emails"
+          "user has become a paying member or is not accepting marketing emails"
         } else {
-          logger.info(s"### sending email to $emailAddress (TESTING ONLY - NO EMAIL IS ACTUALLY GENERATED YET!)")
-          // TODO!
-          // compile and send the email here
-          logger.info(s"### updating behaviour record emailed: true")
-          request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(true)))
-          "email sent - reminder record updated"
+          emailAddress.map{ addr =>
+            logger.info(s"### sending email to $addr (TESTING ONLY - NO EMAIL IS ACTUALLY GENERATED YET!)")
+            // TODO!
+            // compile and send the email here
+            logger.info(s"### updating behaviour record emailed: true")
+            request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(true)))
+            "email sent - reminder record updated"
+          }.getOrElse("No email sent - email address not available")
         }
+      logger.info(s"### $msg")
       Ok(msg)
     }
   }
