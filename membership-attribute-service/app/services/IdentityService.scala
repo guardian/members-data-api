@@ -1,7 +1,7 @@
 package services
 
 import com.typesafe.scalalogging.LazyLogging
-import play.api.libs.json.{Json, __}
+import play.api.libs.json.{JsValue, Json, __}
 import play.api.libs.concurrent.Execution.Implicits._
 import java.net.URLEncoder.encode
 
@@ -27,9 +27,16 @@ object IdentityService {
   def userRequest(config: IdentityConfig)(email: String) =
     authRequest(config).url(config.url + s"/user?emailAddress=${encode(email, "UTF-8")}")
 
+  def userIdRequest(config: IdentityConfig)(userId: IdentityId) =
+    authRequest(config).url(config.url + s"/user/${userId.get}")
+
   def parseUserResponse(response: ResponseBody): Option[IdentityId] = {
     implicit val idReads = (__ \ "user" \ "id").read[String].map(IdentityId)
     Json.fromJson[IdentityId](Json.parse(response.string())).asOpt
+  }
+
+  def parseUserIdResponse(response: ResponseBody): JsValue = {
+    Json.parse(response.string())
   }
 
   def marketingRequest(config: IdentityConfig)(id: IdentityId, prefs: Boolean) = {
@@ -51,4 +58,11 @@ class IdentityService(state: IdentityConfig, client: RequestRunners.FutureHttpCl
 
   def user(email: String) =
     client(userRequest(state)(email).build).map(response => parseUserResponse(response.body))
+
+  def user(id: IdentityId) = {
+    client(userIdRequest(state)(id).build).map { response =>
+      parseUserIdResponse(response.body)
+    }
+
+  }
 }
