@@ -89,10 +89,10 @@ class BehaviourController extends Controller with LazyLogging {
     requestBodyJson.map { jval =>
       val id = (jval \ "userId").as[String]
       val activity = (jval \ "activity").asOpt[String]
-      val dateTime = (jval \ "dateTime").asOpt[String]
+      val lastObserved = (jval \ "lastObserved").asOpt[String]
       val note = (jval \ "note").asOpt[String]
       val emailed = (jval \ "emailed").asOpt[Boolean]
-      Behaviour(id, activity, dateTime, note, emailed)
+      Behaviour(id, activity, lastObserved, note, emailed)
     }.getOrElse(Behaviour.empty)
   }
 
