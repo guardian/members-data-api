@@ -1,12 +1,15 @@
 package controllers
 
 import actions._
+import com.amazonaws.services.sqs.AmazonSQSClient
+import com.amazonaws.services.sqs.model.{SendMessageRequest, CreateQueueRequest}
+import com.gu.aws._
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.Behaviour
 import monitoring.Metrics
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.json.JsValue
+import play.api.libs.json.{Json, JsValue}
 import play.api.mvc.{AnyContent, Controller}
 import play.filters.cors.CORSActionBuilder
 import services.IdentityService.IdentityId
@@ -18,6 +21,9 @@ class BehaviourController extends Controller with LazyLogging {
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
+
+  lazy val sqsClient = new AmazonSQSClient(CredentialsProvider)
+  lazy val emailQueueUrl = sqsClient.createQueue(new CreateQueueRequest(Config.abandonedCartEmailQueue)).getQueueUrl
 
   def capture() = BackendFromCookieAction.async { implicit request =>
     awsAction(request, "upsert")
@@ -33,25 +39,47 @@ class BehaviourController extends Controller with LazyLogging {
       paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
       user <- request.touchpoint.identityService.user(IdentityId(receivedBehaviour.userId))
       emailAddress = (user \ "user" \ "primaryEmailAddress").asOpt[String]
+      firstName = (user \ "user" \ "firstName").asOpt[String]
       gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
         val msg = if (paidTier || !gnmMarketingPrefs) {
-          logger.info(s"### NOT sending email because paidTier: $paidTier gnmMarketingPrefs: $gnmMarketingPrefs")
+          val reason = "user " + (if (paidTier) "has become a paying member" else "is not accepting marketing emails")
+          logger.info(s"NOT queuing an email because $reason")
           request.touchpoint.behaviourService.delete(receivedBehaviour.userId)
-          logger.info(s"### deleted reminder record")
-          "user has become a paying member or is not accepting marketing emails"
+          logger.info(s"deleted reminder record")
+          reason
         } else {
           emailAddress.map{ addr =>
-            logger.info(s"### sending email to $addr (TESTING ONLY - NO EMAIL IS ACTUALLY GENERATED YET!)")
-            // TODO!
-            // compile and send the email here
-            logger.info(s"### updating behaviour record emailed: true")
-            request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(true)))
-            "email sent - reminder record updated"
+            val queueResult = queueAbandonedCartEmail(addr, firstName)
+            request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(queueResult)))
+            "email " + (if (queueResult) "queued" else "queue failed")
           }.getOrElse("No email sent - email address not available")
         }
       logger.info(s"### $msg")
       Ok(msg)
+    }
+  }
+
+  private def queueAbandonedCartEmail(emailAddress: String, firstName: Option[String]) = {
+    logger.info(s"queuing email to ${emailAddress.take(emailAddress.indexOf("@")-1)}...")
+
+    val recipient = Json.obj(
+      "Address" -> emailAddress)
+
+    val messageBody = Json.obj(
+      "Subject" -> s"You’re almost there${if(firstName.nonEmpty) ", " + firstName.get}}!",
+      "Message" -> s"Hi${if(firstName.nonEmpty) " " + firstName.get}}, newline etc etc")
+
+    val msg = Json.obj(
+      "To" -> recipient,
+      "Message" -> messageBody)
+
+    try {
+      sqsClient.sendMessage(new SendMessageRequest(emailQueueUrl, msg.toString()))
+      true
+    } catch {
+      case e: Exception => logger.warn("email queue operation failed")
+      false
     }
   }
 

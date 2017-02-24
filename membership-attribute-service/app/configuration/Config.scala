@@ -81,4 +81,6 @@ object Config {
     supportsCredentials = true
   )
 
+  val abandonedCartEmailQueue = config.getString("abandoned.cart.email.queue")
+
 }
