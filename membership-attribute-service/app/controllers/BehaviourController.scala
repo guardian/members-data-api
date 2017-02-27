@@ -1,6 +1,7 @@
 package controllers
 
 import actions._
+import com.amazonaws.regions.{Regions, Region}
 import com.amazonaws.services.sqs.AmazonSQSClient
 import com.amazonaws.services.sqs.model.{SendMessageRequest, CreateQueueRequest}
 import com.gu.aws._
@@ -22,8 +23,9 @@ class BehaviourController extends Controller with LazyLogging {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
 
-  lazy val sqsClient = new AmazonSQSClient(CredentialsProvider)
-  lazy val emailQueueUrl = sqsClient.createQueue(new CreateQueueRequest(Config.abandonedCartEmailQueue)).getQueueUrl
+  val sqsClient = new AmazonSQSClient(CredentialsProvider)
+  sqsClient.setRegion(Region.getRegion(Regions.EU_WEST_1))
+  val emailQueueUrl = sqsClient.createQueue(new CreateQueueRequest(Config.abandonedCartEmailQueue)).getQueueUrl
 
   def capture() = BackendFromCookieAction.async { implicit request =>
     awsAction(request, "upsert")
@@ -39,8 +41,7 @@ class BehaviourController extends Controller with LazyLogging {
       paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
       user <- request.touchpoint.identityService.user(IdentityId(receivedBehaviour.userId))
       emailAddress = (user \ "user" \ "primaryEmailAddress").asOpt[String]
-      firstName = (user \ "user" \ "firstName").asOpt[String]
-      lastName = (user \ "user" \ "lastName").asOpt[String]
+      displayName = (user \ "user" \ "publicFields" \ "displayName").asOpt[String]
       gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
         val msg = if (paidTier || !gnmMarketingPrefs) {
@@ -51,7 +52,7 @@ class BehaviourController extends Controller with LazyLogging {
           reason
         } else {
           emailAddress.map{ addr =>
-            val queueResult = queueAbandonedCartEmail(addr, firstName, lastName)
+            val queueResult = queueAbandonedCartEmail(addr, displayName)
             request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(queueResult)))
             "email " + (if (queueResult) "queued" else "queue failed")
           }.getOrElse("No email sent - email address not available")
@@ -61,19 +62,20 @@ class BehaviourController extends Controller with LazyLogging {
     }
   }
 
-  private def queueAbandonedCartEmail(emailAddress: String, firstName: Option[String], lastName: Option[String]) = {
+  private def queueAbandonedCartEmail(emailAddress: String, displayName: Option[String]) = {
     logger.info(s"queuing email to ${emailAddress.take(emailAddress.indexOf("@")-1)}...")
     val testEmailAddress = "justin.pinner@theguardian.com"
     val recipient = Json.obj(
       "Address" -> testEmailAddress,
-      "FirstName" -> firstName.getOrElse[String](""),
-      "LastName" -> lastName.getOrElse[String]("")
+      "FirstName" -> displayName.flatMap{_.split(" ").headOption}.getOrElse[String](""),
+      "LastName" -> displayName.flatMap{_.split(" ").tail.headOption}.getOrElse[String]("")
     )
     val completionLink = Json.obj(
       "CompletionLink" -> "https://membership.theguardian.com/supporter"
     )
     // TODO: remove this completely and use emailAddress in place of testEmailAddress in recipient when live!
     val ignoredTestData = Json.obj(
+      "DisplayName" -> displayName.getOrElse[String](""),
       "EmailAddress" -> emailAddress
     )
     val msg = Json.obj(
@@ -87,7 +89,7 @@ class BehaviourController extends Controller with LazyLogging {
       sqsClient.sendMessage(new SendMessageRequest(emailQueueUrl, msg.toString()))
       true
     } catch {
-      case e: Exception => logger.warn("email queue operation failed")
+      case e: Exception => logger.warn(s"email queue operation failed: ${e}")
       false
     }
   }
