@@ -1,20 +1,16 @@
 package controllers
 
 import actions._
-import com.amazonaws.regions.{Regions, Region}
-import com.amazonaws.services.sqs.AmazonSQSClient
-import com.amazonaws.services.sqs.model.{SendMessageRequest, CreateQueueRequest}
-import com.gu.aws._
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.Behaviour
 import monitoring.Metrics
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.json.{Json, JsValue}
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{AnyContent, Controller}
 import play.filters.cors.CORSActionBuilder
 import services.IdentityService.IdentityId
-import services.{AuthenticationService, IdentityAuthService}
+import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEmailService}
 
 class BehaviourController extends Controller with LazyLogging {
 
@@ -22,10 +18,6 @@ class BehaviourController extends Controller with LazyLogging {
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
-
-  val sqsClient = new AmazonSQSClient(CredentialsProvider)
-  sqsClient.setRegion(Region.getRegion(Regions.EU_WEST_1))
-  val emailQueueUrl = sqsClient.createQueue(new CreateQueueRequest(Config.abandonedCartEmailQueue)).getQueueUrl
 
   def capture() = BackendFromCookieAction.async { implicit request =>
     awsAction(request, "upsert")
@@ -86,7 +78,7 @@ class BehaviourController extends Controller with LazyLogging {
     )
 
     try {
-      sqsClient.sendMessage(new SendMessageRequest(emailQueueUrl, msg.toString()))
+      SQSAbandonedCartEmailService.sendMessage(msg.toString())
       true
     } catch {
       case e: Exception => logger.warn(s"email queue operation failed: ${e}")
