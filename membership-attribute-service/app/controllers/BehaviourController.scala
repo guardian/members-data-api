@@ -66,8 +66,8 @@ class BehaviourController extends Controller with LazyLogging {
     val testEmailAddress = "justin.pinner@theguardian.com"
     val recipient = Json.obj(
       "Address" -> testEmailAddress,
-      "FirstName" -> firstName.getOrElse(""),
-      "LastName" -> lastName.getOrElse("")
+      "FirstName" -> firstName.getOrElse[String](""),
+      "LastName" -> lastName.getOrElse[String]("")
     )
     val completionLink = Json.obj(
       "CompletionLink" -> "https://membership.theguardian.com/supporter"
