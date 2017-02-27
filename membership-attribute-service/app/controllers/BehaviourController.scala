@@ -40,6 +40,7 @@ class BehaviourController extends Controller with LazyLogging {
       user <- request.touchpoint.identityService.user(IdentityId(receivedBehaviour.userId))
       emailAddress = (user \ "user" \ "primaryEmailAddress").asOpt[String]
       firstName = (user \ "user" \ "firstName").asOpt[String]
+      lastName = (user \ "user" \ "lastName").asOpt[String]
       gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
         val msg = if (paidTier || !gnmMarketingPrefs) {
@@ -50,7 +51,7 @@ class BehaviourController extends Controller with LazyLogging {
           reason
         } else {
           emailAddress.map{ addr =>
-            val queueResult = queueAbandonedCartEmail(addr, firstName)
+            val queueResult = queueAbandonedCartEmail(addr, firstName, lastName)
             request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(queueResult)))
             "email " + (if (queueResult) "queued" else "queue failed")
           }.getOrElse("No email sent - email address not available")
@@ -60,19 +61,27 @@ class BehaviourController extends Controller with LazyLogging {
     }
   }
 
-  private def queueAbandonedCartEmail(emailAddress: String, firstName: Option[String]) = {
+  private def queueAbandonedCartEmail(emailAddress: String, firstName: Option[String], lastName: Option[String]) = {
     logger.info(s"queuing email to ${emailAddress.take(emailAddress.indexOf("@")-1)}...")
-
+    val testEmailAddress = "justin.pinner@theguardian.com"
     val recipient = Json.obj(
-      "Address" -> emailAddress)
-
-    val messageBody = Json.obj(
-      "Subject" -> s"You’re almost there${if(firstName.nonEmpty) ", " + firstName.get}}!",
-      "Message" -> s"Hi${if(firstName.nonEmpty) " " + firstName.get}}, newline etc etc")
-
+      "Address" -> testEmailAddress,
+      "FirstName" -> firstName.getOrElse(""),
+      "LastName" -> lastName.getOrElse("")
+    )
+    val completionLink = Json.obj(
+      "CompletionLink" -> "https://membership.theguardian.com/supporter"
+    )
+    // TODO: remove this completely and use emailAddress in place of testEmailAddress in recipient when live!
+    val ignoredTestData = Json.obj(
+      "EmailAddress" -> emailAddress
+    )
     val msg = Json.obj(
       "To" -> recipient,
-      "Message" -> messageBody)
+      "Message" -> completionLink,
+      "TestData" -> ignoredTestData,
+      "DataExtensionName" -> "supporter-abandoned-checkout-email"
+    )
 
     try {
       sqsClient.sendMessage(new SendMessageRequest(emailQueueUrl, msg.toString()))
