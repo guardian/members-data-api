@@ -5,8 +5,10 @@ import java.time.Duration
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
+import com.amazonaws.services.sqs.AmazonSQSAsyncClient
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
 import com.github.dwhjames.awswrap.sns.AmazonSNSScalaClient
+import com.github.dwhjames.awswrap.sqs.AmazonSQSScalaClient
 import com.gu.aws.CredentialsProvider
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
@@ -45,6 +47,13 @@ object Config {
     awsSnsClient.configureRegion(AWS.region)
     val snsClient = new AmazonSNSScalaClient(awsSnsClient)
     snsClient
+  }
+
+  lazy val sqsClient = {
+    val awsSqsClient = new AmazonSQSAsyncClient(CredentialsProvider)
+    awsSqsClient.configureRegion(AWS.region)
+    val sqsClient = new AmazonSQSScalaClient(awsSqsClient, global)
+    sqsClient
   }
 
   lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), Duration.ofDays(2))

@@ -11,6 +11,7 @@ import play.api.mvc.{AnyContent, Controller}
 import play.filters.cors.CORSActionBuilder
 import services.IdentityService.IdentityId
 import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEmailService}
+import scala.concurrent.Future
 
 class BehaviourController extends Controller with LazyLogging {
 
@@ -44,9 +45,13 @@ class BehaviourController extends Controller with LazyLogging {
           reason
         } else {
           emailAddress.map{ addr =>
-            val queueResult = queueAbandonedCartEmail(addr, displayName)
-            request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(queueResult)))
-            "email " + (if (queueResult) "queued" else "queue failed")
+            for {
+              status <- queueAbandonedCartEmail(addr, displayName)
+            } yield {
+              request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(status)))
+              logger.info(s"### email " + (if (status) "queued" else "queue failed"))
+            }
+            "message sent"
           }.getOrElse("No email sent - email address not available")
         }
       logger.info(s"### $msg")
@@ -57,17 +62,20 @@ class BehaviourController extends Controller with LazyLogging {
   private def queueAbandonedCartEmail(emailAddress: String, displayName: Option[String]) = {
     logger.info(s"queuing email to ${emailAddress.take(emailAddress.indexOf("@")-1)}...")
     val testEmailAddress = "justin.pinner@theguardian.com"
+    val (firstName, lastName) = displayName.map { dn =>
+      (dn.split(" ").headOption.getOrElse[String](""), dn.split(" ").tail.headOption.getOrElse[String](""))
+    }.getOrElse("","")
     val recipient = Json.obj(
       "Address" -> testEmailAddress,
-      "FirstName" -> displayName.flatMap{_.split(" ").headOption}.getOrElse[String](""),
-      "LastName" -> displayName.flatMap{_.split(" ").tail.headOption}.getOrElse[String]("")
+      "FirstName" -> firstName,
+      "LastName" -> lastName,
+      "DisplayName" -> displayName.getOrElse[String]("")
     )
     val completionLink = Json.obj(
-      "CompletionLink" -> "https://membership.theguardian.com/supporter"
+      "CompletionLink" -> "https://membership.theguardian.com/supporter?INTCMP=ACART"
     )
     // TODO: remove this completely and use emailAddress in place of testEmailAddress in recipient when live!
     val ignoredTestData = Json.obj(
-      "DisplayName" -> displayName.getOrElse[String](""),
       "EmailAddress" -> emailAddress
     )
     val msg = Json.obj(
@@ -78,11 +86,17 @@ class BehaviourController extends Controller with LazyLogging {
     )
 
     try {
-      SQSAbandonedCartEmailService.sendMessage(msg.toString())
-      true
+      val msgStatus = for {
+        result <- SQSAbandonedCartEmailService.sendMessage(msg.toString())
+      } yield {
+        val msgId = result.getMessageId
+        logger.info(s"### created message: $msgId")
+        msgId.nonEmpty
+      }
+      msgStatus
     } catch {
       case e: Exception => logger.warn(s"email queue operation failed: ${e}")
-      false
+      Future(false)
     }
   }
 
