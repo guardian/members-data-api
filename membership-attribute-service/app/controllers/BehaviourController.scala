@@ -11,6 +11,7 @@ import play.api.mvc.{AnyContent, Controller}
 import play.filters.cors.CORSActionBuilder
 import services.IdentityService.IdentityId
 import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEmailService}
+import scala.concurrent.Future
 
 class BehaviourController extends Controller with LazyLogging {
 
@@ -36,38 +37,45 @@ class BehaviourController extends Controller with LazyLogging {
       displayName = (user \ "user" \ "publicFields" \ "displayName").asOpt[String]
       gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
-        val msg = if (paidTier || !gnmMarketingPrefs) {
-          val reason = "user " + (if (paidTier) "has become a paying member" else "is not accepting marketing emails")
+        if (paidTier || !gnmMarketingPrefs) {
+          val reason = s"user ${receivedBehaviour.userId} " + (if (paidTier) "has become a paying member" else "is not accepting marketing emails")
           logger.info(s"NOT queuing an email because $reason")
           request.touchpoint.behaviourService.delete(receivedBehaviour.userId)
           logger.info(s"deleted reminder record")
           reason
         } else {
-          emailAddress.map{ addr =>
-            val queueResult = queueAbandonedCartEmail(addr, displayName)
-            request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(queueResult)))
-            "email " + (if (queueResult) "queued" else "queue failed")
-          }.getOrElse("No email sent - email address not available")
+          emailAddress match {
+            case Some(address) =>
+              for {
+                status <- queueAbandonedCartEmail(address, displayName)
+              } yield {
+                request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(status)))
+                logger.info(s"email for ${receivedBehaviour.userId} " + (if (status) "queued" else "queue failed"))
+              }
+            case _ => logger.warn(s"email address not available for user ${receivedBehaviour.userId} - message not queued")
+          }
         }
-      logger.info(s"### $msg")
-      Ok(msg)
+      Ok("Done")
     }
   }
 
   private def queueAbandonedCartEmail(emailAddress: String, displayName: Option[String]) = {
     logger.info(s"queuing email to ${emailAddress.take(emailAddress.indexOf("@")-1)}...")
     val testEmailAddress = "justin.pinner@theguardian.com"
+    val (firstName, lastName) = displayName.map { dn =>
+      (dn.split(" ").headOption.getOrElse[String](""), dn.split(" ").tail.headOption.getOrElse[String](""))
+    }.getOrElse("","")
     val recipient = Json.obj(
       "Address" -> testEmailAddress,
-      "FirstName" -> displayName.flatMap{_.split(" ").headOption}.getOrElse[String](""),
-      "LastName" -> displayName.flatMap{_.split(" ").tail.headOption}.getOrElse[String]("")
+      "FirstName" -> firstName,
+      "LastName" -> lastName,
+      "DisplayName" -> displayName.getOrElse[String]("")
     )
     val completionLink = Json.obj(
-      "CompletionLink" -> "https://membership.theguardian.com/supporter"
+      "CompletionLink" -> "https://membership.theguardian.com/supporter?INTCMP=ACART"
     )
     // TODO: remove this completely and use emailAddress in place of testEmailAddress in recipient when live!
     val ignoredTestData = Json.obj(
-      "DisplayName" -> displayName.getOrElse[String](""),
       "EmailAddress" -> emailAddress
     )
     val msg = Json.obj(
@@ -78,11 +86,16 @@ class BehaviourController extends Controller with LazyLogging {
     )
 
     try {
-      SQSAbandonedCartEmailService.sendMessage(msg.toString())
-      true
+      for {
+        result <- SQSAbandonedCartEmailService.sendMessage(msg.toString())
+      } yield {
+        val msgId = result.getMessageId
+        logger.info(s"created message: $msgId")
+        msgId.nonEmpty
+      }
     } catch {
       case e: Exception => logger.warn(s"email queue operation failed: ${e}")
-      false
+      Future(false)
     }
   }
 
