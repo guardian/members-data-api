@@ -37,25 +37,25 @@ class BehaviourController extends Controller with LazyLogging {
       displayName = (user \ "user" \ "publicFields" \ "displayName").asOpt[String]
       gnmMarketingPrefs = true // TODO - needs an Identity API PR to send statusFields.receiveGnmMarketing in above user <- ... call
     } yield {
-        val msg = if (paidTier || !gnmMarketingPrefs) {
-          val reason = "user " + (if (paidTier) "has become a paying member" else "is not accepting marketing emails")
+        if (paidTier || !gnmMarketingPrefs) {
+          val reason = s"user ${receivedBehaviour.userId} " + (if (paidTier) "has become a paying member" else "is not accepting marketing emails")
           logger.info(s"NOT queuing an email because $reason")
           request.touchpoint.behaviourService.delete(receivedBehaviour.userId)
           logger.info(s"deleted reminder record")
           reason
         } else {
-          emailAddress.map{ addr =>
-            for {
-              status <- queueAbandonedCartEmail(addr, displayName)
-            } yield {
-              request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(status)))
-              logger.info(s"### email " + (if (status) "queued" else "queue failed"))
-            }
-            "message sent"
-          }.getOrElse("No email sent - email address not available")
+          emailAddress match {
+            case Some(address) =>
+              for {
+                status <- queueAbandonedCartEmail(address, displayName)
+              } yield {
+                request.touchpoint.behaviourService.set(receivedBehaviour.copy(emailed = Some(status)))
+                logger.info(s"email for ${receivedBehaviour.userId} " + (if (status) "queued" else "queue failed"))
+              }
+            case _ => logger.warn(s"email address not available for user ${receivedBehaviour.userId} - message not queued")
+          }
         }
-      logger.info(s"### $msg")
-      Ok(msg)
+      Ok("Done")
     }
   }
 
@@ -86,14 +86,13 @@ class BehaviourController extends Controller with LazyLogging {
     )
 
     try {
-      val msgStatus = for {
+      for {
         result <- SQSAbandonedCartEmailService.sendMessage(msg.toString())
       } yield {
         val msgId = result.getMessageId
-        logger.info(s"### created message: $msgId")
+        logger.info(s"created message: $msgId")
         msgId.nonEmpty
       }
-      msgStatus
     } catch {
       case e: Exception => logger.warn(s"email queue operation failed: ${e}")
       Future(false)
