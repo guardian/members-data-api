@@ -72,7 +72,7 @@ class BehaviourController extends Controller with LazyLogging {
       "DisplayName" -> displayName.getOrElse[String]("")
     )
     val completionLink = Json.obj(
-      "CompletionLink" -> "https://membership.theguardian.com/supporter?INTCMP=ACART"
+      "CompletionLink" -> "https://membership.theguardian.com/join/supporter/enter-details?INTCMP=ACART_EASE"
     )
     // TODO: remove this completely and use emailAddress in place of testEmailAddress in recipient when live!
     val ignoredTestData = Json.obj(
@@ -82,7 +82,7 @@ class BehaviourController extends Controller with LazyLogging {
       "To" -> recipient,
       "Message" -> completionLink,
       "TestData" -> ignoredTestData,
-      "DataExtensionName" -> "supporter-abandoned-checkout-email"
+      "DataExtensionName" -> "supporter-abandoned-checkout-ease-email"
     )
 
     try {
