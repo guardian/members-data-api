@@ -56,7 +56,8 @@ object Config {
     sqsClient
   }
 
-  lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), Duration.ofDays(2))
+  val identitySecret = config.getString("identity.test.users.secret")
+  lazy val testUsernames = TestUsernames(Encoder.withSecret(identitySecret), Duration.ofDays(2))
 
   val defaultTouchpointBackendStage = config.getString("touchpoint.backend.default")
   val testTouchpointBackendStage = config.getString("touchpoint.backend.test")
