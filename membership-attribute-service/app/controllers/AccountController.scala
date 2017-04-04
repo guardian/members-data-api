@@ -59,5 +59,6 @@ class AccountController {
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
+  def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
 }
