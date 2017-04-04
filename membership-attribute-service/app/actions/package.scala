@@ -3,7 +3,7 @@ import controllers.NoCache
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 package object actions {
   def noCache(result: Result): Result = NoCache(result)

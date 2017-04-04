@@ -11,7 +11,7 @@ import repositories.MembershipAttributesSerializer
 import sources.SalesforceCSVExport
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object BatchLoader {
   private val table = NormalTouchpointComponents.dynamoAttributesTable
