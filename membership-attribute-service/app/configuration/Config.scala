@@ -18,7 +18,7 @@ import play.api.Configuration
 import play.filters.cors.CORSConfig
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.util.Try
 
 object Config {
@@ -52,7 +52,7 @@ object Config {
   lazy val sqsClient = {
     val awsSqsClient = new AmazonSQSAsyncClient(CredentialsProvider)
     awsSqsClient.configureRegion(AWS.region)
-    val sqsClient = new AmazonSQSScalaClient(awsSqsClient, global)
+    val sqsClient = new AmazonSQSScalaClient(awsSqsClient, defaultContext)
     sqsClient
   }
 
