@@ -13,7 +13,7 @@ import repositories.MembershipAttributesSerializer.AttributeNames
 import services.ScanamoAttributeService
 
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.duration._
 import org.specs2.concurrent.ExecutionEnv
 
