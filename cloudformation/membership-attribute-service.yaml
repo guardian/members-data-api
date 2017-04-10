@@ -1,0 +1,329 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Membership Attributes service
+Parameters:
+  Name:
+    Description: The name given to the autoscaling group
+    Type: String
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+  SiteDomain:
+    Description: Site domain Name
+    Type: String
+    Default: members-data-api.theguardian.com
+  Stage:
+    Description: Environment name
+    Type: String
+    Default: PROD
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - g2.2xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - hs1.8xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+  PlayAppSecret:
+    Description: Application secret for the play application for crypto
+    Type: String
+  MaxInstances:
+    Description: Maximum number of instances. This should be (at least) double the
+      desired capacity.
+    Type: Number
+    Default: 6
+  MinInstances:
+    Description: Minimum number of instances
+    Type: Number
+    Default: 3
+  VpcId:
+    Description: ID of the VPC onto which to launch the application
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-e6e00183
+  VpcSubnets:
+    Description: Subnets to use in VPC
+    Type: CommaDelimitedList
+    Default: subnet-cb91ae8d,subnet-a7b74ac2,subnet-179e8063
+  AmiId:
+    Description: Custom AMI to use for instances, created using Packer
+    Type: String
+  VulnerabilityScanningSecurityGroup:
+    Description: Security group that grants access to the account's Vulnerability Scanner
+    Type: AWS::EC2::SecurityGroup::Id
+Mappings:
+  StageVariables:
+    PROD:
+      NotificationAlarmPeriod: 1200
+      InstanceName: PROD:membership-attribute-service
+      DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD
+      DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
+      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
+      DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+Resources:
+  MembershipRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Statement:
+          - Action: s3:GetObject
+            Resource: arn:aws:s3:::gu-membership-*/*
+            Effect: Allow
+          - Action: s3:GetObject
+            Resource: arn:aws:s3:::members-data-api-private/*
+            Effect: Allow
+          - Action: ec2:DescribeTags
+            Resource: "*"
+            Effect: Allow
+          - Effect: Allow
+            Action:
+            - sns:Publish
+            Resource:
+              Ref: TopicGiraffe
+          - Action:
+            - logs:*
+            Resource:
+            - arn:aws:logs:*:*:*
+            Effect: Allow
+          - Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchGetItem
+            Resource:
+              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTable ]
+            Effect: Allow
+          - Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchGetItem
+            Resource:
+              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTableTestUsers ]
+            Effect: Allow
+          - Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchGetItem
+            Resource:
+              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTable ]
+            Effect: Allow
+          - Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchGetItem
+            Resource:
+              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTableTestUsers ]
+            Effect: Allow
+          - Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            Resource: arn:aws:dynamodb:*:*:table/hackday-user-reputation
+            Effect: Allow
+          - Action:
+            - cloudwatch:*
+            - logs:*
+            Resource: "*"
+            Effect: Allow
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+      - Ref: MembershipRole
+  GuardianAccessSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SSH access from Guardian network
+      VpcId:
+        Ref: VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp: 77.91.248.0/21
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Listeners:
+      - LoadBalancerPort: '443'
+        InstancePort: '9000'
+        Protocol: HTTPS
+        SSLCertificateId: !Sub
+          - "arn:aws:iam::${AWS::AccountId}:server-certificate/${SiteDomain}"
+          - {}
+      ConnectionDrainingPolicy:
+        Enabled: 'true'
+        Timeout: '60'
+      CrossZone: 'true'
+      HealthCheck:
+        Target: HTTP:9000/healthcheck
+        HealthyThreshold: '2'
+        UnhealthyThreshold: '3'
+        Interval: '10'
+        Timeout: '5'
+      Subnets:
+        Ref: VpcSubnets
+      SecurityGroups:
+      - Ref: LoadBalancerSecurityGroup
+  AutoscalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones:
+        Fn::GetAZs: ''
+      LaunchConfigurationName:
+        Ref: LaunchConfig
+      MinSize:
+        Ref: MinInstances
+      MaxSize:
+        Ref: MaxInstances
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 400
+      LoadBalancerNames:
+      - Ref: LoadBalancer
+      Tags:
+      - Key: Stage
+        Value:
+          Ref: Stage
+        PropagateAtLaunch: 'true'
+      - Key: PlayAppSecret
+        Value:
+          Ref: PlayAppSecret
+        PropagateAtLaunch: 'true'
+      - Key: Name
+        Value:
+          Fn::FindInMap: [ StageVariables, { Ref: Stage }, InstanceName ]
+        PropagateAtLaunch: 'true'
+      - Key: Stack
+        Value: membership
+        PropagateAtLaunch: 'true'
+      - Key: App
+        Value: membership-attribute-service
+        PropagateAtLaunch: 'true'
+      - Key: Role
+        Value: membership-attribute-service
+        PropagateAtLaunch: 'true'
+      - Key: Mainclass
+        Value: membership-attribute-service
+        PropagateAtLaunch: 'true'
+      VPCZoneIdentifier:
+        Ref: VpcSubnets
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      KeyName:
+        Ref: KeyName
+      ImageId:
+        Ref: AmiId
+      SecurityGroups:
+      - Ref: InstanceSecurityGroup
+      - Ref: GuardianAccessSecurityGroup
+      - Ref: VulnerabilityScanningSecurityGroup
+      InstanceType:
+        Ref: InstanceType
+      AssociatePublicIpAddress: 'True'
+      IamInstanceProfile:
+        Ref: InstanceProfile
+      UserData:
+        "Fn::Base64":
+          !Sub
+            - |
+              #!/bin/bash -ev
+              CONF_DIR=/membership-attribute-service/membership-attribute-service-1.0-SNAPSHOT/conf
+              aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .
+              chmod +x set-env.sh
+              aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .
+              chmod +x membership-attribute-service-bootstrap.sh
+              ./membership-attribute-service-bootstrap.sh
+              aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .
+              chmod +x set-ssh-keys.sh
+              ./set-ssh-keys.sh
+              mkdir -p /etc/gu
+              aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.conf /etc/gu
+              chown membership-attribute-service /etc/gu/members-data-api.conf
+              chmod 0600 /etc/gu/members-data-api.conf
+              wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
+              sed -i -e "s/__DATE/$(date +%F)/" -e 's/__STAGE/${Stage}/' $CONF_DIR/logger.conf
+              python awslogs-agent-setup.py -nr ${AWS::Region} -c $CONF_DIR/logger.conf
+              service membership-attribute-service start
+              sleep 20s
+            - {}
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VpcId
+      GroupDescription: Open up HTTPS access to load balancer
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: '9000'
+        ToPort: '9000'
+        CidrIp: 0.0.0.0/0
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VpcId
+      GroupDescription: Open up HTTP access to load balancer
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '9000'
+        ToPort: '9000'
+        SourceSecurityGroupId:
+          Ref: LoadBalancerSecurityGroup
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+  TopicGiraffe:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: giraffe
+Outputs:
+  LoadBalancerUrl:
+    Value:
+      Fn::GetAtt:
+      - LoadBalancer
+      - DNSName
