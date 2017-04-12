@@ -20,9 +20,9 @@ import models.AccountDetails._
 import scalaz.OptionT
 import actions._
 import com.gu.memsub.subsv2.reads.SubPlanReads
+import com.typesafe.scalalogging.LazyLogging
 
-
-class AccountController {
+class AccountController extends LazyLogging {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig)
@@ -47,12 +47,24 @@ class AccountController {
   }
 
   def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
+    val maybeUserId = authenticationService.userId
+    logger.info(s"Attempting to retrieve payment details for identity user: $maybeUserId")
     (for {
-      user <- OptionT(Future.successful(authenticationService.userId))
+      user <- OptionT(Future.successful(maybeUserId))
       contact <- OptionT(request.touchpoint.contactRepo.get(user))
       sub <- OptionT(request.touchpoint.subService.either[F, P](contact))
       details <- OptionT(request.touchpoint.paymentService.paymentDetails(sub).map[Option[PaymentDetails]](Some(_)))
-    } yield (contact, details).toResult).run.map(_ getOrElse Ok(Json.obj()))
+    } yield (contact, details).toResult).run.map { maybeResult => maybeResult match {
+        case Some(result) => {
+          logger.info(s"Successfully retrieved payment details result for identity user: $maybeUserId")
+          result
+        }
+        case None => {
+          logger.info(s"Unable to retrieve payment details result for identity user $maybeUserId")
+          Ok(Json.obj())
+        }
+      }
+    }
   }
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
