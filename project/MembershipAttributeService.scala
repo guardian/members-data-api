@@ -40,7 +40,8 @@ trait MembershipAttributeService {
     sources in (Compile,doc) := Seq.empty,
     publishArtifact in (Compile, packageDoc) := false,
     parallelExecution in Global := false,
-    updateOptions := updateOptions.value.withCachedResolution(true)
+    updateOptions := updateOptions.value.withCachedResolution(true),
+    javaOptions in Test += "-Dconfig.resource=TEST.public.conf"
   ) ++ buildInfoPlugin
 
   lazy val dynamoDBLocalSettings = Seq(
