@@ -40,8 +40,7 @@ trait MembershipAttributeService {
     sources in (Compile,doc) := Seq.empty,
     publishArtifact in (Compile, packageDoc) := false,
     parallelExecution in Global := false,
-    updateOptions := updateOptions.value.withCachedResolution(true),
-    javaOptions in Test += "-Dconfig.resource=DEV.conf"
+    updateOptions := updateOptions.value.withCachedResolution(true)
   ) ++ buildInfoPlugin
 
   lazy val dynamoDBLocalSettings = Seq(
@@ -66,7 +65,7 @@ object MembershipAttributeService extends Build with MembershipAttributeService 
                 .settings(libraryDependencies ++= apiDependencies)
                 .settings(routesGenerator := InjectedRoutesGenerator)
                 .settings(
-                  addCommandAlias("devrun", "run -Dconfig.resource=DEV.conf 9400"),
+                  addCommandAlias("devrun", "run 9400"),
                   addCommandAlias("batch-load", "runMain BatchLoader")
                 )
 

@@ -273,14 +273,14 @@ Resources:
               CONF_DIR=/membership-attribute-service/membership-attribute-service-1.0-SNAPSHOT/conf
               aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .
               chmod +x set-env.sh
-              aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .
+              aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap-test.sh ./membership-attribute-service-bootstrap.sh
               chmod +x membership-attribute-service-bootstrap.sh
               ./membership-attribute-service-bootstrap.sh
               aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .
               chmod +x set-ssh-keys.sh
               ./set-ssh-keys.sh
               mkdir -p /etc/gu
-              aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.conf /etc/gu
+              aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.private.conf /etc/gu
               chown membership-attribute-service /etc/gu/members-data-api.conf
               chmod 0600 /etc/gu/members-data-api.conf
               wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
