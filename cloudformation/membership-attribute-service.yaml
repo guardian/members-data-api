@@ -75,6 +75,7 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      GiraffeTopic: giraffe
     CODE:
       NotificationAlarmPeriod: 1200
       InstanceName: CODE:membership-attribute-service
@@ -82,6 +83,7 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      GiraffeTopic: giraffe-code #this will probably not be used by since the app will probably we configured to use giraffe.dev (and it probably won't have permission to do that)
 Resources:
   MembershipRole:
     Type: AWS::IAM::Role
@@ -323,7 +325,8 @@ Resources:
   TopicGiraffe:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: giraffe
+      TopicName: !FindInMap [StageVariables, !Ref 'Stage', GiraffeTopic]
+
 Outputs:
   LoadBalancerUrl:
     Value:
