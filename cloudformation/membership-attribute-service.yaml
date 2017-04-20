@@ -7,10 +7,14 @@ Parameters:
   KeyName:
     Description: The EC2 Key Pair to allow SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
+  SiteDomain:
+    Description: Site domain Name
+    Type: String
+    Default: members-data-api.theguardian.com
   Stage:
     Description: Environment name
     Type: String
-    Default: CODE
+    Default: PROD
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -75,15 +79,6 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
-      GiraffeTopic: giraffe
-    CODE:
-      NotificationAlarmPeriod: 1200
-      InstanceName: CODE:membership-attribute-service
-      DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-DEV
-      DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
-      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
-      DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
-      GiraffeTopic: giraffe-code #this will probably not be used by since the app will probably we configured to use giraffe.dev (and it probably won't have permission to do that)
 Resources:
   MembershipRole:
     Type: AWS::IAM::Role
@@ -190,9 +185,9 @@ Resources:
       - LoadBalancerPort: '443'
         InstancePort: '9000'
         Protocol: HTTPS
-        SSLCertificateId: !Sub #TODO JUST FOR TESTING BECAUSE I DO NOT HAVE A VALID CERTIFICATE FOR CODE
-            - arn:aws:acm:eu-west-1:${AWS::AccountId}:certificate/425252d2-fc17-4ad3-8a44-264cb557b2e5
-            - {}
+        SSLCertificateId: !Sub
+          - "arn:aws:iam::${AWS::AccountId}:server-certificate/${SiteDomain}"
+          - {}
       ConnectionDrainingPolicy:
         Enabled: 'true'
         Timeout: '60'
@@ -273,7 +268,7 @@ Resources:
               CONF_DIR=/membership-attribute-service/membership-attribute-service-1.0-SNAPSHOT/conf
               aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .
               chmod +x set-env.sh
-              aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap-test.sh ./membership-attribute-service-bootstrap.sh
+              aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .
               chmod +x membership-attribute-service-bootstrap.sh
               ./membership-attribute-service-bootstrap.sh
               aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .
@@ -325,8 +320,7 @@ Resources:
   TopicGiraffe:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !FindInMap [StageVariables, !Ref 'Stage', GiraffeTopic]
-
+      TopicName: giraffe
 Outputs:
   LoadBalancerUrl:
     Value:
