@@ -7,14 +7,10 @@ Parameters:
   KeyName:
     Description: The EC2 Key Pair to allow SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
-  SiteDomain:
-    Description: Site domain Name
-    Type: String
-    Default: members-data-api.theguardian.com
   Stage:
     Description: Environment name
     Type: String
-    Default: PROD
+    Default: CODE
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -78,6 +74,13 @@ Mappings:
       DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
+      DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+    CODE:
+      NotificationAlarmPeriod: 1200
+      InstanceName: CODE:membership-attribute-service
+      DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-DEV
+      DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
+      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
 Resources:
   MembershipRole:
@@ -185,9 +188,9 @@ Resources:
       - LoadBalancerPort: '443'
         InstancePort: '9000'
         Protocol: HTTPS
-        SSLCertificateId: !Sub
-          - "arn:aws:iam::${AWS::AccountId}:server-certificate/${SiteDomain}"
-          - {}
+        SSLCertificateId: !Sub #TODO JUST FOR TESTING BECAUSE I DO NOT HAVE A VALID CERTIFICATE FOR CODE
+            - arn:aws:acm:eu-west-1:${AWS::AccountId}:certificate/425252d2-fc17-4ad3-8a44-264cb557b2e5
+            - {}
       ConnectionDrainingPolicy:
         Enabled: 'true'
         Timeout: '60'
