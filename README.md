@@ -11,7 +11,7 @@ Add the following line to the hosts file:
 `127.0.0.1   members-data-api.thegulocal.com`
 
 Download the config (you may need to `brew install awscli` to get the command.
-`aws s3 cp s3://members-data-api-private/DEV/members-data-api.conf /etc/gu/ --profile membership`
+`aws s3 cp s3://members-data-api-private/DEV/members-data-api.private.conf /etc/gu/ --profile membership`
 
 ## Running Locally
 
