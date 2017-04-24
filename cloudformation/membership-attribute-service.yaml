@@ -275,9 +275,9 @@ Resources:
               chmod +x set-ssh-keys.sh
               ./set-ssh-keys.sh
               mkdir -p /etc/gu
-              aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.conf /etc/gu
-              chown membership-attribute-service /etc/gu/members-data-api.conf
-              chmod 0600 /etc/gu/members-data-api.conf
+              aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.private.conf /etc/gu
+              chown membership-attribute-service /etc/gu/members-data-api.private.conf
+              chmod 0600 /etc/gu/members-data-api.private.conf
               wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
               sed -i -e "s/__DATE/$(date +%F)/" -e 's/__STAGE/${Stage}/' $CONF_DIR/logger.conf
               python awslogs-agent-setup.py -nr ${AWS::Region} -c $CONF_DIR/logger.conf
