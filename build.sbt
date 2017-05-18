@@ -42,22 +42,42 @@ lazy val dynamoDBLocalSettings = Seq(
   testOptions in Test += (dynamoDBLocalTestCleanup).value
 )
 
+import com.typesafe.sbt.packager.archetypes.ServerLoader.Systemd
+
+val buildDebSettings = Seq(
+  serverLoading in Debian := Systemd,
+  debianPackageDependencies := Seq("openjdk-8-jre-headless"),
+  maintainer := "Membership Dev <membership.dev@theguardian.com>",
+  packageSummary := "Members Data API",
+  packageDescription := """Members Data API""",
+
+  riffRaffPackageType := (packageBin in Debian).value,
+
+  javaOptions in Universal ++= Seq(
+    "-Dpidfile.path=/dev/null",
+    "-J-XX:MaxRAMFraction=2",
+    "-J-XX:InitialRAMFraction=2",
+    "-J-XX:MaxMetaspaceSize=500m",
+    "-J-XX:+PrintGCDetails",
+    "-J-XX:+PrintGCDateStamps",
+    s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
+  )
+)
+
 def lib(name: String) = Project(name, file(name))
-  .enablePlugins(PlayScala, BuildInfoPlugin).settings(commonSettings)
+  .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging).settings(commonSettings)
 
 def app(name: String) = lib(name)
-  .settings(playArtifactDistSettings)
-  .settings(magentaPackageName := name)
   .settings(dynamoDBLocalSettings)
-  .settings(useNativeZip)
+  .settings(buildDebSettings)
 
 val api = app("membership-attribute-service")
   .settings(libraryDependencies ++= apiDependencies)
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(
     addCommandAlias("devrun", "run 9400"),
-    addCommandAlias("batch-load", "runMain BatchLoader")
+    addCommandAlias("batch-load", "runMain BatchLoader"),
+    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")
   )
-
 
 val root = project.in(file(".")).aggregate(api)
