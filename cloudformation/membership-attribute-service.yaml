@@ -44,9 +44,6 @@ Parameters:
     - i2.8xlarge
     - hs1.8xlarge
     ConstraintDescription: must be a valid EC2 instance type.
-  PlayAppSecret:
-    Description: Application secret for the play application for crypto
-    Type: String
   MaxInstances:
     Description: Maximum number of instances. This should be (at least) double the
       desired capacity.
@@ -79,6 +76,19 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      GiraffeTopic: giraffe
+      SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
+
+    CODE:
+      NotificationAlarmPeriod: 1200
+      InstanceName: CODE:membership-attribute-service
+      DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
+      DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
+      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      GiraffeTopic: giraffe-dev
+      SSLCertificate: arn:aws:acm:eu-west-1:865473395570:certificate/425252d2-fc17-4ad3-8a44-264cb557b2e5
+
 Resources:
   MembershipRole:
     Type: AWS::IAM::Role
@@ -185,9 +195,8 @@ Resources:
       - LoadBalancerPort: '443'
         InstancePort: '9000'
         Protocol: HTTPS
-        SSLCertificateId: !Sub
-          - "arn:aws:iam::${AWS::AccountId}:server-certificate/${SiteDomain}"
-          - {}
+        SSLCertificateId:
+          Fn::FindInMap: [ StageVariables, { Ref: Stage }, SSLCertificate ]
       ConnectionDrainingPolicy:
         Enabled: 'true'
         Timeout: '60'
@@ -221,10 +230,6 @@ Resources:
       - Key: Stage
         Value:
           Ref: Stage
-        PropagateAtLaunch: 'true'
-      - Key: PlayAppSecret
-        Value:
-          Ref: PlayAppSecret
         PropagateAtLaunch: 'true'
       - Key: Name
         Value:
@@ -265,15 +270,12 @@ Resources:
           !Sub
             - |
               #!/bin/bash -ev
-              CONF_DIR=/membership-attribute-service/membership-attribute-service-1.0-SNAPSHOT/conf
-              aws s3 cp s3://gu-membership-attribute-service-dist/set-env.sh .
-              chmod +x set-env.sh
-              aws s3 cp s3://gu-membership-attribute-service-dist/membership-attribute-service-bootstrap.sh .
-              chmod +x membership-attribute-service-bootstrap.sh
-              ./membership-attribute-service-bootstrap.sh
               aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .
               chmod +x set-ssh-keys.sh
               ./set-ssh-keys.sh
+              CONF_DIR=/etc/membership-attribute-service
+              aws s3 cp s3://gu-membership-attribute-service-dist/membership/${Stage}/membership-attribute-service/membership-attribute-service_1.0-SNAPSHOT_all.deb /tmp
+              dpkg -i /tmp/membership-attribute-service_1.0-SNAPSHOT_all.deb
               mkdir -p /etc/gu
               aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.private.conf /etc/gu
               chown membership-attribute-service /etc/gu/members-data-api.private.conf
@@ -281,8 +283,8 @@ Resources:
               wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
               sed -i -e "s/__DATE/$(date +%F)/" -e 's/__STAGE/${Stage}/' $CONF_DIR/logger.conf
               python awslogs-agent-setup.py -nr ${AWS::Region} -c $CONF_DIR/logger.conf
-              service membership-attribute-service start
-              sleep 20s
+              systemctl enable awslogs
+              systemctl start awslogs
             - {}
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -320,7 +322,8 @@ Resources:
   TopicGiraffe:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: giraffe
+      TopicName:
+        Fn::FindInMap: [ StageVariables, { Ref: Stage }, GiraffeTopic ]
 Outputs:
   LoadBalancerUrl:
     Value:
