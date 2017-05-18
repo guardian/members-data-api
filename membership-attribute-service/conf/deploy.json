@@ -11,7 +11,7 @@
           "Recipe": "xenial-membership",
           "AmigoStage": "PROD"
         },
-        "amiParameter": "ImageId",
+        "amiParameter": "AmiId",
         "cloudFormationStackByTags": true
       }
     },

@@ -55,7 +55,7 @@ Parameters:
     Type: CommaDelimitedList
     Default: subnet-cb91ae8d,subnet-a7b74ac2,subnet-179e8063
   AmiId:
-    Description: Custom AMI to use for instances, created using Packer
+    Description: Custom AMI to use for instances
     Type: String
   VulnerabilityScanningSecurityGroup:
     Description: Security group that grants access to the account's Vulnerability Scanner
