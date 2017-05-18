@@ -154,11 +154,6 @@ Resources:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTableTestUsers ]
             Effect: Allow
           - Action:
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            Resource: arn:aws:dynamodb:*:*:table/hackday-user-reputation
-            Effect: Allow
-          - Action:
             - cloudwatch:*
             - logs:*
             Resource: "*"
