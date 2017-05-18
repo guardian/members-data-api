@@ -1,0 +1,16 @@
+stacks: [membership]
+regions: [eu-west-1]
+deployments:
+  ami:
+    type: ami-cloudformation-parameter
+    app: membership-attribute-service
+    parameters:
+      amiTags:
+        Recipe: xenial-membership
+        AmigoStage: PROD
+      amiParameter: AmiId
+  members-data-api:
+    type: autoscaling
+    dependencies: [ami]
+    parameters:
+      bucket: gu-membership-attribute-service-dist
