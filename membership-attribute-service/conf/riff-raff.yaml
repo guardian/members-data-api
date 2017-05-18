@@ -9,7 +9,7 @@ deployments:
         Recipe: xenial-membership
         AmigoStage: PROD
       amiParameter: AmiId
-  members-data-api:
+  membership-attribute-service:
     type: autoscaling
     dependencies: [ami]
     parameters:
