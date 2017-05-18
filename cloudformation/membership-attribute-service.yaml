@@ -1,16 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Membership Attributes service
 Parameters:
-  Name:
-    Description: The name given to the autoscaling group
-    Type: String
   KeyName:
     Description: The EC2 Key Pair to allow SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
-  SiteDomain:
-    Description: Site domain Name
-    Type: String
-    Default: members-data-api.theguardian.com
   Stage:
     Description: Environment name
     Type: String
@@ -86,7 +79,7 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
-      GiraffeTopic: giraffe-dev
+      GiraffeTopic: giraffe-code
       SSLCertificate: arn:aws:acm:eu-west-1:865473395570:certificate/425252d2-fc17-4ad3-8a44-264cb557b2e5
 
 Resources:
