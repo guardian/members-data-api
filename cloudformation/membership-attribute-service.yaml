@@ -80,7 +80,6 @@ Mappings:
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       GiraffeTopic: giraffe-code
-      SSLCertificate: arn:aws:acm:eu-west-1:865473395570:certificate/425252d2-fc17-4ad3-8a44-264cb557b2e5
 
 Resources:
   MembershipRole:
