@@ -1,5 +1,8 @@
 {
   "checkpoints": {
     "PROD": { "url": "https://members-data-api.theguardian.com/healthcheck", "overdue": "14M" }
+  },
+  "sentry": {
+    "projects": ["members-data-api"]
   }
 }
