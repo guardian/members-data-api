@@ -86,6 +86,7 @@ Mappings:
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       GiraffeTopic: giraffe-code
+      SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
 
 Resources:
   MembershipRole:
