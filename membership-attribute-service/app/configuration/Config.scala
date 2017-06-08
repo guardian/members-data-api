@@ -6,6 +6,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import com.amazonaws.services.sqs.AmazonSQSAsyncClient
+import com.getsentry.raven.dsn.Dsn
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
 import com.github.dwhjames.awswrap.sns.AmazonSNSScalaClient
 import com.github.dwhjames.awswrap.sqs.AmazonSQSScalaClient
@@ -13,12 +14,12 @@ import com.gu.aws.CredentialsProvider
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
-import net.kencochrane.raven.dsn.Dsn
 import play.api.Configuration
 import play.filters.cors.CORSConfig
 
 import scala.collection.JavaConverters._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
 import scala.util.Try
 
 object Config {
@@ -91,5 +92,12 @@ object Config {
   )
 
   val abandonedCartEmailQueue = config.getString("abandoned.cart.email.queue")
+
+  object Logstash {
+    private val param = Try{config.getConfig("param.logstash")}.toOption
+    val stream = Try{param.map(_.getString("stream"))}.toOption.flatten
+    val streamRegion = Try{param.map(_.getString("streamRegion"))}.toOption.flatten
+    val enabled = Try{config.getBoolean("logstash.enabled")}.toOption.contains(true)
+  }
 
 }

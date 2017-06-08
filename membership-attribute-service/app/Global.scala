@@ -1,5 +1,7 @@
 
+import configuration.Config
 import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
+import loghandling.Logstash
 import models.ApiErrors._
 import monitoring.SentryLogging
 import play.api.libs.concurrent.Execution.Implicits._
@@ -21,6 +23,7 @@ object Global extends WithFilters(
 
   override def onStart(app: Application) {
     SentryLogging.init()
+    Logstash.init(Config)
   }
 
   override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
