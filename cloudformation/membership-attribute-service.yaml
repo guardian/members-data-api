@@ -60,6 +60,12 @@ Parameters:
   VulnerabilityScanningSecurityGroup:
     Description: Security group that grants access to the account's Vulnerability Scanner
     Type: AWS::EC2::SecurityGroup::Id
+  LoggingKinesisStream:
+    Description: Kinesis stream id to send logging to e.g. elk-stack-ElkKinesisStream-12345
+    Type: String
+  LoggingPolicy:
+    Description: Policy needed to access the kinesis stream
+    Type: String
 Mappings:
   StageVariables:
     PROD:
@@ -80,6 +86,7 @@ Mappings:
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       GiraffeTopic: giraffe-code
+      SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
 
 Resources:
   MembershipRole:
@@ -158,6 +165,8 @@ Resources:
             - logs:*
             Resource: "*"
             Effect: Allow
+      ManagedPolicyArns:
+      - !Ref 'LoggingPolicy'
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -267,6 +276,14 @@ Resources:
               aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.private.conf /etc/gu
               chown membership-attribute-service /etc/gu/members-data-api.private.conf
               chmod 0600 /etc/gu/members-data-api.private.conf
+
+              cat <<EOF >>/etc/gu/members-data-api.private.conf
+              param.logstash {
+                stream="${LoggingKinesisStream}"
+                streamRegion="${AWS::Region}"
+              }
+              EOF
+
               wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
               sed -i -e "s/__DATE/$(date +%F)/" -e 's/__STAGE/${Stage}/' $CONF_DIR/logger.conf
               python awslogs-agent-setup.py -nr ${AWS::Region} -c $CONF_DIR/logger.conf

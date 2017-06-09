@@ -6,7 +6,7 @@ object Dependencies {
   //versions
   val awsClientVersion = "1.10.62"
   //libraries
-  val sentryRavenLogback = "net.kencochrane.raven" % "raven-logback" % "6.0.0"
+  val sentryRavenLogback = "com.getsentry.raven" % "raven-logback" % "8.0.3"
   val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.51"
   val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "0.18"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.6"
@@ -22,11 +22,14 @@ object Dependencies {
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.417"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
+  val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.0"
+  val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
+  val jacksonCbor = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % "2.8.7"
 
   //projects
 
   val apiDependencies = Seq(sentryRavenLogback, identityCookie, identityPlayAuth, identityTestUsers, scalaUri,
     playWS, playCache, playFilters, scanamo, awsWrap, awsDynamo, awsSNS, awsCloudWatch, scalaz, membershipCommon,
-    specs2)
+    specs2, kinesis, logstash, jacksonCbor)
 
 }
