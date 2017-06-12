@@ -1,6 +1,6 @@
 package models
 
-import configuration.Config
+import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
@@ -8,6 +8,7 @@ import play.api.mvc.Results.Ok
 import scala.language.implicitConversions
 
 object Features {
+
   implicit val jsWrite = Json.writes[Features]
 
   implicit def toResult(attrs: Features): Result =
@@ -19,11 +20,13 @@ object Features {
     Features(
       userId = Some(attributes.UserId),
       adFree = attributes.isAdFree,
-      adblockMessage = !attributes.isPaidTier
+      adblockMessage = !attributes.isPaidTier,
+      cardHasExpired = attributes.maybeCardHasExpired,
+      cardExpires = attributes.cardExpires
     )
   }
 
-  val unauthenticated = Features(None, adFree = false, adblockMessage = true)
+  val unauthenticated = Features(None, adFree = false, adblockMessage = true, None, None)
 }
 
-case class Features(userId: Option[String], adFree: Boolean, adblockMessage: Boolean)
+case class Features(userId: Option[String], adFree: Boolean, adblockMessage: Boolean, cardHasExpired: Option[Boolean], cardExpires: Option[LocalDate])

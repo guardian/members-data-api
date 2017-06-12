@@ -21,7 +21,9 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   private val validUserId = "123"
   private val invalidUserId = "456"
-  private val attributes = Attributes(validUserId, "patron", Some("abc"))
+  private val attributes = Attributes(
+    UserId = validUserId, Tier = "patron", MembershipNumber = Some("abc"), AdFree = Some(false), CardExpirationMonth = Some(3), CardExpirationYear = Some(2018)
+  )
 
   private val validUserCookie = Cookie("validUser", "true")
   private val invalidUserCookie = Cookie("invalidUser", "true")
@@ -67,6 +69,9 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "tier": "patron",
         |   "membershipNumber": "abc",
         |   "userId": "123",
+        |   "cardExpirationMonth": 3,
+        |   "cardExpirationYear": 2018,
+        |   "adFree": false,
         |   "contentAccess":{"member":true,"paidMember":true}
         | }
       """.stripMargin)

@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.typesafe.scalalogging.LazyLogging
-import models.ApiErrors
+import models.{ApiErrors, Attributes}
 import monitoring.Metrics
 import parsers.Salesforce._
 import parsers.{Salesforce => SFParser}
@@ -65,28 +65,51 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
 
   def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
 
-    val attrs = membershipUpdate.attributes
-    logger.info(s"Salesforce called has been parsed. Request Id: $requestId. Attrs: $attrs")
-
-    (for {
-      sfId <- OptionT(touchpoint.contactRepo.get(attrs.UserId))
-      membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).map(_.headOption))
-    } yield {
-      val tierFromSalesforceWebhook = attrs.Tier
-      val tierFromZuora = membershipSubscription.plan.charges.benefit.id
-      if (tierFromZuora != tierFromSalesforceWebhook) logger.error(s"Differing tier info for $sfId : sf=$tierFromSalesforceWebhook zuora=$tierFromZuora")
-      // If the tier info does not match, we trust the info we get from Zuora, instead of the tier sent to us in the outbound message from Salesforce
-      attrs.copy(Tier = tierFromZuora)
-    }).run.flatMap { attrsUpdatedWithZuoraOpt =>
-      if (attrsUpdatedWithZuoraOpt.isEmpty) logger.error(s"Couldn't update $attrs with information from Zuora")
-      attributeService.set(attrsUpdatedWithZuoraOpt.getOrElse(attrs)).map { putItemResult =>
-        logger.info(s"Successfully inserted ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoAttributesTable}.")
+    def updateDynamo(attributes: Attributes) = {
+      attributeService.set(attributes).map { putItemResult =>
+        logger.info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
         metrics.put("Update", 1)
         putItemResult
       }.recover { case e: Throwable =>
-        logger.warn(s"Failed to insert ${attrsUpdatedWithZuoraOpt.getOrElse(attrs)} into ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
+        logger.warn(s"Failed to insert $attributes into ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
         Failure
       }
+    }
+
+    val salesforceAttributes: Attributes = membershipUpdate.attributes
+
+    logger.info(s"Salesforce called has been parsed. Request Id: $requestId. Attrs: $salesforceAttributes")
+
+    (for {
+      sfId <- OptionT(touchpoint.contactRepo.get(salesforceAttributes.UserId))
+      membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).map(_.headOption))
+    } yield {
+
+      // If the tier info does not match, we trust the info we get from Zuora, instead of the tier sent to us in the outbound message from Salesforce
+      val tierFromZuora = membershipSubscription.plan.charges.benefit.id
+      val tierFromSalesforce = salesforceAttributes.Tier
+      if (tierFromZuora != tierFromSalesforce) logger.error(s"Differing tier info for $sfId : sf=$tierFromSalesforce zuora=$tierFromZuora")
+
+      // If we have the card expiry date in Stripe, add them to Dynamo too.
+      // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
+      val cardExpiryFromStripeF = (for {
+        account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
+        paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(account.defaultPaymentMethodId.get).map(Option(_)))
+        customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
+        stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
+      } yield {
+        (stripeCustomer.card.exp_month, stripeCustomer.card.exp_year)
+      }).run
+
+      cardExpiryFromStripeF.map {
+        case Some((expMonth, expYear)) => salesforceAttributes.copy(Tier = tierFromZuora, CardExpirationMonth = Some(expMonth), CardExpirationYear = Some(expYear))
+        case None => salesforceAttributes.copy(Tier = tierFromZuora)
+      }
+    }).run.flatMap {
+      case Some(zuoraAttributesF) => zuoraAttributesF.flatMap(updateDynamo)
+      case None =>
+        logger.error(s"Couldn't update $salesforceAttributes with information from Zuora")
+        updateDynamo(salesforceAttributes)
     }
   }
 

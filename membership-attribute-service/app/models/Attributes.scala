@@ -1,13 +1,14 @@
 package models
 
 import json._
+import org.joda.time.LocalDate
+import org.joda.time.LocalDate.now
+import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
 
 case class ContentAccess(member: Boolean, paidMember: Boolean)
 
@@ -19,7 +20,9 @@ case class Attributes(
                        UserId: String,
                        Tier: String,
                        MembershipNumber: Option[String],
-                       AdFree: Option[Boolean] = None) {
+                       AdFree: Option[Boolean] = None,
+                       CardExpirationMonth: Option[Int] = None,
+                       CardExpirationYear: Option[Int] = None) {
   require(Tier.nonEmpty)
   require(UserId.nonEmpty)
 
@@ -28,6 +31,13 @@ case class Attributes(
   lazy val isAdFree = AdFree.exists(identity)
 
   lazy val contentAccess = ContentAccess(member = true, paidMember = isPaidTier) // we want to include staff!
+
+  lazy val cardExpires = for {
+    year <- CardExpirationYear
+    month <- CardExpirationMonth
+  } yield new LocalDate(year, month, 1).plusMonths(1).minusDays(1)
+
+  lazy val maybeCardHasExpired = cardExpires.map(_.isBefore(now))
 }
 
 object Attributes {
@@ -36,7 +46,9 @@ object Attributes {
     (__ \ "userId").write[String] and
     (__ \ "tier").write[String] and
     (__ \ "membershipNumber").writeNullable[String] and
-    (__ \ "adFree").writeNullable[Boolean]
+    (__ \ "adFree").writeNullable[Boolean] and
+    (__ \ "cardExpirationMonth").writeNullable[Int] and
+    (__ \ "cardExpirationYear").writeNullable[Int]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
