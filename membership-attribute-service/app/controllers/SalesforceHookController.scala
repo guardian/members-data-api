@@ -90,7 +90,8 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       val tierFromSalesforce = salesforceAttributes.Tier
       if (tierFromZuora != tierFromSalesforce) logger.error(s"Differing tier info for $sfId : sf=$tierFromSalesforce zuora=$tierFromZuora")
 
-      // If we have the card expiry date in Stripe, add them to Dynamo too
+      // If we have the card expiry date in Stripe, add them to Dynamo too.
+      // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
       val cardExpiryFromStripeF = (for {
         account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
         paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(account.defaultPaymentMethodId.get).map(Option(_)))
