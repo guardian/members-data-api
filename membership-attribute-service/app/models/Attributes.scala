@@ -22,13 +22,16 @@ case class Attributes(
                        MembershipNumber: Option[String],
                        AdFree: Option[Boolean] = None,
                        CardExpirationMonth: Option[Int] = None,
-                       CardExpirationYear: Option[Int] = None) {
+                       CardExpirationYear: Option[Int] = None,
+                       Contributor: Option[String]) {
+
   require(Tier.nonEmpty)
   require(UserId.nonEmpty)
 
   lazy val isFriendTier = Tier.equalsIgnoreCase("friend")
   lazy val isPaidTier = !isFriendTier
   lazy val isAdFree = AdFree.exists(identity)
+  lazy val isContributor = Contributor.isDefined
 
   lazy val contentAccess = ContentAccess(member = true, paidMember = isPaidTier) // we want to include staff!
 
@@ -48,7 +51,8 @@ object Attributes {
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
-    (__ \ "cardExpirationYear").writeNullable[Int]
+    (__ \ "cardExpirationYear").writeNullable[Int] and
+    (__ \ "Contributor").writeNullable[String]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
