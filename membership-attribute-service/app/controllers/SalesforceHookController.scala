@@ -45,7 +45,11 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
   val touchpoint = request.touchpoint
   val validOrgId = touchpoint.sfOrganisationId
   val attributeService = touchpoint.attrService
+  val requestId = scala.util.Random.nextInt
+
   implicit val pf = Membership
+
+  logger.info(s"Called from Saleforce to modify the Members Data API. Request Id: $requestId")
 
   def deleteMemberRecord(membershipDeletion: MembershipDeletion): Future[Object] = {
     val userId = membershipDeletion.userId
@@ -60,7 +64,10 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
   }
 
   def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
+
     val attrs = membershipUpdate.attributes
+    logger.info(s"Salesforce called has been parsed. Request Id: $requestId. Attrs: $attrs")
+
     (for {
       sfId <- OptionT(touchpoint.contactRepo.get(attrs.UserId))
       membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).map(_.headOption))
