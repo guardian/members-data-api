@@ -94,7 +94,8 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
       val cardExpiryFromStripeF = (for {
         account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
-        paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(account.defaultPaymentMethodId.get).map(Option(_)))
+        paymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId))
+        paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(paymentMethodId).map(Option(_)))
         customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
         stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
       } yield {
