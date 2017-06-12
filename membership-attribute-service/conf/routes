@@ -22,3 +22,8 @@ POST       /abandoned-cart/email                            controllers.Behaviou
 POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
 POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs
 POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
+
+# Contributions endpoints
+GET        /user-attributes/me/contribution                 controllers.AttributeController.contribution
+#POST       /user-attributes/me/contribution                 controllers.AttributeController.createContribution
+
