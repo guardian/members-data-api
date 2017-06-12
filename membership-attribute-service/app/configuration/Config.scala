@@ -2,6 +2,7 @@ package configuration
 
 import java.time.Duration
 
+import com.gu.aws.AwsConfig
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
@@ -23,6 +24,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.util.Try
 
 object Config {
+
   val config = ConfigFactory.load()
   val applicationName = "members-data-api"
 
@@ -34,6 +36,8 @@ object Config {
 
   object AWS {
     val region = Regions.EU_WEST_1
+    val useEncryption = config.getBoolean("aws.useEncryption"),
+    val encryptionKeyId = config.getString("aws.encryptionKeyId")
   }
 
   lazy val dynamoMapper = {
