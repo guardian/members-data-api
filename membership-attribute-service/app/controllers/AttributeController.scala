@@ -13,8 +13,9 @@ import models._
 import monitoring.Metrics
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import play.api.mvc.{Controller, Result}
+import play.api.mvc.{Action, Controller, Result}
 import play.filters.cors.CORSActionBuilder
+import parsers.Encrypted.decryptParser
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
@@ -70,4 +71,26 @@ class AttributeController extends Controller with LazyLogging {
 
   def membership = lookup("membership", identity[Attributes])
   def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Some(Features.unauthenticated))
+
+  def createContributor = Action(decryptParser).async { request =>
+
+    val result: EitherT[Future, String, Attributes] = for {
+      id <- request.body.userId
+      contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
+      sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
+      attributes = Attributes(id, sub.plan.charges.benefit.id, contact.regNumber)
+      res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
+    } yield attributes
+
+    result.run.map(_.fold(
+      error => {
+        logger.error(s"Failed to update attributes - $error")
+        ApiErrors.badRequest(error)
+      },
+      attributes => {
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier}")
+        Ok(Json.obj("updated" -> true))
+      }
+    ))
+  }
 }
