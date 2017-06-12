@@ -15,11 +15,14 @@ object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 
-case class Attributes(UserId: String, Tier: String, MembershipNumber: Option[String], PublicTier: Option[Boolean] = None, AdFree: Option[Boolean] = None) {
+case class Attributes(
+                       UserId: String,
+                       Tier: String,
+                       MembershipNumber: Option[String],
+                       AdFree: Option[Boolean] = None) {
   require(Tier.nonEmpty)
   require(UserId.nonEmpty)
 
-  lazy val allowsPublicTierDisplay = PublicTier.exists(identity)
   lazy val isFriendTier = Tier.equalsIgnoreCase("friend")
   lazy val isPaidTier = !isFriendTier
   lazy val isAdFree = AdFree.exists(identity)
@@ -29,13 +32,11 @@ case class Attributes(UserId: String, Tier: String, MembershipNumber: Option[Str
 
 object Attributes {
 
-  val ignore = OWrites[Any](_ => Json.obj())
   implicit val jsWrite: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
     (__ \ "tier").write[String] and
     (__ \ "membershipNumber").writeNullable[String] and
-    (__ \ "adFree").writeNullable[Boolean] and
-    ignore
+    (__ \ "adFree").writeNullable[Boolean]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
