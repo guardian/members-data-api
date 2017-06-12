@@ -95,7 +95,8 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       val cardExpiryFromStripeF = (for {
         account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
         paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(account.defaultPaymentMethodId.get).map(Option(_)))
-        stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(paymentMethod.secondTokenId.get).map(Option(_)))
+        customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
+        stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
       } yield {
         (stripeCustomer.card.exp_month, stripeCustomer.card.exp_year)
       }).run
