@@ -78,7 +78,7 @@ class AttributeController extends Controller with LazyLogging {
       id <- request.body.userId
       contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
       sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
-      attributes = Attributes(id, sub.plan.charges.benefit.id, contact.regNumber)
+      attributes = Attributes(id, "", contact.regNumber, Contributor = request.body.contributor)
       res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
     } yield attributes
 

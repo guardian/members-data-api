@@ -23,7 +23,7 @@ case class Attributes(
                        AdFree: Option[Boolean] = None,
                        CardExpirationMonth: Option[Int] = None,
                        CardExpirationYear: Option[Int] = None,
-                       Contributor: Option[String]) {
+                       Contributor: Option[String] = None) {
 
   require(Tier.nonEmpty)
   require(UserId.nonEmpty)
