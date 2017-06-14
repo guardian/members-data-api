@@ -24,6 +24,5 @@ POST       /stripe-hook                                     controllers.StripeHo
 POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
 
 # Contributions endpoints
-#GET        /user-attributes/me/contribution                controllers.AttributeController.contribution
-PUT       /user-attributes/:id                              controllers.AttributeController.updateAttributes
+PUT       /user-attributes/:identityId                      controllers.AttributeController.updateAttributes(identityId : String)
 
