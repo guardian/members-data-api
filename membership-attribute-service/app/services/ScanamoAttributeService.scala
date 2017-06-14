@@ -12,14 +12,15 @@ import com.typesafe.scalalogging.LazyLogging
 class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
     extends AttributeService with LazyLogging {
 
-  val scanamo = Table[Attributes](table)
+  private val scanamo = Table[Attributes](table)
   def run[T] = ScanamoAsync.exec[T](client) _
 
+
   override def get(userId: String): Future[Option[Attributes]] =
-    run(scanamo.get('UserId -> userId).map(_.flatMap(_.toOption)))
+    run(scanamo.get('UserId -> userId).map(_.flatMap(_.right.toOption)))
 
   def getMany(userIds: List[String]): Future[Seq[Attributes]] =
-    run(scanamo.getAll('UserId -> userIds.toSet.toList)).map(_.flatMap(_.toOption))
+    run(scanamo.getAll('UserId -> userIds.toSet)).map(_.flatMap(_.right.toOption)).map(_.toList)
 
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
