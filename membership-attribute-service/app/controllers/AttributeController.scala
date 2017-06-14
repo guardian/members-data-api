@@ -87,15 +87,16 @@ class AttributeController extends Controller with LazyLogging {
 
     val tp = request.touchpoint
 
-    val result: EitherT[Future, String, Attributes] =  for {
-      contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
-      memSubF = EitherT(tp.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> None))
-      conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(_.headOption \/> None))
-      memSub <- memSubF
-      conSub <- conSubF
-      attributes = Attributes( UserId = identityId, Tier = Some(memSub.plan.charges.benefit.id), MembershipNumber = contact.regNumber, Contributor = Some(conSub.plan.charges.benefit.id))
-      res <- EitherT(tp.attrService.set(attributes).map(\/.right))
-    } yield attributes
+    val result: EitherT[Future, String, Attributes] =
+      for {
+        contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
+        memSubF = EitherT(tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
+        conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
+        memSub <- memSubF
+        conSub <- conSubF
+        attributes = Attributes( UserId = identityId, Tier = Some(memSub.plan.charges.benefit.id), MembershipNumber = contact.regNumber, Contributor = Some(conSub.plan.charges.benefit.id))
+        res <- EitherT(tp.attrService.set(attributes).map(\/.right))
+      } yield attributes
 
     result.run.map(_.fold(
       error => {
