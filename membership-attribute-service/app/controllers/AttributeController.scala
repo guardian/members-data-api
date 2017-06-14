@@ -13,20 +13,31 @@ import models._
 import monitoring.Metrics
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import play.api.mvc.{Action, Controller, Result}
+import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
-import parsers.Encrypted.decryptParser
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
 import scalaz.{EitherT, \/}
+import configuration.Config.authentication
 
 
 class AttributeController extends Controller with LazyLogging {
 
+  def signed(): ActionBuilder[Request] = new ActionBuilder[Request] {
+    def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
+      if (request.headers.get("authentication").contains(authentication.key)) {
+        block(request)
+      } else {
+        Future.successful(Forbidden)
+      }
+    }
+  }
+
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
+  lazy val backendForSyncWithZuora = NoCacheAction andThen  signed andThen WithBackendFromUserIdAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
@@ -71,14 +82,14 @@ class AttributeController extends Controller with LazyLogging {
 
   def membership = lookup("membership", identity[Attributes])
   def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Some(Features.unauthenticated))
-
-  def createContributor = Action(decryptParser).async { request =>
-
-    val result: EitherT[Future, String, Attributes] = for {
-      id <- request.body.userId
-      contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
-      sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
-      attributes = Attributes(id, "", contact.regNumber, Contributor = request.body.contributor)
+  
+  def updateAttributes: Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
+    val userId = request.body \ "id"
+    val result: EitherT[Future, String, Attributes] =  for {
+      contact <- EitherT(request.touchpoint.contactRepo.get(userId).map(_ \/> s"No contact for $id"))
+      memSub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No subs for $id"))
+      conSub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Contributor](contact).map(_.headOption \/> s"No subs for $id"))
+      attributes = Attributes( UserId = userId, Tier = memSub.plan.charges.benefit.id, MembershipNumber = contact.regNumber, Contributor = Some(conSub.plan.charges.benefit.id))
       res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
     } yield attributes
 
@@ -94,3 +105,6 @@ class AttributeController extends Controller with LazyLogging {
     ))
   }
 }
+
+
+
