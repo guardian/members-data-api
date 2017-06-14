@@ -18,14 +18,13 @@ object ContentAccess {
 
 case class Attributes(
                        UserId: String,
-                       Tier: String,
+                       Tier: Option[String] = None,
                        MembershipNumber: Option[String],
                        AdFree: Option[Boolean] = None,
                        CardExpirationMonth: Option[Int] = None,
                        CardExpirationYear: Option[Int] = None,
                        Contributor: Option[String] = None) {
 
-  require(Tier.nonEmpty)
   require(UserId.nonEmpty)
 
   lazy val isFriendTier = Tier.equalsIgnoreCase("friend")
