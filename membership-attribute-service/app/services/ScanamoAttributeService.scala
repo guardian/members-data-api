@@ -17,10 +17,18 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
 
 
   override def get(userId: String): Future[Option[Attributes]] =
-    run(scanamo.get('UserId -> userId).map(_.flatMap(_.right.toOption)))
+    run(scanamo.get('UserId -> userId).map(_.flatMap {
+      _
+        .left.map(e => logger.warn("Scanamo error in get: ", e))
+        .right.toOption
+    }))
 
   def getMany(userIds: List[String]): Future[Seq[Attributes]] =
-    run(scanamo.getAll('UserId -> userIds.toSet)).map(_.flatMap(_.right.toOption)).map(_.toList)
+    run(scanamo.getAll('UserId -> userIds.toSet)).map(_.flatMap{
+      _
+        .left.map(e => logger.warn("Scanamo error in getAll: ", e))
+        .right.toOption
+    }).map(_.toList)
 
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
