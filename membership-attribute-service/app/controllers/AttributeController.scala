@@ -83,14 +83,18 @@ class AttributeController extends Controller with LazyLogging {
   def membership = lookup("membership", identity[Attributes])
   def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Some(Features.unauthenticated))
   
-  def updateAttributes: Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
-    val userId = request.body \ "id"
+  def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
+
+    val tp = request.touchpoint
+
     val result: EitherT[Future, String, Attributes] =  for {
-      contact <- EitherT(request.touchpoint.contactRepo.get(userId).map(_ \/> s"No contact for $id"))
-      memSub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No subs for $id"))
-      conSub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Contributor](contact).map(_.headOption \/> s"No subs for $id"))
-      attributes = Attributes( UserId = userId, Tier = memSub.plan.charges.benefit.id, MembershipNumber = contact.regNumber, Contributor = Some(conSub.plan.charges.benefit.id))
-      res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
+      contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
+      memSubF = EitherT(tp.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> None))
+      conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(_.headOption \/> None))
+      memSub <- memSubF
+      conSub <- conSubF
+      attributes = Attributes( UserId = identityId, Tier = Some(memSub.plan.charges.benefit.id), MembershipNumber = contact.regNumber, Contributor = Some(conSub.plan.charges.benefit.id))
+      res <- EitherT(tp.attrService.set(attributes).map(\/.right))
     } yield attributes
 
     result.run.map(_.fold(
@@ -99,7 +103,7 @@ class AttributeController extends Controller with LazyLogging {
         ApiErrors.badRequest(error)
       },
       attributes => {
-        logger.info(s"${attributes.UserId} -> ${attributes.Tier}")
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.Contributor}")
         Ok(Json.obj("updated" -> true))
       }
     ))
