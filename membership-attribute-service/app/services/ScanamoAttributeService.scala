@@ -41,7 +41,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
       scanamo.update('UserId -> attributes.UserId,
        scanamoSet('Tier -> attributes.Tier) and
         scanamoSet('MembershipNumber -> attributes.MembershipNumber) and
-        scanamoSet('Contributor -> attributes.Contributor))
+        scanamoSet('Contributor -> attributes.ContributionFrequency))
     )
 
   override def delete(userId: String): Future[DeleteItemResult] = run(scanamo.delete('UserId -> userId))

@@ -95,7 +95,7 @@ class AttributeController extends Controller with LazyLogging {
         memSub <- memSubF
         conSub <- conSubF
         _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
-        attributes = Attributes( UserId = identityId, Tier = memSub.map(_.plan.charges.benefit.id), MembershipNumber = contact.regNumber, Contributor = conSub.map(_.plan.charges.benefit.id))
+        attributes = Attributes( UserId = identityId, Tier = memSub.map(_.plan.charges.benefit.id), MembershipNumber = contact.regNumber, ContributionFrequency = conSub.map(_.plan.name))
         res <- EitherT(tp.attrService.update(attributes).map(\/.right))
       } yield attributes
 
@@ -105,7 +105,7 @@ class AttributeController extends Controller with LazyLogging {
         ApiErrors.badRequest(error)
       },
       attributes => {
-        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.Contributor}")
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.ContributionFrequency}")
         Ok(Json.obj("updated" -> true))
       }
     ))
