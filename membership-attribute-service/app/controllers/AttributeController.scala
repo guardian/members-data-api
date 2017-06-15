@@ -94,8 +94,9 @@ class AttributeController extends Controller with LazyLogging {
         conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
         memSub <- memSubF
         conSub <- conSubF
-        attributes = Attributes( UserId = identityId, Tier = Some(memSub.plan.charges.benefit.id), MembershipNumber = contact.regNumber, Contributor = Some(conSub.plan.charges.benefit.id))
-        res <- EitherT(tp.attrService.set(attributes).map(\/.right))
+        _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
+        attributes = Attributes( UserId = identityId, Tier = memSub.map(_.plan.charges.benefit.id), MembershipNumber = contact.regNumber, Contributor = conSub.map(_.plan.charges.benefit.id))
+        res <- EitherT(tp.attrService.update(attributes).map(\/.right))
       } yield attributes
 
     result.run.map(_.fold(

@@ -1,7 +1,9 @@
 package services
 
-import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult}
+import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult, UpdateItemResult}
+import com.gu.scanamo.error.DynamoReadError
 import models.Attributes
+
 import scala.concurrent.Future
 
 trait AttributeService {
@@ -9,4 +11,5 @@ trait AttributeService {
   def getMany(userIds: List[String]): Future[Seq[Attributes]]
   def delete(userId: String): Future[DeleteItemResult]
   def set(attributes: Attributes): Future[PutItemResult]
+  def update(attributes: Attributes) : Future[Either[DynamoReadError, Attributes]]
 }
