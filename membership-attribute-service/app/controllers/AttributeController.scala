@@ -63,16 +63,21 @@ class AttributeController extends Controller with LazyLogging {
     ))
   }
 
-  private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Option[Result] = None) = backendAction.async { request =>
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
-          case Some(attrs) =>
-            onSuccess(attrs).withHeaders(
-              "X-Gu-Membership-Tier" -> attrs.Tier.get,
+          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
+            logger.info(s"$id is a member - $endpointDescription - $attrs")
+            onSuccessMember(attrs).withHeaders(
+              "X-Gu-Membership-Tier" -> tier,
               "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
             )
-          case None =>
-            onNotFound getOrElse ApiError("Not found", s"User not found in DynamoDB: userId=${id}; stage=${Config.stage}; dynamoTable=${request.touchpoint.dynamoAttributesTable}", 404)
+          case Some(attrs) =>
+            logger.info(s"$id is a contributor - $endpointDescription - $attrs")
+            onSuccessMemberAndOrContributor(attrs)
+          case _ =>
+            logger.info(s"$id was not found - $endpointDescription")
+            onNotFound
         }
       }.getOrElse {
         metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
@@ -80,9 +85,15 @@ class AttributeController extends Controller with LazyLogging {
       }
     }
 
-  def membership = lookup("membership", identity[Attributes])
-  def features = lookup("features", onSuccess = Features.fromAttributes, onNotFound = Some(Features.unauthenticated))
-  
+
+  val notFound = ApiError("Not found", "Could not find user in the database", 404)
+  val notAMember = ApiError("Not found", "User was found but they are not a member", 404)
+
+  def membership = lookup("membership", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
+
+
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 
     val tp = request.touchpoint
