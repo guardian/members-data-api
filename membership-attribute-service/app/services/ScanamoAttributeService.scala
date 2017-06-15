@@ -10,7 +10,7 @@ import scala.concurrent.Future
 import com.gu.scanamo.syntax._
 import com.gu.scanamo._
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.scanamo.syntax.{set => scanmoSet}
+import com.gu.scanamo.syntax.{set => scanamoSet}
 import com.typesafe.scalalogging.LazyLogging
 
 class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
@@ -36,7 +36,13 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
 
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
-  override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = run(scanamo.update('UserId -> attributes.UserId, scanmoSet('Tier -> attributes.Tier) and scanmoSet('MembershipNumber -> attributes.MembershipNumber) and scanmoSet('Contributor -> attributes.Contributor)))
+  override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] =
+    run(
+      scanamo.update('UserId -> attributes.UserId,
+       scanamoSet('Tier -> attributes.Tier) and
+        scanamoSet('MembershipNumber -> attributes.MembershipNumber) and
+        scanamoSet('Contributor -> attributes.Contributor))
+    )
 
   override def delete(userId: String): Future[DeleteItemResult] = run(scanamo.delete('UserId -> userId))
 }
