@@ -27,7 +27,7 @@ case class Attributes(
 
   require(UserId.nonEmpty)
 
-  lazy val isFriendTier = Tier.getOrElse("").equalsIgnoreCase("friend")
+  lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isPaidTier = !isFriendTier
   lazy val isAdFree = AdFree.exists(identity)
   lazy val isContributor = ContributionFrequency.isDefined
