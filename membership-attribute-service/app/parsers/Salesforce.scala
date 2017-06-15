@@ -58,7 +58,7 @@ object Salesforce {
         // If Salesforce Contact object has no Tier, we assume the user has expired/cancelled and mark them for deletion
         case None => MembershipDeletion(id)
         // If the Salesforce Contact has a Tier, we mark them for an update
-        case Some(tier) => MembershipUpdate(Attributes(id, tier, num))
+        case Some(tier) => MembershipUpdate(Attributes(id, Some(tier), num))
       }
     }
 

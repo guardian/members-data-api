@@ -103,8 +103,8 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       }).run
 
       cardExpiryFromStripeF.map {
-        case Some((expMonth, expYear)) => salesforceAttributes.copy(Tier = tierFromZuora, CardExpirationMonth = Some(expMonth), CardExpirationYear = Some(expYear))
-        case None => salesforceAttributes.copy(Tier = tierFromZuora)
+        case Some((expMonth, expYear)) => salesforceAttributes.copy(Tier = Some(tierFromZuora), CardExpirationMonth = Some(expMonth), CardExpirationYear = Some(expYear))
+        case None => salesforceAttributes.copy(Tier = Some(tierFromZuora))
       }
     }).run.flatMap {
       case Some(zuoraAttributesF) => zuoraAttributesF.flatMap(updateDynamo)

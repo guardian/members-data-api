@@ -2,6 +2,7 @@ package controllers
 
 import actions.BackendRequest
 import akka.actor.ActorSystem
+import com.gu.scanamo.error.DynamoReadError
 import components.TouchpointComponents
 import configuration.Config
 import models.Attributes
@@ -22,7 +23,7 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val validUserId = "123"
   private val invalidUserId = "456"
   private val attributes = Attributes(
-    UserId = validUserId, Tier = "patron", MembershipNumber = Some("abc"), AdFree = Some(false), CardExpirationMonth = Some(3), CardExpirationYear = Some(2018)
+    UserId = validUserId, Tier = Some("patron"), MembershipNumber = Some("abc"), AdFree = Some(false), CardExpirationMonth = Some(3), CardExpirationYear = Some(2018)
   )
 
   private val validUserCookie = Cookie("validUser", "true")
@@ -45,6 +46,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
         override def delete(userId: String) = ???
         override def getMany(userIds: List[String]): Future[Seq[Attributes]] = ???
+        override def update(attributes: Attributes) : Future[Either[DynamoReadError, Attributes]] = ???
       }
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {

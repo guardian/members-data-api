@@ -27,7 +27,7 @@ case class Attributes(
 
   require(UserId.nonEmpty)
 
-  lazy val isFriendTier = Tier.equalsIgnoreCase("friend")
+  lazy val isFriendTier = Tier.getOrElse("").equalsIgnoreCase("friend")
   lazy val isPaidTier = !isFriendTier
   lazy val isAdFree = AdFree.exists(identity)
   lazy val isContributor = Contributor.isDefined
@@ -46,7 +46,7 @@ object Attributes {
 
   implicit val jsWrite: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
-    (__ \ "tier").write[String] and
+    (__ \ "tier").writeNullable[String] and
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and

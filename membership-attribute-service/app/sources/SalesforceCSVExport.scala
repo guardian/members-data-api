@@ -17,7 +17,7 @@ object SalesforceCSVExport {
       .map {
         case re(id, num, tier, date) =>
           val numOpt = if (num.isEmpty) None else Some(num)
-          Some(Attributes(id, tier, numOpt))
+          Some(Attributes(id, Some(tier), numOpt))
         case str =>
           logger.error(s"Couldn't parse line\n$str\nas a valid members attribute")
           None

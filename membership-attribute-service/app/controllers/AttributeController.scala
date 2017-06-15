@@ -1,7 +1,7 @@
 package controllers
 import _root_.services.{AuthenticationService, IdentityAuthService}
 import actions._
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.typesafe.scalalogging.LazyLogging
@@ -47,7 +47,7 @@ class AttributeController extends Controller with LazyLogging {
       id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
       contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
       sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
-      attributes = Attributes(id, sub.plan.charges.benefit.id, contact.regNumber)
+      attributes = Attributes(id, Some(sub.plan.charges.benefit.id), contact.regNumber)
       res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
     } yield attributes
 
@@ -68,7 +68,7 @@ class AttributeController extends Controller with LazyLogging {
         request.touchpoint.attrService.get(id).map {
           case Some(attrs) =>
             onSuccess(attrs).withHeaders(
-              "X-Gu-Membership-Tier" -> attrs.Tier,
+              "X-Gu-Membership-Tier" -> attrs.Tier.get,
               "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
             )
           case None =>
@@ -90,8 +90,8 @@ class AttributeController extends Controller with LazyLogging {
     val result: EitherT[Future, String, Attributes] =
       for {
         contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
-        memSubF = EitherT(tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
-        conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
+        memSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Member]]](tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
+        conSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Contributor]]](tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
         memSub <- memSubF
         conSub <- conSubF
         _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
