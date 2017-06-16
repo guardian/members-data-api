@@ -66,7 +66,7 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
   def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
 
     def updateDynamo(attributes: Attributes) = {
-      attributeService.set(attributes).map { putItemResult =>
+      attributeService.update(attributes).map { putItemResult =>
         logger.info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
         metrics.put("Update", 1)
         putItemResult
