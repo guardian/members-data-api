@@ -9,7 +9,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
 import com.gu.scanamo.syntax._
 import com.gu.scanamo._
-import com.gu.scanamo.error.DynamoReadError
+import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.scanamo.syntax.{set => scanamoSet}
 import com.typesafe.scalalogging.LazyLogging
 
@@ -36,13 +36,27 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
 
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
-  override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] =
-    run(
-      scanamo.update('UserId -> attributes.UserId,
-       scanamoSet('Tier -> attributes.Tier) and
-        scanamoSet('MembershipNumber -> attributes.MembershipNumber) and
-        scanamoSet('ContributionFrequency -> attributes.ContributionFrequency))
-    )
+  override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = {
+
+    List(
+      'Tier -> attributes.Tier,
+      'MembershipNumber -> attributes.MembershipNumber,
+      'ContributionFrequency -> attributes.ContributionFrequency
+    ).collect {
+      case (k, Some(v)) => scanamoSet(k -> v)
+    } match {
+      case first :: remaining =>
+        run(
+          scanamo.update(
+            'UserId -> attributes.UserId,
+            remaining.fold(first)(_.and(_))
+          )
+        )
+
+      case Nil =>
+        Future.successful(Left(MissingProperty))
+    }
+  }
 
   override def delete(userId: String): Future[DeleteItemResult] = run(scanamo.delete('UserId -> userId))
 }
