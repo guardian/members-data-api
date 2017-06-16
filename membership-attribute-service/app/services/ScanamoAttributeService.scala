@@ -11,6 +11,7 @@ import com.gu.scanamo.syntax._
 import com.gu.scanamo._
 import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.scanamo.syntax.{set => scanamoSet}
+import com.gu.scanamo.update.UpdateExpression
 import com.typesafe.scalalogging.LazyLogging
 
 class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
@@ -38,13 +39,15 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
 
   override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = {
 
+    def scanamoSetOpt[T: DynamoFormat](field: (Symbol, Option[T])): Option[UpdateExpression] = field._2.map(scanamoSet(field._1, _))
+    
     List(
-      'Tier -> attributes.Tier,
-      'MembershipNumber -> attributes.MembershipNumber,
-      'ContributionFrequency -> attributes.ContributionFrequency
-    ).collect {
-      case (k, Some(v)) => scanamoSet(k -> v)
-    } match {
+      scanamoSetOpt('Tier, attributes.Tier),
+      scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
+      scanamoSetOpt('ContributionFrequency -> attributes.ContributionFrequency),
+      scanamoSetOpt('CardExpirationMonth -> attributes.CardExpirationMonth),
+      scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear)
+    ).flatten match {
       case first :: remaining =>
         run(
           scanamo.update(
