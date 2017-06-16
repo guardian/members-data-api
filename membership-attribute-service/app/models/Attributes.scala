@@ -1,5 +1,6 @@
 package models
 
+import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
@@ -10,7 +11,7 @@ import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
 
-case class ContentAccess(member: Boolean, paidMember: Boolean)
+case class ContentAccess(member: Boolean, paidMember: Boolean, contributor: Boolean)
 
 object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
@@ -28,11 +29,11 @@ case class Attributes(
   require(UserId.nonEmpty)
 
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
-  lazy val isPaidTier = !isFriendTier
+  lazy val isPaidTier = !isFriendTier && !isContributor
   lazy val isAdFree = AdFree.exists(identity)
   lazy val isContributor = ContributionFrequency.isDefined
 
-  lazy val contentAccess = ContentAccess(member = true, paidMember = isPaidTier) // we want to include staff!
+  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, contributor = isContributor) // we want to include staff!
 
   lazy val cardExpires = for {
     year <- CardExpirationYear
