@@ -98,7 +98,7 @@ class SalesforceHookController extends LazyLogging {
     def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
 
       def updateDynamo(attributes: Attributes) = {
-        attributeService.set(attributes).map { putItemResult =>
+        attributeService.update(attributes).map { putItemResult =>
           info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
           metrics.put("Update", 1)
           putItemResult
@@ -115,10 +115,8 @@ class SalesforceHookController extends LazyLogging {
         membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).logWith("current subscriptions", _.map(_.id)).map(_.headOption))
       } yield {
 
-        // If the tier info does not match, we trust the info we get from Zuora, instead of the tier sent to us in the outbound message from Salesforce
+        // Zuora is the master for product info, so we use the tier from Zuora regardless of what Salesforce sends
         val tierFromZuora = membershipSubscription.plan.charges.benefit.id
-        val tierFromSalesforce = membershipUpdate.Tier
-        if (tierFromZuora != tierFromSalesforce) error(s"Differing tier info for $sfId : sf=$tierFromSalesforce zuora=$tierFromZuora")
 
         // If we have the card expiry date in Stripe, add them to Dynamo too.
         // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.

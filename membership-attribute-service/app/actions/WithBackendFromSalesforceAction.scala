@@ -10,6 +10,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
 import scalaz.syntax.std.option._
 
+
 object WithBackendFromSalesforceAction extends ActionRefiner[Request, BackendRequest] {
   private val salesforceSecretParam = "secret"
 

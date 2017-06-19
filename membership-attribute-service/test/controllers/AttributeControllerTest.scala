@@ -2,6 +2,7 @@ package controllers
 
 import actions.BackendRequest
 import akka.actor.ActorSystem
+import com.gu.scanamo.error.DynamoReadError
 import components.TouchpointComponents
 import configuration.Config
 import models.Attributes
@@ -24,7 +25,7 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val invalidUserId = "456"
   private val attributes = Attributes(
     UserId = validUserId,
-    Tier = "patron",
+    Tier = Some("patron"),
     MembershipNumber = Some("abc"),
     AdFree = Some(false),
     CardExpirationMonth = Some(3),
@@ -52,6 +53,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
         override def delete(userId: String) = ???
         override def getMany(userIds: List[String]): Future[Seq[Attributes]] = ???
+        override def update(attributes: Attributes) : Future[Either[DynamoReadError, Attributes]] = ???
       }
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {
@@ -80,7 +82,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "cardExpirationYear": 2018,
         |   "adFree": false,
         |   "membershipJoinDate": "2017-06-13",
-        |   "contentAccess":{"member":true,"paidMember":true}
+        |   "contentAccess":{"member":true,"paidMember":true, "contributor":false}
         | }
       """.stripMargin)
   }

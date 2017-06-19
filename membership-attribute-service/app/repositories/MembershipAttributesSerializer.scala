@@ -26,7 +26,7 @@ case class MembershipAttributesSerializer(tableName: String)
     Map(
       AttributeNames.userId -> membershipAttributes.UserId,
       AttributeNames.membershipNumber -> membershipAttributes.MembershipNumber.getOrElse(""),
-      AttributeNames.tier -> membershipAttributes.Tier,
+      AttributeNames.tier -> membershipAttributes.Tier.getOrElse(""),
       AttributeNames.membershipJoinDate -> membershipAttributes.MembershipJoinDate.map(_.toString).getOrElse("")
     ).filter(_._2.nonEmpty).map(mkAttribute[String])
 
@@ -34,7 +34,7 @@ case class MembershipAttributesSerializer(tableName: String)
     Attributes(
       UserId = item(AttributeNames.userId),
       MembershipNumber = item.get(AttributeNames.membershipNumber).map(_.getS),
-      Tier = item(AttributeNames.tier),
+      Tier = item.get(AttributeNames.tier).map(_.getS),
       MembershipJoinDate = item.get(AttributeNames.membershipJoinDate).map(LocalDate.parse(_))
     )
   }
