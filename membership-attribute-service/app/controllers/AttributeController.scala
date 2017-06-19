@@ -19,33 +19,27 @@ import play.filters.cors.CORSActionBuilder
 import scala.concurrent.{Future, Promise}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
+import scalaz.syntax.either._
 import scalaz.{EitherT, \/}
 import configuration.Config.authentication
 
 
 class AttributeController extends Controller with LazyLogging {
 
+  val keys = authentication.keys.map(key => s"Bearer $key")
+
   def apiKeyFilter(): ActionBuilder[Request] = new ActionBuilder[Request] {
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
-      val headerOpt = request.headers.get("Authorization")
-      val keys = authentication.keys.map(x => "Bearer " + x)
-
-      headerOpt match {
-        case Some(header: String) => {
-          if (keys.contains(header)) {
-            block(request)
-          } else {
-            Future.successful(Forbidden("This endpoint requires a valid API key"))
-          }
-        }
-        case _ => Future.successful(Forbidden("This endpoint requires an API key"))
+      request.headers.get("Authorization") match {
+        case Some(header) if keys.contains(header) => block(request)
+        case _ => Future.successful(Forbidden("Invalid API key"))
       }
     }
   }
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
-  lazy val backendForSyncWithZuora = NoCacheAction andThen  apiKeyFilter andThen WithBackendFromUserIdAction
+  lazy val backendForSyncWithZuora = NoCacheAction andThen apiKeyFilter andThen WithBackendFromUserIdAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
@@ -109,8 +103,8 @@ class AttributeController extends Controller with LazyLogging {
     val result: EitherT[Future, String, Attributes] =
       for {
         contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
-        memSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Member]]](tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
-        conSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Contributor]]](tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
+        memSubF = EitherT(tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
+        conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
         memSub <- memSubF
         conSub <- conSubF
         _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
@@ -118,18 +112,15 @@ class AttributeController extends Controller with LazyLogging {
         res <- EitherT(tp.attrService.update(attributes).map(\/.right))
       } yield attributes
 
-    result.run.map(_.fold(
-      error => {
+    result.fold(
+      {  error =>
         logger.error(s"Failed to update attributes - $error")
         ApiErrors.badRequest(error)
       },
-      attributes => {
+      { attributes =>
         logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.ContributionFrequency}")
         Ok(Json.obj("updated" -> true))
       }
-    ))
+    )
   }
 }
-
-
-
