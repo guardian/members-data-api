@@ -1,19 +1,40 @@
 package models
 
+import com.gu.memsub.Benefit.Contributor
 import org.specs2.mutable.Specification
 
 class AttributesTest extends Specification {
 
   "AttributesTest" should {
-    val attrs = Attributes(UserId = "123", Tier = "tier", MembershipNumber = None)
+    val attrs = Attributes(UserId = "123", Tier = None, MembershipNumber = None, ContributionFrequency = None)
 
     "isPaidTier returns" should {
       "true if the user is not a Guardian Friend" in {
-        attrs.copy(Tier = "Paid tier").isPaidTier shouldEqual true
+        attrs.copy(Tier = Some("Supporter")).isPaidTier shouldEqual true
+        attrs.copy(Tier = Some("Partner")).isPaidTier shouldEqual true
+        attrs.copy(Tier = Some("Patron")).isPaidTier shouldEqual true
       }
 
       "false if the user is a Guardian Friend" in {
-        attrs.copy(Tier = "Friend").isPaidTier shouldEqual false
+        attrs.copy(Tier = Some("Friend")).isPaidTier shouldEqual false
+      }
+
+      "false if the user is a Contributor but not a member" in {
+        attrs.copy(Tier = None, ContributionFrequency = Some("Monthly Contributor")).isPaidTier shouldEqual false
+      }
+    }
+
+    "isContributor returns" should {
+      "true if the user is a contributor" in {
+        attrs.copy(ContributionFrequency = Some("Monthly Contribution")).isContributor shouldEqual true
+      }
+
+      "true if the user is a contributor and a Member" in {
+        attrs.copy(Tier = Some("Friend"), ContributionFrequency = Some("Monthly Contribution")).isContributor shouldEqual true
+      }
+
+      "false if the user is not a Contributor but a member" in {
+        attrs.copy(Tier = Some("Friend"), ContributionFrequency = None).isContributor shouldEqual false
       }
     }
 

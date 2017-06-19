@@ -24,13 +24,13 @@ case class MembershipAttributesSerializer(tableName: String)
     Map(
       AttributeNames.userId -> membershipAttributes.UserId,
       AttributeNames.membershipNumber -> membershipAttributes.MembershipNumber.getOrElse(""),
-      AttributeNames.tier -> membershipAttributes.Tier
+      AttributeNames.tier -> membershipAttributes.Tier.getOrElse("")
     ).filter(_._2.nonEmpty).map(mkAttribute[String])
 
   override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) =
     Attributes(
       UserId = item(AttributeNames.userId),
       MembershipNumber = item.get(AttributeNames.membershipNumber).map(_.getS),
-      Tier = item(AttributeNames.tier)
+      Tier = item.get(AttributeNames.tier).map(_.getS)
     )
 }

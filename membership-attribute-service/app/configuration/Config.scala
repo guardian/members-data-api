@@ -23,6 +23,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.util.Try
 
 object Config {
+
   val config = ConfigFactory.load()
   val applicationName = "members-data-api"
 
@@ -34,6 +35,10 @@ object Config {
 
   object AWS {
     val region = Regions.EU_WEST_1
+  }
+
+  object authentication {
+    val keys = config.getString("authentication.key").split(',')
   }
 
   lazy val dynamoMapper = {

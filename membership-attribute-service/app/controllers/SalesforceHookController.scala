@@ -66,7 +66,7 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
   def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
 
     def updateDynamo(attributes: Attributes) = {
-      attributeService.set(attributes).map { putItemResult =>
+      attributeService.update(attributes).map { putItemResult =>
         logger.info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
         metrics.put("Update", 1)
         putItemResult
@@ -103,8 +103,8 @@ def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
       }).run
 
       cardExpiryFromStripeF.map {
-        case Some((expMonth, expYear)) => salesforceAttributes.copy(Tier = tierFromZuora, CardExpirationMonth = Some(expMonth), CardExpirationYear = Some(expYear))
-        case None => salesforceAttributes.copy(Tier = tierFromZuora)
+        case Some((expMonth, expYear)) => salesforceAttributes.copy(Tier = Some(tierFromZuora), CardExpirationMonth = Some(expMonth), CardExpirationYear = Some(expYear))
+        case None => salesforceAttributes.copy(Tier = Some(tierFromZuora))
       }
     }).run.flatMap {
       case Some(zuoraAttributesF) => zuoraAttributesF.flatMap(updateDynamo)

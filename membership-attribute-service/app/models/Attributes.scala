@@ -1,5 +1,6 @@
 package models
 
+import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
@@ -10,7 +11,7 @@ import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
 
-case class ContentAccess(member: Boolean, paidMember: Boolean)
+case class ContentAccess(member: Boolean, paidMember: Boolean, contributor: Boolean)
 
 object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
@@ -18,19 +19,24 @@ object ContentAccess {
 
 case class Attributes(
                        UserId: String,
-                       Tier: String,
+                       Tier: Option[String] = None,
                        MembershipNumber: Option[String],
                        AdFree: Option[Boolean] = None,
                        CardExpirationMonth: Option[Int] = None,
-                       CardExpirationYear: Option[Int] = None) {
-  require(Tier.nonEmpty)
+                       CardExpirationYear: Option[Int] = None,
+                       ContributionFrequency: Option[String] = None) {
+
   require(UserId.nonEmpty)
 
-  lazy val isFriendTier = Tier.equalsIgnoreCase("friend")
-  lazy val isPaidTier = !isFriendTier
+  lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
+  lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
+  lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
+  lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
+  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier
   lazy val isAdFree = AdFree.exists(identity)
+  lazy val isContributor = ContributionFrequency.isDefined
 
-  lazy val contentAccess = ContentAccess(member = true, paidMember = isPaidTier) // we want to include staff!
+  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, contributor = isContributor) // we want to include staff!
 
   lazy val cardExpires = for {
     year <- CardExpirationYear
@@ -44,11 +50,12 @@ object Attributes {
 
   implicit val jsWrite: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
-    (__ \ "tier").write[String] and
+    (__ \ "tier").writeNullable[String] and
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
-    (__ \ "cardExpirationYear").writeNullable[Int]
+    (__ \ "cardExpirationYear").writeNullable[Int] and
+    (__ \ "contributionFrequency").writeNullable[String]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
