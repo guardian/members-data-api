@@ -79,7 +79,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "cardExpirationMonth": 3,
         |   "cardExpirationYear": 2018,
         |   "adFree": false,
-        |   "startDate": "2017-06-13",
+        |   "membershipJoinDate": "2017-06-13",
         |   "contentAccess":{"member":true,"paidMember":true}
         | }
       """.stripMargin)
