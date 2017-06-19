@@ -38,7 +38,7 @@ object Config {
   }
 
   object authentication {
-    val key = config.getString("authentication.key")
+    val keys = config.getString("authentication.key").split(',')
   }
 
   lazy val dynamoMapper = {

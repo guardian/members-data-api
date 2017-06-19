@@ -25,19 +25,27 @@ import configuration.Config.authentication
 
 class AttributeController extends Controller with LazyLogging {
 
-  def signed(): ActionBuilder[Request] = new ActionBuilder[Request] {
+  def apiKeyFilter(): ActionBuilder[Request] = new ActionBuilder[Request] {
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
-      if (request.headers.get("authentication").contains(authentication.key)) {
-        block(request)
-      } else {
-        Future.successful(Forbidden)
+      val headerOpt = request.headers.get("Authorization")
+      val keys = authentication.keys.map(x => "Bearer " + x)
+
+      headerOpt match {
+        case Some(header: String) => {
+          if (keys.contains(header)) {
+            block(request)
+          } else {
+            Future.successful(Forbidden("This endpoint requires a valid API key"))
+          }
+        }
+        case _ => Future.successful(Forbidden("This endpoint requires an API key"))
       }
     }
   }
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
-  lazy val backendForSyncWithZuora = NoCacheAction andThen  signed andThen WithBackendFromUserIdAction
+  lazy val backendForSyncWithZuora = NoCacheAction andThen  apiKeyFilter andThen WithBackendFromUserIdAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
