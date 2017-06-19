@@ -103,8 +103,8 @@ class AttributeController extends Controller with LazyLogging {
     val result: EitherT[Future, String, Attributes] =
       for {
         contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
-        memSubF = EitherT(tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
-        conSubF = EitherT(tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
+        memSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Member]]](tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
+        conSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Contributor]]](tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
         memSub <- memSubF
         conSub <- conSubF
         _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
