@@ -40,99 +40,153 @@ class SalesforceHookController extends LazyLogging {
     </soapenv:Envelope>
   )
 
-def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
+  def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
 
-  val touchpoint = request.touchpoint
-  val validOrgId = touchpoint.sfOrganisationId
-  val attributeService = touchpoint.attrService
-  val requestId = scala.util.Random.nextInt
+    val touchpoint = request.touchpoint
+    val validOrgId = touchpoint.sfOrganisationId
+    val attributeService = touchpoint.attrService
 
-  implicit val pf = Membership
+    object ContextLogging {
+      case class RequestId(value: Int)
+      implicit val requestId = RequestId(scala.util.Random.nextInt)
+      def info(message: String)(implicit requestId: RequestId) =
+        logger.info(s"$requestId: $message")
+      def warn(message: String)(implicit requestId: RequestId) =
+        logger.warn(s"$requestId: $message")
+      def warn(message: String, e: Throwable)(implicit requestId: RequestId) =
+        logger.warn(s"$requestId: $message", e)
+      def error(message: String)(implicit requestId: RequestId) =
+        logger.error(s"$requestId: $message")
 
-  logger.info(s"Called from Saleforce to modify the Members Data API. Request Id: $requestId")
+      implicit class FutureContextLoggable[T](future: Future[T]) {
+        def logWith(message: String, extractor: T => Any = identity): Future[T] = {
+          future.foreach(any => info(s"$message {${extractor(any)}}"))
+          future
+        }
 
-  def deleteMemberRecord(membershipDeletion: MembershipDeletion): Future[Object] = {
-    val userId = membershipDeletion.userId
-    attributeService.delete(userId).map { deleteItemResult =>
-      logger.info(s"Successfully deleted user $userId from ${touchpoint.dynamoAttributesTable}.")
-      metrics.put("Delete", 1)
-      deleteItemResult
-    }.recover { case e: Throwable =>
-      logger.warn(s"Failed to delete user $userId from ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
-      Failure
+      }
+      implicit class ContextLoggable[T](t: T) {
+        def logWith(message: String): T = {
+          t match {
+            case future: Future[_] => future.foreach(any => info(s"$message {$any}"))
+            case any => info(s"$message {$any}")
+          }
+          t
+        }
+
+      }
+
     }
-  }
+    import ContextLogging._
 
-  def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
+    implicit val pf = Membership
 
-    def updateDynamo(attributes: Attributes) = {
-      attributeService.set(attributes).map { putItemResult =>
-        logger.info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
-        metrics.put("Update", 1)
-        putItemResult
+    info(s"Called from Saleforce to modify the Members Data API")
+
+    def deleteMemberRecord(membershipDeletion: MembershipDeletion): Future[Object] = {
+      val userId = membershipDeletion.userId
+      attributeService.delete(userId).map { deleteItemResult =>
+        info(s"Successfully deleted user $userId from ${touchpoint.dynamoAttributesTable}.")
+        metrics.put("Delete", 1)
+        deleteItemResult
       }.recover { case e: Throwable =>
-        logger.warn(s"Failed to insert $attributes into ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
+        warn(s"Failed to delete user $userId from ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
         Failure
       }
     }
 
-    val salesforceAttributes: Attributes = membershipUpdate.attributes
+    def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
 
-    logger.info(s"Salesforce called has been parsed. Request Id: $requestId. Attrs: $salesforceAttributes")
-
-    (for {
-      sfId <- OptionT(touchpoint.contactRepo.get(salesforceAttributes.UserId))
-      membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).map(_.headOption))
-    } yield {
-
-      // If the tier info does not match, we trust the info we get from Zuora, instead of the tier sent to us in the outbound message from Salesforce
-      val tierFromZuora = membershipSubscription.plan.charges.benefit.id
-      val tierFromSalesforce = salesforceAttributes.Tier
-      if (tierFromZuora != tierFromSalesforce) logger.error(s"Differing tier info for $sfId : sf=$tierFromSalesforce zuora=$tierFromZuora")
-
-      // If we have the card expiry date in Stripe, add them to Dynamo too.
-      // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
-      val cardExpiryFromStripeF = (for {
-        account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
-        paymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId))
-        paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(paymentMethodId).map(Option(_)))
-        customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
-        stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
-      } yield {
-        (stripeCustomer.card.exp_month, stripeCustomer.card.exp_year)
-      }).run
-
-      cardExpiryFromStripeF.map {
-        case Some((expMonth, expYear)) => salesforceAttributes.copy(Tier = tierFromZuora, CardExpirationMonth = Some(expMonth), CardExpirationYear = Some(expYear))
-        case None => salesforceAttributes.copy(Tier = tierFromZuora)
+      def updateDynamo(attributes: Attributes) = {
+        attributeService.set(attributes).map { putItemResult =>
+          info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
+          metrics.put("Update", 1)
+          putItemResult
+        }.recover { case e: Throwable =>
+          warn(s"Failed to insert $attributes into ${touchpoint.dynamoAttributesTable}. Salesforce should retry.", e)
+          Failure
+        }
       }
-    }).run.flatMap {
-      case Some(zuoraAttributesF) => zuoraAttributesF.flatMap(updateDynamo)
-      case None =>
-        logger.error(s"Couldn't update $salesforceAttributes with information from Zuora")
-        updateDynamo(salesforceAttributes)
+
+      info(s"Salesforce called has been parsed. Attrs: $membershipUpdate")
+
+      (for {
+        sfId <- OptionT(touchpoint.contactRepo.get(membershipUpdate.UserId).logWith("contact id from SF", _.map(_.salesforceContactId)))
+        membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).logWith("current subscriptions", _.map(_.id)).map(_.headOption))
+      } yield {
+
+        // If the tier info does not match, we trust the info we get from Zuora, instead of the tier sent to us in the outbound message from Salesforce
+        val tierFromZuora = membershipSubscription.plan.charges.benefit.id
+        val tierFromSalesforce = membershipUpdate.Tier
+        if (tierFromZuora != tierFromSalesforce) error(s"Differing tier info for $sfId : sf=$tierFromSalesforce zuora=$tierFromZuora")
+
+        // If we have the card expiry date in Stripe, add them to Dynamo too.
+        // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
+        val cardExpiryFromStripeF = (for {
+          account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
+          paymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId))
+          paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(paymentMethodId).map(Option(_)))
+          customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
+          stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
+        } yield {
+          (stripeCustomer.card.exp_month, stripeCustomer.card.exp_year)
+        }).run
+
+        val startDate = membershipSubscription.startDate // acceptanceDate is the date of first payment, but we want to know the signup date - contract effective date
+
+        cardExpiryFromStripeF.map {
+          case Some((expMonth, expYear)) =>
+            Attributes(
+              UserId = membershipUpdate.UserId,
+              Tier = tierFromZuora,
+              MembershipNumber = membershipUpdate.MembershipNumber,
+              AdFree = None,
+              CardExpirationMonth = Some(expMonth),
+              CardExpirationYear = Some(expYear),
+              StartDate = Some(startDate)
+            )
+          case None =>
+            Attributes(
+              UserId = membershipUpdate.UserId,
+              Tier = tierFromZuora,
+              MembershipNumber = membershipUpdate.MembershipNumber,
+              AdFree = None,
+              CardExpirationMonth = None,
+              CardExpirationYear = None,
+              StartDate = Some(startDate)
+            )
+        }
+      }).run.flatMap {
+        case Some(zuoraAttributesF) =>
+          zuoraAttributesF.onSuccess{ case attr =>
+            info(s"ready to update dynamo with $attr")
+          }
+          zuoraAttributesF.flatMap(updateDynamo)
+        case None =>
+          error(s"Couldn't update $membershipUpdate with information from Zuora")
+          Future.successful(Failure)
+      }
+    }
+
+    SFParser.parseOutboundMessage(request.body, validOrgId) match {
+      case -\/(ParsingError(msg)) =>
+        error(s"Could not parse payload. \n$msg")
+        Future(ApiErrors.badRequest(msg))
+      case -\/(OrgIdMatchingError(orgId)) =>
+        error(s"Wrong organization Id: $orgId")
+        Future(ApiErrors.unauthorized.copy("Wrong organization Id"))
+      // On successful parse, we should end up with a Seq of Salesforce objects to update
+      case \/-(outboundMessageChanges @ Seq(_*)) =>
+        info(s"Parsed Salesforce message successfully. Salesforce sent ${outboundMessageChanges.length} objects to update: $outboundMessageChanges")
+        // Take the Seq and apply the appropriate action for each notification item, based on its type
+        val updates = outboundMessageChanges.map {
+          case membershipDelete: MembershipDeletion => deleteMemberRecord(membershipDelete)
+          case membershipUpdate: MembershipUpdate => updateMemberRecord(membershipUpdate)
+        }
+        // Gather up the results of the futures and check for failures. Only send a success response to Salesforce if every processUpdate/processDeletion for the message succeeds
+        Future.sequence(updates).map { updateSeq =>
+          if (updateSeq.contains(Failure)) ApiErrors.internalError else ack
+        }
     }
   }
-
-  SFParser.parseOutboundMessage(request.body, validOrgId) match {
-    case -\/(ParsingError(msg)) =>
-      logger.error(s"Could not parse payload. \n$msg")
-      Future(ApiErrors.badRequest(msg))
-    case -\/(OrgIdMatchingError(orgId)) =>
-      logger.error(s"Wrong organization Id: $orgId")
-      Future(ApiErrors.unauthorized.copy("Wrong organization Id"))
-    // On successful parse, we should end up with a Seq of Salesforce objects to update
-    case \/-(outboundMessageChanges @ Seq(_*)) =>
-      logger.info(s"Parsed Salesforce message successfully. Salesforce sent ${outboundMessageChanges.length} objects to update: $outboundMessageChanges")
-      // Take the Seq and apply the appropriate action for each notification item, based on its type
-      val updates = outboundMessageChanges.map {
-        case membershipDelete: MembershipDeletion => deleteMemberRecord(membershipDelete)
-        case membershipUpdate: MembershipUpdate => updateMemberRecord(membershipUpdate)
-      }
-      // Gather up the results of the futures and check for failures. Only send a success response to Salesforce if every processUpdate/processDeletion for the message succeeds
-      Future.sequence(updates).map { updateSeq =>
-        if (updateSeq.contains(Failure)) ApiErrors.internalError else ack
-      }
-  }
- }
 }

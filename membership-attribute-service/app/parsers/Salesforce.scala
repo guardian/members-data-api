@@ -10,7 +10,11 @@ object Salesforce {
 
   sealed trait OutboundMessageChange
 
-  case class MembershipUpdate(attributes: Attributes) extends OutboundMessageChange
+  case class MembershipUpdate(
+    UserId: String,
+    Tier: String,
+    MembershipNumber: Option[String]
+  ) extends OutboundMessageChange
 
   case class MembershipDeletion(userId: String) extends OutboundMessageChange
 
@@ -51,14 +55,14 @@ object Salesforce {
 
     def messageChangeFromSfObject(salesforceObject: Node): OutboundMessageChange = {
       val id = (salesforceObject \ "IdentityID__c").map(_.text).head
-      val tier = (salesforceObject \ "Membership_Tier__c").map(_.text).headOption
+      val maybeTier = (salesforceObject \ "Membership_Tier__c").map(_.text).headOption
       val num = (salesforceObject \ "Membership_Number__c").headOption.map(_.text)
       // Match on the Tier to determine the required action
-      tier match {
+      maybeTier match {
         // If Salesforce Contact object has no Tier, we assume the user has expired/cancelled and mark them for deletion
         case None => MembershipDeletion(id)
         // If the Salesforce Contact has a Tier, we mark them for an update
-        case Some(tier) => MembershipUpdate(Attributes(id, tier, num))
+        case Some(tier) => MembershipUpdate(id, tier, num)
       }
     }
 

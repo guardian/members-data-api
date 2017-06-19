@@ -17,12 +17,14 @@ object ContentAccess {
 }
 
 case class Attributes(
-                       UserId: String,
-                       Tier: String,
-                       MembershipNumber: Option[String],
-                       AdFree: Option[Boolean] = None,
-                       CardExpirationMonth: Option[Int] = None,
-                       CardExpirationYear: Option[Int] = None) {
+  UserId: String,
+  Tier: String,
+  MembershipNumber: Option[String],
+  AdFree: Option[Boolean] = None,
+  CardExpirationMonth: Option[Int] = None,
+  CardExpirationYear: Option[Int] = None,
+  StartDate: Option[LocalDate] // TODO startDate shouldn't be optional once we've backfilled it everywhere
+) {
   require(Tier.nonEmpty)
   require(UserId.nonEmpty)
 
@@ -48,7 +50,8 @@ object Attributes {
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
-    (__ \ "cardExpirationYear").writeNullable[Int]
+    (__ \ "cardExpirationYear").writeNullable[Int] and
+      (__ \ "startDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
