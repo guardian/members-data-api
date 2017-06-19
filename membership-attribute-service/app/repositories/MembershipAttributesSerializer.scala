@@ -31,6 +31,6 @@ case class MembershipAttributesSerializer(tableName: String)
     Attributes(
       UserId = item(AttributeNames.userId),
       MembershipNumber = item.get(AttributeNames.membershipNumber).map(_.getS),
-      Tier = Some(item(AttributeNames.tier))
+      Tier = item.get(AttributeNames.tier).map(_.getS)
     )
 }
