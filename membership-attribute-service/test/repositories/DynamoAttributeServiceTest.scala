@@ -47,7 +47,7 @@ class DynamoAttributeServiceTest extends Specification {
   "get" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
-      val attributes = Attributes(userId, Some("Patron"), Some("abc"))
+      val attributes = Attributes(userId, Tier = Some("Patron"), MembershipNumber =  Some("abc"), ContributionFrequency = Some("Monthly Contribution"))
       val result = for {
         insertResult <- repo.set(attributes)
         retrieved <- repo.get(userId)
@@ -68,17 +68,17 @@ class DynamoAttributeServiceTest extends Specification {
   "getMany" should {
 
     val testUsers = Seq(
-      Attributes("1234", Some("Partner"), None),
-      Attributes("2345", Some("Partner"), None),
-      Attributes("3456", Some("Partner"), None),
-      Attributes("4567", Some("Partner"), None)
+      Attributes(UserId = "1234", Tier = Some("Partner"), MembershipNumber = None),
+      Attributes(UserId = "2345", Tier = Some("Partner"), MembershipNumber = None),
+      Attributes(UserId = "3456", Tier = Some("Partner"), MembershipNumber = None),
+      Attributes(UserId = "4567", Tier = Some("Partner"), MembershipNumber = None)
     )
 
     "Fetch many people by user id" in {
       Await.result(Future.sequence(testUsers.map(repo.set)), 5.seconds)
       Await.result(repo.getMany(List("1234", "3456", "abcd")), 5.seconds) mustEqual Seq(
-        Attributes("1234", Some("Partner"), None),
-        Attributes("3456", Some("Partner"), None)
+        Attributes(UserId = "1234", Tier = Some("Partner"), MembershipNumber = None),
+        Attributes(UserId = "3456", Tier = Some("Partner"), MembershipNumber = None)
       )
     }
   }
