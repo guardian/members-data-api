@@ -140,7 +140,7 @@ class SalesforceHookController extends LazyLogging {
         }.map { case (expMonth, expYear) =>
           Attributes(
             UserId = membershipUpdate.UserId,
-            Tier = tierFromZuora,
+            Tier = Some(tierFromZuora),
             MembershipNumber = membershipUpdate.MembershipNumber,
             AdFree = None,
             CardExpirationMonth = expMonth,

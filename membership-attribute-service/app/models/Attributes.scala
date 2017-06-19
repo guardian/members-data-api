@@ -58,7 +58,7 @@ object Attributes {
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
     (__ \ "cardExpirationYear").writeNullable[Int] and
-    (__ \ "contributionFrequency").writeNullable[String]
+    (__ \ "contributionFrequency").writeNullable[String] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
