@@ -16,9 +16,9 @@ class SalesforceCSVExportSpec extends Specification {
         val attributes = SalesforceCSVExport.membersAttributes(file).toList
 
         attributes shouldEqual List(
-          Attributes("323479263", "Partner", Some("292451"), StartDate = None),
-          Attributes("323479267", "Patron", Some("292454"), StartDate = None),
-          Attributes("323479268", "Friend", None, StartDate = None)
+          Attributes("323479263", "Partner", Some("292451"), MembershipJoinDate = None),
+          Attributes("323479267", "Patron", Some("292454"), MembershipJoinDate = None),
+          Attributes("323479268", "Friend", None, MembershipJoinDate = None)
         )
       }
     }

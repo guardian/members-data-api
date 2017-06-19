@@ -5,7 +5,7 @@ import org.specs2.mutable.Specification
 class AttributesTest extends Specification {
 
   "AttributesTest" should {
-    val attrs = Attributes(UserId = "123", Tier = "tier", MembershipNumber = None, StartDate = None)
+    val attrs = Attributes(UserId = "123", Tier = "tier", MembershipNumber = None, MembershipJoinDate = None)
 
     "isPaidTier returns" should {
       "true if the user is not a Guardian Friend" in {

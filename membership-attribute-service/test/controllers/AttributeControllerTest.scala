@@ -29,7 +29,7 @@ class AttributeControllerTest extends Specification with AfterAll {
     AdFree = Some(false),
     CardExpirationMonth = Some(3),
     CardExpirationYear = Some(2018),
-    StartDate = Some(new LocalDate(2017, 6, 13))
+    MembershipJoinDate = Some(new LocalDate(2017, 6, 13))
   )
 
   private val validUserCookie = Cookie("validUser", "true")

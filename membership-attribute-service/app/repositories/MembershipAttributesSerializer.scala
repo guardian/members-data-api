@@ -9,7 +9,7 @@ object MembershipAttributesSerializer {
     val userId = "UserId"
     val membershipNumber = "MembershipNumber"
     val tier = "Tier"
-    val startDate = "StartDate"
+    val membershipJoinDate = "MembershipJoinDate"
   }
 }
 
@@ -27,7 +27,7 @@ case class MembershipAttributesSerializer(tableName: String)
       AttributeNames.userId -> membershipAttributes.UserId,
       AttributeNames.membershipNumber -> membershipAttributes.MembershipNumber.getOrElse(""),
       AttributeNames.tier -> membershipAttributes.Tier,
-      AttributeNames.startDate -> membershipAttributes.StartDate.map(_.toString).getOrElse("")
+      AttributeNames.membershipJoinDate -> membershipAttributes.MembershipJoinDate.map(_.toString).getOrElse("")
     ).filter(_._2.nonEmpty).map(mkAttribute[String])
 
   override def fromAttributeMap(item: collection.mutable.Map[String, AttributeValue]) = {
@@ -35,7 +35,7 @@ case class MembershipAttributesSerializer(tableName: String)
       UserId = item(AttributeNames.userId),
       MembershipNumber = item.get(AttributeNames.membershipNumber).map(_.getS),
       Tier = item(AttributeNames.tier),
-      StartDate = item.get(AttributeNames.startDate).map(LocalDate.parse(_))
+      MembershipJoinDate = item.get(AttributeNames.membershipJoinDate).map(LocalDate.parse(_))
     )
   }
 }

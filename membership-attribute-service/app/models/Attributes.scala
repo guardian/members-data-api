@@ -23,7 +23,7 @@ case class Attributes(
   AdFree: Option[Boolean] = None,
   CardExpirationMonth: Option[Int] = None,
   CardExpirationYear: Option[Int] = None,
-  StartDate: Option[LocalDate] // TODO startDate shouldn't be optional once we've backfilled it everywhere
+  MembershipJoinDate: Option[LocalDate] // TODO startDate shouldn't be optional once we've backfilled it everywhere
 ) {
   require(Tier.nonEmpty)
   require(UserId.nonEmpty)
@@ -51,7 +51,7 @@ object Attributes {
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
     (__ \ "cardExpirationYear").writeNullable[Int] and
-      (__ \ "startDate").writeNullable[LocalDate]
+      (__ \ "membershipJoinDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =

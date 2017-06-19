@@ -23,7 +23,7 @@ object Features {
       adblockMessage = !attributes.isPaidTier,
       cardHasExpired = attributes.maybeCardHasExpired,
       cardExpires = attributes.cardExpires,
-      startDate = attributes.StartDate
+      membershipJoinDate = attributes.MembershipJoinDate
     )
   }
 
@@ -36,5 +36,5 @@ case class Features(
   adblockMessage: Boolean,
   cardHasExpired: Option[Boolean],
   cardExpires: Option[LocalDate],
-  startDate: Option[LocalDate]
+  membershipJoinDate: Option[LocalDate]
 )

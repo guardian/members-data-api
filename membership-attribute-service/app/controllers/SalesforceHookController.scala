@@ -132,7 +132,7 @@ class SalesforceHookController extends LazyLogging {
           (stripeCustomer.card.exp_month, stripeCustomer.card.exp_year)
         }).run
 
-        val startDate = membershipSubscription.startDate // acceptanceDate is the date of first payment, but we want to know the signup date - contract effective date
+        val membershipJoinDate = membershipSubscription.startDate // acceptanceDate is the date of first payment, but we want to know the signup date - contract effective date
 
         cardExpiryFromStripeF.map {
           case Some((expMonth, expYear)) =>
@@ -147,7 +147,7 @@ class SalesforceHookController extends LazyLogging {
             AdFree = None,
             CardExpirationMonth = expMonth,
             CardExpirationYear = expYear,
-            StartDate = Some(startDate)
+            MembershipJoinDate = Some(membershipJoinDate)
           )
         }
       }).run.flatMap {

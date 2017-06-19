@@ -49,7 +49,7 @@ class DynamoAttributeServiceTest extends Specification {
   "get" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
-      val attributes = Attributes(userId, "patron", Some("abc"), StartDate = Some(new LocalDate(2017, 6, 13)))
+      val attributes = Attributes(userId, "patron", Some("abc"), MembershipJoinDate = Some(new LocalDate(2017, 6, 13)))
       val result = for {
         insertResult <- repo.set(attributes)
         retrieved <- repo.get(userId)
@@ -70,17 +70,17 @@ class DynamoAttributeServiceTest extends Specification {
   "getMany" should {
 
     val testUsers = Seq(
-      Attributes("1234", "Partner", None, StartDate = None),
-      Attributes("2345", "Partner", None, StartDate = Some(new LocalDate(2017, 6, 12))),
-      Attributes("3456", "Partner", None, StartDate = Some(new LocalDate(2017, 6, 11))),
-      Attributes("4567", "Partner", None, StartDate = Some(new LocalDate(2017, 6, 10)))
+      Attributes("1234", "Partner", None, MembershipJoinDate = None),
+      Attributes("2345", "Partner", None, MembershipJoinDate = Some(new LocalDate(2017, 6, 12))),
+      Attributes("3456", "Partner", None, MembershipJoinDate = Some(new LocalDate(2017, 6, 11))),
+      Attributes("4567", "Partner", None, MembershipJoinDate = Some(new LocalDate(2017, 6, 10)))
     )
 
     "Fetch many people by user id" in {
       Await.result(Future.sequence(testUsers.map(repo.set)), 5.seconds)
       Await.result(repo.getMany(List("1234", "3456", "abcd")), 5.seconds) mustEqual Seq(
-        Attributes("1234", "Partner", None, StartDate = None),
-        Attributes("3456", "Partner", None, StartDate = Some(new LocalDate(2017, 6, 11)))
+        Attributes("1234", "Partner", None, MembershipJoinDate = None),
+        Attributes("3456", "Partner", None, MembershipJoinDate = Some(new LocalDate(2017, 6, 11)))
       )
     }
   }
