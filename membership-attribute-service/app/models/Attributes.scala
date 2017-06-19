@@ -32,7 +32,8 @@ case class Attributes(
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
-  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier
+  lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
+  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isAdFree = AdFree.exists(identity)
   lazy val isContributor = ContributionFrequency.isDefined
 
