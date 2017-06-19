@@ -90,7 +90,7 @@ class AttributeController extends Controller with LazyLogging {
   val notFound = ApiError("Not found", "Could not find user in the database", 404)
   val notAMember = ApiError("Not found", "User was found but they are not a member", 404)
 
-  def membership = lookup("membership", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
+  def membership = lookup("membership", onSuccessMember = MembershipAttributes.fromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
 

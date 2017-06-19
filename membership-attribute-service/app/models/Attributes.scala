@@ -1,5 +1,6 @@
 package models
 
+import com.gu.memsub.Benefit.PaidMemberTier
 import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
@@ -59,6 +60,51 @@ object Attributes {
     (__ \ "contributionFrequency").writeNullable[String]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
+
+
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
+}
+
+
+
+case class MembershipAttributes(
+                       UserId: String,
+                       Tier: Option[String] = None,
+                       MembershipNumber: Option[String],
+                       AdFree: Option[Boolean] = None,
+                       ContentAccess : MembershipContentAccess)
+
+object MembershipAttributes {
+
+  implicit val jsWrite: OWrites[MembershipAttributes] = (
+    (__ \ "userId").write[String] and
+    (__ \ "tier").writeNullable[String] and
+    (__ \ "membershipNumber").writeNullable[String] and
+    (__ \ "adFree").writeNullable[Boolean] and
+    (__ \ "contentAccess").write[MembershipContentAccess](MembershipContentAccess.jsWrite)
+   )(unlift(MembershipAttributes.unapply))
+
+  implicit def toResult(attrs: MembershipAttributes): Result =
+    Ok(Json.toJson(attrs))
+
+  def fromAttributes( attr:Attributes) =
+    MembershipAttributes(
+      UserId = attr.UserId,
+      Tier = attr.Tier,
+      MembershipNumber = attr.MembershipNumber,
+      AdFree = attr.AdFree,
+      ContentAccess =  MembershipContentAccess(
+        member = attr.contentAccess.member,
+        paidMember = attr.contentAccess.paidMember
+      )
+    )
+
+}
+
+
+case class MembershipContentAccess(member: Boolean, paidMember: Boolean)
+
+object MembershipContentAccess {
+  implicit val jsWrite = Json.writes[MembershipContentAccess]
 }
