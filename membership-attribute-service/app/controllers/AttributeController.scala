@@ -78,7 +78,6 @@ class AttributeController extends Controller with LazyLogging {
             logger.info(s"$id is a contributor - $endpointDescription - $attrs")
             onSuccessMemberAndOrContributor(attrs)
           case _ =>
-            logger.info(s"$id was not found - $endpointDescription")
             onNotFound
         }
       }.getOrElse {
