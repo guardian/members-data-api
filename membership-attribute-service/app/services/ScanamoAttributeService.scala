@@ -52,7 +52,8 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
       scanamoSetOpt('ContributionFrequency -> attributes.ContributionFrequency),
       scanamoSetOpt('CardExpirationMonth -> attributes.CardExpirationMonth),
-      scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear)
+      scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear),
+      scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate)
     ).flatten match {
       case first :: remaining =>
         run(
