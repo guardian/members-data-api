@@ -136,25 +136,19 @@ class SalesforceHookController extends LazyLogging {
 
         cardExpiryFromStripeF.map {
           case Some((expMonth, expYear)) =>
-            Attributes(
-              UserId = membershipUpdate.UserId,
-              Tier = tierFromZuora,
-              MembershipNumber = membershipUpdate.MembershipNumber,
-              AdFree = None,
-              CardExpirationMonth = Some(expMonth),
-              CardExpirationYear = Some(expYear),
-              StartDate = Some(startDate)
-            )
+            (Some(expMonth),Some(expYear))
           case None =>
-            Attributes(
-              UserId = membershipUpdate.UserId,
-              Tier = tierFromZuora,
-              MembershipNumber = membershipUpdate.MembershipNumber,
-              AdFree = None,
-              CardExpirationMonth = None,
-              CardExpirationYear = None,
-              StartDate = Some(startDate)
-            )
+            (None, None)
+        }.map { case (expMonth, expYear) =>
+          Attributes(
+            UserId = membershipUpdate.UserId,
+            Tier = tierFromZuora,
+            MembershipNumber = membershipUpdate.MembershipNumber,
+            AdFree = None,
+            CardExpirationMonth = expMonth,
+            CardExpirationYear = expYear,
+            StartDate = Some(startDate)
+          )
         }
       }).run.flatMap {
         case Some(zuoraAttributesF) =>
