@@ -50,7 +50,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
     List(
       scanamoSetOpt('Tier, attributes.Tier),
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
-      scanamoSetOpt('ContributionFrequency -> attributes.ContributionFrequency),
+      scanamoSetOpt('ContributionPaymentPlan -> attributes.ContributionPaymentPlan),
       scanamoSetOpt('CardExpirationMonth -> attributes.CardExpirationMonth),
       scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate)
