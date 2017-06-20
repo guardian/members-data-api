@@ -78,11 +78,8 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "tier": "patron",
         |   "membershipNumber": "abc",
         |   "userId": "123",
-        |   "cardExpirationMonth": 3,
-        |   "cardExpirationYear": 2018,
         |   "adFree": false,
-        |   "membershipJoinDate": "2017-06-13",
-        |   "contentAccess":{"member":true,"paidMember":true, "contributor":false}
+        |   "contentAccess":{"member":true,"paidMember":true}
         | }
       """.stripMargin)
   }

@@ -46,7 +46,13 @@ class DynamoAttributeServiceTest extends Specification {
   "get" should {
     "retrieve attributes for given user" in {
       val userId = UUID.randomUUID().toString
-      val attributes = Attributes(userId, Tier = Some("Patron"), MembershipNumber =  Some("abc"), ContributionFrequency = Some("Monthly Contribution"), MembershipJoinDate = Some(new LocalDate(2017, 6, 13)))
+      val attributes = Attributes(
+        userId,
+        Tier = Some("Patron"),
+        MembershipNumber =  Some("abc"),
+        ContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = Some(new LocalDate(2017, 6, 13)))
+
       val result = for {
         insertResult <- repo.set(attributes)
         retrieved <- repo.get(userId)
