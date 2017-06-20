@@ -5,19 +5,16 @@ import java.util.UUID
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
-import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper, Schema}
+import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
 import models.Attributes
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
-import org.specs2.matcher._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.MembershipAttributesSerializer.AttributeNames
 import services.ScanamoAttributeService
 
-import scala.concurrent.{Await, Future}
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
 import scala.concurrent.duration._
-import org.specs2.concurrent.ExecutionEnv
+import scala.concurrent.{Await, Future}
 
 /**
  * Depends upon DynamoDB Local to be running on the default port of 8000.
@@ -70,17 +67,17 @@ class DynamoAttributeServiceTest extends Specification {
   "getMany" should {
 
     val testUsers = Seq(
-      Attributes(UserId = "1234", Tier = Some("Partner"), MembershipNumber = None, MembershipJoinDate = None),
-      Attributes(UserId = "2345", Tier = Some("Partner"), MembershipNumber = None, MembershipJoinDate = Some(new LocalDate(2017, 6, 12))),
-      Attributes(UserId = "3456", Tier = Some("Partner"), MembershipNumber = None, MembershipJoinDate = Some(new LocalDate(2017, 6, 11))),
-      Attributes(UserId = "4567", Tier = Some("Partner"), MembershipNumber = None, MembershipJoinDate = Some(new LocalDate(2017, 6, 10)))
+      Attributes(UserId = "1234", Tier = Some("Partner")),
+      Attributes(UserId = "2345", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 12))),
+      Attributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11))),
+      Attributes(UserId = "4567", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 10)))
     )
 
     "Fetch many people by user id" in {
       Await.result(Future.sequence(testUsers.map(repo.set)), 5.seconds)
       Await.result(repo.getMany(List("1234", "3456", "abcd")), 5.seconds) mustEqual Seq(
-        Attributes(UserId = "1234", Tier = Some("Partner"), MembershipNumber = None, MembershipJoinDate = None),
-        Attributes(UserId = "3456", Tier = Some("Partner"), MembershipNumber = None, MembershipJoinDate = Some(new LocalDate(2017, 6, 11)))
+        Attributes(UserId = "1234", Tier = Some("Partner")),
+        Attributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11)))
       )
     }
   }

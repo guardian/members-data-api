@@ -1,6 +1,5 @@
 package models
 
-import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
@@ -20,12 +19,12 @@ object ContentAccess {
 case class Attributes(
   UserId: String,
   Tier: Option[String] = None,
-  MembershipNumber: Option[String],
+  MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
   CardExpirationMonth: Option[Int] = None,
   CardExpirationYear: Option[Int] = None,
   ContributionFrequency: Option[String] = None,
-  MembershipJoinDate: Option[LocalDate] // TODO startDate shouldn't be optional once we've backfilled it everywhere
+  MembershipJoinDate: Option[LocalDate] = None
 ) {
 
   require(UserId.nonEmpty)
