@@ -73,36 +73,37 @@ object Attributes {
 
 
 case class MembershipAttributes(
-                       UserId: String,
-                       Tier: Option[String] = None,
-                       MembershipNumber: Option[String],
-                       AdFree: Option[Boolean] = None,
-                       ContentAccess : MembershipContentAccess)
+  UserId: String,
+  Tier: String,
+  MembershipNumber: Option[String],
+  AdFree: Option[Boolean] = None,
+  ContentAccess : MembershipContentAccess
+)
 
 object MembershipAttributes {
 
   implicit val jsWrite: OWrites[MembershipAttributes] = (
     (__ \ "userId").write[String] and
-    (__ \ "tier").writeNullable[String] and
+    (__ \ "tier").write[String] and
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "contentAccess").write[MembershipContentAccess](MembershipContentAccess.jsWrite)
    )(unlift(MembershipAttributes.unapply))
 
-  implicit def toResult(attrs: MembershipAttributes): Result =
-    Ok(Json.toJson(attrs))
-
-  def fromAttributes( attr:Attributes) =
+  def fromAttributes(attr: Attributes): Option[MembershipAttributes] = for {
+    tier <- attr.Tier
+  } yield {
     MembershipAttributes(
       UserId = attr.UserId,
-      Tier = attr.Tier,
+      Tier = tier,
       MembershipNumber = attr.MembershipNumber,
       AdFree = attr.AdFree,
-      ContentAccess =  MembershipContentAccess(
+      ContentAccess = MembershipContentAccess(
         member = attr.contentAccess.member,
         paidMember = attr.contentAccess.paidMember
       )
     )
+  }
 
 }
 
