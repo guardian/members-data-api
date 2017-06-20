@@ -6,6 +6,7 @@ import com.gu.scanamo.error.DynamoReadError
 import components.TouchpointComponents
 import configuration.Config
 import models.Attributes
+import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
 import play.api.libs.concurrent.Execution.Implicits._
@@ -23,7 +24,13 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val validUserId = "123"
   private val invalidUserId = "456"
   private val attributes = Attributes(
-    UserId = validUserId, Tier = Some("patron"), MembershipNumber = Some("abc"), AdFree = Some(false), CardExpirationMonth = Some(3), CardExpirationYear = Some(2018)
+    UserId = validUserId,
+    Tier = Some("patron"),
+    MembershipNumber = Some("abc"),
+    AdFree = Some(false),
+    CardExpirationMonth = Some(3),
+    CardExpirationYear = Some(2018),
+    MembershipJoinDate = Some(new LocalDate(2017, 6, 13))
   )
 
   private val validUserCookie = Cookie("validUser", "true")
@@ -74,6 +81,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "cardExpirationMonth": 3,
         |   "cardExpirationYear": 2018,
         |   "adFree": false,
+        |   "membershipJoinDate": "2017-06-13",
         |   "contentAccess":{"member":true,"paidMember":true, "contributor":false}
         | }
       """.stripMargin)

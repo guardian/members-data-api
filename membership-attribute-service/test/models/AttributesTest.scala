@@ -1,12 +1,11 @@
 package models
 
-import com.gu.memsub.Benefit.Contributor
 import org.specs2.mutable.Specification
 
 class AttributesTest extends Specification {
 
   "AttributesTest" should {
-    val attrs = Attributes(UserId = "123", Tier = None, MembershipNumber = None, ContributionFrequency = None)
+    val attrs = Attributes(UserId = "123")
 
     "isPaidTier returns" should {
       "true if the user is not a Guardian Friend" in {

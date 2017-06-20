@@ -32,7 +32,7 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val updateActionSeq = Seq(MembershipUpdate(Attributes("identity_id", Some("Supporter"), Some("membership_number"))))
+      val updateActionSeq = Seq(MembershipUpdate("identity_id", "Supporter", Some("membership_number")))
       Salesforce.parseOutboundMessage(payload, orgId) shouldEqual updateActionSeq.right
     }
 
@@ -58,7 +58,7 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val updateActionSeq = Seq(MembershipUpdate(Attributes("identity_id", Some("Supporter"), None)))
+      val updateActionSeq = Seq(MembershipUpdate("identity_id", "Supporter", None))
       Salesforce.parseOutboundMessage(payload, orgId) shouldEqual updateActionSeq.right
     }
 
@@ -94,7 +94,7 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val updateActionSeq = Seq(MembershipUpdate(Attributes("123", Some("Supporter"), Some("12345"))), MembershipUpdate(Attributes("321", Some("Supporter"), Some("54321"))))
+      val updateActionSeq = Seq(MembershipUpdate("123", "Supporter", Some("12345")), MembershipUpdate("321", "Supporter", Some("54321")))
       Salesforce.parseOutboundMessage(payload, orgId) shouldEqual updateActionSeq.right
     }
 
@@ -161,9 +161,9 @@ class SalesforceTest extends Specification {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val sfNotifications = Seq(MembershipUpdate(Attributes("identity_id1", Some("Supporter"), None)),
+      val sfNotifications = Seq(MembershipUpdate("identity_id1", "Supporter", None),
                                 MembershipDeletion("identity_id2"),
-                                MembershipUpdate(Attributes("identity_id3", Some("Partner"), Some("membership_number"))))
+                                MembershipUpdate("identity_id3", "Partner", Some("membership_number")))
       Salesforce.parseOutboundMessage(payload, orgId) shouldEqual sfNotifications.right
     }
 

@@ -43,32 +43,10 @@ class AttributeController extends Controller with LazyLogging {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  def update = BackendFromCookieAction.async { implicit request =>
-
-    val result: EitherT[Future, String, Attributes] = for {
-      id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
-      contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
-      sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
-      attributes = Attributes(id, Some(sub.plan.charges.benefit.id), contact.regNumber)
-      res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
-    } yield attributes
-
-    result.run.map(_.fold(
-      error => {
-        logger.error(s"Failed to update attributes - $error")
-        ApiErrors.badRequest(error)
-      },
-      attributes => {
-        logger.info(s"${attributes.UserId} -> ${attributes.Tier}")
-        Ok(Json.obj("updated" -> true))
-      }
-    ))
-  }
-
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
-          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
+          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
             logger.info(s"$id is a member - $endpointDescription - $attrs")
             onSuccessMember(attrs).withHeaders(
               "X-Gu-Membership-Tier" -> tier,
@@ -107,7 +85,13 @@ class AttributeController extends Controller with LazyLogging {
         memSub <- memSubF
         conSub <- conSubF
         _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
-        attributes = Attributes( UserId = identityId, Tier = memSub.map(_.plan.charges.benefit.id), MembershipNumber = contact.regNumber, ContributionFrequency = conSub.map(_.plan.name))
+        attributes = Attributes(
+          UserId = identityId,
+          Tier = memSub.map(_.plan.charges.benefit.id),
+          MembershipNumber = contact.regNumber,
+          ContributionFrequency = conSub.map(_.plan.name),
+          MembershipJoinDate = memSub.map(_.startDate)
+        )
         res <- EitherT(tp.attrService.update(attributes).map(\/.right))
       } yield attributes
 

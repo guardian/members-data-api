@@ -1,6 +1,5 @@
 package models
 
-import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
@@ -18,13 +17,15 @@ object ContentAccess {
 }
 
 case class Attributes(
-                       UserId: String,
-                       Tier: Option[String] = None,
-                       MembershipNumber: Option[String],
-                       AdFree: Option[Boolean] = None,
-                       CardExpirationMonth: Option[Int] = None,
-                       CardExpirationYear: Option[Int] = None,
-                       ContributionFrequency: Option[String] = None) {
+  UserId: String,
+  Tier: Option[String] = None,
+  MembershipNumber: Option[String] = None,
+  AdFree: Option[Boolean] = None,
+  CardExpirationMonth: Option[Int] = None,
+  CardExpirationYear: Option[Int] = None,
+  ContributionFrequency: Option[String] = None,
+  MembershipJoinDate: Option[LocalDate] = None
+) {
 
   require(UserId.nonEmpty)
 
@@ -56,7 +57,8 @@ object Attributes {
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
     (__ \ "cardExpirationYear").writeNullable[Int] and
-    (__ \ "contributionFrequency").writeNullable[String]
+    (__ \ "contributionFrequency").writeNullable[String] and
+      (__ \ "membershipJoinDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =

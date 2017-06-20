@@ -22,11 +22,19 @@ object Features {
       adFree = attributes.isAdFree,
       adblockMessage = !attributes.isPaidTier,
       cardHasExpired = attributes.maybeCardHasExpired,
-      cardExpires = attributes.cardExpires
+      cardExpires = attributes.cardExpires,
+      membershipJoinDate = attributes.MembershipJoinDate
     )
   }
 
-  val unauthenticated = Features(None, adFree = false, adblockMessage = true, None, None)
+  val unauthenticated = Features(None, adFree = false, adblockMessage = true, None, None, None)
 }
 
-case class Features(userId: Option[String], adFree: Boolean, adblockMessage: Boolean, cardHasExpired: Option[Boolean], cardExpires: Option[LocalDate])
+case class Features(
+  userId: Option[String],
+  adFree: Boolean,
+  adblockMessage: Boolean,
+  cardHasExpired: Option[Boolean],
+  cardExpires: Option[LocalDate],
+  membershipJoinDate: Option[LocalDate]
+)
