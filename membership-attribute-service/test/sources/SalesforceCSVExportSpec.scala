@@ -18,7 +18,7 @@ class SalesforceCSVExportSpec extends Specification {
         attributes shouldEqual List(
           Attributes("323479263", Some("Partner"), Some("292451")),
           Attributes("323479267", Some("Patron"), Some("292454")),
-          Attributes("323479268", Some("Friend"), None)
+          Attributes("323479268", Some("Friend"))
         )
       }
     }

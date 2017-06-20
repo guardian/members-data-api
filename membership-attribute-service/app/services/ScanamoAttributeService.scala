@@ -13,13 +13,19 @@ import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.scanamo.syntax.{set => scanamoSet}
 import com.gu.scanamo.update.UpdateExpression
 import com.typesafe.scalalogging.LazyLogging
+import org.joda.time.LocalDate
 
 class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
     extends AttributeService with LazyLogging {
 
+  implicit val jodaStringFormat = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](
+    LocalDate.parse(_)
+  )(
+    _.toString
+  )
+
   private val scanamo = Table[Attributes](table)
   def run[T] = ScanamoAsync.exec[T](client) _
-
 
   override def get(userId: String): Future[Option[Attributes]] =
     run(scanamo.get('UserId -> userId).map(_.flatMap {
@@ -46,7 +52,8 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
       scanamoSetOpt('ContributionFrequency -> attributes.ContributionFrequency),
       scanamoSetOpt('CardExpirationMonth -> attributes.CardExpirationMonth),
-      scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear)
+      scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear),
+      scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate)
     ).flatten match {
       case first :: remaining =>
         run(

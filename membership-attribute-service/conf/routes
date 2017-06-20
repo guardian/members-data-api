@@ -3,7 +3,6 @@ GET        /healthcheck                                     controllers.HealthCh
 
 GET        /user-attributes/me/membership                   controllers.AttributeController.membership
 GET        /user-attributes/me/features                     controllers.AttributeController.features
-POST       /user-attributes/me/update                       controllers.AttributeController.update
 
 GET        /user-attributes/me/mma-digitalpack              controllers.AccountController.digitalPackDetails
 GET        /user-attributes/me/mma-membership               controllers.AccountController.membershipDetails
