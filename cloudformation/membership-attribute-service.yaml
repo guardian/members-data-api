@@ -81,9 +81,9 @@ Mappings:
     CODE:
       NotificationAlarmPeriod: 1200
       InstanceName: CODE:membership-attribute-service
-      DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
+      DynamoDBTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-DEV
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
-      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       GiraffeTopic: giraffe-code
       SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
