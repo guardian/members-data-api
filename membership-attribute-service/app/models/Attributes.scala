@@ -1,5 +1,8 @@
 package models
 
+
+import com.gu.memsub.Benefit.PaidMemberTier
+import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
@@ -10,7 +13,7 @@ import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
 
-case class ContentAccess(member: Boolean, paidMember: Boolean, contributor: Boolean)
+case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean)
 
 object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
@@ -23,7 +26,7 @@ case class Attributes(
   AdFree: Option[Boolean] = None,
   CardExpirationMonth: Option[Int] = None,
   CardExpirationYear: Option[Int] = None,
-  ContributionFrequency: Option[String] = None,
+  ContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None
 ) {
 
@@ -36,9 +39,9 @@ case class Attributes(
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isAdFree = AdFree.exists(identity)
-  lazy val isContributor = ContributionFrequency.isDefined
+  lazy val isContributor = ContributionPaymentPlan.isDefined
 
-  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, contributor = isContributor) // we want to include staff!
+  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor) // we want to include staff!
 
   lazy val cardExpires = for {
     year <- CardExpirationYear
@@ -57,10 +60,56 @@ object Attributes {
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "cardExpirationMonth").writeNullable[Int] and
     (__ \ "cardExpirationYear").writeNullable[Int] and
-    (__ \ "contributionFrequency").writeNullable[String] and
-      (__ \ "membershipJoinDate").writeNullable[LocalDate]
+    (__ \ "contributionPaymentPlan").writeNullable[String] and
+    (__ \ "membershipJoinDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
+
+
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
+}
+
+
+
+case class MembershipAttributes(
+  UserId: String,
+  Tier: String,
+  MembershipNumber: Option[String],
+  AdFree: Option[Boolean] = None,
+  ContentAccess : MembershipContentAccess
+)
+
+object MembershipAttributes {
+
+  implicit val jsWrite: OWrites[MembershipAttributes] = (
+    (__ \ "userId").write[String] and
+    (__ \ "tier").write[String] and
+    (__ \ "membershipNumber").writeNullable[String] and
+    (__ \ "adFree").writeNullable[Boolean] and
+    (__ \ "contentAccess").write[MembershipContentAccess](MembershipContentAccess.jsWrite)
+   )(unlift(MembershipAttributes.unapply))
+
+  def fromAttributes(attr: Attributes): Option[MembershipAttributes] = for {
+    tier <- attr.Tier
+  } yield {
+    MembershipAttributes(
+      UserId = attr.UserId,
+      Tier = tier,
+      MembershipNumber = attr.MembershipNumber,
+      AdFree = attr.AdFree,
+      ContentAccess = MembershipContentAccess(
+        member = attr.contentAccess.member,
+        paidMember = attr.contentAccess.paidMember
+      )
+    )
+  }
+
+}
+
+
+case class MembershipContentAccess(member: Boolean, paidMember: Boolean)
+
+object MembershipContentAccess {
+  implicit val jsWrite = Json.writes[MembershipContentAccess]
 }

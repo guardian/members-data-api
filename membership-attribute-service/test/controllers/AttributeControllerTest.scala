@@ -78,13 +78,28 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "tier": "patron",
         |   "membershipNumber": "abc",
         |   "userId": "123",
-        |   "cardExpirationMonth": 3,
-        |   "cardExpirationYear": 2018,
         |   "adFree": false,
-        |   "membershipJoinDate": "2017-06-13",
-        |   "contentAccess":{"member":true,"paidMember":true, "contributor":false}
+        |   "contentAccess":{"member":true,"paidMember":true}
         | }
       """.stripMargin)
+  }
+
+  def verifyFullSuccessfullResult(result: Future[Result]) = {
+    status(result) shouldEqual OK
+    val jsonBody = contentAsJson(result)
+    jsonBody shouldEqual
+      Json.parse("""
+                   | {
+                   |   "tier": "patron",
+                   |   "membershipNumber": "abc",
+                   |   "userId": "123",
+                   |   "cardExpirationMonth": 3,
+                   |   "cardExpirationYear": 2018,
+                   |   "adFree": false,
+                   |   "membershipJoinDate": "2017-06-13",
+                   |   "contentAccess":{"member":true,"paidMember":true, "recurringContributor":false}
+                   | }
+                 """.stripMargin)
   }
 
   "getMyAttributes" should {
@@ -102,12 +117,20 @@ class AttributeControllerTest extends Specification with AfterAll {
       status(result) shouldEqual NOT_FOUND
     }
 
-    "retrieve attributes for user in cookie" in {
+    "retrieve membership attributes for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.membership(req)
 
       verifySuccessfulResult(result)
     }
+
+    "retrieve all the attributes for user in cookie" in {
+      val req = FakeRequest().withCookies(validUserCookie)
+      val result: Future[Result] = controller.attributes(req)
+
+      verifyFullSuccessfullResult(result)
+    }
+
   }
 
   override def afterAll() = as.shutdown()

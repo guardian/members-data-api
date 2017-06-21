@@ -68,7 +68,13 @@ class AttributeController extends Controller with LazyLogging {
   val notFound = ApiError("Not found", "Could not find user in the database", 404)
   val notAMember = ApiError("Not found", "User was found but they are not a member", 404)
 
-  def membership = lookup("membership", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
+  private def membershipAttributesFromAttributes(attributes: Attributes): Result = {
+     MembershipAttributes.fromAttributes(attributes)
+       .map(member => Ok(Json.toJson(member)))
+       .getOrElse(notFound)
+  }
+
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
 
@@ -89,7 +95,7 @@ class AttributeController extends Controller with LazyLogging {
           UserId = identityId,
           Tier = memSub.map(_.plan.charges.benefit.id),
           MembershipNumber = contact.regNumber,
-          ContributionFrequency = conSub.map(_.plan.name),
+          ContributionPaymentPlan = conSub.map(_.plan.name),
           MembershipJoinDate = memSub.map(_.startDate)
         )
         res <- EitherT(tp.attrService.update(attributes).map(\/.right))
@@ -101,7 +107,7 @@ class AttributeController extends Controller with LazyLogging {
         ApiErrors.badRequest(error)
       },
       { attributes =>
-        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.ContributionFrequency}")
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.ContributionPaymentPlan}")
         Ok(Json.obj("updated" -> true))
       }
     )

@@ -19,21 +19,21 @@ class AttributesTest extends Specification {
       }
 
       "false if the user is a Contributor but not a member" in {
-        attrs.copy(Tier = None, ContributionFrequency = Some("Monthly Contributor")).isPaidTier shouldEqual false
+        attrs.copy(Tier = None, ContributionPaymentPlan = Some("Monthly Contributor")).isPaidTier shouldEqual false
       }
     }
 
     "isContributor returns" should {
       "true if the user is a contributor" in {
-        attrs.copy(ContributionFrequency = Some("Monthly Contribution")).isContributor shouldEqual true
+        attrs.copy(ContributionPaymentPlan = Some("Monthly Contribution")).isContributor shouldEqual true
       }
 
       "true if the user is a contributor and a Member" in {
-        attrs.copy(Tier = Some("Friend"), ContributionFrequency = Some("Monthly Contribution")).isContributor shouldEqual true
+        attrs.copy(Tier = Some("Friend"), ContributionPaymentPlan = Some("Monthly Contribution")).isContributor shouldEqual true
       }
 
       "false if the user is not a Contributor but a member" in {
-        attrs.copy(Tier = Some("Friend"), ContributionFrequency = None).isContributor shouldEqual false
+        attrs.copy(Tier = Some("Friend"), ContributionPaymentPlan = None).isContributor shouldEqual false
       }
     }
 
