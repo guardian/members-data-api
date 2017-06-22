@@ -17,12 +17,17 @@ object Features {
     )
 
   def fromAttributes(attributes: Attributes) = {
+    // TODO - confirm which notification we're doing first: 'your card is expiring soon' or 'your card has expired'
+
+    // It's too confusing to tell the customer about multiple card expirations, so just take the first
+    val maybeExpiredCard = attributes.Wallet.flatMap(_.expiredCards.headOption)
+
     Features(
       userId = Some(attributes.UserId),
       adFree = attributes.isAdFree,
       adblockMessage = !attributes.isPaidTier,
-      cardHasExpired = attributes.maybeCardHasExpired,
-      cardExpires = attributes.cardExpires,
+      cardHasExpiredForProduct = maybeExpiredCard.map(_.forProduct),
+      cardExpiredOn = maybeExpiredCard.map(_.asLocalDate),
       membershipJoinDate = attributes.MembershipJoinDate
     )
   }
@@ -34,7 +39,7 @@ case class Features(
   userId: Option[String],
   adFree: Boolean,
   adblockMessage: Boolean,
-  cardHasExpired: Option[Boolean],
-  cardExpires: Option[LocalDate],
+  cardHasExpiredForProduct: Option[String],
+  cardExpiredOn: Option[LocalDate],
   membershipJoinDate: Option[LocalDate]
 )

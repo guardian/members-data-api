@@ -37,12 +37,14 @@ class AttributesTest extends Specification {
       }
     }
 
-    "maybeCardHasExpired returns" should {
-      "true if the card expiry is in the past" in {
-        attrs.copy(CardExpirationMonth = Some(1), CardExpirationYear = Some(2017)).maybeCardHasExpired shouldEqual Some(true)
+    "expiredCards returns" should {
+      "all expired cards in the wallet" in {
+        val bothCards = Seq(CardDetails("1234", 1, 2017, "foo"), CardDetails("1234", 2, 2017, "foo"))
+        Wallet(membershipCard = bothCards.headOption, recurringContributionCard = bothCards.tail.headOption).expiredCards shouldEqual bothCards
       }
-      "false if the card expiry is in the past" in {
-        attrs.copy(CardExpirationMonth = Some(1), CardExpirationYear = Some(3000)).maybeCardHasExpired shouldEqual Some(false)
+      "only the expired card in the wallet" in {
+        val bothCards = Seq(CardDetails("1234", 1, 2017, "foo"), CardDetails("1234", 2, 3000, "foo"))
+        Wallet(membershipCard = bothCards.headOption, recurringContributionCard = bothCards.tail.headOption).expiredCards shouldEqual bothCards.headOption.toSeq
       }
     }
   }

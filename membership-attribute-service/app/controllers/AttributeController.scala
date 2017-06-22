@@ -1,11 +1,12 @@
 package controllers
 import _root_.services.{AuthenticationService, IdentityAuthService}
 import actions._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
+import configuration.Config.authentication
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -16,12 +17,10 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
-import scalaz.syntax.either._
 import scalaz.{EitherT, \/}
-import configuration.Config.authentication
 
 
 class AttributeController extends Controller with LazyLogging {
@@ -46,7 +45,7 @@ class AttributeController extends Controller with LazyLogging {
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
-          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
             logger.info(s"$id is a member - $endpointDescription - $attrs")
             onSuccessMember(attrs).withHeaders(
               "X-Gu-Membership-Tier" -> tier,
@@ -84,13 +83,14 @@ class AttributeController extends Controller with LazyLogging {
     val tp = request.touchpoint
 
     val result: EitherT[Future, String, Attributes] =
+      // TODO - add the Stripe lookups for the Contribution and Membership cards to this flow, then we can deprecate the Salesforce hook.
       for {
         contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
         memSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Member]]](tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
         conSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Contributor]]](tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
         memSub <- memSubF
         conSub <- conSubF
-        _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No paying relationship") else \/.right(())))
+        _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No recurring relationship") else \/.right(())))
         attributes = Attributes(
           UserId = identityId,
           Tier = memSub.map(_.plan.charges.benefit.id),

@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import com.gu.scanamo.error.DynamoReadError
 import components.TouchpointComponents
 import configuration.Config
-import models.Attributes
+import models.{Attributes, CardDetails, Wallet}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
@@ -28,9 +28,12 @@ class AttributeControllerTest extends Specification with AfterAll {
     Tier = Some("patron"),
     MembershipNumber = Some("abc"),
     AdFree = Some(false),
-    CardExpirationMonth = Some(3),
-    CardExpirationYear = Some(2018),
-    MembershipJoinDate = Some(new LocalDate(2017, 6, 13))
+    Wallet = Some(Wallet(
+      recurringContributionCard = Some(CardDetails("4321", 6, 2018, "contribution")),
+      membershipCard = Some(CardDetails("1234", 5, 2017, "membership"))
+    )),
+    MembershipJoinDate = Some(new LocalDate(2017, 5, 13)),
+    ContributionPaymentPlan = Some("Monthly Contribution")
   )
 
   private val validUserCookie = Cookie("validUser", "true")
@@ -69,7 +72,35 @@ class AttributeControllerTest extends Specification with AfterAll {
     override lazy val backendAction = Action andThen FakeWithBackendAction
   }
 
-  def verifySuccessfulResult(result: Future[Result]) = {
+  private def verifyDefaultFeaturesResult(result: Future[Result]) = {
+    status(result) shouldEqual OK
+    val jsonBody = contentAsJson(result)
+    jsonBody shouldEqual
+      Json.parse("""
+                   | {
+                   |   "adblockMessage": true,
+                   |   "adFree": false
+                   | }
+                 """.stripMargin)
+  }
+
+  private def verifySuccessfulFeaturesResult(result: Future[Result]) = {
+    status(result) shouldEqual OK
+    val jsonBody = contentAsJson(result)
+    jsonBody shouldEqual
+      Json.parse("""
+                   | {
+                   |   "userId": "123",
+                   |   "adblockMessage": false,
+                   |   "adFree": false,
+                   |   "membershipJoinDate": "2017-05-13",
+                   |   "cardHasExpiredForProduct": "membership",
+                   |   "cardExpiredOn": "2017-05-31"
+                   | }
+                 """.stripMargin)
+  }
+
+  private def verifySuccessfulMembershipResult(result: Future[Result]) = {
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
@@ -79,12 +110,15 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "membershipNumber": "abc",
         |   "userId": "123",
         |   "adFree": false,
-        |   "contentAccess":{"member":true,"paidMember":true}
+        |   "contentAccess": {
+        |     "member": true,
+        |     "paidMember": true
+        |   }
         | }
       """.stripMargin)
   }
 
-  def verifyFullSuccessfullResult(result: Future[Result]) = {
+  private def verifySuccessfullAttributesResult(result: Future[Result]) = {
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
@@ -93,42 +127,79 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   "tier": "patron",
                    |   "membershipNumber": "abc",
                    |   "userId": "123",
-                   |   "cardExpirationMonth": 3,
-                   |   "cardExpirationYear": 2018,
+                   |   "wallet": {
+                   |     "membershipCard": {
+                   |       "last4": "1234",
+                   |       "expirationMonth": 5,
+                   |       "expirationYear": 2017,
+                   |       "forProduct": "membership"
+                   |     },
+                   |     "recurringContributionCard": {
+                   |       "last4": "4321",
+                   |       "expirationMonth": 6,
+                   |       "expirationYear": 2018,
+                   |       "forProduct": "contribution"
+                   |     }
+                   |   },
                    |   "adFree": false,
-                   |   "membershipJoinDate": "2017-06-13",
-                   |   "contentAccess":{"member":true,"paidMember":true, "recurringContributor":false}
+                   |   "membershipJoinDate": "2017-05-13",
+                   |   "contributionPaymentPlan":"Monthly Contribution",
+                   |   "contentAccess": {
+                   |     "member": true,
+                   |     "paidMember": true,
+                   |     "recurringContributor": true
+                   |   }
                    | }
                  """.stripMargin)
   }
 
-  "getMyAttributes" should {
+  "getMyMembershipAttributesFeatures" should {
     "return unauthorised when cookies not provided" in {
       val req = FakeRequest()
-      val result = controller.membership(req)
+      val result1 = controller.membership(req)
+      val result2 = controller.attributes(req)
+      val result3 = controller.features(req)
 
-      status(result) shouldEqual UNAUTHORIZED
+      status(result1) shouldEqual UNAUTHORIZED
+      status(result2) shouldEqual UNAUTHORIZED
+      status(result3) shouldEqual UNAUTHORIZED
     }
 
-    "return not found for unknown users" in {
+    "return not found for unknown users in membership and attributes" in {
       val req = FakeRequest().withCookies(invalidUserCookie)
-      val result: Future[Result] = controller.membership(req)
+      val result1 = controller.membership(req)
+      val result2 = controller.attributes(req)
 
-      status(result) shouldEqual NOT_FOUND
+      status(result1) shouldEqual NOT_FOUND
+      status(result2) shouldEqual NOT_FOUND
+    }
+
+    "retrieve default features for unknown users" in {
+      val req = FakeRequest().withCookies(invalidUserCookie)
+      val result = controller.features(req)
+
+      verifyDefaultFeaturesResult(result)
+    }
+
+    "retrieve features for user in cookie" in {
+      val req = FakeRequest().withCookies(validUserCookie)
+      val result: Future[Result] = controller.features(req)
+
+      verifySuccessfulFeaturesResult(result)
     }
 
     "retrieve membership attributes for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.membership(req)
 
-      verifySuccessfulResult(result)
+      verifySuccessfulMembershipResult(result)
     }
 
     "retrieve all the attributes for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.attributes(req)
 
-      verifyFullSuccessfullResult(result)
+      verifySuccessfullAttributesResult(result)
     }
 
   }

@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.typesafe.scalalogging.LazyLogging
-import models.{ApiErrors, Attributes}
+import models.{ApiErrors, Attributes, CardDetails, Wallet}
 import monitoring.Metrics
 import parsers.Salesforce._
 import parsers.{Salesforce => SFParser}
@@ -120,31 +120,30 @@ class SalesforceHookController extends LazyLogging {
 
         // If we have the card expiry date in Stripe, add them to Dynamo too.
         // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
-        val cardExpiryFromStripeF = (for {
+        val cardFromStripeF = (for {
           account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
           paymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId))
           paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(paymentMethodId).map(Option(_)))
           customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
           stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
         } yield {
-          (stripeCustomer.card.exp_month, stripeCustomer.card.exp_year)
+          stripeCustomer.card
         }).run
 
         val membershipJoinDate = membershipSubscription.startDate // acceptanceDate is the date of first payment, but we want to know the signup date - contract effective date
 
-        cardExpiryFromStripeF.map {
-          case Some((expMonth, expYear)) =>
-            (Some(expMonth),Some(expYear))
-          case None =>
-            (None, None)
-        }.map { case (expMonth, expYear) =>
+        cardFromStripeF.map {
+          case Some(stripeCard) =>
+            Some(Wallet(membershipCard = Some(CardDetails.fromStripeCard(stripeCard, Membership.id))))
+          case _ =>
+            None
+        }.map { maybeWallet =>
           Attributes(
             UserId = membershipUpdate.UserId,
             Tier = Some(tierFromZuora),
             MembershipNumber = membershipUpdate.MembershipNumber,
             AdFree = None,
-            CardExpirationMonth = expMonth,
-            CardExpirationYear = expYear,
+            Wallet = maybeWallet,
             MembershipJoinDate = Some(membershipJoinDate)
           )
         }
