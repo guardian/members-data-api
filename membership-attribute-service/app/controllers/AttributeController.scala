@@ -95,7 +95,7 @@ class AttributeController extends Controller with LazyLogging {
           UserId = identityId,
           Tier = memSub.map(_.plan.charges.benefit.id),
           MembershipNumber = contact.regNumber,
-          ContributionPaymentPlan = conSub.map(_.plan.name),
+          RecurringContributionPaymentPlan = conSub.map(_.plan.name),
           MembershipJoinDate = memSub.map(_.startDate)
         )
         res <- EitherT(tp.attrService.update(attributes).map(\/.right))
@@ -107,7 +107,7 @@ class AttributeController extends Controller with LazyLogging {
         ApiErrors.badRequest(error)
       },
       { attributes =>
-        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.ContributionPaymentPlan}")
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.RecurringContributionPaymentPlan}")
         Ok(Json.obj("updated" -> true))
       }
     )

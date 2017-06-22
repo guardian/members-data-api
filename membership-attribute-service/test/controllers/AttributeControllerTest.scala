@@ -33,7 +33,7 @@ class AttributeControllerTest extends Specification with AfterAll {
       membershipCard = Some(CardDetails("1234", 5, 2017, "membership"))
     )),
     MembershipJoinDate = Some(new LocalDate(2017, 5, 13)),
-    ContributionPaymentPlan = Some("Monthly Contribution")
+    RecurringContributionPaymentPlan = Some("Monthly Contribution")
   )
 
   private val validUserCookie = Cookie("validUser", "true")

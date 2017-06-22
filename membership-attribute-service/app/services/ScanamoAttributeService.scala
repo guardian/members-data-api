@@ -48,7 +48,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
     List(
       scanamoSetOpt('Tier, attributes.Tier),
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
-      scanamoSetOpt('ContributionPaymentPlan -> attributes.ContributionPaymentPlan),
+      scanamoSetOpt('RecurringContributionPaymentPlan -> attributes.RecurringContributionPaymentPlan),
       scanamoSetOpt('Wallet -> attributes.Wallet),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate)
     ).flatten match {

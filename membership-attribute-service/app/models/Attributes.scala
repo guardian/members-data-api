@@ -46,7 +46,7 @@ case class Attributes(
   MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
   Wallet: Option[Wallet] = None,
-  ContributionPaymentPlan: Option[String] = None,
+  RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None
 ) {
 
@@ -59,7 +59,7 @@ case class Attributes(
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isAdFree = AdFree.exists(identity)
-  lazy val isContributor = ContributionPaymentPlan.isDefined
+  lazy val isContributor = RecurringContributionPaymentPlan.isDefined
 
   lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor) // we want to include staff!
 }
@@ -72,7 +72,7 @@ object Attributes {
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "wallet").writeNullable[Wallet](Wallet.jsWrite) and
-    (__ \ "contributionPaymentPlan").writeNullable[String] and
+    (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
     (__ \ "membershipJoinDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 

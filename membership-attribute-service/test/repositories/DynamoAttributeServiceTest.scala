@@ -50,7 +50,7 @@ class DynamoAttributeServiceTest extends Specification {
         userId,
         Tier = Some("Patron"),
         MembershipNumber =  Some("abc"),
-        ContributionPaymentPlan = Some("Monthly Contribution"),
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = Some(new LocalDate(2017, 6, 13)))
 
       val result = for {
