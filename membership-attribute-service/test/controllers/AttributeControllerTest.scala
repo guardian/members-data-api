@@ -143,7 +143,7 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   },
                    |   "adFree": false,
                    |   "membershipJoinDate": "2017-05-13",
-                   |   "contributionPaymentPlan":"Monthly Contribution",
+                   |   "recurringContributionPaymentPlan":"Monthly Contribution",
                    |   "contentAccess": {
                    |     "member": true,
                    |     "paidMember": true,
