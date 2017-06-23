@@ -18,7 +18,7 @@ object ContentAccess {
 }
 
 case class CardDetails(last4: String, expirationMonth: Int, expirationYear: Int, forProduct: String) {
-  val asLocalDate = new LocalDate(expirationYear, expirationMonth, 1).plusMonths(1).minusDays(1)
+  def asLocalDate: LocalDate = new LocalDate(expirationYear, expirationMonth, 1).plusMonths(1).minusDays(1)
 }
 
 object CardDetails {
