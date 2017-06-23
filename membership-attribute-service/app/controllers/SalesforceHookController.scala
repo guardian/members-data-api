@@ -118,26 +118,21 @@ class SalesforceHookController extends LazyLogging {
         // Zuora is the master for product info, so we use the tier from Zuora regardless of what Salesforce sends
         val tierFromZuora = membershipSubscription.plan.charges.benefit.id
 
-        // If we have the card expiry date in Stripe, add them to Dynamo too.
+        // If we have the card expiry date in Stripe, add them to Dynamo too inside a Wallet construct.
         // TODO - refactor to use touchpoint.paymentService - requires membership-common model tweak first.
-        val cardFromStripeF = (for {
+        val walletF = for {
           account <- OptionT(touchpoint.zuoraService.getAccount(membershipSubscription.accountId).map(Option(_)))
           paymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId))
           paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(paymentMethodId).map(Option(_)))
           customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
           stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
         } yield {
-          stripeCustomer.card
-        }).run
+          Wallet(membershipCard = Some(CardDetails.fromStripeCard(stripeCustomer.card, Membership.id)))
+        }
 
         val membershipJoinDate = membershipSubscription.startDate // acceptanceDate is the date of first payment, but we want to know the signup date - contract effective date
 
-        cardFromStripeF.map {
-          case Some(stripeCard) =>
-            Some(Wallet(membershipCard = Some(CardDetails.fromStripeCard(stripeCard, Membership.id))))
-          case _ =>
-            None
-        }.map { maybeWallet =>
+        walletF.run.map { maybeWallet =>
           Attributes(
             UserId = membershipUpdate.UserId,
             Tier = Some(tierFromZuora),
