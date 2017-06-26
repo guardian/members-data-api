@@ -33,7 +33,7 @@ A good strategy for testing your stuff is to run a local identity-frontend, memb
 
 The /me endpoints use the GU_U and SC_GU_U from the Cookie request header.
 
-###Identity Frontend
+### Identity Frontend
 
 Identity frontend is split between [new (profile-origin)](https://github.com/guardian/identity-frontend) and old (profile), which is the identity project in [frontend](https://github.com/guardian/frontend). Only profile uses the membership-attribute-service. Make sure that it's pointing at your local instance.
 
@@ -42,23 +42,122 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
              id.members-data-api.url="https://members-data-api.thegulocal.com/"
     }
  
+## API Docs
+
+### GET /user-attributes/me
+
+#### User is a member
+
+    {
+        "userId": "xxxx",
+        "tier": "Supporter",
+        "membershipNumber": "1234",
+        "wallet": {
+            "membershipCard": {
+                "last4": "4242",
+                "expirationMonth": 4,
+                "expirationYear": 2024,
+                "forProduct": "membership"
+            }
+        },
+        "membershipJoinDate": "2017-06-26",
+        "contentAccess": {
+            "member": true,
+            "paidMember": true,
+            "recurringContributor": false
+        }
+    }
+
+#### User is a contributor and not a member 
+    
+    {
+        "userId":"xxxx",
+        "recurringContributionPaymentPlan":"Monthly Contribution",
+        "contentAccess": {
+            "member":false,
+            "paidMember":false,
+            "recurringContributor":true
+        }
+    }
+
+
+#### User is not a member and not a contributor
+    
+    {
+        "message":"Not found",
+        "details":"Could not find user in the database",
+        "statusCode":404
+    }
+
+
+#### User is a member and a contributor
+
+    {
+        "userId": "xxxx",
+        "tier": "Supporter",
+        "membershipNumber": "324154",
+        "wallet": {
+            "membershipCard": {
+                "last4": "4242",
+                "expirationMonth": 4,
+                "expirationYear": 2024,
+                "forProduct": "membership"
+            }
+        },
+        "recurringContributionPaymentPlan": "Monthly Contribution",
+        "membershipJoinDate": "2017-06-26",
+        "contentAccess": {
+            "member": true,
+            "paidMember": true,
+            "recurringContributor": true
+        }
+    }
+
+
 ### GET /user-attributes/me/membership
 
-Success responses:
+
+#### User is a member
 
     {
-      "membershipNumber": "1234567abcdef",
-      "tier": "patron",
-      "userId": "123",
-      "contentAccess":{ "member":true, "paidMember":true }
+        "userId": "xxxx",
+        "tier": "Supporter",
+        "membershipNumber": "1234",
+        "contentAccess": {
+            "member": true,
+            "paidMember": true
+         }
     }
 
-Error responses:
+#### User is a contributor and not a member 
 
     {
-      "message": "Bad Request",
-      "details": "Detailed error message"
+        "message":"Not found",
+        "details":"User was found but they are not a member",
+        "statusCode":404
     }
+
+
+#### User is a member and contributor
+
+    {
+        "userId": "xxxx",
+        "tier": "Supporter",
+        "membershipNumber": "1234",
+        "contentAccess": {
+            "member": true,
+            "paidMember": true
+        }
+    }
+
+#### User is not a member and not a contributor
+
+    {
+        "message":"Not found",
+        "details":"Could not find user in the database",
+        "statusCode":404
+    }
+
 
 ### GET /user-attributes/me/features
 Responses:
