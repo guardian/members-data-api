@@ -19,30 +19,32 @@ class AttributesTest extends Specification {
       }
 
       "false if the user is a Contributor but not a member" in {
-        attrs.copy(Tier = None, ContributionPaymentPlan = Some("Monthly Contributor")).isPaidTier shouldEqual false
+        attrs.copy(Tier = None, RecurringContributionPaymentPlan = Some("Monthly Contributor")).isPaidTier shouldEqual false
       }
     }
 
     "isContributor returns" should {
       "true if the user is a contributor" in {
-        attrs.copy(ContributionPaymentPlan = Some("Monthly Contribution")).isContributor shouldEqual true
+        attrs.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution")).isContributor shouldEqual true
       }
 
       "true if the user is a contributor and a Member" in {
-        attrs.copy(Tier = Some("Friend"), ContributionPaymentPlan = Some("Monthly Contribution")).isContributor shouldEqual true
+        attrs.copy(Tier = Some("Friend"), RecurringContributionPaymentPlan = Some("Monthly Contribution")).isContributor shouldEqual true
       }
 
       "false if the user is not a Contributor but a member" in {
-        attrs.copy(Tier = Some("Friend"), ContributionPaymentPlan = None).isContributor shouldEqual false
+        attrs.copy(Tier = Some("Friend"), RecurringContributionPaymentPlan = None).isContributor shouldEqual false
       }
     }
 
-    "maybeCardHasExpired returns" should {
-      "true if the card expiry is in the past" in {
-        attrs.copy(CardExpirationMonth = Some(1), CardExpirationYear = Some(2017)).maybeCardHasExpired shouldEqual Some(true)
+    "expiredCards returns" should {
+      "all expired cards in the wallet" in {
+        val bothCards = Seq(CardDetails("1234", 1, 2017, "foo"), CardDetails("1234", 2, 2017, "foo"))
+        Wallet(membershipCard = bothCards.headOption, recurringContributionCard = bothCards.tail.headOption).expiredCards shouldEqual bothCards
       }
-      "false if the card expiry is in the past" in {
-        attrs.copy(CardExpirationMonth = Some(1), CardExpirationYear = Some(3000)).maybeCardHasExpired shouldEqual Some(false)
+      "only the expired card in the wallet" in {
+        val bothCards = Seq(CardDetails("1234", 1, 2017, "foo"), CardDetails("1234", 2, 3000, "foo"))
+        Wallet(membershipCard = bothCards.headOption, recurringContributionCard = bothCards.tail.headOption).expiredCards shouldEqual bothCards.headOption.toSeq
       }
     }
   }

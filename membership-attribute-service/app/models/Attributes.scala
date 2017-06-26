@@ -1,8 +1,6 @@
 package models
 
 
-import com.gu.memsub.Benefit.PaidMemberTier
-import com.gu.memsub.subsv2.CatalogPlan.Contributor
 import json._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
@@ -19,14 +17,36 @@ object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 
+case class CardDetails(last4: String, expirationMonth: Int, expirationYear: Int, forProduct: String) {
+  def asLocalDate: LocalDate = new LocalDate(expirationYear, expirationMonth, 1).plusMonths(1).minusDays(1)
+}
+
+object CardDetails {
+  def fromStripeCard(stripeCard: com.gu.stripe.Stripe.Card, product: String) = {
+    CardDetails(last4 = stripeCard.last4, expirationMonth = stripeCard.exp_month, expirationYear = stripeCard.exp_year, forProduct = product)
+  }
+}
+
+case class Wallet(membershipCard: Option[CardDetails] = None, recurringContributionCard: Option[CardDetails] = None) {
+  val expiredCards: Seq[CardDetails] = Seq(membershipCard, recurringContributionCard).flatten.filter(_.asLocalDate.isBefore(now))
+  // TODO - val cardsExpiringSoon - I assume within 1 calendar month?
+}
+
+object Wallet {
+
+  implicit val cardWriter = Json.writes[CardDetails]
+
+  implicit val jsWrite = Json.writes[Wallet]
+
+}
+
 case class Attributes(
   UserId: String,
   Tier: Option[String] = None,
   MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
-  CardExpirationMonth: Option[Int] = None,
-  CardExpirationYear: Option[Int] = None,
-  ContributionPaymentPlan: Option[String] = None,
+  Wallet: Option[Wallet] = None,
+  RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None
 ) {
 
@@ -39,16 +59,9 @@ case class Attributes(
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isAdFree = AdFree.exists(identity)
-  lazy val isContributor = ContributionPaymentPlan.isDefined
+  lazy val isContributor = RecurringContributionPaymentPlan.isDefined
 
   lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor) // we want to include staff!
-
-  lazy val cardExpires = for {
-    year <- CardExpirationYear
-    month <- CardExpirationMonth
-  } yield new LocalDate(year, month, 1).plusMonths(1).minusDays(1)
-
-  lazy val maybeCardHasExpired = cardExpires.map(_.isBefore(now))
 }
 
 object Attributes {
@@ -58,13 +71,10 @@ object Attributes {
     (__ \ "tier").writeNullable[String] and
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
-    (__ \ "cardExpirationMonth").writeNullable[Int] and
-    (__ \ "cardExpirationYear").writeNullable[Int] and
-    (__ \ "contributionPaymentPlan").writeNullable[String] and
+    (__ \ "wallet").writeNullable[Wallet](Wallet.jsWrite) and
+    (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
     (__ \ "membershipJoinDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
-
-
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
@@ -106,7 +116,6 @@ object MembershipAttributes {
   }
 
 }
-
 
 case class MembershipContentAccess(member: Boolean, paidMember: Boolean)
 

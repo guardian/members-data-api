@@ -1,19 +1,17 @@
 package services
 
-import models.Attributes
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
-import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult, UpdateItemResult}
-import com.gu.memsub.Benefit.Contributor
+import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult}
+import com.gu.scanamo._
+import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
+import com.gu.scanamo.syntax.{set => scanamoSet, _}
+import com.gu.scanamo.update.UpdateExpression
+import com.typesafe.scalalogging.LazyLogging
+import models.Attributes
+import org.joda.time.LocalDate
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scala.concurrent.Future
-import com.gu.scanamo.syntax._
-import com.gu.scanamo._
-import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
-import com.gu.scanamo.syntax.{set => scanamoSet}
-import com.gu.scanamo.update.UpdateExpression
-import com.typesafe.scalalogging.LazyLogging
-import org.joda.time.LocalDate
 
 class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
     extends AttributeService with LazyLogging {
@@ -50,9 +48,8 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
     List(
       scanamoSetOpt('Tier, attributes.Tier),
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
-      scanamoSetOpt('ContributionPaymentPlan -> attributes.ContributionPaymentPlan),
-      scanamoSetOpt('CardExpirationMonth -> attributes.CardExpirationMonth),
-      scanamoSetOpt('CardExpirationYear -> attributes.CardExpirationYear),
+      scanamoSetOpt('RecurringContributionPaymentPlan -> attributes.RecurringContributionPaymentPlan),
+      scanamoSetOpt('Wallet -> attributes.Wallet),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate)
     ).flatten match {
       case first :: remaining =>
