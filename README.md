@@ -200,7 +200,7 @@ The output AMI from packer should be used with the membership-attribute-service 
  
 ## Testing SalesForce hook
  
-In order to trigger the SaleForce hook in `DEV`, you have to generate a `POST` request to the SalesForce's endpoint in Members Data API. 
+In order to trigger the SalesForce hook in `DEV`, you have to generate a `POST` request to the SalesForce endpoint in Members Data API. 
 You can do that by executing the following command:
 
 `curl -X POST  https://members-data-api.thegulocal.com/salesforce-hook?secret=secret-key -H "Content-Type:application/xml" -d @salesforce-test.xml`
