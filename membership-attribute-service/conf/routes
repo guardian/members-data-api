@@ -23,7 +23,7 @@ POST       /stripe-hook                                     controllers.StripeHo
 POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
 
 # Contributions endpoints
-PUT       /user-attributes/:identityId                      controllers.AttributeController.updateAttributes(identityId : String)
+POST       /user-attributes/:identityId                     controllers.AttributeController.updateAttributes(identityId : String)
 #The endpoint below will replace /user-attributes/me/membership in the long term
 GET        /user-attributes/me                              controllers.AttributeController.attributes
 
