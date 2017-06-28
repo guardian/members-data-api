@@ -2,10 +2,10 @@
 The text you're about to write will advocate why the change is needed.
 Think about OKRs!
 -->
-### Existing situation
+### What problem are people seeing? <!-- and what's the bad stuff for the guardian if we close this PR? -->
 
-### Description of the change
+### Change <!-- technical description/bullets (if it's long, maybe two PRs would have been better?) -->
 
-### Benefit towards KR or other metric
+### Benefit towards KR or other metric <!-- save the guardian++ ? -->
 
-### Misc (trello card, screenshot, json, related PRs)
+### trello card/screenshot/json/related PRs etc
