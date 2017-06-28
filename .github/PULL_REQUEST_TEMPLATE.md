@@ -1,11 +1,11 @@
 <!-- 
-The text you're about to write is documentation for why the change is needed.
+The text you're about to write will advocate why the change is needed.
 Think about OKRs!
 -->
-# Existing situation
+### Existing situation
 
-# Description of the change
+### Description of the change
 
-# Benefit towards KR or other metric
+### Benefit towards KR or other metric
 
-# Misc (trello card, screenshot, json, related PRs)
+### Misc (trello card, screenshot, json, related PRs)
