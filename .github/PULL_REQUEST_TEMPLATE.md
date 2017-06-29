@@ -1,11 +1,9 @@
 <!-- 
 The text you're about to write will advocate why the change is needed.
-Think about OKRs!
+Think about OKRs and wider purpose!
 -->
-### What problem are people seeing? <!-- and what's the bad stuff for the guardian if we close this PR? -->
+### Why do we need this? <!-- how will closing this PR damage the guardian/KRs? -->
 
-### Change <!-- technical description/bullets (if it's long, maybe two PRs would have been better?) -->
-
-### Benefit towards KR or other metric <!-- save the guardian++ ? -->
+### The changes <!-- technical description/bullets (if it's long, would two PRs would have been better?) -->
 
 ### trello card/screenshot/json/related PRs etc
