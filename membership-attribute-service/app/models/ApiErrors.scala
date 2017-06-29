@@ -34,4 +34,10 @@ object ApiErrors {
     details = "Failed to authenticate",
     statusCode = 401
   )
+
+  val forbidden = ApiError(
+    message = "Forbidden",
+    details = "Invalid API key",
+    statusCode = 403
+  )
 }
