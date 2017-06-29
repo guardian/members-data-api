@@ -31,7 +31,7 @@ class AttributeController extends Controller with LazyLogging {
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
       request.headers.get("Authorization") match {
         case Some(header) if keys.contains(header) => block(request)
-        case _ => Future.successful(Forbidden("Invalid API key"))
+        case _ => Future.successful(ApiErrors.invalidApiKey)
       }
     }
   }
