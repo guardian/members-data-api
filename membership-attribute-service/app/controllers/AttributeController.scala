@@ -1,9 +1,11 @@
 package controllers
 import _root_.services.{AuthenticationService, IdentityAuthService}
 import actions._
+import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.zuora.ZuoraRestService.{QueryResponse, RestSubscriptions}
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import configuration.Config.authentication
@@ -17,11 +19,11 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
 import scalaz.{EitherT, \/}
-
+import scala.concurrent.duration.DurationInt
 
 class AttributeController extends Controller with LazyLogging {
 
@@ -63,6 +65,49 @@ class AttributeController extends Controller with LazyLogging {
       }
     }
 
+  private def zuoraLookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
+    authenticationService.userId(request).map[Future[Result]] { id =>
+
+      def accountIds(response: QueryResponse): List[String] = {
+        response.records.map(_.Id)
+      }
+
+      for {
+        accounts <- EitherT(request.touchpoint.zuoraRestService.getAccounts(id))
+//        subscriptions <- idList.map(id => request.touchpoint.zuoraRestService.getSubscription(AccountId(id)))
+      } yield {
+        accountIds(accounts)
+      }
+
+
+      val accounts: Future[\/[String, QueryResponse]] = request.touchpoint.zuoraRestService.getAccounts(id)
+      val result: \/[String, QueryResponse] = Await.result(accounts, 10.seconds)
+
+      val resultIds = result.toOption.map(response => response.records.map(_.Id))
+      val firstAccount = resultIds.get.head
+      val subs: Future[\/[String, RestSubscriptions]] = request.touchpoint.zuoraRestService.getSubscription(AccountId(firstAccount))
+      val subsResult: \/[String, RestSubscriptions] = Await.result(subs, 10.seconds)
+      logger.info(s"SOME SUB for account $firstAccount: $subsResult")
+      logger.info(s"RESULT: $result")
+
+      request.touchpoint.attrService.get(id).map {
+        case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
+          logger.info(s"$id is a member - $endpointDescription - $attrs")
+          onSuccessMember(attrs).withHeaders(
+            "X-Gu-Membership-Tier" -> tier,
+            "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
+          )
+        case Some(attrs) =>
+          logger.info(s"$id is a contributor - $endpointDescription - $attrs")
+          onSuccessMemberAndOrContributor(attrs)
+        case _ =>
+          onNotFound
+      }
+    }.getOrElse {
+      metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
+      Future(unauthorized)
+    }
+  }
 
   val notFound = ApiError("Not found", "Could not find user in the database", 404)
   val notAMember = ApiError("Not found", "User was found but they are not a member", 404)
