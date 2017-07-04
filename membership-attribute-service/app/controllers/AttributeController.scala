@@ -1,5 +1,5 @@
 package controllers
-import _root_.services.{AuthenticationService, IdentityAuthService}
+import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 import actions._
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
@@ -19,11 +19,13 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
 import scalaz.{EitherT, \/}
-import scala.concurrent.duration.DurationInt
+import scalaz._
+import scalaz.std.list._
+import scalaz.syntax.traverse._
 
 class AttributeController extends Controller with LazyLogging {
 
@@ -68,29 +70,23 @@ class AttributeController extends Controller with LazyLogging {
   private def zuoraLookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
     authenticationService.userId(request).map[Future[Result]] { id =>
 
-      def accountIds(response: QueryResponse): List[String] = {
-        response.records.map(_.Id)
+      def queryToAccountIds(response: QueryResponse): List[String] =  response.records.map(_.Id)
+
+      def subs(accountIds: List[String]): Future[\/[String, List[RestSubscriptions]]] = {
+        def sub(accountId: String): Future[\/[String, RestSubscriptions]] = request.touchpoint.zuoraRestService.getSubscription(AccountId(accountId))
+
+        Future.traverse(accountIds)(id => sub(id)).map(_.sequenceU)
       }
 
-      for {
+      val maybeAttributes: DisjunctionT[Future, String, Attributes] = for {
         accounts <- EitherT(request.touchpoint.zuoraRestService.getAccounts(id))
-//        subscriptions <- idList.map(id => request.touchpoint.zuoraRestService.getSubscription(AccountId(id)))
+        accountIds = queryToAccountIds(accounts)
+        subscriptions <- EitherT(subs(accountIds))
       } yield {
-        accountIds(accounts)
+        AttributesMaker.attributes(id, subscriptions).get //todo get
       }
 
-
-      val accounts: Future[\/[String, QueryResponse]] = request.touchpoint.zuoraRestService.getAccounts(id)
-      val result: \/[String, QueryResponse] = Await.result(accounts, 10.seconds)
-
-      val resultIds = result.toOption.map(response => response.records.map(_.Id))
-      val firstAccount = resultIds.get.head
-      val subs: Future[\/[String, RestSubscriptions]] = request.touchpoint.zuoraRestService.getSubscription(AccountId(firstAccount))
-      val subsResult: \/[String, RestSubscriptions] = Await.result(subs, 10.seconds)
-      logger.info(s"SOME SUB for account $firstAccount: $subsResult")
-      logger.info(s"RESULT: $result")
-
-      request.touchpoint.attrService.get(id).map {
+      maybeAttributes.run.map(maybe => maybe.toOption).map {
         case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
           logger.info(s"$id is a member - $endpointDescription - $attrs")
           onSuccessMember(attrs).withHeaders(
@@ -121,7 +117,7 @@ class AttributeController extends Controller with LazyLogging {
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
-
+  def zuoraMe = zuoraLookup("zuoraLookup", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 

@@ -68,12 +68,12 @@ class AttributeControllerTest extends Specification with AfterAll {
         override def update(attributes: Attributes) : Future[Either[DynamoReadError, Attributes]] = ???
       }
 
-      val fakeZuoraRestService = new ZuoraRestService[Future]{
-        override def getAccount(accountId: AccountId): Future[\/[String, AccountSummary]] = ???
-        override def getAccounts(identityId: String): Future[\/[String, QueryResponse]] =
-          Future.successful(if (identityId == validUserId) \/.right(accountsQueryResponse) else \/.left("error! D:"))
-        override def addEmail(accountId: AccountId, email: String): Future[\/[String, Unit]] = ???
-      }
+//      val fakeZuoraRestService = new ZuoraRestService[Future]{
+//        override def getAccount(accountId: AccountId): Future[\/[String, AccountSummary]] = ???
+//        override def getAccounts(identityId: String): Future[\/[String, QueryResponse]] =
+//          Future.successful(if (identityId == validUserId) \/.right(accountsQueryResponse) else \/.left("error! D:"))
+//        override def addEmail(accountId: AccountId, email: String): Future[\/[String, Unit]] = ???
+//      }
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {
         override lazy val attrService = a
