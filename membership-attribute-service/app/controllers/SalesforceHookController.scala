@@ -17,7 +17,8 @@ import play.api.mvc.Results.Ok
 import scala.concurrent.Future
 import scala.util.Failure
 import scalaz.std.scalaFuture._
-import scalaz.{-\/, OptionT, \/-}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+import scalaz.syntax.std.option._
 
 /**
   * There is a workflow rule in Salesforce that triggers a request to this salesforce-hook endpoint
@@ -111,8 +112,8 @@ class SalesforceHookController extends LazyLogging {
       info(s"Salesforce called has been parsed. Attrs: $membershipUpdate")
 
       (for {
-        sfId <- OptionT(touchpoint.contactRepo.get(membershipUpdate.UserId).logWith("contact id from SF", _.map(_.salesforceContactId)))
-        membershipSubscription <- OptionT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).logWith("current subscriptions", _.map(_.id)).map(_.headOption))
+        sfId <- EitherT(touchpoint.contactRepo.get(membershipUpdate.UserId).map(_.flatMap(_ \/> s"no user in SF for ${membershipUpdate.UserId}")).logWith("contact id from SF", _.map(_.salesforceContactId)))
+        membershipSubscription <- EitherT(touchpoint.subService.current[SubscriptionPlan.Member](sfId).logWith("current subscriptions", _.map(_.id)).map(_.headOption \/> s"no current subs for sfId $sfId"))
       } yield {
 
         // Zuora is the master for product info, so we use the tier from Zuora regardless of what Salesforce sends
@@ -143,13 +144,13 @@ class SalesforceHookController extends LazyLogging {
           )
         }
       }).run.flatMap {
-        case Some(zuoraAttributesF) =>
+        case \/-(zuoraAttributesF) =>
           zuoraAttributesF.onSuccess{ case attr =>
             info(s"ready to update dynamo with $attr")
           }
           zuoraAttributesF.flatMap(updateDynamo)
-        case None =>
-          error(s"Couldn't update $membershipUpdate with information from Zuora")
+        case -\/(message) =>
+          error(s"Couldn't update $membershipUpdate with information from Zuora due to $message")
           Future.successful(Failure)
       }
     }
