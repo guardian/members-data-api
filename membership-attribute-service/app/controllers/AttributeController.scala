@@ -5,6 +5,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.{QueryResponse, RestSubscriptions}
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
@@ -46,6 +47,7 @@ class AttributeController extends Controller with LazyLogging {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
+
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
@@ -67,26 +69,31 @@ class AttributeController extends Controller with LazyLogging {
       }
     }
 
+//TODO: where should I live?!?!?
+  private def attributesFromZuora(id: String, zuoraRestService: ZuoraRestService[Future]): Future[Option[Attributes]] = {
+    def queryToAccountIds(response: QueryResponse): List[String] =  response.records.map(_.Id)
+
+    def subs(accountIds: List[String]): Future[\/[String, List[RestSubscriptions]]] = {
+      def sub(accountId: String): Future[\/[String, RestSubscriptions]] = zuoraRestService.getSubscription(AccountId(accountId))
+
+      Future.traverse(accountIds)(id => sub(id)).map(_.sequenceU)
+    }
+
+    val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
+      accounts <- EitherT(zuoraRestService.getAccounts(id))
+      accountIds = queryToAccountIds(accounts)
+      subscriptions <- EitherT(subs(accountIds))
+    } yield {
+      AttributesMaker.attributes(id, subscriptions)
+    }
+    attributes.run.map(_.toOption).map(_.getOrElse(None))
+  }
+
   private def zuoraLookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
     authenticationService.userId(request).map[Future[Result]] { id =>
 
-      def queryToAccountIds(response: QueryResponse): List[String] =  response.records.map(_.Id)
-
-      def subs(accountIds: List[String]): Future[\/[String, List[RestSubscriptions]]] = {
-        def sub(accountId: String): Future[\/[String, RestSubscriptions]] = request.touchpoint.zuoraRestService.getSubscription(AccountId(accountId))
-
-        Future.traverse(accountIds)(id => sub(id)).map(_.sequenceU)
-      }
-
-      val maybeAttributes: DisjunctionT[Future, String, Attributes] = for {
-        accounts <- EitherT(request.touchpoint.zuoraRestService.getAccounts(id))
-        accountIds = queryToAccountIds(accounts)
-        subscriptions <- EitherT(subs(accountIds))
-      } yield {
-        AttributesMaker.attributes(id, subscriptions).get //todo get
-      }
-
-      maybeAttributes.run.map(maybe => maybe.toOption).map {
+      val req: BackendRequest[AnyContent] = request
+      attributesFromZuora(id, request.touchpoint.zuoraRestService).map {
         case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
           logger.info(s"$id is a member - $endpointDescription - $attrs")
           onSuccessMember(attrs).withHeaders(
