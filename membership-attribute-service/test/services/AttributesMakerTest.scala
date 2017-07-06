@@ -9,32 +9,30 @@ class AttributesMakerTest extends Specification {
 
   "attributes" should {
     val testId = "123"
-    val member = RestSubscriptions(
-      subscriptions = List(RestSubscription(
+    val member = RestSubscription(
         ratePlans = List(RestRatePlan("Supporter","Non Founder Supporter - annual")),
-        contractEffectiveDate = "2017-06-29")
-      )
+        contractEffectiveDate = "2017-06-29"
     )
 
-    val contributor = RestSubscriptions(
-      subscriptions = List(RestSubscription(
+    val friend = RestSubscription(
+        ratePlans = List(RestRatePlan("Friend","Non Founder Friend")),
+        contractEffectiveDate = "2017-06-20"
+      )
+
+
+    val contributor = RestSubscription(
         ratePlans = List(RestRatePlan("Contributor","Monthly Contribution")),
-        contractEffectiveDate = "2017-06-30")
-      )
+        contractEffectiveDate = "2017-06-30"
     )
 
-//    "return none when no subs" in {
-//        //needed??
-//    }
 
 
     "return none when only sub is digipack" in { //for now!
-      val digipack = RestSubscriptions(
-        subscriptions = List(RestSubscription(
+      val digipack = RestSubscription(
           ratePlans = List(RestRatePlan("Digital Pack","Digital Pack Monthly")),
-          contractEffectiveDate = "2017-07-04")
-        )
+          contractEffectiveDate = "2017-07-04"
       )
+
 
       AttributesMaker.attributes(testId, List(digipack)) === None
     }
@@ -81,6 +79,20 @@ class AttributesMakerTest extends Specification {
       )
       )
       AttributesMaker.attributes(testId, List(contributor, member)) === expected
+    }
+
+    "return attributes when the membership is a friend tier" in {
+      val expected = Some(Attributes(
+        UserId = testId,
+        Tier = Some("Friend"),
+        MembershipNumber = None,
+        AdFree = None,
+        Wallet = None,
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = Some(new LocalDate("2017-06-20"))
+      )
+      )
+      AttributesMaker.attributes(testId, List(friend)) === expected
     }
   }
 }

@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.zuora.ZuoraRestService
-import com.gu.zuora.ZuoraRestService.{QueryResponse, RestSubscriptions}
+import com.gu.zuora.ZuoraRestService.{QueryResponse, RestSubscription, RestSubscriptions}
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import configuration.Config.authentication
@@ -71,45 +71,39 @@ class AttributeController extends Controller with LazyLogging {
 
 //TODO: where should I live?!?!?
   private def attributesFromZuora(id: String, zuoraRestService: ZuoraRestService[Future]): Future[Option[Attributes]] = {
-    def queryToAccountIds(response: QueryResponse): List[String] =  response.records.map(_.Id)
+    def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
-    def subs(accountIds: List[String]): Future[\/[String, List[RestSubscriptions]]] = {
-      def sub(accountId: String): Future[\/[String, RestSubscriptions]] = zuoraRestService.getSubscription(AccountId(accountId))
+    def getSubscriptions(accountIds: List[AccountId]): Future[\/[String, List[RestSubscription]]] = {
+      def sub(accountId: AccountId): Future[\/[String, RestSubscriptions]] = zuoraRestService.getSubscription(accountId)
 
-      Future.traverse(accountIds)(id => sub(id)).map(_.sequenceU)
+      val groupedSubscriptions = Future.traverse(accountIds)(id => sub(id)).map(_.sequenceU)
+      groupedSubscriptions.map(_.map(_.flatMap(_.subscriptions)))
     }
 
     val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
       accounts <- EitherT(zuoraRestService.getAccounts(id))
       accountIds = queryToAccountIds(accounts)
-      subscriptions <- EitherT(subs(accountIds))
+      subscriptions <- EitherT(getSubscriptions(accountIds))
     } yield {
       AttributesMaker.attributes(id, subscriptions)
     }
     attributes.run.map(_.toOption).map(_.getOrElse(None))
   }
 
-  private def zuoraLookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
-    authenticationService.userId(request).map[Future[Result]] { id =>
-
-      val req: BackendRequest[AnyContent] = request
-      attributesFromZuora(id, request.touchpoint.zuoraRestService).map {
-        case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-          logger.info(s"$id is a member - $endpointDescription - $attrs")
-          onSuccessMember(attrs).withHeaders(
-            "X-Gu-Membership-Tier" -> tier,
-            "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
-          )
-        case Some(attrs) =>
-          logger.info(s"$id is a contributor - $endpointDescription - $attrs")
-          onSuccessMemberAndOrContributor(attrs)
-        case _ =>
-          onNotFound
+  private def zuoraLookup(endpointDescription: String) =
+    backendAction.async { request =>
+      authenticationService.userId(request) match {
+        case Some(id) =>
+          attributesFromZuora(id, request.touchpoint.zuoraRestService).map {
+            case Some(attrs) =>
+              logger.info(s"$id is a contributor - $endpointDescription - $attrs")
+              attrs
+            case _ => notFound
+          }
+        case None =>
+          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
+          Future(unauthorized)
       }
-    }.getOrElse {
-      metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-      Future(unauthorized)
-    }
   }
 
   val notFound = ApiError("Not found", "Could not find user in the database", 404)
@@ -124,7 +118,7 @@ class AttributeController extends Controller with LazyLogging {
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
-  def zuoraMe = zuoraLookup("zuoraLookup", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
+  def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 

@@ -1,6 +1,6 @@
 package services
 
-import com.gu.zuora.ZuoraRestService.RestSubscriptions
+import com.gu.zuora.ZuoraRestService.{RestSubscription, RestSubscriptions}
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
 import org.joda.time.LocalDate
@@ -9,7 +9,7 @@ class AttributesMaker extends LazyLogging {
 
   private case class BasicSubscriptionInfo(productName: String, ratePlanName: String, contractEffectiveDate: String)
 
-  def attributes(userId: String, subs: List[RestSubscriptions]): Option[Attributes] = {
+  def attributes(userId: String, subs: List[RestSubscription]): Option[Attributes] = {
     logger.info(s"SUBS SUBS SUBS: $subs")
 
     val filteredSubs = subscriptionInfo(subs)
@@ -31,13 +31,13 @@ class AttributesMaker extends LazyLogging {
     else None
   }
 
-  private def isMember(productName: String): Boolean = List("Supporter", "Partner", "Patron").contains(productName)
+  private def isMember(productName: String): Boolean = List("Supporter", "Partner", "Patron", "Friend").contains(productName)
   private def isContributor(productName: String): Boolean = "Contributor" == productName
   private def isMemberOrContributor(productName: String) = isContributor(productName) || isMember(productName)
 
-  private def subscriptionInfo(subs: List[RestSubscriptions]): Seq[BasicSubscriptionInfo] = {
+  private def subscriptionInfo(subs: List[RestSubscription]): Seq[BasicSubscriptionInfo] = {
 
-    val flatSubs: Seq[(String, String, String)] = subs.flatMap { sub => sub.subscriptions}
+    val flatSubs: Seq[(String, String, String)] = subs
       .map { restSub => (restSub.ratePlans.head.productName, restSub.ratePlans.head.ratePlanName, restSub.contractEffectiveDate)}
 
     //todo surely this is convoluted
