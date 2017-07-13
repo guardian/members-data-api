@@ -1,12 +1,13 @@
 package controllers
-import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 import actions._
 import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.zuora.ZuoraRestService
-import com.gu.zuora.ZuoraRestService.{QueryResponse, RestSubscription, RestSubscriptions}
+import com.gu.zuora.ZuoraRestService.QueryResponse
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import configuration.Config.authentication
@@ -15,18 +16,17 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
+import org.joda.time.LocalDate
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
+import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
-import scalaz.{EitherT, \/}
-import scalaz._
-import scalaz.std.list._
-import scalaz.syntax.traverse._
+import scalaz.{EitherT, \/, _}
 
 class AttributeController extends Controller with LazyLogging {
 
@@ -69,24 +69,24 @@ class AttributeController extends Controller with LazyLogging {
       }
     }
 
-//TODO: where should I live?!?!?
-  private def attributesFromZuora(id: String, zuoraRestService: ZuoraRestService[Future]): Future[Option[Attributes]] = {
+  private def attributesFromZuora(id: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
     def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
-    def getSubscriptions(accountIds: List[AccountId]): Future[\/[String, List[RestSubscription]]] = {
-      def sub(accountId: AccountId): Future[\/[String, RestSubscriptions]] = zuoraRestService.getSubscription(accountId)
-
-      val groupedSubscriptions = Future.traverse(accountIds)(id => sub(id)).map(_.sequenceU)
-      groupedSubscriptions.map(_.map(_.flatMap(_.subscriptions)))
+    def getSubscriptions(accountIds: List[AccountId]): Future[List[Subscription[AnyPlan]]] = {
+      def sub(accountId: AccountId): Future[List[Subscription[AnyPlan]]] = {
+        subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
+      }
+      Future.traverse(accountIds)(id => sub(id)).map(_.flatten)
     }
 
     val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
       accounts <- EitherT(zuoraRestService.getAccounts(id))
       accountIds = queryToAccountIds(accounts)
-      subscriptions <- EitherT(getSubscriptions(accountIds))
+      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](getSubscriptions(accountIds).map(a => \/.right(a)))
     } yield {
-      AttributesMaker.attributes(id, subscriptions)
+      AttributesMaker.attributes(id, subscriptions, LocalDate.now())
     }
+
     attributes.run.map(_.toOption).map(_.getOrElse(None))
   }
 
@@ -94,7 +94,7 @@ class AttributeController extends Controller with LazyLogging {
     backendAction.async { request =>
       authenticationService.userId(request) match {
         case Some(id) =>
-          attributesFromZuora(id, request.touchpoint.zuoraRestService).map {
+          attributesFromZuora(id, request.touchpoint.zuoraRestService, request.touchpoint.subService).map {
             case Some(attrs) =>
               logger.info(s"$id is a contributor - $endpointDescription - $attrs")
               attrs

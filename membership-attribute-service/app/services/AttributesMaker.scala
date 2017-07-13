@@ -1,26 +1,25 @@
 package services
 
-import com.gu.zuora.ZuoraRestService.{RestSubscription, RestSubscriptions}
+import com.gu.memsub.Product
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
 import org.joda.time.LocalDate
 
 class AttributesMaker extends LazyLogging {
 
-  private case class BasicSubscriptionInfo(productName: String, ratePlanName: String, contractEffectiveDate: String)
+  def attributes(userId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[Attributes] = {
 
-  def attributes(userId: String, subs: List[RestSubscription]): Option[Attributes] = {
-    logger.info(s"SUBS SUBS SUBS: $subs")
+    val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(subscription => GetCurrentPlans(subscription, forDate).toOption.map(_.head.product))
+    val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil)
+    val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil)
 
-    val filteredSubs = subscriptionInfo(subs)
-    val membershipSub = filteredSubs.filter(sub => isMember(sub.productName))
-    val contributionSub = filteredSubs.filter(sub => isContributor(sub.productName))
+    val tier = membershipSub.headOption.map(sub => GetCurrentPlans(sub, forDate).toOption.map(_.head.charges.benefits.head.id)).flatten
+    val recurringContributionPaymentPlan = contributionSub.headOption.map(sub => GetCurrentPlans(sub, forDate).toOption.map(_.head.name)).flatten
+    val membershipJoinDate = membershipSub.map(_.startDate).headOption
 
-    val tier = if(membershipSub.nonEmpty) Some(membershipSub.head.productName) else None
-    val membershipJoinDate = if(membershipSub.nonEmpty) Some(new LocalDate(membershipSub.head.contractEffectiveDate)) else None
-    val recurringContributionPaymentPlan = if(contributionSub.nonEmpty) Some(contributionSub.head.ratePlanName) else None
-
-    if(filteredSubs.nonEmpty)
+    if(!membershipSub.isEmpty || !contributionSub.isEmpty)
       Some(Attributes(
         UserId = userId,
         Tier = tier,
@@ -31,18 +30,6 @@ class AttributesMaker extends LazyLogging {
     else None
   }
 
-  private def isMember(productName: String): Boolean = List("Supporter", "Partner", "Patron", "Friend").contains(productName)
-  private def isContributor(productName: String): Boolean = "Contributor" == productName
-  private def isMemberOrContributor(productName: String) = isContributor(productName) || isMember(productName)
-
-  private def subscriptionInfo(subs: List[RestSubscription]): Seq[BasicSubscriptionInfo] = {
-
-    val flatSubs: Seq[(String, String, String)] = subs
-      .map { restSub => (restSub.ratePlans.head.productName, restSub.ratePlans.head.ratePlanName, restSub.contractEffectiveDate)}
-
-    //todo surely this is convoluted
-    flatSubs.map(s => BasicSubscriptionInfo(s._1, s._2, s._3)).filter(subInfo => isMemberOrContributor(subInfo.productName))
-  }
 }
 
 object AttributesMaker extends AttributesMaker
