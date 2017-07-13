@@ -96,7 +96,7 @@ class AttributeController extends Controller with LazyLogging {
         case Some(id) =>
           attributesFromZuora(id, request.touchpoint.zuoraRestService, request.touchpoint.subService).map {
             case Some(attrs) =>
-              logger.info(s"$id is a contributor - $endpointDescription - $attrs")
+              logger.info(s"Successfully retrieved attributes from Zuora for user $id: $attrs")
               attrs
             case _ => notFound
           }
