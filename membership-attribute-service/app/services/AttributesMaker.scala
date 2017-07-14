@@ -9,7 +9,7 @@ import org.joda.time.LocalDate
 
 class AttributesMaker extends LazyLogging {
 
-  def attributes(userId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[Attributes] = {
+  def attributes(identityId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[Attributes] = {
 
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(subscription => GetCurrentPlans(subscription, forDate).toOption.map(_.head.product))
     val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil)
@@ -21,7 +21,7 @@ class AttributesMaker extends LazyLogging {
 
     if(!membershipSub.isEmpty || !contributionSub.isEmpty)
       Some(Attributes(
-        UserId = userId,
+        UserId = identityId,
         Tier = tier,
         RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
         MembershipJoinDate = membershipJoinDate

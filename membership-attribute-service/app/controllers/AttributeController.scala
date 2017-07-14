@@ -69,7 +69,7 @@ class AttributeController extends Controller with LazyLogging {
       }
     }
 
-  private def attributesFromZuora(id: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
+  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
     def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
     def getSubscriptions(accountIds: List[AccountId]): Future[List[Subscription[AnyPlan]]] = {
@@ -80,11 +80,11 @@ class AttributeController extends Controller with LazyLogging {
     }
 
     val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
-      accounts <- EitherT(zuoraRestService.getAccounts(id))
+      accounts <- EitherT(zuoraRestService.getAccounts(identityId))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](getSubscriptions(accountIds).map(a => \/.right(a)))
     } yield {
-      AttributesMaker.attributes(id, subscriptions, LocalDate.now())
+      AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
     }
 
     attributes.run.map(_.toOption).map(_.getOrElse(None))
@@ -93,10 +93,10 @@ class AttributeController extends Controller with LazyLogging {
   private def zuoraLookup(endpointDescription: String) =
     backendAction.async { request =>
       authenticationService.userId(request) match {
-        case Some(id) =>
-          attributesFromZuora(id, request.touchpoint.zuoraRestService, request.touchpoint.subService).map {
+        case Some(identityId) =>
+          attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService).map {
             case Some(attrs) =>
-              logger.info(s"Successfully retrieved attributes from Zuora for user $id: $attrs")
+              logger.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
               attrs
             case _ => notFound
           }
