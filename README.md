@@ -10,14 +10,14 @@ Add the following line to the hosts file:
 
 `127.0.0.1   members-data-api.thegulocal.com`
 
-Download the config (you may need to `brew install awscli` to get the command.
+Download the config (you may need to `brew install awscli` to get the command).
 `aws s3 cp s3://members-data-api-private/DEV/members-data-api.private.conf /etc/gu/ --profile membership`
 
 ## Running Locally
 
 Get Janus credentials for membership.
 
-To start the service run ./start-api.sh
+To start the service run `./start-api.sh`
 
 The service will be running on 9400 and use the MembershipAttributes-DEV DynamoDB table.
 
@@ -25,7 +25,7 @@ go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership
 
 ## Running tests
 
-run sbt and then test.  It will download a dynamodb table from S3 and use that.  Tip: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
+run `sbt` and then test.  It will download a dynamodb table from S3 and use that.  _Tip_: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
 
 ## Testing manually
 
