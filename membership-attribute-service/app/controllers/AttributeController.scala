@@ -1,28 +1,36 @@
 package controllers
 import actions._
+import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.zuora.ZuoraRestService
+import com.gu.zuora.ZuoraRestService.QueryResponse
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import configuration.Config.authentication
+import loghandling.LoggingField.LogField
+import loghandling.LoggingWithLogstashFields
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
+import org.joda.time.LocalDate
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
-import services.{AuthenticationService, IdentityAuthService}
+import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
-import scalaz.{EitherT, \/}
+import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 
-class AttributeController extends Controller with LazyLogging {
+class AttributeController extends Controller with LoggingWithLogstashFields {
 
   val keys = authentication.keys.map(key => s"Bearer $key")
 
@@ -46,13 +54,13 @@ class AttributeController extends Controller with LazyLogging {
       authenticationService.userId(request).map[Future[Result]] { id =>
         request.touchpoint.attrService.get(id).map {
           case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-            logger.info(s"$id is a member - $endpointDescription - $attrs")
+            log.info(s"$id is a member - $endpointDescription - $attrs")
             onSuccessMember(attrs).withHeaders(
               "X-Gu-Membership-Tier" -> tier,
               "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
             )
           case Some(attrs) =>
-            logger.info(s"$id is a contributor - $endpointDescription - $attrs")
+            log.info(s"$id is a contributor - $endpointDescription - $attrs")
             onSuccessMemberAndOrContributor(attrs)
           case _ =>
             onNotFound
@@ -63,13 +71,56 @@ class AttributeController extends Controller with LazyLogging {
       }
     }
 
+
+    private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future])(implicit request: BackendRequest[AnyContent]): Future[Option[Attributes]] = {
+
+      def withTimer[R](whichCall: String, result: Future[Disjunction[String, R]]) = {
+        import loghandling.StopWatch
+        val stopWatch = new StopWatch
+
+        result.map { res: Disjunction[String, R] =>
+          val latency = stopWatch.elapsed
+          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
+          res match {
+            case -\/(a) => logErrorWithCustomFields(s"$whichCall failed. Msg: ${a}", customFields)
+            case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
+          }
+        }
+        result
+      }
+
+
+      def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
+
+      def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
+        def sub(accountId: AccountId): Future[List[Subscription[AnyPlan]]] = {
+          subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
+        }
+        val maybeSubs: Future[List[Subscription[AnyPlan]]] = Future.traverse(accountIds)(id => sub(id)).map(_.flatten)
+
+        maybeSubs map { subs =>
+          if (subs.isEmpty) \/.left(s"Error getting subscriptions for identityId $identityId") else \/.right(subs)
+        }
+      }
+
+      val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
+        accounts <- EitherT(withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
+        accountIds = queryToAccountIds(accounts)
+        subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
+      } yield {
+        AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
+      }
+
+      attributes.run.map(_.toOption).map(_.getOrElse(None))
+    }
+
   private def zuoraLookup(endpointDescription: String) =
-    backendAction.async { request =>
+    backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          request.touchpoint.zuoraAttributeService.getAttributes(identityId).map {
+          attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService).map {
             case Some(attrs) =>
-              logger.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
+              log.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
               attrs
             case _ => notFound
           }
@@ -118,11 +169,11 @@ class AttributeController extends Controller with LazyLogging {
 
     result.fold(
       {  error =>
-        logger.error(s"Failed to update attributes - $error")
+        log.error(s"Failed to update attributes - $error")
         ApiErrors.badRequest(error)
       },
       { attributes =>
-        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.RecurringContributionPaymentPlan}")
+        log.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.RecurringContributionPaymentPlan}")
         Ok(Json.obj("updated" -> true))
       }
     )
