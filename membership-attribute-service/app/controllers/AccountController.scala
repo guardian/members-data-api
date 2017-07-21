@@ -57,7 +57,7 @@ class AccountController extends LazyLogging {
     val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to retrieve payment details for identity user: $maybeUserId")
     (for {
-      user <- OptionEither.liftFutureOption(maybeUserId \/> "no identity cookie for user")
+      user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(request.touchpoint.contactRepo.get(user))
       sub <- OptionEither.liftOption(request.touchpoint.subService.either[F, P](contact).map(_ \/> s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} (TODO check the separate WARN to find out why)"))
       details <- OptionEither.liftOption(request.touchpoint.paymentService.paymentDetails(sub).map[\/[String, PaymentDetails]](\/.right))
@@ -93,7 +93,7 @@ object OptionEither {
   def liftOption[A](x: Future[\/[String, A]]): OptionT[FutureEither, A] =
     apply(x.map(_.map[Option[A]](Some.apply)))
 
-  def liftFutureOption[A](x: \/[String, A]): OptionT[FutureEither, A] =
-    apply(Future.successful(x.map[Option[A]](Some.apply)))
+  def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
+    apply(Future.successful(\/.right[String,Option[A]](x)))
 
 }
