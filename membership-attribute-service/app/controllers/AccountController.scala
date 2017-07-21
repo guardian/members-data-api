@@ -70,7 +70,7 @@ class AccountController extends LazyLogging {
         Ok(Json.obj())
       case -\/(message) =>
         logger.warn(s"Unable to retrieve payment details result for identity user $maybeUserId due to $message")
-        Ok(Json.obj())
+        InternalServerError("Failed to retrieve payment details due to an internal error")
     }
   }
 
