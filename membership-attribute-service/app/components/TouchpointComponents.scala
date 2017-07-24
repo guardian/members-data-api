@@ -68,8 +68,8 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   implicit lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.futureRunner)
   lazy val zuoraRestService = new ZuoraRestService[Future]()
   lazy val catalogService = new CatalogService[Future](productIds, simpleClient, Await.result(_, 10.seconds), stage)
-
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog.map(_.fold[CatalogMap](error => {println(s"error: ${error.list.mkString}"); Map()}, _.map))
+
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService.unsafeCatalog.productMap)
 }
