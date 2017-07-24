@@ -38,7 +38,7 @@ class AccountController extends LazyLogging {
 
     (for {
       user <- EitherT(Future.successful(authenticationService.userId \/> "no identity cookie for user"))
-      sfUser <- EitherT(tp.contactRepo.get(user).map(_ \/> s"couldn't read contact from SF for $user (TODO check the separate ERROR to find out why)"))
+      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       stripeCardToken <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
       updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken).map(_ \/> "something missing when try to zuora payment card"))
@@ -57,19 +57,20 @@ class AccountController extends LazyLogging {
     val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to retrieve payment details for identity user: $maybeUserId")
     (for {
-      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      contact <- EitherT(request.touchpoint.contactRepo.get(user).map(_ \/> s"couldn't read contact from SF for $user (TODO check the separate ERROR to find out why)"))
-      sub <- EitherT(request.touchpoint.subService.either[F, P](contact).map(_ \/> s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} (TODO check the separate WARN to find out why)"))
-      details <- EitherT(request.touchpoint.paymentService.paymentDetails(sub).map[\/[String, PaymentDetails]](\/.right))
-    } yield (contact, details).toResult).run.map {
-      case \/-(result) => {
+      user <- OptionEither.liftFutureEither(maybeUserId)
+      contact <- OptionEither(request.touchpoint.contactRepo.get(user))
+      sub <- OptionEither.liftOption(request.touchpoint.subService.either[F, P](contact).map(_ \/> s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} (TODO check the separate WARN to find out why)"))
+      details <- OptionEither.liftOption(request.touchpoint.paymentService.paymentDetails(sub).map[\/[String, PaymentDetails]](\/.right))
+    } yield (contact, details).toResult).run.run.map {
+      case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: $maybeUserId")
         result
-      }
-      case -\/(message) => {
-        logger.warn(s"Unable to retrieve payment details result for identity user $maybeUserId due to $message")
+      case \/-(None) =>
+        logger.info(s"identity user doesn't exist in SF: $maybeUserId")
         Ok(Json.obj())
-      }
+      case -\/(message) =>
+        logger.warn(s"Unable to retrieve payment details result for identity user $maybeUserId due to $message")
+        InternalServerError("Failed to retrieve payment details due to an internal error")
     }
   }
 
@@ -79,4 +80,20 @@ class AccountController extends LazyLogging {
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
+}
+
+// this is helping us stack future/either/option
+object OptionEither {
+
+  type FutureEither[X] = EitherT[Future, String, X]
+
+  def apply[A](m: Future[\/[String, Option[A]]]): OptionT[FutureEither, A] =
+    OptionT[FutureEither, A](EitherT[Future, String, Option[A]](m))
+
+  def liftOption[A](x: Future[\/[String, A]]): OptionT[FutureEither, A] =
+    apply(x.map(_.map[Option[A]](Some.apply)))
+
+  def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
+    apply(Future.successful(\/.right[String,Option[A]](x)))
+
 }
