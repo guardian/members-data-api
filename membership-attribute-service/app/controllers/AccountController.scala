@@ -35,19 +35,26 @@ class AccountController extends LazyLogging {
   def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
     val tp = request.touchpoint
-
+    val maybeUserId = authenticationService.userId
+    logger.info(s"Attempting to update card for $maybeUserId")
     (for {
-      user <- EitherT(Future.successful(authenticationService.userId \/> "no identity cookie for user"))
+      user <- EitherT(Future.successful( maybeUserId \/> "no identity cookie for user"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       stripeCardToken <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
       updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken).map(_ \/> "something missing when try to zuora payment card"))
     } yield updateResult match {
-      case success: CardUpdateSuccess => Ok(Json.toJson(success))
-      case failure: CardUpdateFailure => Forbidden(Json.toJson(failure))
+      case success: CardUpdateSuccess => {
+        logger.info(s"Successfully updated card for identity user: $user")
+        Ok(Json.toJson(success))
+      }
+      case failure: CardUpdateFailure => {
+        logger.error(s"Failed to update card for identity user: $user due to $failure")
+        Forbidden(Json.toJson(failure))
+      }
     }).run.map {
       case -\/(message) =>
-        logger.warn(s"didn't update card, $message")
+        logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
         notFound
       case \/-(result) => result
     }
