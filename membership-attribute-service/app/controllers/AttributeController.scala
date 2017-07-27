@@ -27,6 +27,7 @@ import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
+import prodtest.Allocator._
 import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
@@ -50,25 +51,20 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, doExperiment: Boolean) =
   {
-    def pickAttributes(identityId: String, prodTest: Boolean)(implicit request: BackendRequest[AnyContent]) = {
-      prodTest match {
-        case true =>
-          val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
-          request.touchpoint.testAllocator.isInTest(identityId, percentageInTest) match {
-            case true =>
-              attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
-            case false =>
-              request.touchpoint.attrService.get(identityId)
-
-          }
-        case false => request.touchpoint.attrService.get(identityId)
-      }
+    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]) = {
+      if(doExperiment){
+        val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
+        isInTest(identityId, percentageInTest) match {
+          case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
+          case false => request.touchpoint.attrService.get(identityId)
+        }
+      } else request.touchpoint.attrService.get(identityId)
     }
 
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          pickAttributes(identityId, doExperiment).map {
+          pickAttributes(identityId).map {
             case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
               log.info(s"$identityId is a member - $endpointDescription - $attrs")
               onSuccessMember(attrs).withHeaders(

@@ -5,29 +5,28 @@ import org.specs2.mutable.Specification
 class AllocatorTest extends Specification {
 
   "isInTest" should {
-    val allocator = new Allocator()
     "allocate 49168201 to the test" in {
-      allocator.isInTest("49168201", 20) === true
+      Allocator.isInTest("49168201", 20) === true
     }
 
     "strip leading zeros" in {
-      allocator.isInTest("00168201", 20) === true
+      Allocator.isInTest("00168201", 20) === true
     }
 
     "not allocate 49168200 to the test when percentage is zero" in {
-      allocator.isInTest("49168200", 0) === false
+      Allocator.isInTest("49168200", 0) === false
     }
 
     "allocate 4916813 to the test if percentage is over thirteen" in {
-      allocator.isInTest("4916813", 13) === true
-      allocator.isInTest("4916813", 50) === true
-      allocator.isInTest("4916813", 5) === false
+      Allocator.isInTest("4916813", 14) === true
+      Allocator.isInTest("4916813", 50) === true
+      Allocator.isInTest("4916813", 5) === false
     }
 
     "allocate about 20 percent to the test for 100 ids" in {
       val testPercentage = 20
       val inTest = hundredIds filter { id =>
-        allocator.isInTest(id, testPercentage)
+        Allocator.isInTest(id, testPercentage)
       }
 
       inTest.length.toDouble must beCloseTo(testPercentage, delta = testPercentage * 0.1)
