@@ -70,16 +70,14 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
     }
 
-  private def featuresWithTest(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) =
+  private def lookupWithTest(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) =
   {
     def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]) = {
       val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
       request.touchpoint.testAllocator.isInTest(identityId, percentageInTest) match {
         case true =>
-          println(s"Getting attributes from zuora! one of the ${percentageInTest} percent!") //todo remove
           attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
         case false =>
-          println(s"To the dynamo table we go! Not one of the ${percentageInTest} percent")
           request.touchpoint.attrService.get(identityId)
 
       }
@@ -178,7 +176,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
-  def features = featuresWithTest("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
+  def features = lookupWithTest("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>

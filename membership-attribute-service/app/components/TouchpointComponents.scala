@@ -44,6 +44,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val sfSecret = environmentConf.getString("salesforce.hook-secret")
   lazy val dynamoAttributesTable = environmentConf.getString("dynamodb.table")
   lazy val dynamoBehaviourTable = environmentConf.getString("behaviour.dynamodb.table")
+  lazy val dynamoFeatureToggleTable = environmentConf.getString("featureToggles.dynamodb.table")
   lazy val giraffeSns = environmentConf.getString("giraffe.sns")
 
   lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
@@ -64,6 +65,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoAttributesTable)
   lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoBehaviourTable)
+  lazy val featureToggleService: ScanamoFeatureToggleService = new ScanamoFeatureToggleService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoFeatureToggleTable)
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
   lazy val zuoraService = new ZuoraService(soapClient)
   implicit lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.futureRunner)
@@ -73,6 +75,6 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService.unsafeCatalog.productMap)
-  lazy val scheduledUpdateVariables = new VariablesUpdatedOnSchedule(attrService)
+  lazy val scheduledUpdateVariables = new VariablesUpdatedOnSchedule(featureToggleService)
   lazy val testAllocator = new Allocator
 }
