@@ -18,7 +18,7 @@ import com.gu.zuora.rest.SimpleClient
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.{ZuoraRestService, ZuoraService, rest}
 import configuration.Config
-import prodtest.{Allocator, VariablesUpdatedOnSchedule}
+import prodtest.{Allocator, FeatureToggleDataUpdatedOnSchedule}
 import org.joda.time.LocalDate
 import services.IdentityService.IdentityConfig
 import services._
@@ -75,6 +75,6 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService.unsafeCatalog.productMap)
-  lazy val scheduledUpdateVariables = new VariablesUpdatedOnSchedule(featureToggleService)
+  lazy val scheduledUpdateVariables = new FeatureToggleDataUpdatedOnSchedule(featureToggleService)
   lazy val testAllocator = new Allocator
 }
