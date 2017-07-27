@@ -17,6 +17,7 @@ class VariablesUpdatedOnSchedule(featureToggleService: ScanamoFeatureToggleServi
       featureToggleService.get("AttributesFromZuoraLookup").map {
         case Some(feature) =>
           val percentage = feature.TrafficPercentage.getOrElse(0)
+          logger.info(s"UpdateAttributesFromZuoraLookupPercentage scheduled task set percentage to $percentage")
           percentageTrafficForZuoraLookup = percentage
           percentage
         case None =>

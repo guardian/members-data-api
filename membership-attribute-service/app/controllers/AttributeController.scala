@@ -48,45 +48,27 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
-      authenticationService.userId(request).map[Future[Result]] { id =>
-        request.touchpoint.attrService.get(id).map {
-          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-            log.info(s"$id is a member - $endpointDescription - $attrs")
-            onSuccessMember(attrs).withHeaders(
-              "X-Gu-Membership-Tier" -> tier,
-              "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
-            )
-          case Some(attrs) =>
-            log.info(s"$id is a contributor - $endpointDescription - $attrs")
-            onSuccessMemberAndOrContributor(attrs)
-          case _ =>
-            onNotFound
-        }
-      }.getOrElse {
-        metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-        Future(unauthorized)
-      }
-    }
-
-  private def lookupWithTest(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) =
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, doExperiment: Boolean) =
   {
-    def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]) = {
-      val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
-      request.touchpoint.testAllocator.isInTest(identityId, percentageInTest) match {
+    def pickAttributes(identityId: String, prodTest: Boolean)(implicit request: BackendRequest[AnyContent]) = {
+      prodTest match {
         case true =>
-          attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
-        case false =>
-          request.touchpoint.attrService.get(identityId)
+          val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
+          request.touchpoint.testAllocator.isInTest(identityId, percentageInTest) match {
+            case true =>
+              attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
+            case false =>
+              request.touchpoint.attrService.get(identityId)
 
+          }
+        case false => request.touchpoint.attrService.get(identityId)
       }
     }
 
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          pickAttributes(identityId).map {
+          pickAttributes(identityId, doExperiment).map {
             case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
               log.info(s"$identityId is a member - $endpointDescription - $attrs")
               onSuccessMember(attrs).withHeaders(
@@ -108,7 +90,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   }
 
 
-  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future])(implicit request: BackendRequest[AnyContent]): Future[Option[Attributes]] = {
+  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
 
     def withTimer[R](whichCall: String, result: Future[Disjunction[String, R]]) = {
       import loghandling.StopWatch
@@ -174,9 +156,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
-  def features = lookupWithTest("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, doExperiment = false)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, doExperiment = false)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated, doExperiment = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
