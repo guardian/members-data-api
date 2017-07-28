@@ -96,9 +96,14 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
         val latency = stopWatch.elapsed
         val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
         res match {
-          case -\/(a) => logErrorWithCustomFields(s"$whichCall failed. Msg: ${a}", customFields)
+          case -\/(a) => {
+            log.error(s"Attempted $whichCall but then: ${a}")
+            logWarnWithCustomFields(s"$whichCall failed with ${a}", customFields)
+          }
           case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
         }
+      }.onFailure {
+        case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
       }
       result
     }
