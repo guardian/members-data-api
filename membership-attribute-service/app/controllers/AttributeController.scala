@@ -49,10 +49,10 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, doExperiment: Boolean) =
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]) = {
-      if(doExperiment){
+      if(endpointEligibleForTest){
         val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
         isInTest(identityId, percentageInTest) match {
           case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
@@ -88,24 +88,24 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
   private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
 
-    def withTimer[R](whichCall: String, result: Future[Disjunction[String, R]]) = {
+    def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]]) = {
       import loghandling.StopWatch
       val stopWatch = new StopWatch
 
-      result.map { res: Disjunction[String, R] =>
+      futureResult.map { result: Disjunction[String, R] =>
         val latency = stopWatch.elapsed
         val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
-        res match {
-          case -\/(a) => {
-            log.error(s"Attempted $whichCall but then: ${a}")
-            logWarnWithCustomFields(s"$whichCall failed with ${a}", customFields)
+        result match {
+          case -\/(messageOrError) => {
+            log.error(s"Attempted $whichCall but then: ${messageOrError}")
+            logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
           }
           case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
         }
       }.onFailure {
         case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
       }
-      result
+      futureResult
     }
 
     def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
@@ -157,9 +157,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, doExperiment = false)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, doExperiment = false)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated, doExperiment = true)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = false)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = false)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
