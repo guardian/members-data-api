@@ -23,6 +23,10 @@ class AllocatorTest extends Specification {
       Allocator.isInTest("4916813", 5) === false
     }
 
+    "not allocate invalidInt to the test" in {
+      Allocator.isInTest("invalidInt", 20) === false
+    }
+
     "allocate about 20 percent to the test for 100 ids" in {
       val testPercentage = 20
       val inTest = hundredIds filter { id =>
