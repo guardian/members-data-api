@@ -75,6 +75,7 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       GiraffeTopic: giraffe
       SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
 
@@ -85,6 +86,7 @@ Mappings:
       DynamoDBTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
+      DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       GiraffeTopic: giraffe-code
       SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
 
@@ -160,6 +162,11 @@ Resources:
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTableTestUsers ]
             Effect: Allow
+            - Action:
+              - dynamodb:GetItem
+              Resource:
+                Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTable ]
+              Effect: Allow
           - Action:
             - cloudwatch:*
             - logs:*
