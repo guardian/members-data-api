@@ -8,7 +8,6 @@ import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
-import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import configuration.Config.authentication
 import loghandling.LoggingField.LogField
@@ -28,6 +27,7 @@ import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
+import prodtest.Allocator._
 import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
@@ -49,70 +49,88 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result) = backendAction.async { request =>
-      authenticationService.userId(request).map[Future[Result]] { id =>
-        request.touchpoint.attrService.get(id).map {
-          case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-            log.info(s"$id is a member - $endpointDescription - $attrs")
-            onSuccessMember(attrs).withHeaders(
-              "X-Gu-Membership-Tier" -> tier,
-              "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
-            )
-          case Some(attrs) =>
-            log.info(s"$id is a contributor - $endpointDescription - $attrs")
-            onSuccessMemberAndOrContributor(attrs)
-          case _ =>
-            onNotFound
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
+  {
+    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]) = {
+      if(endpointEligibleForTest){
+        val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
+        isInTest(identityId, percentageInTest) match {
+          case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
+          case false => request.touchpoint.attrService.get(identityId)
         }
-      }.getOrElse {
-        metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-        Future(unauthorized)
-      }
+      } else request.touchpoint.attrService.get(identityId)
     }
 
-
-    private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future])(implicit request: BackendRequest[AnyContent]): Future[Option[Attributes]] = {
-
-      def withTimer[R](whichCall: String, result: Future[Disjunction[String, R]]) = {
-        import loghandling.StopWatch
-        val stopWatch = new StopWatch
-
-        result.map { res: Disjunction[String, R] =>
-          val latency = stopWatch.elapsed
-          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
-          res match {
-            case -\/(a) => logErrorWithCustomFields(s"$whichCall failed. Msg: ${a}", customFields)
-            case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
+    backendAction.async { implicit request =>
+      authenticationService.userId(request) match {
+        case Some(identityId) =>
+          pickAttributes(identityId).map {
+            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
+              log.info(s"$identityId is a member - $endpointDescription - $attrs")
+              onSuccessMember(attrs).withHeaders(
+                "X-Gu-Membership-Tier" -> tier,
+                "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
+              )
+            case Some(attrs) =>
+              log.info(s"$identityId is a contributor - $endpointDescription - $attrs")
+              onSuccessMemberAndOrContributor(attrs)
+            case _ =>
+              onNotFound
           }
-        }
-        result
-      }
+        case None =>
+          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
+          Future(unauthorized)
 
-
-      def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
-
-      def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
-        def sub(accountId: AccountId): Future[List[Subscription[AnyPlan]]] = {
-          subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
-        }
-        val maybeSubs: Future[List[Subscription[AnyPlan]]] = Future.traverse(accountIds)(id => sub(id)).map(_.flatten)
-
-        maybeSubs map { subs =>
-          if (subs.isEmpty) \/.left(s"Error getting subscriptions for identityId $identityId") else \/.right(subs)
         }
       }
+  }
 
-      val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
-        accounts <- EitherT(withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
-        accountIds = queryToAccountIds(accounts)
-        subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
-      } yield {
-        AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
+
+  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
+
+    def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]]) = {
+      import loghandling.StopWatch
+      val stopWatch = new StopWatch
+
+      futureResult.map { result: Disjunction[String, R] =>
+        val latency = stopWatch.elapsed
+        val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
+        result match {
+          case -\/(messageOrError) => {
+            log.error(s"Attempted $whichCall but then: ${messageOrError}")
+            logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
+          }
+          case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
+        }
+      }.onFailure {
+        case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
       }
-
-      attributes.run.map(_.toOption).map(_.getOrElse(None))
+      futureResult
     }
+
+    def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
+
+    def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
+      def sub(accountId: AccountId): Future[List[Subscription[AnyPlan]]] = {
+        subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
+      }
+      val maybeSubs: Future[List[Subscription[AnyPlan]]] = Future.traverse(accountIds)(id => sub(id)).map(_.flatten)
+
+      maybeSubs map { subs =>
+        if (subs.isEmpty) \/.left(s"Error getting subscriptions for identityId $identityId") else \/.right(subs)
+      }
+    }
+
+    val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
+      accounts <- EitherT(withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
+      accountIds = queryToAccountIds(accounts)
+      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
+    } yield {
+      AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
+    }
+
+    attributes.run.map(_.toOption).map(_.getOrElse(None))
+  }
 
   private def zuoraLookup(endpointDescription: String) =
     backendAction.async { implicit request =>
@@ -139,9 +157,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = false)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = false)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>

@@ -15,6 +15,10 @@ trait LoggingWithLogstashFields {
     log.logger.info(customFieldMarkers(customFields), message)
   }
 
+  def logWarnWithCustomFields(message: String, customFields: List[LogField]): Unit = {
+    log.logger.warn(customFieldMarkers(customFields), message)
+  }
+
   def logErrorWithCustomFields(message: String, customFields: List[LogField]): Unit = {
     log.logger.error(customFieldMarkers(customFields), message)
   }
