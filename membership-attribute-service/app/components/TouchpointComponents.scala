@@ -75,5 +75,5 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService.unsafeCatalog.productMap)
-  lazy val scheduledUpdateVariables = new FeatureToggleDataUpdatedOnSchedule(featureToggleService)
+  lazy val featureToggleData = new FeatureToggleDataUpdatedOnSchedule(featureToggleService)
 }

@@ -53,7 +53,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]) = {
       if(endpointEligibleForTest){
-        val percentageInTest = request.touchpoint.scheduledUpdateVariables.getPercentageTrafficForZuoraLookup
+        val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
         isInTest(identityId, percentageInTest) match {
           case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
           case false => request.touchpoint.attrService.get(identityId)
