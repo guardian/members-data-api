@@ -170,6 +170,11 @@ Resources:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTable ]
             Effect: Allow
           - Action:
+            - dynamodb:GetItem
+            Resource:
+              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
+            Effect: Allow
+          - Action:
             - cloudwatch:*
             - logs:*
             Resource: "*"
