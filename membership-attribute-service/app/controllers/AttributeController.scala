@@ -6,6 +6,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
 import configuration.Config
@@ -27,8 +28,8 @@ import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
-
 import prodtest.Allocator._
+
 import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 import scalaz.syntax.std.either._
 
@@ -185,7 +186,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
           RecurringContributionPaymentPlan = conSub.map(_.plan.name),
           MembershipJoinDate = memSub.map(_.startDate)
         )
-        res <- EitherT(tp.attrService.update(attributes).map(_.disjunction)).leftMap(e => s"Dynamo failed to update the user attributes: $e")
+        res <- EitherT(tp.attrService.update(attributes).map(_.disjunction)).leftMap(e => s"Dynamo failed to update the user attributes: ${DynamoReadError.describe(e)}")
       } yield attributes
 
     result.fold(
