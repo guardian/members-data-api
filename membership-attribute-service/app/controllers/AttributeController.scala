@@ -27,8 +27,11 @@ import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
+
 import prodtest.Allocator._
 import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
+import scalaz.syntax.std.either._
+
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
 
@@ -182,7 +185,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
           RecurringContributionPaymentPlan = conSub.map(_.plan.name),
           MembershipJoinDate = memSub.map(_.startDate)
         )
-        res <- EitherT(tp.attrService.update(attributes).map(\/.right))
+        res <- EitherT(tp.attrService.update(attributes).map(_.disjunction)).leftMap(e => s"Dynamo failed to update the user attributes: $e")
       } yield attributes
 
     result.fold(
