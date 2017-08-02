@@ -32,6 +32,7 @@ import prodtest.Allocator._
 
 import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 import scalaz.syntax.std.either._
+import scalaz._, std.list._, syntax.traverse._
 
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
@@ -101,7 +102,6 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
         val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
         result match {
           case -\/(messageOrError) => {
-            log.error(s"Attempted $whichCall but then: ${messageOrError}")
             logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
           }
           case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
@@ -115,13 +115,19 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
     def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
-      def sub(accountId: AccountId): Future[List[Subscription[AnyPlan]]] = {
+      def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
         subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
-      }
-      val maybeSubs: Future[List[Subscription[AnyPlan]]] = Future.traverse(accountIds)(id => sub(id)).map(_.flatten)
 
-      maybeSubs map { subs =>
-        if (subs.isEmpty) \/.left(s"Error getting subscriptions for identityId $identityId") else \/.right(subs)
+      val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
+
+      maybeSubs.map {
+        _.leftMap { errorMsg =>
+          log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
+          errorMsg
+        } map { subs =>
+          log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
+          subs
+        }
       }
     }
 
