@@ -126,7 +126,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
           errorMsg
         } map { subs =>
           if(subs.isEmpty)
-            log.logger.warn(s"We tried getting subs for user with identityId ${identityId} but there weren't any")
+            log.logger.info(s"We tried getting subs for user with identityId ${identityId} but there weren't any")
           subs
         }
       }
