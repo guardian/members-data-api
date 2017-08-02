@@ -122,11 +122,10 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
       maybeSubs.map {
         _.leftMap { errorMsg =>
-          log.logger.error(s"We tried getting a subscription for a user, but then ${errorMsg}")
+          log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
           errorMsg
         } map { subs =>
-          if(subs.isEmpty)
-            log.logger.info(s"We tried getting subs for user with identityId ${identityId} but there weren't any")
+          log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
           subs
         }
       }
