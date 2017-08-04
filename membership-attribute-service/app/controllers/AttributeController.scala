@@ -97,18 +97,14 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       import loghandling.StopWatch
       val stopWatch = new StopWatch
 
-      futureResult.map { result: Disjunction[String, R] =>
-        result map { logIfR =>
-          val latency = stopWatch.elapsed
-          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
-          result match {
-            case -\/(messageOrError) => {
-              logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
-            }
-            case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
-          }
+      futureResult.map { disjunction: Disjunction[String, R] =>
+        disjunction match {
+          case -\/(message) => log.info(message)
+          case \/-(_) =>
+            val latency = stopWatch.elapsed
+            val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
+            logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
         }
-        result.leftMap(msg => log.info(msg))
       }.onFailure {
         case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
       }
@@ -137,8 +133,15 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
     }
 
+    def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = zuoraRestService.getAccounts(identityId).map {
+      _.leftMap { error =>
+        log.error(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId ${identityId}. Error: ${error}")
+        error
+      }
+    }
+
     val attributes = for {
-      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
+      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId)))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
     } yield {
