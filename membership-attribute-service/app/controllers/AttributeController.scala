@@ -112,7 +112,12 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       futureResult
     }
 
-    def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
+    def queryToAccountIds(response: QueryResponse): Disjunction[String, List[AccountId]] = {
+      val ids = response.records.map(_.Id)
+
+      if(ids.nonEmpty) \/.right(ids)
+      else \/.left("No account found. Attributes will be None.")
+    }
 
     def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
       def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
@@ -131,9 +136,10 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
     }
 
-    val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
-      accounts <- EitherT(withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
-      accountIds = queryToAccountIds(accounts)
+
+    val attributes = for {
+      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
+      accountIds <- EitherT(Future.successful(queryToAccountIds(accounts)))
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
     } yield {
       AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
