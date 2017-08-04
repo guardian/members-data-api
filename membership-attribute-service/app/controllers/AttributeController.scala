@@ -98,48 +98,48 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       val stopWatch = new StopWatch
 
       futureResult.map { result: Disjunction[String, R] =>
-        val latency = stopWatch.elapsed
-        val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
-        result match {
-          case -\/(messageOrError) => {
-            logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
+        result map { logIfR =>
+          val latency = stopWatch.elapsed
+          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
+          result match {
+            case -\/(messageOrError) => {
+              logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
+            }
+            case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
           }
-          case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
         }
+        result.leftMap(msg => log.info(msg))
       }.onFailure {
         case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
       }
       futureResult
     }
 
-    def queryToAccountIds(response: QueryResponse): Disjunction[String, List[AccountId]] = {
-      val ids = response.records.map(_.Id)
-
-      if(ids.nonEmpty) \/.right(ids)
-      else \/.left("No account found. Attributes will be None.")
-    }
+    def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
     def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
-      def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
-        subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
+      if(accountIds.isEmpty) Future.successful(\/.left(s"Can't get subscriptions for $identityId because they have no accountIds"))
+      else {
+        def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
+          subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
 
-      val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
+        val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
 
-      maybeSubs.map {
-        _.leftMap { errorMsg =>
-          log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
-          errorMsg
-        } map { subs =>
-          log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
-          subs
+        maybeSubs.map {
+          _.leftMap { errorMsg =>
+            log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
+            errorMsg
+          } map { subs =>
+            log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
+            subs
+          }
         }
       }
     }
 
-
     val attributes = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
-      accountIds <- EitherT(Future.successful(queryToAccountIds(accounts)))
+      accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
     } yield {
       AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
