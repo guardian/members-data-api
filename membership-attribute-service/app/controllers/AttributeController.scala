@@ -97,14 +97,13 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       import loghandling.StopWatch
       val stopWatch = new StopWatch
 
-      futureResult.map { result: Disjunction[String, R] =>
-        val latency = stopWatch.elapsed
-        val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
-        result match {
-          case -\/(messageOrError) => {
-            logWarnWithCustomFields(s"$whichCall failed with ${messageOrError}", customFields)
-          }
-          case \/-(_) => logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
+      futureResult.map { disjunction: Disjunction[String, R] =>
+        disjunction match {
+          case -\/(message) => log.warn(s"$whichCall failed with: $message")
+          case \/-(_) =>
+            val latency = stopWatch.elapsed
+            val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
+            logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
         }
       }.onFailure {
         case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
@@ -115,31 +114,49 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
     def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
+
       def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
         subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
 
       val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
-
       maybeSubs.map {
         _.leftMap { errorMsg =>
-          log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
-          errorMsg
+          log.warn(s"We tried getting subscription for a user with identityId $identityId, but then $errorMsg")
+          s"We called Zuora to get subscriptions for a user with identityId $identityId but the call failed"
         } map { subs =>
-          log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
+          log.info(s"We got subs for identityId $identityId from Zuora and there were ${subs.length}")
           subs
         }
       }
     }
 
-    val attributes: DisjunctionT[Future, String, Option[Attributes]] = for {
-      accounts <- EitherT(withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraRestService.getAccounts(identityId)))
+    def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = zuoraRestService.getAccounts(identityId).map {
+      _.leftMap {error =>
+        log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: ${error}")
+        s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."
+      }
+    }
+
+    val attributes = for {
+      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId)))
       accountIds = queryToAccountIds(accounts)
-      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
+      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
+        if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds))
+        else Future.successful(\/.right {
+          log.info(s"User with identityId $identityId has no accountIds and thus no subscriptions.")
+          Nil
+        })
+      )
     } yield {
       AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
     }
 
-    attributes.run.map(_.toOption).map(_.getOrElse(None))
+    attributes.run.map {
+      _.leftMap { errorMsg =>
+        log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
+        errorMsg
+      }.fold(_ => None, identity)
+    }
   }
 
   private def zuoraLookup(endpointDescription: String) =
