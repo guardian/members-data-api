@@ -148,7 +148,12 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
     }
 
-    attributes.run.map(_.toOption).map(_.getOrElse(None))
+    attributes.run.map {
+      _.leftMap { errorMsg =>
+        log.error(s"Tried to get Attributes for ${identityId} but failed with $errorMsg")
+        errorMsg
+      }.getOrElse(None)
+    }
   }
 
   private def zuoraLookup(endpointDescription: String) =
