@@ -114,23 +114,21 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
     def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
-      if(accountIds.isEmpty) Future.successful(\/.left(s"Can't get subscriptions for $identityId because they have no accountIds"))
-      else {
-        def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
-          subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
 
-        val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
+      def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
+        subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
 
-        maybeSubs.map {
-          _.leftMap { errorMsg =>
-            log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
-            errorMsg
-          } map { subs =>
-            log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
-            subs
-          }
+      val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
+      maybeSubs.map {
+        _.leftMap { errorMsg =>
+          log.error(s"We tried getting a subscription for a user with identityId ${identityId}, but then ${errorMsg}")
+          errorMsg
+        } map { subs =>
+          log.info(s"We got subs for identityId ${identityId} from Zuora and there were ${subs.length}")
+          subs
         }
       }
+
     }
 
     def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = zuoraRestService.getAccounts(identityId).map {
@@ -143,7 +141,11 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     val attributes = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId)))
       accountIds = queryToAccountIds(accounts)
-      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds)))
+      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
+        if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds))
+        else Future.successful(\/.left(s"No account ids for $identityId and so no subscriptions either"))
+      )
+
     } yield {
       AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
     }
