@@ -152,7 +152,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       _.leftMap { errorMsg =>
         log.info(s"Tried to get Attributes for ${identityId} but failed with $errorMsg")
         errorMsg
-      }.fold(_ => None, identity) //.getOrElse(None)
+      }.fold(_ => None, identity)
     }
   }
 
