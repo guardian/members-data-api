@@ -131,7 +131,10 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     }
 
     def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = zuoraRestService.getAccounts(identityId).map {
-      _.leftMap (error => s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. Error: $error")
+      _.leftMap {error =>
+        log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: ${error}")
+        s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."
+      }
     }
 
     val attributes = for {
