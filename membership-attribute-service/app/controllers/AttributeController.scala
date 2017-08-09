@@ -23,7 +23,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
-import services.{AttributesMaker, AuthenticationService, IdentityAuthService}
+import services.{AttributeService, AttributesMaker, AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
@@ -32,7 +32,9 @@ import prodtest.Allocator._
 
 import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 import scalaz.syntax.std.either._
-import scalaz._, std.list._, syntax.traverse._
+import scalaz._
+import std.list._
+import syntax.traverse._
 
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
@@ -60,7 +62,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       if(endpointEligibleForTest){
         val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
         isInTest(identityId, percentageInTest) match {
-          case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService)
+          case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService, request.touchpoint.attrService)
           case false => request.touchpoint.attrService.get(identityId)
         }
       } else request.touchpoint.attrService.get(identityId)
@@ -91,7 +93,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   }
 
 
-  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future]): Future[Option[Attributes]] = {
+  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future], attributeService: AttributeService): Future[Option[Attributes]] = {
 
     def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]]) = {
       import loghandling.StopWatch
@@ -137,7 +139,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
     }
 
-    val attributes = for {
+    val attributesDisjunction = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId)))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
@@ -151,11 +153,19 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
     }
 
-    attributes.run.map {
+    val attributes = attributesDisjunction.run.map {
       _.leftMap { errorMsg =>
         log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
         errorMsg
       }.fold(_ => None, identity)
+    }
+
+    val adFreeFlagFromDynamo = attributeService.get(identityId) map (_.flatMap(_.AdFree))
+
+    attributes flatMap { maybeAttributes =>
+      adFreeFlagFromDynamo map { adFree =>
+        maybeAttributes map {_.copy(AdFree = adFree)}
+      }
     }
   }
 
@@ -163,7 +173,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService).map {
+          attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService, request.touchpoint.attrService).map {
             case Some(attrs) =>
               log.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
               attrs
