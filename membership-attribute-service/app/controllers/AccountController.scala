@@ -66,7 +66,7 @@ class AccountController extends LazyLogging {
     (for {
       user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(request.touchpoint.contactRepo.get(user))
-      sub <- OptionEither.liftOption(request.touchpoint.subService.either[F, P](contact).map(_ \/> s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} (TODO check the separate WARN to find out why)"))
+      sub <- OptionEither(request.touchpoint.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
       details <- OptionEither.liftOption(request.touchpoint.paymentService.paymentDetails(sub).map[\/[String, PaymentDetails]](\/.right))
     } yield (contact, details).toResult).run.run.map {
       case \/-(Some(result)) =>
