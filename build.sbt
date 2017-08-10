@@ -64,12 +64,15 @@ val buildDebSettings = Seq(
   )
 )
 
+dependencyCheckFailBuildOnCVSS := 10 // we have a 9.3, decrese this when possible
+
 def lib(name: String) = Project(name, file(name))
   .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging).settings(commonSettings)
 
 def app(name: String) = lib(name)
   .settings(dynamoDBLocalSettings)
   .settings(buildDebSettings)
+  .settings(riffRaffArtifactResources += (file(s"${name}/target/scala-2.11/dependency-check-report.html"), s"${name}-dependency-check-report.html"))
 
 val api = app("membership-attribute-service")
   .settings(libraryDependencies ++= apiDependencies)
@@ -77,7 +80,7 @@ val api = app("membership-attribute-service")
   .settings(
     addCommandAlias("devrun", "run 9400"),
     addCommandAlias("batch-load", "runMain BatchLoader"),
-    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")
+    addCommandAlias("play-artifact", ";dependencyCheck;riffRaffNotifyTeamcity")
   )
 
 val root = project.in(file(".")).aggregate(api)
