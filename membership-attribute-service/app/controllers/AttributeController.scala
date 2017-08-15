@@ -9,6 +9,7 @@ import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
+import loghandling.ZuoraRequestCounter
 import configuration.Config
 import configuration.Config.authentication
 import loghandling.LoggingField.LogField
@@ -104,8 +105,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
           case -\/(message) => log.warn(s"$whichCall failed with: $message")
           case \/-(_) =>
             val latency = stopWatch.elapsed
-            val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId)
-            logInfoWithCustomFields(s"$whichCall took ${latency}ms", customFields)
+            val zuoraConcurrencyCount = ZuoraRequestCounter.get
+            val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
+            logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
         }
       }.onFailure {
         case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
