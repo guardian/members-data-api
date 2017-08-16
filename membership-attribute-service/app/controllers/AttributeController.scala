@@ -196,8 +196,8 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = false)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = false)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
