@@ -7,7 +7,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.ZuoraRestService
+import com.gu.zuora.PatientZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.ZuoraRequestCounter
 import configuration.Config
@@ -31,7 +31,7 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
 import prodtest.Allocator._
 
-import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
+import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
 import scalaz.syntax.std.either._
 import scalaz._
 import std.list._
@@ -63,7 +63,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       if(endpointEligibleForTest){
         val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
         isInTest(identityId, percentageInTest) match {
-          case true => attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService, request.touchpoint.attrService)
+          case true => attributesFromZuora(identityId, request.touchpoint.patientZuoraRestService, request.touchpoint.subService, request.touchpoint.attrService)
           case false => request.touchpoint.attrService.get(identityId)
         }
       } else request.touchpoint.attrService.get(identityId)
@@ -94,7 +94,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   }
 
 
-  private def attributesFromZuora(identityId: String, zuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future], attributeService: AttributeService): Future[Option[Attributes]] = {
+  private def attributesFromZuora(identityId: String, zuoraRestService: PatientZuoraRestService[Future], subscriptionService: SubscriptionService[Future], attributeService: AttributeService): Future[Option[Attributes]] = {
 
     def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]]) = {
       import loghandling.StopWatch
@@ -175,7 +175,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          attributesFromZuora(identityId, request.touchpoint.zuoraRestService, request.touchpoint.subService, request.touchpoint.attrService).map {
+          attributesFromZuora(identityId, request.touchpoint.patientZuoraRestService, request.touchpoint.subService, request.touchpoint.attrService).map {
             case Some(attrs) =>
               log.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
               attrs
