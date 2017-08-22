@@ -7,7 +7,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.PatientZuoraRestService
+import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.ZuoraRequestCounter
 import configuration.Config
@@ -94,7 +94,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   }
 
 
-  private def attributesFromZuora(identityId: String, zuoraRestService: PatientZuoraRestService[Future], subscriptionService: SubscriptionService[Future], attributeService: AttributeService): Future[Option[Attributes]] = {
+  private def attributesFromZuora(identityId: String, patientZuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future], attributeService: AttributeService): Future[Option[Attributes]] = {
 
     def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]]) = {
       import loghandling.StopWatch
@@ -134,7 +134,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
     }
 
-    def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = zuoraRestService.getAccounts(identityId).map {
+    def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = patientZuoraRestService.getAccounts(identityId).map {
       _.leftMap {error =>
         log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: ${error}")
         s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."
