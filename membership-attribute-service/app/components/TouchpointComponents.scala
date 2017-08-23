@@ -16,11 +16,10 @@ import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest.SimpleClient
 import com.gu.zuora.soap.ClientWithFeatureSupplier
-import com.gu.zuora.{ZuoraRestService, ZuoraService, rest}
+import com.gu.zuora.{ZuoraRestService, ZuoraService}
 import configuration.Config
 import loghandling.ZuoraRequestCounter
-import prodtest.{Allocator, FeatureToggleDataUpdatedOnSchedule}
-import org.joda.time.LocalDate
+import prodtest.FeatureToggleDataUpdatedOnSchedule
 import services.IdentityService.IdentityConfig
 import services._
 
@@ -70,7 +69,9 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
   lazy val zuoraService = new ZuoraService(soapClient)
   implicit lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
+  lazy val patientSimpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30 seconds)))
   lazy val zuoraRestService = new ZuoraRestService[Future]()
+  lazy val patientZuoraRestService = new ZuoraRestService[Future]()(implicitly, patientSimpleClient)
   lazy val catalogService = new CatalogService[Future](productIds, simpleClient, Await.result(_, 10.seconds), stage)
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog.map(_.fold[CatalogMap](error => {println(s"error: ${error.list.mkString}"); Map()}, _.map))
 
