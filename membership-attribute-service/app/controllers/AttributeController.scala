@@ -59,28 +59,29 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
   {
-    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]) = {
+    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
       if(endpointEligibleForTest){
         val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
         isInTest(identityId, percentageInTest) match {
-          case true => attributesFromZuora(identityId, request.touchpoint.patientZuoraRestService, request.touchpoint.subService, request.touchpoint.attrService)
-          case false => request.touchpoint.attrService.get(identityId)
+          case true => ("Zuora", attributesFromZuora(identityId, request.touchpoint.patientZuoraRestService, request.touchpoint.subService, request.touchpoint.attrService))
+          case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
         }
-      } else request.touchpoint.attrService.get(identityId)
+      } else ("Dynamo", request.touchpoint.attrService.get(identityId))
     }
 
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          pickAttributes(identityId).map {
+          val (fromWhere, attributes) = pickAttributes(identityId)
+          attributes.map {
             case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-              log.info(s"$identityId is a member - $endpointDescription - $attrs")
+              log.info(s"$identityId is a member - $endpointDescription - $attrs found via $fromWhere")
               onSuccessMember(attrs).withHeaders(
                 "X-Gu-Membership-Tier" -> tier,
                 "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
               )
             case Some(attrs) =>
-              log.info(s"$identityId is a contributor - $endpointDescription - $attrs")
+              log.info(s"$identityId is a contributor - $endpointDescription - $attrs found via $fromWhere")
               onSuccessMemberAndOrContributor(attrs)
             case _ =>
               onNotFound
