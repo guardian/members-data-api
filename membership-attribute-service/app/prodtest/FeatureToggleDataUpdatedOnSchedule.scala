@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import scalaz.{-\/, \/-}
 
-class FeatureToggleDataUpdatedOnSchedule(featureToggleService: ScanamoFeatureToggleService)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
+class FeatureToggleDataUpdatedOnSchedule(featureToggleService: ScanamoFeatureToggleService, stage: String)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
 
   private val updateZuoraTrafficPercentageTask: ScheduledTask[Int] = {
     val featureName = "UpdateAttributesFromZuoraLookupPercentage"
@@ -18,11 +18,11 @@ class FeatureToggleDataUpdatedOnSchedule(featureToggleService: ScanamoFeatureTog
         result match {
           case \/-(feature) =>
             val percentage = feature.TrafficPercentage.getOrElse(0)
-            logger.info(s"$featureName scheduled task set percentage to $percentage")
+            logger.info(s"$featureName scheduled task set percentage to $percentage in $stage")
             percentage
           case -\/(e) =>
             logger.warn(s"Tried to update the percentage of traffic for $featureName, but that feature was not " +
-              s"found in the table. Setting traffic to 0%. Error: $e")
+              s"found in the table. Setting traffic to 0% in $stage. Error: $e")
             0
         }
       }
