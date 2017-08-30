@@ -57,7 +57,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean): Action[AnyContent] =
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
       if(endpointEligibleForTest){
