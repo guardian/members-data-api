@@ -33,6 +33,11 @@ object Features {
   }
 
   val unauthenticated = Features(None, adFree = false, adblockMessage = true, None, None, None)
+
+  def notAMember(attributes: Attributes) = {
+    val adFree = attributes.AdFree.getOrElse(false)
+    unauthenticated.copy(adFree = adFree)
+  }
 }
 
 case class Features(
