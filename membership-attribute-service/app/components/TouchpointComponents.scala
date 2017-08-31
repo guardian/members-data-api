@@ -2,7 +2,7 @@ package components
 
 import akka.actor.ActorSystem
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 
 import scalaz.std.scalaFuture._
 import com.gu.config
@@ -63,9 +63,16 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
     RequestRunners.loggingRunner(metrics("zuora-soap"))
   )
   lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
-  lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoAttributesTable)
-  lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoBehaviourTable)
-  lazy val featureToggleService: ScanamoFeatureToggleService = new ScanamoFeatureToggleService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoFeatureToggleTable)
+  private val dynamoClient =
+    AmazonDynamoDBAsyncClientBuilder
+      .standard()
+      .withCredentials(com.gu.aws.CredentialsProvider)
+      .withRegion(Regions.EU_WEST_1)
+      .build()
+
+  lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClient, dynamoAttributesTable)
+  lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(dynamoClient, dynamoBehaviourTable)
+  lazy val featureToggleService: ScanamoFeatureToggleService = new ScanamoFeatureToggleService(dynamoClient, dynamoFeatureToggleTable)
   lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
   lazy val zuoraService = new ZuoraService(soapClient)
   implicit lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
