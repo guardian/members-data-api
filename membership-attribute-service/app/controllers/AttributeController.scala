@@ -142,6 +142,16 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
     }
 
+    def compareThenLogAttributes(attributesFromDynamo: Future[Option[Attributes]], attributesFromZuora: Future[Option[Attributes]]): Unit = {
+      attributesFromDynamo map { dynamoAttributes =>
+        attributesFromZuora map { zuoraAttributes =>
+          val zuoraAttributesWithAdfree = zuoraAttributes map { _.copy(AdFree = dynamoAttributes flatMap(_.AdFree))}
+          if (zuoraAttributesWithAdfree != dynamoAttributes)
+            log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed. Zuora attributes: $zuoraAttributesWithAdfree. Dynamo attributes: $dynamoAttributes")
+        }
+      }
+    }
+
     val attributesDisjunction = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId)))
       accountIds = queryToAccountIds(accounts)
@@ -163,7 +173,11 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }.fold(_ => None, identity)
     }
 
-    val adFreeFlagFromDynamo = attributeService.get(identityId) map (_.flatMap(_.AdFree))
+    val attributesFromDynamo: Future[Option[Attributes]] = attributeService.get(identityId)
+
+    compareThenLogAttributes(attributesFromDynamo, attributes)
+
+    val adFreeFlagFromDynamo = attributesFromDynamo map (_.flatMap(_.AdFree))
 
     attributes flatMap { maybeAttributes =>
       adFreeFlagFromDynamo map { adFree =>
