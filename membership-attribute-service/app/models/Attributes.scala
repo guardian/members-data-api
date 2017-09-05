@@ -11,7 +11,7 @@ import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
 
-case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean)
+case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean, digitalPack: Boolean)
 
 object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
@@ -47,7 +47,8 @@ case class Attributes(
   AdFree: Option[Boolean] = None,
   Wallet: Option[Wallet] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
-  MembershipJoinDate: Option[LocalDate] = None
+  MembershipJoinDate: Option[LocalDate] = None,
+  DigitalSubscriptionExpiryDate: Option[LocalDate] = None
 ) {
 
   require(UserId.nonEmpty)
@@ -60,8 +61,9 @@ case class Attributes(
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isAdFree = AdFree.exists(identity)
   lazy val isContributor = RecurringContributionPaymentPlan.isDefined
+  lazy val isDigitalSubscriber = DigitalSubscriptionExpiryDate.isDefined
 
-  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor) // we want to include staff!
+  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = DigitalSubscriptionExpiryDate.exists(_.isAfter(now))) // we want to include staff!
 }
 
 object Attributes {
@@ -73,8 +75,9 @@ object Attributes {
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "wallet").writeNullable[Wallet](Wallet.jsWrite) and
     (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-    (__ \ "membershipJoinDate").writeNullable[LocalDate]
-  )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
+    (__ \ "membershipJoinDate").writeNullable[LocalDate] and
+    (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate]
+    )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))

@@ -57,7 +57,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
       if(endpointEligibleForTest){
@@ -74,15 +74,24 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
         case Some(identityId) =>
           val (fromWhere, attributes) = pickAttributes(identityId)
           attributes.map {
-            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-              log.info(s"$identityId is a member - $endpointDescription - $attrs found via $fromWhere")
+            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+              log.info(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere")
               onSuccessMember(attrs).withHeaders(
                 "X-Gu-Membership-Tier" -> tier,
                 "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
               )
+            case Some(attrs @ Attributes(_, _, _, _, _, _, _, Some(date))) =>
+              log.info(s"$identityId is a digital subscriber expiring $date - $endpointDescription - found via $fromWhere")
+              onSuccessSupporter(attrs)
+            case Some(attrs @ Attributes(_, _, _, _, _, Some(paymentPlan), _, _)) =>
+              log.info(s"$identityId is a regular $paymentPlan contributor - $endpointDescription - found via $fromWhere")
+              onSuccessSupporter(attrs)
+            case Some(attrs @ Attributes(_, _, _, Some(true), _, _, _, _)) =>
+              log.info(s"$identityId is an ad-free reader - $endpointDescription - found via $fromWhere")
+              onSuccessSupporter(attrs)
             case Some(attrs) =>
-              log.info(s"$identityId is a contributor - $endpointDescription - $attrs found via $fromWhere")
-              onSuccessMemberAndOrContributor(attrs)
+              log.info(s"$identityId is some unknown kind of supporter - $endpointDescription - $attrs found via $fromWhere")
+              onSuccessSupporter(attrs)
             case _ =>
               onNotFound
           }
@@ -220,9 +229,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>

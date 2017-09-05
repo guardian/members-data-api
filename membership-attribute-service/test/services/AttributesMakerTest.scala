@@ -27,7 +27,12 @@ class AttributesMakerTest extends Specification {
     def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack = PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
       RatePlanId("idDigipack"), ProductRatePlanId("prpi"), "Digipack", "desc", "Digital Pack", Product.Digipack, List.empty, PaidCharge(Digipack, BillingPeriod.Year, PricingSummary(Map(GBP -> Price(119.90f, GBP))), ProductRatePlanChargeId("baz")), None, startDate, endDate
     )
-
+    def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges](
+      RatePlanId("idDigipack"), ProductRatePlanId("prpi"), "Sunday", "desc", "Sunday", Product.Delivery, List.empty, PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, None), None, startDate, endDate
+    )
+    def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges](
+      RatePlanId("idDigipack"), ProductRatePlanId("prpi"), "Sunday+", "desc", "Sunday+", Product.Delivery, List.empty, PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, Some(PricingSummary(Map(GBP -> Price(119.90f, GBP))))), None, startDate, endDate
+    )
     def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Contributor = PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
       RatePlanId("idContributor"), ProductRatePlanId("prpi"), "Monthly Contribution", "desc", "Monthly Contribution", Product.Contribution, List.empty, PaidCharge(Contributor, BillingPeriod.Month, PricingSummary(Map(GBP -> Price(5.0f, GBP))), ProductRatePlanChargeId("bar")), None, startDate, endDate
     )
@@ -53,13 +58,39 @@ class AttributesMakerTest extends Specification {
 
     val testId = "123"
     val digipack = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
+    val sunday = toSubscription(false)(NonEmptyList(paperPlan(referenceDate, referenceDate + 1.year)))
+    val sundayPlus = toSubscription(false)(NonEmptyList(paperPlusPlan(referenceDate, referenceDate + 1.year)))
     val membership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate, referenceDate + 1.year)))
     val expiredMembership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate - 2.year, referenceDate - 1.year)))
     val friend = toSubscription(false)(NonEmptyList(friendPlan))
     val contributor = toSubscription(false)(NonEmptyList(contributorPlan(referenceDate, referenceDate + 1.month)))
 
-    "return none when only sub is digipack" in { //for now!
-      AttributesMaker.attributes(testId, List(digipack), referenceDate) === None
+    "return attributes when digipack sub" in {
+      val expected = Some(Attributes(
+        UserId = testId,
+        Tier = None,
+        MembershipNumber = None,
+        AdFree = None,
+        Wallet = None,
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
+      ))
+      AttributesMaker.attributes(testId, List(digipack), referenceDate) === expected
+    }
+
+    "return attributes when one of the subs has a digital benefit" in {
+      val expected = Some(Attributes(
+        UserId = testId,
+        Tier = None,
+        MembershipNumber = None,
+        AdFree = None,
+        Wallet = None,
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
+      ))
+      AttributesMaker.attributes(testId, List(sunday, sundayPlus), referenceDate) === expected
     }
 
     "return none when only sub is expired" in {
