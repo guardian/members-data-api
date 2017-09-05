@@ -143,11 +143,20 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     }
 
     def compareThenLogAttributes(attributesFromDynamo: Future[Option[Attributes]], attributesFromZuora: Future[Option[Attributes]]): Unit = {
-      attributesFromDynamo map { dynamoAttributes =>
-        attributesFromZuora map { zuoraAttributes =>
-          val zuoraAttributesWithAdfree = zuoraAttributes map { _.copy(AdFree = dynamoAttributes flatMap(_.AdFree))}
-          if (zuoraAttributesWithAdfree != dynamoAttributes)
-            log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed. Zuora attributes: $zuoraAttributesWithAdfree. Dynamo attributes: $dynamoAttributes")
+      attributesFromDynamo map { maybeDynamoAttributes =>
+        attributesFromZuora map { maybeZuoraAttributes =>
+          val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes flatMap  { zuoraAttributes =>
+            maybeDynamoAttributes map { dynamoAttributes =>
+              zuoraAttributes.copy(
+                AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
+                Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
+                MembershipNumber = dynamoAttributes.MembershipNumber //I don't think membership number is needed and it comes from Salesforce
+              )
+            }
+          }
+          if (zuoraAttributesWithIgnoredFields != maybeDynamoAttributes)
+            log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
+              s" Zuora attributes: $maybeZuoraAttributes. Dynamo attributes: $maybeDynamoAttributes.")
         }
       }
     }
