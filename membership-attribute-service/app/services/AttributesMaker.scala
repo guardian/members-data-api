@@ -1,33 +1,53 @@
 package services
 
-import com.gu.memsub.Product
+import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
+import com.gu.memsub.{Benefit, Product}
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
 import org.joda.time.LocalDate
+
+import scalaz.syntax.std.boolean._
 
 class AttributesMaker extends LazyLogging {
 
   def attributes(identityId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[Attributes] = {
 
-    val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(subscription => GetCurrentPlans(subscription, forDate).toOption.map(_.head.product))
-    val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil)
-    val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil)
+    def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
+      GetCurrentPlans(subscription, forDate).map(_.list).toList.flatten  // it's expected that users may not have any current plans
+    }
+    def getTopProduct(subscription: Subscription[AnyPlan]): Option[Product] = {
+      getCurrentPlans(subscription).headOption.map(_.product)
+    }
+    def getTopPlanName(subscription: Subscription[AnyPlan]): Option[String] = {
+      getCurrentPlans(subscription).headOption.map(_.name)
+    }
+    def getAllBenefits(subscription: Subscription[AnyPlan]): Set[Benefit] = {
+      getCurrentPlans(subscription).flatMap(_.charges.benefits.list).toSet
+    }
 
-    val tier = membershipSub.headOption.map(sub => GetCurrentPlans(sub, forDate).toOption.map(_.head.charges.benefits.head.id)).flatten
-    val recurringContributionPaymentPlan = contributionSub.headOption.map(sub => GetCurrentPlans(sub, forDate).toOption.map(_.head.name)).flatten
-    val membershipJoinDate = membershipSub.map(_.startDate).headOption
+    val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
 
-    if(!membershipSub.isEmpty || !contributionSub.isEmpty)
-      Some(Attributes(
+    val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil).headOption         // Assumes only 1 membership per Identity customer
+    val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption     // Assumes only 1 regular contribution per Identity customer
+    val subsWhichIncludeDigitalPack = subs.filter(getAllBenefits(_).contains(Benefit.Digipack))
+
+    val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
+
+    hasAttributableProduct.option {
+      val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
+      val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
+      val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
+      val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
+      Attributes(
         UserId = identityId,
         Tier = tier,
         RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
-        MembershipJoinDate = membershipJoinDate
-        )
+        MembershipJoinDate = membershipJoinDate,
+        DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate
       )
-    else None
+    }
   }
 
 }
