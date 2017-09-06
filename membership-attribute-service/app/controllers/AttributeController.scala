@@ -12,7 +12,7 @@ import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.ZuoraRequestCounter
 import configuration.Config
 import configuration.Config.authentication
-import loghandling.LoggingField.LogField
+import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.LoggingWithLogstashFields
 import models.ApiError._
 import models.ApiErrors._
@@ -73,24 +73,26 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       authenticationService.userId(request) match {
         case Some(identityId) =>
           val (fromWhere, attributes) = pickAttributes(identityId)
+          def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+
           attributes.map {
             case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
-              log.info(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere")
+              logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
               onSuccessMember(attrs).withHeaders(
                 "X-Gu-Membership-Tier" -> tier,
                 "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
               )
             case Some(attrs) =>
               attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                log.info(s"$identityId is a digital subscriber expiring $date")
+                logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
               }
               attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                log.info(s"$identityId is a regular $paymentPlan contributor")
+                logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
               }
               attrs.AdFree.foreach { _ =>
-                log.info(s"$identityId is an ad-free reader")
+                logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
               }
-              log.info(s"$identityId supports the guardian - $attrs - found via $fromWhere")
+              logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
               onSuccessSupporter(attrs)
             case _ =>
               onNotFound
