@@ -80,17 +80,17 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
                 "X-Gu-Membership-Tier" -> tier,
                 "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
               )
-            case Some(attrs @ Attributes(_, _, _, _, _, _, _, Some(date))) =>
-              log.info(s"$identityId is a digital subscriber expiring $date - $endpointDescription - found via $fromWhere")
-              onSuccessSupporter(attrs)
-            case Some(attrs @ Attributes(_, _, _, _, _, Some(paymentPlan), _, _)) =>
-              log.info(s"$identityId is a regular $paymentPlan contributor - $endpointDescription - found via $fromWhere")
-              onSuccessSupporter(attrs)
-            case Some(attrs @ Attributes(_, _, _, Some(true), _, _, _, _)) =>
-              log.info(s"$identityId is an ad-free reader - $endpointDescription - found via $fromWhere")
-              onSuccessSupporter(attrs)
             case Some(attrs) =>
-              log.info(s"$identityId is some unknown kind of supporter - $endpointDescription - $attrs found via $fromWhere")
+              attrs.DigitalSubscriptionExpiryDate.foreach { date =>
+                log.info(s"$identityId is a digital subscriber expiring $date")
+              }
+              attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
+                log.info(s"$identityId is a regular $paymentPlan contributor")
+              }
+              attrs.AdFree.foreach { _ =>
+                log.info(s"$identityId is an ad-free reader")
+              }
+              log.info(s"$identityId supports the guardian - $attrs - found via $fromWhere")
               onSuccessSupporter(attrs)
             case _ =>
               onNotFound
