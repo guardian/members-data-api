@@ -12,7 +12,7 @@ import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.ZuoraRequestCounter
 import configuration.Config
 import configuration.Config.authentication
-import loghandling.LoggingField.LogField
+import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.LoggingWithLogstashFields
 import models.ApiError._
 import models.ApiErrors._
@@ -57,7 +57,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
       if(endpointEligibleForTest){
@@ -73,16 +73,27 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       authenticationService.userId(request) match {
         case Some(identityId) =>
           val (fromWhere, attributes) = pickAttributes(identityId)
+          def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+
           attributes.map {
-            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
-              log.info(s"$identityId is a member - $endpointDescription - $attrs found via $fromWhere")
+            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+              logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
               onSuccessMember(attrs).withHeaders(
                 "X-Gu-Membership-Tier" -> tier,
                 "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
               )
             case Some(attrs) =>
-              log.info(s"$identityId is a contributor - $endpointDescription - $attrs found via $fromWhere")
-              onSuccessMemberAndOrContributor(attrs)
+              attrs.DigitalSubscriptionExpiryDate.foreach { date =>
+                logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
+              }
+              attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
+                logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
+              }
+              attrs.AdFree.foreach { _ =>
+                logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
+              }
+              logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+              onSuccessSupporter(attrs)
             case None if sendAttributesIfNotFound =>
               Attributes(identityId, AdFree = Some(false))
             case _ =>
@@ -145,11 +156,22 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     }
 
     def compareThenLogAttributes(attributesFromDynamo: Future[Option[Attributes]], attributesFromZuora: Future[Option[Attributes]]): Unit = {
-      attributesFromDynamo map { dynamoAttributes =>
-        attributesFromZuora map { zuoraAttributes =>
-          val zuoraAttributesWithAdfree = zuoraAttributes map { _.copy(AdFree = dynamoAttributes flatMap(_.AdFree))}
-          if (zuoraAttributesWithAdfree != dynamoAttributes)
-            log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed. Zuora attributes: $zuoraAttributesWithAdfree. Dynamo attributes: $dynamoAttributes")
+      attributesFromDynamo map { maybeDynamoAttributes =>
+        attributesFromZuora map { maybeZuoraAttributes =>
+          val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes flatMap  { zuoraAttributes =>
+            maybeDynamoAttributes map { dynamoAttributes =>
+              zuoraAttributes.copy(
+                AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
+                Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
+                MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
+                MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
+                DigitalSubscriptionExpiryDate = None
+              )
+            }
+          }
+          if (zuoraAttributesWithIgnoredFields != maybeDynamoAttributes)
+            log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
+              s" Zuora attributes: $maybeZuoraAttributes. Dynamo attributes: $maybeDynamoAttributes.")
         }
       }
     }
@@ -213,9 +235,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessMemberAndOrContributor = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true, sendAttributesIfNotFound = true)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true, sendAttributesIfNotFound = true)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
