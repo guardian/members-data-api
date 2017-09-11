@@ -63,7 +63,7 @@ case class Attributes(
   lazy val isContributor = RecurringContributionPaymentPlan.isDefined
   lazy val digitalSubscriberHasActivePlan = DigitalSubscriptionExpiryDate.exists(_.isAfter(now))
 
-  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan || isStaffTier)
+  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
 }
 
 object Attributes {
