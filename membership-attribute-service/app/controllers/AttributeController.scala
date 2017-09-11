@@ -57,7 +57,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
       if(endpointEligibleForTest){
@@ -94,6 +94,8 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
               }
               logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
               onSuccessSupporter(attrs)
+            case None if sendAttributesIfNotFound =>
+              Attributes(identityId, AdFree = Some(false))
             case _ =>
               onNotFound
           }
@@ -234,7 +236,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   }
 
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true, sendAttributesIfNotFound = true)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
   def zuoraMe = zuoraLookup("zuoraLookup")
 

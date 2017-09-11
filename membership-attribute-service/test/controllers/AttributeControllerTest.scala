@@ -168,13 +168,31 @@ class AttributeControllerTest extends Specification with AfterAll {
       status(result3) shouldEqual UNAUTHORIZED
     }
 
-    "return not found for unknown users in membership and attributes" in {
+    "return not found for unknown users in membership" in {
       val req = FakeRequest().withCookies(invalidUserCookie)
-      val result1 = controller.membership(req)
-      val result2 = controller.attributes(req)
+      val result = controller.membership(req)
 
-      status(result1) shouldEqual NOT_FOUND
-      status(result2) shouldEqual NOT_FOUND
+      status(result) shouldEqual NOT_FOUND
+    }
+
+    "return all false attributes for unknown users" in {
+      val req = FakeRequest().withCookies(invalidUserCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      jsonBody shouldEqual
+        Json.parse("""
+                     |{
+                     |  "userId": "456",
+                     |  "adFree": false,
+                     |  "contentAccess": {
+                     |    "member": false,
+                     |    "paidMember": false,
+                     |    "recurringContributor": false,
+                     |    "digitalPack": false
+                     |  }
+                     |}""".stripMargin)
     }
 
     "retrieve default features for unknown users" in {
