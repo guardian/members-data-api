@@ -66,6 +66,9 @@ Parameters:
   LoggingPolicy:
     Description: Policy needed to access the kinesis stream
     Type: String
+  ELBSSLCertificate:
+    Description: ELB SSL Certificate ARN
+    Type: String
 Mappings:
   StageVariables:
     PROD:
@@ -78,7 +81,6 @@ Mappings:
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       GiraffeTopic: giraffe
-      SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
 
     CODE:
       NotificationAlarmPeriod: 1200
@@ -90,7 +92,6 @@ Mappings:
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       GiraffeTopic: giraffe-code
-      SSLCertificate: arn:aws:iam::865473395570:server-certificate/members-data-api.theguardian.com
 
 Resources:
   MembershipRole:
@@ -205,8 +206,7 @@ Resources:
       - LoadBalancerPort: '443'
         InstancePort: '9000'
         Protocol: HTTPS
-        SSLCertificateId:
-          Fn::FindInMap: [ StageVariables, { Ref: Stage }, SSLCertificate ]
+        SSLCertificateId: !Ref ELBSSLCertificate
       ConnectionDrainingPolicy:
         Enabled: 'true'
         Timeout: '60'
