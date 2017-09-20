@@ -7,7 +7,6 @@ import com.gu.zuora.ZuoraRestService.{AccountIdRecord, QueryResponse}
 import models.Attributes
 import org.joda.time.LocalDate
 import org.specs2.concurrent.ExecutionEnv
-import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
 import testdata.SubscriptionTestData
@@ -16,7 +15,7 @@ import scala.concurrent.Future
 import scalaz.\/
 
 
-class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification with Mockito with SubscriptionTestData {
+class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData {
 
   override def referenceDate = new LocalDate(2017, 9, 20)
 
@@ -44,7 +43,7 @@ class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification
         val contributorDigitalPackAdfreeAttributes = contributorDigitalPackAttributes.copy(AdFree = Some(true))
         val outdatedAttributesButWithAdFree = contributorDigitalPackAttributes.copy(DigitalSubscriptionExpiryDate = None, AdFree = Some(true))
 
-        mockScanamoService.get(testId) returns Future.successful(Some(outdatedAttributesButWithAdFree))
+        override def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(outdatedAttributesButWithAdFree))
 
         val attributes: Future[Option[Attributes]] = zuoraAttributeService.attributesFromZuora(testId)
         attributes must be_==(Some(contributorDigitalPackAdfreeAttributes)).await
@@ -133,21 +132,15 @@ class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification
   }
 
   trait contributor extends Scope {
-    val mockScanamoService = mock[AttributeService]
-
-    mockScanamoService.get(testId) returns Future.successful(Some(contributorAttributes))
-
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(List(contributor)))
+    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(contributorAttributes))
 
-    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, mockScanamoService)
+    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
   }
 
   trait contributorDigitalPack extends Scope {
-    val mockScanamoService = mock[AttributeService]
-
     val contributorDigitalPackAttributes = Attributes(UserId = testId, None, None, None, None, RecurringContributionPaymentPlan = Some("Monthly Contribution"), None, DigitalSubscriptionExpiryDate = Some(digitalPackExpirationDate))
-    mockScanamoService.get(testId) returns Future.successful(Some(contributorDigitalPackAttributes))
 
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(twoAccountsQueryResponse))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = {
@@ -159,39 +152,37 @@ class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification
         }
       }
     }
+    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(contributorDigitalPackAttributes))
 
-    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, mockScanamoService)
+    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
   }
 
   trait noAccounts extends Scope {
     val emptyQueryResponse = QueryResponse(records = Nil, size = 0)
-    val mockScanamoService = mock[AttributeService]
 
-    mockScanamoService.get(testId) returns Future.successful(Some(contributorAttributes))
-
+    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(None)
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(emptyQueryResponse))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(Nil))
 
-    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, mockScanamoService)
+    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
   }
 
   trait accountButNoSubscriptions extends Scope {
-    val mockScanamoService = mock[AttributeService]
-
+    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(None)
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(Nil))
 
-    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, mockScanamoService)
+    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
   }
 
   trait errorWhenGettingSubs extends Scope {
-    val mockScanamoService = mock[AttributeService]
     val testErrorMessage = "Something bad happened! D:"
 
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.left(testErrorMessage))
+    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(None)
 
-    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, mockScanamoService)
+    val zuoraAttributeService = new ZuoraAttributeService(identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
   }
 
 }

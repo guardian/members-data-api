@@ -18,7 +18,9 @@ import scalaz.syntax.traverse._
 import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
 
-class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ QueryResponse], subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]], scanamoAttributeService: AttributeService) extends LoggingWithLogstashFields {
+class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ QueryResponse],
+                            subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
+                            dynamoAttributeGetter: String => Future[Option[Attributes]]) extends LoggingWithLogstashFields {
 
   def get(userId: String): Future[Option[Attributes]] = attributesFromZuora(userId)
 
@@ -45,7 +47,7 @@ class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ Q
       }.fold(_ => None, identity)
     }
 
-    val attributesFromDynamo: Future[Option[Attributes]] = scanamoAttributeService.get(identityId)
+    val attributesFromDynamo: Future[Option[Attributes]] = dynamoAttributeGetter(identityId)
 
     dynamoAndZuoraAgree(attributesFromDynamo, attributes, identityId)
 
