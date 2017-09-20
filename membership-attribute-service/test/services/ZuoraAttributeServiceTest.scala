@@ -35,11 +35,6 @@ class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification
   "ZuoraAttributeService" should {
 
     "attributesFromZuora" should {
-      "return attributes for a user who has one subscription" in new contributor {
-        val attributes: Future[Option[Attributes]] = zuoraAttributeService.attributesFromZuora(testId)
-        attributes must be_==(Some(contributorAttributes)).await
-      }
-
       "return attributes for a user who has many subscriptions" in new contributorDigitalPack {
         val attributes: Future[Option[Attributes]] = zuoraAttributeService.attributesFromZuora(testId)
         attributes must be_==(Some(contributorDigitalPackAttributes)).await
@@ -62,12 +57,6 @@ class ZuoraAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification
     }
 
     "getSubscriptions" should {
-      "get a contributor subscription for a user who is a contributor" in new contributor {
-        val subscriptions = zuoraAttributeService.getSubscriptions(List(testAccountId), testId)
-
-        subscriptions must be_==(\/.right(List(contributor))).await
-      }
-
       "get all subscriptions if a user has multiple" in new contributorDigitalPack {
         val subscriptions = zuoraAttributeService.getSubscriptions(List(testAccountId, anotherTestAccountId), testId)
 
