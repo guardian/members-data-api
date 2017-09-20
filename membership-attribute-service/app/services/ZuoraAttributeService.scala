@@ -35,9 +35,7 @@ class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ Q
         })
       )
     } yield {
-      val whatami = AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
-      println(whatami)
-      whatami
+      AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
     }
 
     val attributes = attributesDisjunction.run.map {
