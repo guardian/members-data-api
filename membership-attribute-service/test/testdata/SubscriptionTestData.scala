@@ -10,9 +10,9 @@ import org.joda.time.LocalDate
 
 import scalaz.NonEmptyList
 
-object SubscriptionTestDataHelper {
+trait SubscriptionTestData {
 
-  val referenceDate = new LocalDate(2016, 10, 26)
+  def referenceDate: LocalDate
 
   val friendPlan = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Friend.type]](
     RatePlanId("idFriend"), ProductRatePlanId("prpi"), "Friend", "desc", "Friend", Product.Membership,FreeCharge(Friend, Set(GBP)), referenceDate

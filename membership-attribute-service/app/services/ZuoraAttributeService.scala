@@ -2,9 +2,8 @@ package services
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
-import com.gu.memsub.subsv2.services.SubscriptionService
-import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -12,25 +11,21 @@ import models.Attributes
 import org.joda.time.LocalDate
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
 import scala.concurrent.Future
+import scalaz.std.list._
 import scalaz.std.scalaFuture._
-import scalaz.syntax.std.option._
-
-import scalaz.syntax.std.either._
-import scalaz._
-import std.list._
-import syntax.traverse._
+import scalaz.syntax.traverse._
+import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
 
-class ZuoraAttributeService(patientZuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future], scanamoAttributeService: AttributeService) extends LoggingWithLogstashFields {
+class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ QueryResponse], subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]], scanamoAttributeService: AttributeService) extends LoggingWithLogstashFields {
 
   def get(userId: String): Future[Option[Attributes]] = attributesFromZuora(userId)
 
   def attributesFromZuora(identityId: String): Future[Option[Attributes]] = {
 
     val attributesDisjunction = for {
-      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, patientZuoraRestService), identityId))
+      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
         if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds, identityId), identityId)
@@ -40,7 +35,9 @@ class ZuoraAttributeService(patientZuoraRestService: ZuoraRestService[Future], s
         })
       )
     } yield {
-      AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
+      val whatami = AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
+      println(whatami)
+      whatami
     }
 
     val attributes = attributesDisjunction.run.map {
@@ -71,13 +68,7 @@ class ZuoraAttributeService(patientZuoraRestService: ZuoraRestService[Future], s
 
   def getSubscriptions(accountIds: List[AccountId], identityId: String): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
 
-    def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
-      val x = subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
-      println("subscription?? "+x)
-      println("accountID?? "+accountId)
-      println(".... as a string "+accountId.get)
-      x
-    }
+    def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = subscriptionsForAccountId(accountId)(anyPlanReads)
 
     val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverse[Future, Disjunction[String, List[Subscription[AnyPlan]]]](id => {
       sub(id)
@@ -88,7 +79,7 @@ class ZuoraAttributeService(patientZuoraRestService: ZuoraRestService[Future], s
     maybeSubs.map {
       _.leftMap { errorMsg =>
         log.warn(s"We tried getting subscription for a user with identityId $identityId, but then $errorMsg")
-        s"We called Zuora to get subscriptions for a user with identityId $identityId but the call failed"
+        s"We called Zuora to get subscriptions for a user with identityId $identityId but the call failed because $errorMsg"
       } map { subs =>
         log.info(s"We got subs for identityId $identityId from Zuora and there were ${subs.length}")
         subs
@@ -141,8 +132,8 @@ class ZuoraAttributeService(patientZuoraRestService: ZuoraRestService[Future], s
 
   def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
 
-  def zuoraAccountsQuery(identityId: String, patientZuoraRestService: ZuoraRestService[Future]): Future[Disjunction[String, QueryResponse]] =
-    patientZuoraRestService.getAccounts(identityId).map {
+  def zuoraAccountsQuery(identityId: String, identityIdToAccountIds: String => Future[String \/ QueryResponse]): Future[Disjunction[String, QueryResponse]] =
+    identityIdToAccountIds(identityId).map {
       _.leftMap { error =>
         log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: ${error}")
         s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."

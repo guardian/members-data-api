@@ -2,11 +2,12 @@ package services
 
 import com.github.nscala_time.time.Implicits._
 import models.Attributes
+import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
+import testdata.SubscriptionTestData
 
-import testdata.SubscriptionTestDataHelper._
-
-class AttributesMakerTest extends Specification {
+class AttributesMakerTest extends Specification with SubscriptionTestData {
+  override def referenceDate = new LocalDate(2016, 10, 26)
 
   "attributes" should {
     val testId = "123"
