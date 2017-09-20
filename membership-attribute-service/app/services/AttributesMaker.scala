@@ -7,7 +7,6 @@ import com.gu.memsub.{Benefit, Product}
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
 import org.joda.time.LocalDate
-import org.joda.time.LocalDate.now
 
 import scalaz.syntax.std.boolean._
 
@@ -41,13 +40,12 @@ class AttributesMaker extends LazyLogging {
       val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
       val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
       val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
-      val staffExpiryDate: Option[LocalDate] = tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
       Attributes(
         UserId = identityId,
         Tier = tier,
         RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
         MembershipJoinDate = membershipJoinDate,
-        DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate orElse staffExpiryDate
+        DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate
       )
     }
   }
