@@ -8,6 +8,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
+import scalaz.syntax.std.boolean._
 
 import scala.language.implicitConversions
 
@@ -61,7 +62,9 @@ case class Attributes(
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isAdFree = AdFree.exists(identity)
   lazy val isContributor = RecurringContributionPaymentPlan.isDefined
-  lazy val digitalSubscriberHasActivePlan = DigitalSubscriptionExpiryDate.exists(_.isAfter(now))
+  lazy val staffExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
+  lazy val logicalDigitalSubscriptionExpiryDate =  Some(Set(staffExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
+  lazy val digitalSubscriberHasActivePlan = logicalDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
 }
@@ -77,7 +80,7 @@ object Attributes {
     (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
     (__ \ "membershipJoinDate").writeNullable[LocalDate] and
     (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate]
-    )(unlift(Attributes.unapply)).addField("contentAccess", _.contentAccess)
+    )(unlift(Attributes.unapply)).addField("digitalSubscriptionExpiryDate", _.logicalDigitalSubscriptionExpiryDate).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
