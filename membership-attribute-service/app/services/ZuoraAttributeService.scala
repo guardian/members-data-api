@@ -74,8 +74,6 @@ class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ Q
       sub(id)
     }).map(_.sequenceU.map(_.flatten))
 
-//    val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
-
     maybeSubs.map {
       _.leftMap { errorMsg =>
         log.warn(s"We tried getting subscription for a user with identityId $identityId, but then $errorMsg")
