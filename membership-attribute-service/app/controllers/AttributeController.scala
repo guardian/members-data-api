@@ -1,5 +1,6 @@
 package controllers
 import actions._
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
@@ -25,6 +26,7 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
 import scalaz.{EitherT, \/}
+import services.AttributesFromZuora._
 
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
@@ -52,7 +54,14 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       if(endpointEligibleForTest){
         val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
         isInTest(identityId, percentageInTest) match {
-          case true => ("Zuora", request.touchpoint.zuoraAttrService.attributesFromZuora(identityId))
+          case true => {
+            val attributesFromZuora = getAttributes(
+              identityId = identityId,
+              identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
+              subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
+              dynamoAttributeGetter = request.touchpoint.attrService.get)
+            ("Zuora", attributesFromZuora)
+          }
           case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
         }
       } else ("Dynamo", request.touchpoint.attrService.get(identityId))
@@ -100,7 +109,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          request.touchpoint.zuoraAttrService.attributesFromZuora(identityId).map {
+          getAttributes(identityId, request.touchpoint.zuoraRestService.getAccounts, accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads), request.touchpoint.attrService.get).map {
             case Some(attrs) =>
               log.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
               attrs

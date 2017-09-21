@@ -18,19 +18,18 @@ import scalaz.syntax.traverse._
 import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
 
-class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ QueryResponse],
-                            subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-                            dynamoAttributeGetter: String => Future[Option[Attributes]]) extends LoggingWithLogstashFields {
+object AttributesFromZuora extends LoggingWithLogstashFields {
 
-  def get(userId: String): Future[Option[Attributes]] = attributesFromZuora(userId)
-
-  def attributesFromZuora(identityId: String): Future[Option[Attributes]] = {
+  def getAttributes(identityId: String,
+                    identityIdToAccountIds: String => Future[String \/ QueryResponse],
+                    subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
+                    dynamoAttributeGetter: String => Future[Option[Attributes]]): Future[Option[Attributes]] = {
 
     val attributesDisjunction = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
-        if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds, identityId), identityId)
+        if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds, identityId, subscriptionsForAccountId), identityId)
         else Future.successful(\/.right {
           log.info(s"User with identityId $identityId has no accountIds and thus no subscriptions.")
           Nil
@@ -66,7 +65,9 @@ class ZuoraAttributeService(identityIdToAccountIds: String => Future[String \/ Q
   }
 
 
-  def getSubscriptions(accountIds: List[AccountId], identityId: String): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
+  def getSubscriptions(accountIds: List[AccountId],
+                       identityId: String,
+                       subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
 
     def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = subscriptionsForAccountId(accountId)(anyPlanReads)
 
