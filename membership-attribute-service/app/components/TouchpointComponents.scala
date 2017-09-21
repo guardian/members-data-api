@@ -7,7 +7,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import scalaz.std.scalaFuture._
 import com.gu.config
 import com.gu.memsub.services.PaymentService
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
 import com.gu.monitoring.ServiceMetrics

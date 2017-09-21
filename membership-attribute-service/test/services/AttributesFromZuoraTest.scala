@@ -18,7 +18,7 @@ import scalaz.\/
 
 class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData {
 
-  override def referenceDate = new LocalDate(2017, 9, 20)
+  override def referenceDate = new LocalDate(2016, 9, 20)
 
   val testId = "12345"
   val testAccountId = AccountId("accountId")
@@ -36,7 +36,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
     "attributesFromZuora" should {
       "return attributes for a user who has many subscriptions" in new contributorDigitalPack {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, referenceDate)
         attributes must be_==(Some(contributorDigitalPackAttributes)).await
       }
 
@@ -46,12 +46,12 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
         override def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(outdatedAttributesButWithAdFree))
 
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, referenceDate)
         attributes must be_==(Some(contributorDigitalPackAdfreeAttributes)).await
       }
 
       "return None if the user has no account ids" in new noAccounts {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter)
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, referenceDate)
         attributes must be_==(None).await
       }
     }

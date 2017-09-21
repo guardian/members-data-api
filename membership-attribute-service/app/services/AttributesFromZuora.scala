@@ -23,7 +23,8 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
   def getAttributes(identityId: String,
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-                    dynamoAttributeGetter: String => Future[Option[Attributes]]): Future[Option[Attributes]] = {
+                    dynamoAttributeGetter: String => Future[Option[Attributes]],
+                    forDate: LocalDate = LocalDate.now()): Future[Option[Attributes]] = {
 
     val attributesDisjunction = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
@@ -36,7 +37,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         })
       )
     } yield {
-      AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
+      AttributesMaker.attributes(identityId, subscriptions, forDate)
     }
 
     val attributes = attributesDisjunction.run.map {
