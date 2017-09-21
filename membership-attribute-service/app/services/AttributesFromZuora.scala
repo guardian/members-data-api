@@ -48,7 +48,9 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val attributesFromDynamo: Future[Option[Attributes]] = dynamoAttributeGetter(identityId)
 
-    dynamoAndZuoraAgree(attributesFromDynamo, attributes, identityId)
+    dynamoAndZuoraAgree(attributesFromDynamo, attributes, identityId).onFailure {
+      case error => log.warn(s"Tried to compare attributes for $identityId but then ${error.getMessage}", error)
+    }
 
     attributesWithFlagFromDynamo(attributes, attributesFromDynamo)
   }
