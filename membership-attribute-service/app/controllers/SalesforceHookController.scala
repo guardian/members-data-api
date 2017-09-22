@@ -17,8 +17,8 @@ import play.api.mvc.Results.Ok
 import scala.concurrent.Future
 import scala.util.Failure
 import scalaz.std.scalaFuture._
-import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import scalaz.syntax.std.option._
+import scalaz.{-\/, EitherT, OptionT, \/-}
 
 /**
   * There is a workflow rule in Salesforce that triggers a request to this salesforce-hook endpoint
@@ -98,6 +98,8 @@ class SalesforceHookController extends LazyLogging {
 
     def updateMemberRecord(membershipUpdate: MembershipUpdate): Future[Object] = {
 
+      // TODO - Either deprecate or refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
+
       def updateDynamo(attributes: Attributes) = {
         attributeService.update(attributes).map { putItemResult =>
           info(s"Successfully inserted $attributes into ${touchpoint.dynamoAttributesTable}.")
@@ -126,7 +128,8 @@ class SalesforceHookController extends LazyLogging {
           paymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId))
           paymentMethod <- OptionT(touchpoint.zuoraService.getPaymentMethod(paymentMethodId).map(Option(_)))
           customerToken <- OptionT(Future.successful(paymentMethod.secondTokenId))
-          stripeCustomer <- OptionT(touchpoint.stripeService.Customer.read(customerToken).map(Option(_)))
+          stripeService = if (account.paymentGateway.contains(touchpoint.auStripeService.paymentGateway.gatewayName)) touchpoint.auStripeService else touchpoint.ukStripeService
+          stripeCustomer <- OptionT(stripeService.Customer.read(customerToken).map(Option(_)))
         } yield {
           Wallet(membershipCard = Some(CardDetails.fromStripeCard(stripeCustomer.card, Membership.id)))
         }
