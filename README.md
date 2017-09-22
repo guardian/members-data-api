@@ -1,6 +1,6 @@
 # Membership Attribute Service
 
-The membership attribute service provides an API for managing and retrieving membership attributes associated with a user. It runs on https://members-data-api.theguardian.com/
+The membership attribute service provides an API for managing and retrieving membership attributes associated with a user. It runs on [https://members-data-api.theguardian.com/](https://members-data-api.theguardian.com/)
 
 ## Setting it up locally
 
@@ -17,21 +17,21 @@ Download the config (you may need to `brew install awscli` to get the command.
 
 Get Janus credentials for membership.
 
-To start the service run ./start-api.sh
+To start the service run `./start-api.sh`
 
 The service will be running on 9400 and use the MembershipAttributes-DEV DynamoDB table.
 
-go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership
+go to [https://members-data-api.thegulocal.com/user-attributes/me/mma-membership](https://members-data-api.thegulocal.com/user-attributes/me/mma-membership)
 
 ## Running tests
 
-run sbt and then test.  It will download a dynamodb table from S3 and use that.  Tip: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
+run `sbt` and then test.  It will download a dynamodb table from S3 and use that.  _Tip_: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
 
 ## Testing manually
 
 A good strategy for testing your stuff is to run a local identity-frontend, membership-frontend and members-data-api.  Then sign up for membership and hit the above url, which should return the right JSON structure.
 
-The /me endpoints use the GU_U and SC_GU_U from the Cookie request header.
+The `/me` endpoints use the `GU_U` and `SC_GU_U` from the Cookie request header.
 
 ### Identity Frontend
 
