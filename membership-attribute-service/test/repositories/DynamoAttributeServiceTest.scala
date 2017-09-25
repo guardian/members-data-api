@@ -8,8 +8,8 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
 import models.Attributes
 import org.joda.time.LocalDate
+import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.MembershipAttributesSerializer.AttributeNames
 import services.ScanamoAttributeService
 
@@ -19,9 +19,9 @@ import scala.concurrent.{Await, Future}
 /**
  * Depends upon DynamoDB Local to be running on the default port of 8000.
  *
- * Amazon's embedded version doesn't work with an async client, so using https://github.com/grahamar/sbt-dynamodb
+ * Amazon's embedded version doesn't work with an async client, so using https://github.com/localytics/sbt-dynamodb
  */
-class DynamoAttributeServiceTest extends Specification {
+class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification {
 
   private val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
@@ -58,7 +58,7 @@ class DynamoAttributeServiceTest extends Specification {
         retrieved <- repo.get(userId)
       } yield retrieved
 
-      Await.result(result, 5.seconds) shouldEqual Some(attributes)
+      result must be_==(Some(attributes)).await
     }
 
     "retrieve not found api error when attributes not found for user" in {
@@ -66,7 +66,7 @@ class DynamoAttributeServiceTest extends Specification {
         retrieved <- repo.get(UUID.randomUUID().toString)
       } yield retrieved
 
-      Await.result(result, 5.seconds) shouldEqual None
+      result must be_==(None).await
     }
   }
 
@@ -85,6 +85,57 @@ class DynamoAttributeServiceTest extends Specification {
         Attributes(UserId = "1234", Tier = Some("Partner")),
         Attributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11)))
       )
+    }
+  }
+
+  "update" should {
+    "add the attribute if it's not already in the table" in {
+      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"))
+
+      val result = for {
+        _ <- repo.update(newAttributes)
+        retrieved <- repo.get("6789")
+      } yield retrieved
+
+      result must be_==(Some(newAttributes)).await
+    }
+
+    "update a user who has bought a digital subscription" in {
+      val oldAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"))
+      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+
+      val result = for {
+        _ <- repo.set(oldAttributes)
+        _ <- repo.update(newAttributes)
+        retrieved <- repo.get("6789")
+      } yield retrieved
+
+      result must be_==(Some(newAttributes)).await
+    }
+
+    "leave attribute in the table if nothing has changed" in {
+      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+
+      val result = for {
+        _ <- repo.set(existingAttributes)
+        _ <- repo.update(existingAttributes)
+        retrieved <- repo.get("6789")
+      } yield retrieved
+
+      result must be_==(Some(existingAttributes)).await
+    }
+
+    "leave existing values in an attribute alone" in {
+      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val attributesFromZuora = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+
+      val result = for {
+        _ <- repo.set(existingAttributes)
+        _ <- repo.update(attributesFromZuora)
+        retrieved <- repo.get("6789")
+      } yield retrieved
+
+      result must be_==(Some(existingAttributes)).await
     }
   }
 }

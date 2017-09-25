@@ -60,6 +60,10 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
               identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
               subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
               dynamoAttributeGetter = request.touchpoint.attrService.get)
+
+              attributesFromZuora.map(_.map(request.touchpoint.attrService.update(_))).onFailure {
+                case error => log.warn(s"Tried update attributes for $identityId but then ${error.getMessage}", error)
+              }
             ("Zuora", attributesFromZuora)
           }
           case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
@@ -105,22 +109,6 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       }
   }
 
-  private def zuoraLookup(endpointDescription: String) =
-    backendAction.async { implicit request =>
-      authenticationService.userId(request) match {
-        case Some(identityId) =>
-          getAttributes(identityId, request.touchpoint.zuoraRestService.getAccounts, accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads), request.touchpoint.attrService.get).map {
-            case Some(attrs) =>
-              log.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
-              attrs
-            case _ => notFound
-          }
-        case None =>
-          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-          Future(unauthorized)
-      }
-  }
-
   val notFound = ApiError("Not found", "Could not find user in the database", 404)
   val notAMember = ApiError("Not found", "User was found but they are not a member", 404)
 
@@ -133,7 +121,6 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true, sendAttributesIfNotFound = true)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
-  def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 
