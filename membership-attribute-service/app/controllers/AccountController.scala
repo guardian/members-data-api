@@ -3,7 +3,7 @@ import actions._
 import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -20,9 +20,9 @@ import play.api.mvc.Results._
 import play.filters.cors.CORSActionBuilder
 
 import scala.concurrent.Future
-import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 
 class AccountController extends LazyLogging {
 
@@ -33,6 +33,9 @@ class AccountController extends LazyLogging {
   lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 
   def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+
+    // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
+
     val updateForm = Form { single("stripeToken" -> nonEmptyText) }
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
@@ -41,8 +44,10 @@ class AccountController extends LazyLogging {
       user <- EitherT(Future.successful( maybeUserId \/> "no identity cookie for user"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      account <- EitherT(tp.zuoraService.getAccount(subscription.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
+      stripeService = if (account.paymentGateway.contains(tp.auStripeService.paymentGateway)) tp.auStripeService else tp.ukStripeService
       stripeCardToken <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
-      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken).map(_ \/> "something missing when try to zuora payment card"))
+      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService).map(_ \/> "something missing when try to zuora payment card"))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
         logger.info(s"Successfully updated card for identity user: $user")
