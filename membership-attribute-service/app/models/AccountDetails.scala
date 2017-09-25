@@ -30,7 +30,7 @@ object AccountDetails {
         case card: PaymentCard => Json.obj(
           "paymentMethod" -> "Card",
           "card" -> Json.obj(
-            "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("XXXX"),
+            "last4" -> card.lastFourDigits,
             "type" -> card.cardType
           )
         )
