@@ -11,6 +11,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
+import com.gu.stripe.Stripe.Deserializer._
 
 
 class StripeHookController extends Controller with LazyLogging {
