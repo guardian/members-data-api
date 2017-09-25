@@ -6,7 +6,7 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
-import models.Attributes
+import models.{Attributes, CardDetails, Wallet}
 import org.joda.time.LocalDate
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
@@ -125,9 +125,11 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(existingAttributes)).await
     }
 
-    "leave existing values in an attribute alone" in {
-      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+    "leave existing values in an attribute that cannot be determined from zuora subscriptions alone" in {
+      val testWallet = Wallet(membershipCard = Some(CardDetails(last4 = "5678", expirationMonth = 5, expirationYear = 20, forProduct = "test")))
+      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), Wallet = Some(testWallet))
       val attributesFromZuora = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val attributesInDynamoAfterUpdate = existingAttributes.copy(DigitalSubscriptionExpiryDate = attributesFromZuora.DigitalSubscriptionExpiryDate)
 
       val result = for {
         _ <- repo.set(existingAttributes)
@@ -135,7 +137,7 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
         retrieved <- repo.get("6789")
       } yield retrieved
 
-      result must be_==(Some(existingAttributes)).await
+      result must be_==(Some(attributesInDynamoAfterUpdate)).await
     }
   }
 }
