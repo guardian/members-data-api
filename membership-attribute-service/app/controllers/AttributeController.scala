@@ -62,7 +62,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
               dynamoAttributeGetter = request.touchpoint.attrService.get)
 
               attributesFromZuora.map(_.map(request.touchpoint.attrService.update(_))).onFailure {
-                case error => log.warn(s"Tried update attributes for $identityId but then ${error.getMessage}", error)
+                case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
               }
             ("Zuora", attributesFromZuora)
           }
