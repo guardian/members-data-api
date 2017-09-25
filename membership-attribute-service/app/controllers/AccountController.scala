@@ -66,14 +66,20 @@ class AccountController extends LazyLogging {
   }
 
   def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
+    val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
+    val stripeServices = Seq(tp.ukStripeService, tp.auStripeService)
+
     logger.info(s"Attempting to retrieve payment details for identity user: $maybeUserId")
     (for {
       user <- OptionEither.liftFutureEither(maybeUserId)
-      contact <- OptionEither(request.touchpoint.contactRepo.get(user))
-      sub <- OptionEither(request.touchpoint.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
-      details <- OptionEither.liftOption(request.touchpoint.paymentService.paymentDetails(sub).map[\/[String, PaymentDetails]](\/.right))
-    } yield (contact, details).toResult).run.run.map {
+      contact <- OptionEither(tp.contactRepo.get(user))
+      freeOrPaidSub <- OptionEither(tp.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
+      details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map[\/[String, PaymentDetails]](\/.right))
+      sub = freeOrPaidSub.fold(identity, identity)
+      account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
+      publicKey = account.paymentGateway.flatMap(paymentGateway => stripeServices.find(_.paymentGateway == paymentGateway)).map(_.publicKey)
+    } yield (contact, details, publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: $maybeUserId")
         result
