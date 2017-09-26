@@ -31,11 +31,12 @@ object AccountDetails {
         )
         case card: PaymentCard => Json.obj(
           "paymentMethod" -> "Card",
-          "card" -> Json.obj(
-            "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("XXXX"),
-            "type" -> card.cardType,
-            "stripePublicKeyForUpdate" -> stripePublicKey.mkString
-          )
+          "card" -> {
+            Json.obj(
+              "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("••••"),
+              "type" -> card.cardType
+            ) ++ stripePublicKey.map(k => Json.obj("stripePublicKeyForUpdate" -> k)).getOrElse(Json.obj())
+          }
         )
         case dd: GoCardless => Json.obj(
           "paymentMethod" -> "DirectDebit",
