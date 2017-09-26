@@ -25,7 +25,7 @@ import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
-import scalaz.{EitherT, \/}
+import scalaz.{EitherT, OptionT, \/}
 import services.AttributesFromZuora._
 
 
@@ -61,10 +61,14 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
               subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
               dynamoAttributeGetter = request.touchpoint.attrService.get)
 
-              attributesFromZuora.map(_.map(request.touchpoint.attrService.update(_))).onFailure {
-                case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
-              }
-            ("Zuora", attributesFromZuora)
+              val cachedAttributes: OptionT[Future, Attributes] = for {
+                attributes <- OptionT(attributesFromZuora)
+                _ = request.touchpoint.attrService.update(attributes).onFailure {
+                  case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
+                }
+              } yield attributes
+
+            ("Zuora", cachedAttributes.run)
           }
           case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
         }
