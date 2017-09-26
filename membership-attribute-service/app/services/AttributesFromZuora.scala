@@ -4,6 +4,7 @@ import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
+import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -24,6 +25,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
                     dynamoAttributeGetter: String => Future[Option[Attributes]],
+                    dynamoAttributeUpdater: Attributes => Future[Either[DynamoReadError, Attributes]],
                     forDate: LocalDate = LocalDate.now()): Future[Option[Attributes]] = {
 
     val attributesDisjunction = for {
@@ -40,7 +42,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       AttributesMaker.attributes(identityId, subscriptions, forDate)
     }
 
-    val attributes = attributesDisjunction.run.map {
+    val attributesFromZuora = attributesDisjunction.run.map {
       _.leftMap { errorMsg =>
         log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
         errorMsg
@@ -49,13 +51,32 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val attributesFromDynamo: Future[Option[Attributes]] = dynamoAttributeGetter(identityId)
 
-    dynamoAndZuoraAgree(attributesFromDynamo, attributes, identityId).onFailure {
+    val shouldSkipUpdate = dynamoAndZuoraAgree(attributesFromDynamo, attributesFromZuora, identityId)
+
+    shouldSkipUpdate.onFailure {
       case error => log.warn(s"Tried to compare attributes for $identityId but then ${error.getMessage}", error)
     }
 
-    attributesWithFlagFromDynamo(attributes, attributesFromDynamo)
+    val zuoraAttributesWithAdfree = attributesWithFlagFromDynamo(attributesFromZuora, attributesFromDynamo)
+
+    attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeUpdater)
   }
 
+  private def attributesAfterDynamoUpdate(identityId: String, skipUpdate: Future[Boolean], zuoraAttributesWithAdfree: Future[Option[Attributes]], dynamoAttributeUpdater: Attributes => Future[Either[DynamoReadError, Attributes]]) = {
+    skipUpdate flatMap { shouldSkipUpdate =>
+      if (shouldSkipUpdate)
+        zuoraAttributesWithAdfree
+      else {
+        val attributesAfterUpdate = for {
+            endAttributes <- OptionT(zuoraAttributesWithAdfree)
+          _ = dynamoAttributeUpdater(endAttributes).onFailure {
+            case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
+          }
+        } yield endAttributes
+        attributesAfterUpdate.run
+      }
+    }
+  }
 
   def attributesWithFlagFromDynamo(attributesFromZuora: Future[Option[Attributes]], attributesFromDynamo: Future[Option[Attributes]]) = {
     val adFreeFlagFromDynamo = attributesFromDynamo map (_.flatMap(_.AdFree))
