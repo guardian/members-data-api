@@ -56,8 +56,11 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   implicit lazy val _bt = tpConfig
   lazy val metrics = new ServiceMetrics(tpConfig.zuoraRest.envName, Config.applicationName,_: String)
 
-  lazy val stripeService = new StripeService(tpConfig.stripe, RequestRunners.loggingRunner(metrics("stripe")))
-  lazy val giraffeStripeService = new StripeService(tpConfig.giraffe, RequestRunners.loggingRunner(metrics("stripe")))
+  lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.loggingRunner(metrics("stripe")))
+  lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.loggingRunner(metrics("stripe")))
+
+  lazy val ukContributionsStripeService = new StripeService(tpConfig.stripeUKContributions, RequestRunners.loggingRunner(metrics("stripe")))
+
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap,
     RequestRunners.loggingRunner(metrics("zuora-soap")),
     RequestRunners.loggingRunner(metrics("zuora-soap"))
@@ -76,7 +79,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog.map(_.fold[CatalogMap](error => {println(s"error: ${error.list.mkString}"); Map()}, _.map))
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
-  lazy val paymentService = new PaymentService(stripeService, zuoraService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
   lazy val featureToggleData = new FeatureToggleDataUpdatedOnSchedule(featureToggleService, stage)
 
 }
