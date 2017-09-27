@@ -59,16 +59,10 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
               identityId = identityId,
               identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
               subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-              dynamoAttributeGetter = request.touchpoint.attrService.get)
+              dynamoAttributeGetter = request.touchpoint.attrService.get,
+              dynamoAttributeUpdater = attributes => request.touchpoint.attrService.update(attributes))
 
-              val cachedAttributes: OptionT[Future, Attributes] = for {
-                attributes <- OptionT(attributesFromZuora)
-                _ = request.touchpoint.attrService.update(attributes).onFailure {
-                  case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
-                }
-              } yield attributes
-
-            ("Zuora", cachedAttributes.run)
+            ("Zuora", attributesFromZuora)
           }
           case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
         }

@@ -32,11 +32,13 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
   val friendAttributes = Attributes(UserId = testId, Some("Friend"), None, None, None, None, Some(joinDate), None)
   val supporterAttributes = Attributes(UserId = testId, Some("Supporter"), None, None, None, None, Some(joinDate), None)
 
+  def dynamoAttributeUpdater(attributes: Attributes) = Future.successful(Right(attributes))
+
   "ZuoraAttributeService" should {
 
     "attributesFromZuora" should {
       "return attributes for a user who has many subscriptions" in new contributorDigitalPack {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, referenceDate)
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
         attributes must be_==(Some(contributorDigitalPackAttributes)).await
       }
 
@@ -46,12 +48,12 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
         override def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(outdatedAttributesButWithAdFree))
 
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, referenceDate)
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
         attributes must be_==(Some(contributorDigitalPackAdfreeAttributes)).await
       }
 
       "return None if the user has no account ids" in new noAccounts {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, referenceDate)
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
         attributes must be_==(None).await
       }
     }
