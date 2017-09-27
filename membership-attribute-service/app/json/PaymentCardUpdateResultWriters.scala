@@ -13,7 +13,7 @@ object PaymentCardUpdateResultWriters {
         "expiryMonth" -> details.expiryMonth,
         "expiryYear" -> details.expiryYear
       )
-    ).getOrElse(Json.obj("last4" -> "••••")) // effectively impossible to happen as this is used in a card update context
+    ).getOrElse(Json.obj("last4" -> "XXXX")) // effectively impossible to happen as this is used in a card update context
   }
 
   implicit val cardUpdateSuccessWrites = Writes[CardUpdateSuccess] { cus =>

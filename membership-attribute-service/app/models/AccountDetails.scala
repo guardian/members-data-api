@@ -6,20 +6,18 @@ import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
 object AccountDetails {
-  implicit class ResultLike(details: (Contact, PaymentDetails, Option[String])) {
+  implicit class ResultLike(details: (Contact, PaymentDetails)) {
 
     def toResult = {
       val contact = details._1
       val paymentDetails = details._2
-      val stripePublicKey = details._3
-      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails, stripePublicKey))
+      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails))
     }
-
     private def memberDetails(contact: Contact, paymentDetails: PaymentDetails) =
       Json.obj("tier" -> paymentDetails.plan.name, "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)) ++
         contact.regNumber.fold(Json.obj())({m => Json.obj("regNumber" -> m)})
 
-    private def toJson(paymentDetails: PaymentDetails, stripePublicKey: Option[String]): JsObject = {
+    private def toJson(paymentDetails: PaymentDetails): JsObject = {
 
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
@@ -31,12 +29,10 @@ object AccountDetails {
         )
         case card: PaymentCard => Json.obj(
           "paymentMethod" -> "Card",
-          "card" -> {
-            Json.obj(
-              "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("••••"),
-              "type" -> card.cardType
-            ) ++ stripePublicKey.map(k => Json.obj("stripePublicKeyForUpdate" -> k)).getOrElse(Json.obj())
-          }
+          "card" -> Json.obj(
+            "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("XXXX"),
+            "type" -> card.cardType
+          )
         )
         case dd: GoCardless => Json.obj(
           "paymentMethod" -> "DirectDebit",
