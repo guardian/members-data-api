@@ -7,7 +7,7 @@ import play.api.libs.functional.syntax._
 object PaymentCardUpdateResultWriters {
 
   implicit val paymentCardWrites: Writes[PaymentCard] = Writes[PaymentCard] { paymentCard =>
-    Json.obj("type" -> paymentCard.cardType) ++ paymentCard.paymentCardDetails.map(details =>
+    Json.obj("type" -> paymentCard.cardType.replace(" ", "")) ++ paymentCard.paymentCardDetails.map(details =>
       Json.obj(
         "last4" -> details.lastFourDigits,
         "expiryMonth" -> details.expiryMonth,
