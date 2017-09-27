@@ -42,12 +42,12 @@ class AccountController extends LazyLogging {
     logger.info(s"Attempting to update card for $maybeUserId")
     (for {
       user <- EitherT(Future.successful( maybeUserId \/> "no identity cookie for user"))
+      stripeCardToken <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       account <- EitherT(tp.zuoraService.getAccount(subscription.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
-      stripeService = if (account.paymentGateway.contains(tp.auStripeService.paymentGateway)) tp.auStripeService else tp.ukStripeService
-      stripeCardToken <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
-      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService).map(_ \/> "something missing when try to zuora payment card"))
+      stripeService <- EitherT(Future.successful(account.paymentGateway.flatMap(tp.stripeServicesByPaymentGateway.get) \/> s"No Stripe service available for account: ${account.id}"))
+      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService, user).map(_ \/> "something missing when try to zuora payment card"))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
         logger.info(s"Successfully updated card for identity user: $user")
@@ -68,17 +68,16 @@ class AccountController extends LazyLogging {
   def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
-    val stripeServices = Seq(tp.ukStripeService, tp.auStripeService)
 
     logger.info(s"Attempting to retrieve payment details for identity user: $maybeUserId")
     (for {
       user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(tp.contactRepo.get(user))
       freeOrPaidSub <- OptionEither(tp.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
-      details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map[\/[String, PaymentDetails]](\/.right))
+      details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right))
       sub = freeOrPaidSub.fold(identity, identity)
       account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
-      publicKey = account.paymentGateway.flatMap(paymentGateway => stripeServices.find(_.paymentGateway == paymentGateway)).map(_.publicKey)
+      publicKey = account.paymentGateway.flatMap(tp.stripeServicesByPaymentGateway.get).map(_.publicKey)
     } yield (contact, details, publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: $maybeUserId")
