@@ -47,7 +47,7 @@ class AccountController extends LazyLogging {
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       account <- EitherT(tp.zuoraService.getAccount(subscription.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
       stripeService <- EitherT(Future.successful(account.paymentGateway.flatMap(tp.stripeServicesByPaymentGateway.get) \/> s"No Stripe service available for account: ${account.id}"))
-      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService, user).map(_ \/> "something missing when try to zuora payment card"))
+      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService, Some(user)).map(_ \/> "something missing when try to zuora payment card"))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
         logger.info(s"Successfully updated card for identity user: $user")
