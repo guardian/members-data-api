@@ -14,7 +14,6 @@ import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.api.PaymentGateway
 import com.gu.zuora.rest.SimpleClient
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.{ZuoraRestService, ZuoraService}
@@ -59,7 +58,6 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
 
   lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.loggingRunner(metrics("stripe")))
   lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.loggingRunner(metrics("stripe")))
-  lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = Seq(ukStripeService, auStripeService).map(s => s.paymentGateway -> s).toMap
 
   lazy val ukContributionsStripeService = new StripeService(tpConfig.stripeUKContributions, RequestRunners.loggingRunner(metrics("stripe")))
 
