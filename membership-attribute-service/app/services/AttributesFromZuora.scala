@@ -70,9 +70,15 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         val attributesAfterUpdate = for {
             attributes <- OptionT(zuoraAttributesWithAdfree)
           _ = dynamoAttributeUpdater(attributes).map { result =>
-            result.left.map { error: DynamoReadError => log.error(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}") }
+            result.left.map { error: DynamoReadError =>
+              log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
+              log.error("Tried updating attributes with updated values from Zuora but there was a dynamo error.")
+            }
           }.onFailure {
-            case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
+            case error => {
+              log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
+              log.error("Future failed when attempting to update dynamo when there were updated values from Zuora.")
+            }
           }
         } yield attributes
         attributesAfterUpdate.run
