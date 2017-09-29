@@ -32,7 +32,7 @@ import services.AttributesFromZuora._
 class AttributeController extends Controller with LoggingWithLogstashFields {
 
   val keys = authentication.keys.map(key => s"Bearer $key")
-  private val ConcurrentCallThreshold = 1
+  private val ConcurrentCallThreshold = 15
 
   def apiKeyFilter(): ActionBuilder[Request] = new ActionBuilder[Request] {
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
