@@ -32,7 +32,6 @@ import services.AttributesFromZuora._
 class AttributeController extends Controller with LoggingWithLogstashFields {
 
   val keys = authentication.keys.map(key => s"Bearer $key")
-  private val ConcurrentCallThreshold = 15
 
   def apiKeyFilter(): ActionBuilder[Request] = new ActionBuilder[Request] {
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
@@ -55,10 +54,13 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       def attributesFromDynamo(identityId: String) = request.touchpoint.attrService.get(identityId)
 
       if(endpointEligibleForTest){
-      val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
+        val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
+        val percentageInTest = featureToggleData.TrafficPercentage
+        val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+
         isInTest(identityId, percentageInTest) match {
           case true => {
-            if(ZuoraRequestCounter.get < ConcurrentCallThreshold) {
+            if(ZuoraRequestCounter.get < concurrentCallThreshold) {
               val attributesFromZuora = getAttributes(
                 identityId = identityId,
                 identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
