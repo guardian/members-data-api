@@ -8,7 +8,7 @@ import com.gu.scanamo.error.DynamoReadError
 import configuration.Config
 import configuration.Config.authentication
 import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.LoggingWithLogstashFields
+import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -51,22 +51,32 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
   {
     def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
+      def attributesFromDynamo(identityId: String) = request.touchpoint.attrService.get(identityId)
+
       if(endpointEligibleForTest){
-        val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
+        val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
+        val percentageInTest = featureToggleData.TrafficPercentage
+        val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+
         isInTest(identityId, percentageInTest) match {
           case true => {
-            val attributesFromZuora = getAttributes(
-              identityId = identityId,
-              identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
-              subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-              dynamoAttributeGetter = request.touchpoint.attrService.get,
-              dynamoAttributeUpdater = attributes => request.touchpoint.attrService.update(attributes))
+            if(ZuoraRequestCounter.get < concurrentCallThreshold) {
+              val attributesFromZuora = getAttributes(
+                identityId = identityId,
+                identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
+                subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
+                dynamoAttributeGetter = attributesFromDynamo,
+                dynamoAttributeUpdater = attributes => request.touchpoint.attrService.update(attributes))
 
-            ("Zuora", attributesFromZuora)
+              ("Zuora", attributesFromZuora)
+            } else {
+              ("Dynamo - too many concurrent calls to Zuora", attributesFromDynamo(identityId))
+            }
+
           }
-          case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
+          case false => ("Dynamo - not in Zuora lookup bucket", attributesFromDynamo(identityId))
         }
-      } else ("Dynamo", request.touchpoint.attrService.get(identityId))
+      } else ("Dynamo - as this endpoint always does", attributesFromDynamo(identityId))
     }
 
     backendAction.async { implicit request =>
