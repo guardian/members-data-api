@@ -75,6 +75,14 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
         attributes must be_==(None).await
       }
+
+      "still return attributes if there aren't any stored in Dynamo" in new contributor {
+        override def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(None)
+
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
+        attributes must be_==(Some(contributorAttributes)).await
+      }
+
     }
 
     "getSubscriptions" should {
