@@ -56,6 +56,25 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
         attributes must be_==(None).await
       }
+
+      "return the attributes from Dynamo if Zuora query for account ids fails" in new errorWhenGettingAccounts {
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
+        attributes must be_==(Some(supporterAttributes)).await
+      }
+
+      "return the attributes from Dynamo if Zuora call to get subscriptions fails" in new errorWhenGettingSubs {
+        def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(supporterAttributes))
+
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
+        attributes must be_==(Some(supporterAttributes)).await
+      }
+
+      "return None if there are no attributes from Dynamo and the Zuora call to get subscriptions fails" in new errorWhenGettingSubs {
+        def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(None)
+
+        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, dynamoAttributeGetter, dynamoAttributeUpdater, referenceDate)
+        attributes must be_==(None).await
+      }
     }
 
     "getSubscriptions" should {
@@ -175,7 +194,14 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.left(testErrorMessage))
-    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(None)
+  }
+
+  trait errorWhenGettingAccounts extends Scope {
+    val testErrorMessage = "Something bad happened during the zuora query! D:"
+
+    def dynamoAttributeGetter(identityId: String): Future[Option[Attributes]] = Future.successful(Some(supporterAttributes))
+    def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.left(testErrorMessage))
+    def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(Nil))
   }
 
 }
