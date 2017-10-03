@@ -28,7 +28,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                     dynamoAttributeUpdater: Attributes => Future[Either[DynamoReadError, Attributes]],
                     forDate: LocalDate = LocalDate.now()): Future[Option[Attributes]] = {
 
-    val attributesDisjunction = for {
+    val attributesDisjunction: DisjunctionT[Future, String, Option[Attributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
@@ -42,14 +42,18 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       AttributesMaker.attributes(identityId, subscriptions, forDate)
     }
 
-    val attributesFromZuora = attributesDisjunction.run.map {
-      _.leftMap { errorMsg =>
-        log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
-        errorMsg
-      }.fold(_ => None, identity)
-    }
 
-    val attributesFromDynamo: Future[Option[Attributes]] = dynamoAttributeGetter(identityId)
+    val attributesFromDynamo = dynamoAttributeGetter(identityId)
+
+    val attributesFromZuora = for {
+      dynamoAttributes <- attributesFromDynamo
+      zuoraAttributes <- attributesDisjunction.run.map {
+        _.leftMap { errorMsg =>
+          log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
+          dynamoAttributes
+        }.fold(_ => dynamoAttributes, identity)
+      }
+    } yield zuoraAttributes
 
     val shouldSkipUpdate = dynamoAndZuoraAgree(attributesFromDynamo, attributesFromZuora, identityId)
 
@@ -118,7 +122,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
   }
 
-  private def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]], identityId: String) = {
+  private def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]], identityId: String): Future[Disjunction[String, R]] = {
     import loghandling.StopWatch
     val stopWatch = new StopWatch
 
