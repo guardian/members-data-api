@@ -65,8 +65,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
                 identityId = identityId,
                 identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
                 subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-                dynamoAttributeGetter = attributesFromDynamo,
-                dynamoAttributeUpdater = attributes => request.touchpoint.attrService.update(attributes))
+                dynamoAttributeService = request.touchpoint.attrService)
 
               ("Zuora", attributesFromZuora)
             } else {

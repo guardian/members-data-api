@@ -13,11 +13,11 @@ import scalaz.{-\/, \/-}
 class FeatureToggleDataUpdatedOnSchedule(featureToggleService: ScanamoFeatureToggleService, stage: String)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
 
   private val updateZuoraLookupFeatureDataTask: ScheduledTask[ZuoraLookupFeatureData] = {
-    val featureName = "UpdateAttributesFromZuoraLookup"
+    val featureName = "AttributesFromZuoraLookup"
     val defaultFeatureValues = ZuoraLookupFeatureData(TrafficPercentage = 0, ConcurrentZuoraCallThreshold = 10)
 
     ScheduledTask[ZuoraLookupFeatureData](featureName, defaultFeatureValues, 0.seconds, 30.seconds) {
-      featureToggleService.get("AttributesFromZuoraLookup") map { result =>
+      featureToggleService.get(featureName) map { result =>
         result match {
           case \/-(feature) =>
             val percentage = feature.TrafficPercentage.getOrElse(defaultFeatureValues.TrafficPercentage)

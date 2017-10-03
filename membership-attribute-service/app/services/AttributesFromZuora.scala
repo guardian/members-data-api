@@ -24,8 +24,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
   def getAttributes(identityId: String,
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-                    dynamoAttributeGetter: String => Future[Option[Attributes]],
-                    dynamoAttributeUpdater: Attributes => Future[Either[DynamoReadError, Attributes]],
+                    dynamoAttributeService: AttributeService,
                     forDate: LocalDate = LocalDate.now()): Future[Option[Attributes]] = {
 
     val attributesDisjunction: DisjunctionT[Future, String, Option[Attributes]] = for {
@@ -43,7 +42,9 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
 
 
-    val attributesFromDynamo = dynamoAttributeGetter(identityId)
+    val attributesFromDynamo = dynamoAttributeService.get(identityId)
+
+    attributesFromDynamo map {println(_)}
 
     val attributesFromZuora = for {
       dynamoAttributes <- attributesFromDynamo
@@ -63,7 +64,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val zuoraAttributesWithAdfree = attributesWithFlagFromDynamo(attributesFromZuora, attributesFromDynamo)
 
-    attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeUpdater)
+    attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeService.update)
   }
 
   private def attributesAfterDynamoUpdate(identityId: String, skipUpdate: Future[Boolean], zuoraAttributesWithAdfree: Future[Option[Attributes]], dynamoAttributeUpdater: Attributes => Future[Either[DynamoReadError, Attributes]]) = {
