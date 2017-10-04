@@ -44,63 +44,62 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val attributesFromDynamo = dynamoAttributeService.get(identityId)
 
-    attributesFromDynamo map {println(_)}
-
-    val attributesFromZuora = for {
-      dynamoAttributes <- attributesFromDynamo
-      zuoraAttributes <- attributesDisjunction.run.map {
+    val attributesFromZuora: Future[Disjunction[String, Option[Attributes]]] = attributesDisjunction.run.map {
         _.leftMap { errorMsg =>
           log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
-          dynamoAttributes
-        }.fold(_ => dynamoAttributes, identity)
+          errorMsg
       }
-    } yield zuoraAttributes
-
-    val shouldSkipUpdate = dynamoAndZuoraAgree(attributesFromDynamo, attributesFromZuora, identityId)
-
-    shouldSkipUpdate.onFailure {
-      case error => log.warn(s"Tried to compare attributes for $identityId but then ${error.getMessage}", error)
     }
 
-    val zuoraAttributesWithAdfree = attributesWithFlagFromDynamo(attributesFromZuora, attributesFromDynamo)
+    val attributesFromZuoraOrDynamoFallback: Future[(String, Option[Attributes])] = for {
+      dynamoAttributes <- attributesFromDynamo
+      attributesFromZuora <- attributesFromZuora
+    } yield attributesFromZuora.fold(_ => ("Dynamo", dynamoAttributes), ("Zuora", _))
 
-    attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeService.update)
+    attributesFromZuoraOrDynamoFallback flatMap { attributesFromSomewhere =>
+      val (fromWhere: String, attributes: Option[Attributes]) = attributesFromSomewhere
+
+      if(fromWhere == "Zuora") {
+        attributesFromDynamo flatMap { (dynamoAttributes: Option[Attributes]) =>
+          val shouldSkipUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
+          val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithFlagFromDynamo(attributes, dynamoAttributes)
+          attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeService)
+        }
+      }
+      else Future.successful(attributes)
+    }
   }
 
-  private def attributesAfterDynamoUpdate(identityId: String, skipUpdate: Future[Boolean], zuoraAttributesWithAdfree: Future[Option[Attributes]], dynamoAttributeUpdater: Attributes => Future[Either[DynamoReadError, Attributes]]) = {
-    skipUpdate flatMap { shouldSkipUpdate =>
-      if (shouldSkipUpdate)
-        zuoraAttributesWithAdfree
+  private def attributesAfterDynamoUpdate(identityId: String, skipUpdate: Boolean, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService): Future[Option[Attributes]] = {
+    if (skipUpdate)
+        Future.successful(zuoraAttributesWithAdfree)
       else {
-        val attributesAfterUpdate = for {
-            attributes <- OptionT(zuoraAttributesWithAdfree)
-          _ = dynamoAttributeUpdater(attributes).map { result =>
-            result.left.map { error: DynamoReadError =>
-              log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
-              log.error("Tried updating attributes with updated values from Zuora but there was a dynamo error.")
+        zuoraAttributesWithAdfree match {
+          case Some(zuoraAttributes) => ///todo: what happens when the dynamo update fails? when the future fails?
+            dynamoAttributeService.update(zuoraAttributes).map { result =>
+              result.left.map { error: DynamoReadError =>
+                log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
+                log.error("Tried updating attributes with updated values from Zuora but there was a dynamo error.")
+              }
+              Some(zuoraAttributes)
             }
-          }.onFailure {
-            case error => {
-              log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
-              log.error("Future failed when attempting to update dynamo when there were updated values from Zuora.")
+          case None =>
+            dynamoAttributeService.delete(identityId) map { result =>
+              log.info(s"Deleting the dynamo entry for $identityId. $result")
+              None
             }
-          }
-        } yield attributes
-        attributesAfterUpdate.run
-      }
+        }
     }
+
   }
 
-  def attributesWithFlagFromDynamo(attributesFromZuora: Future[Option[Attributes]], attributesFromDynamo: Future[Option[Attributes]]) = {
-    val adFreeFlagFromDynamo = attributesFromDynamo map (_.flatMap(_.AdFree))
+  def attributesWithFlagFromDynamo(attributesFromZuora: Option[Attributes], attributesFromDynamo: Option[Attributes]) = {
+    val adFreeFlagFromDynamo = attributesFromDynamo flatMap (_.AdFree)
 
-    attributesFromZuora flatMap { maybeAttributes =>
-      adFreeFlagFromDynamo map { adFree =>
-        maybeAttributes map {_.copy(AdFree = adFree)}
-      }
+    attributesFromZuora map { zuoraAttributes =>
+      zuoraAttributes.copy(AdFree = adFreeFlagFromDynamo)
     }
   }
-
 
   def getSubscriptions(accountIds: List[AccountId],
                        identityId: String,
@@ -142,28 +141,24 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     futureResult
   }
 
-  def dynamoAndZuoraAgree(attributesFromDynamo: Future[Option[Attributes]], attributesFromZuora: Future[Option[Attributes]], identityId: String): Future[Boolean] = {
-    attributesFromDynamo flatMap { maybeDynamoAttributes =>
-      attributesFromZuora map { maybeZuoraAttributes =>
-        val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes flatMap  { zuoraAttributes =>
-          maybeDynamoAttributes map { dynamoAttributes =>
-            zuoraAttributes.copy(
-              AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
-              Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
-              MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
-              MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
-              DigitalSubscriptionExpiryDate = None
-            )
-          }
-        }
-        val dynamoAndZuoraAgree = zuoraAttributesWithIgnoredFields == maybeDynamoAttributes
-        if (!dynamoAndZuoraAgree)
-          log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-            s" Zuora attributes: $maybeZuoraAttributes. Dynamo attributes: $maybeDynamoAttributes.")
+  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = {
+     val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes flatMap { zuoraAttributes =>
+       maybeDynamoAttributes map { dynamoAttributes =>
+         zuoraAttributes.copy(
+           AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
+           Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
+           MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
+           MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
+           DigitalSubscriptionExpiryDate = None
+         )
+       }
+     }
+     val dynamoAndZuoraAgree = zuoraAttributesWithIgnoredFields == maybeDynamoAttributes
+     if (!dynamoAndZuoraAgree)
+       log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
+         s" Zuora attributes: $maybeZuoraAttributes. Dynamo attributes: $maybeDynamoAttributes.")
 
-        dynamoAndZuoraAgree
-      }
-    }
+     dynamoAndZuoraAgree
   }
 
   def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
