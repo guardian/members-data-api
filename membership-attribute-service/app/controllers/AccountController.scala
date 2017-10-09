@@ -70,28 +70,27 @@ class AccountController extends LazyLogging {
   }
 
   private def getUpToDatePaymentDetailsFromStripe(defaultPaymentMethodId: Option[String], paymentDetails: PaymentDetails)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
-    defaultPaymentMethodId.flatMap { paymentMethodId =>
-      paymentDetails.paymentMethod.map {
-        case card: PaymentCard =>
-          (for {
-            zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
-            customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
-            maybeUkStripeCustomer <- tp.ukStripeService.Customer.read(customerId).map(Option(_)).recover { case e => None }.liftM[OptionT]
-            maybeStripeCustomer <-
-              // Performance optimisation not to go to AU Stripe if UK is one gotten above
-              if (maybeUkStripeCustomer.nonEmpty) Future.successful(maybeUkStripeCustomer).liftM[OptionT]
-              else tp.auStripeService.Customer.read(customerId).map(Option(_)).recover { case e => None }.liftM[OptionT]
-          } yield {
-            // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
-            card.copy(
-              cardType = maybeStripeCustomer.map(_.card).map(_.`type`),
-              paymentCardDetails = maybeStripeCustomer.map(_.card).map(card => PaymentCardDetails(card.last4, card.exp_month, card.exp_year))
-            )
-          }).run
-        case x => Future.successful(Some(x))
-      }
+    paymentDetails.paymentMethod.map {
+      case card: PaymentCard =>
+        (for {
+          paymentMethodId <- OptionT(Future.successful(defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
+          zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
+          customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
+          maybeUkStripeCustomer <- tp.ukStripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+          maybeStripeCustomer <-
+            // Performance optimisation not to go to AU Stripe if UK is one gotten above
+            if (maybeUkStripeCustomer.nonEmpty) Future.successful(maybeUkStripeCustomer).liftM[OptionT]
+            else tp.auStripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+        } yield {
+          // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
+          card.copy(
+            cardType = maybeStripeCustomer.map(_.card).map(_.`type`),
+            paymentCardDetails = maybeStripeCustomer.map(_.card).map(card => PaymentCardDetails(card.last4, card.exp_month, card.exp_year))
+          )
+        }).run
+      case x => Future.successful(Some(x))
     }.sequence.map { maybeUpdatedPaymentMethod =>
-      paymentDetails.copy(paymentMethod = maybeUpdatedPaymentMethod getOrElse paymentDetails.paymentMethod)
+      paymentDetails.copy(paymentMethod = maybeUpdatedPaymentMethod.flatten orElse paymentDetails.paymentMethod)
     }
   }
 
