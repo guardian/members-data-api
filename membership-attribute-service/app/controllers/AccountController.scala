@@ -9,6 +9,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
+import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
@@ -22,8 +23,10 @@ import play.filters.cors.CORSActionBuilder
 import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
+import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
-import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+import scalaz.syntax.traverse._
+import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
 class AccountController extends LazyLogging {
 
