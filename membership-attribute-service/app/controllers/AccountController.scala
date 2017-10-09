@@ -76,7 +76,7 @@ class AccountController extends LazyLogging {
         case card: PaymentCard =>
           (for {
             zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
-            customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId))
+            customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
             stripeCustomer <- OptionT((Try(tp.ukStripeService.Customer.read(customerId)).toOption orElse Try(tp.auStripeService.Customer.read(customerId)).toOption).sequence)
           } yield {
             // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
