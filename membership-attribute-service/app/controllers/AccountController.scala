@@ -9,7 +9,6 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
-import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
@@ -23,10 +22,8 @@ import play.filters.cors.CORSActionBuilder
 import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
-import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
-import scalaz.syntax.traverse._
-import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 
 class AccountController extends LazyLogging {
 
@@ -96,7 +93,7 @@ class AccountController extends LazyLogging {
   }
 
   def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
-    implicit val tp: TouchpointComponents = request.touchpoint
+    val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
@@ -104,8 +101,9 @@ class AccountController extends LazyLogging {
       user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(tp.contactRepo.get(user))
       freeOrPaidSub <- OptionEither(tp.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
+      details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right))
       sub = freeOrPaidSub.fold(identity, identity)
-      account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error retrieving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
+      account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       publicKey = account.paymentGateway.flatMap(tp.stripeServicesByPaymentGateway.get).map(_.publicKey)
       paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
       upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(account.defaultPaymentMethodId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date  details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
