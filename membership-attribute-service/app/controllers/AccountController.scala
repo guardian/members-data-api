@@ -96,7 +96,7 @@ class AccountController extends LazyLogging {
   }
 
   def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
-    val tp = request.touchpoint
+    implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
@@ -109,7 +109,7 @@ class AccountController extends LazyLogging {
       account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       publicKey = account.paymentGateway.flatMap(tp.stripeServicesByPaymentGateway.get).map(_.publicKey)
       paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
-      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(account.defaultPaymentMethodId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date  details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
+      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(account.defaultPaymentMethodId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
     } yield (contact, upToDatePaymentDetails, publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
