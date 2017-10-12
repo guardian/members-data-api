@@ -60,40 +60,41 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       val (fromWhere: String, attributes: Option[Attributes]) = attributesFromSomewhere
 
       if(fromWhere == "Zuora") {
-        attributesFromDynamo flatMap { (dynamoAttributes: Option[Attributes]) =>
-          val shouldSkipUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
-          val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithFlagFromDynamo(attributes, dynamoAttributes)
-          attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeService) map { (fromWhere, _) }
+        attributesFromDynamo map { (dynamoAttributes: Option[Attributes]) =>
+          val canSkipCacheUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
+          val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithAdFreeFlagFromDynamo(attributes, dynamoAttributes)
+
+          if(!canSkipCacheUpdate) {
+            updateCache(identityId, zuoraAttributesWithAdfree, dynamoAttributeService).onFailure {
+              case e: Throwable =>
+                log.error(s"Future failed when attempting to update cache. Update was needed? $canSkipCacheUpdate", e)
+                log.warn(s"Future failed when attempting to update cache. Update was needed? $canSkipCacheUpdate. Attributes from Zuora: $attributes")
+            }
+          }
+
+          (fromWhere, zuoraAttributesWithAdfree)
         }
       }
       else Future.successful(fromWhere, attributes)
     }
   }
-
-  private def attributesAfterDynamoUpdate(identityId: String, skipUpdate: Boolean, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService): Future[Option[Attributes]] = {
-    if (skipUpdate)
-        Future.successful(zuoraAttributesWithAdfree)
-      else {
-        zuoraAttributesWithAdfree match {
-          case Some(zuoraAttributes) =>
-            dynamoAttributeService.update(zuoraAttributes).map { result =>
-              result.left.map { error: DynamoReadError =>
-                log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
-                log.error("Tried updating attributes with updated values from Zuora but there was a dynamo error.")
-              }
-              Some(zuoraAttributes)
-            }
-          case None =>
-            dynamoAttributeService.delete(identityId) map { result =>
-              log.info(s"Deleting the dynamo entry for $identityId. $result")
-              None
-            }
+  private def updateCache(identityId: String, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService): Future[Unit] = {
+    zuoraAttributesWithAdfree match {
+      case Some(attributes) =>
+        dynamoAttributeService.update(attributes).map { result =>
+          result.left.map { error: DynamoReadError =>
+            log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
+            log.error("Tried updating attributes with updated values from Zuora but there was a dynamo error.")
+          }
+        }
+      case None =>
+        dynamoAttributeService.delete(identityId) map { result =>
+          log.info(s"Deleting the dynamo entry for $identityId. $result")
         }
     }
-
   }
 
-  def attributesWithFlagFromDynamo(attributesFromZuora: Option[Attributes], attributesFromDynamo: Option[Attributes]) = {
+  def attributesWithAdFreeFlagFromDynamo(attributesFromZuora: Option[Attributes], attributesFromDynamo: Option[Attributes]) = {
     val adFreeFlagFromDynamo = attributesFromDynamo flatMap (_.AdFree)
 
     attributesFromZuora map { zuoraAttributes =>
