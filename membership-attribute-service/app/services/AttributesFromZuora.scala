@@ -25,7 +25,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
                     dynamoAttributeService: AttributeService,
-                    forDate: LocalDate = LocalDate.now()): Future[Option[Attributes]] = {
+                    forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
 
     val attributesDisjunction: DisjunctionT[Future, String, Option[Attributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
@@ -63,10 +63,10 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         attributesFromDynamo flatMap { (dynamoAttributes: Option[Attributes]) =>
           val shouldSkipUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
           val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithFlagFromDynamo(attributes, dynamoAttributes)
-          attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeService)
+          attributesAfterDynamoUpdate(identityId, shouldSkipUpdate, zuoraAttributesWithAdfree, dynamoAttributeService) map { (fromWhere, _) }
         }
       }
-      else Future.successful(attributes)
+      else Future.successful(fromWhere, attributes)
     }
   }
 
