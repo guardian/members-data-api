@@ -9,6 +9,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
+import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
@@ -20,9 +21,12 @@ import play.api.mvc.Results._
 import play.filters.cors.CORSActionBuilder
 
 import scala.concurrent.Future
+import scalaz.std.option._
 import scalaz.std.scalaFuture._
+import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
-import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+import scalaz.syntax.traverse._
+import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
 class AccountController extends LazyLogging {
 
@@ -65,11 +69,36 @@ class AccountController extends LazyLogging {
     }
   }
 
+  private def getUpToDatePaymentDetailsFromStripe(defaultPaymentMethodId: Option[String], paymentDetails: PaymentDetails)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
+    paymentDetails.paymentMethod.map {
+      case card: PaymentCard =>
+        (for {
+          paymentMethodId <- OptionT(Future.successful(defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
+          zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
+          customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
+          maybeUkStripeCustomer <- tp.ukStripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+          maybeStripeCustomer <-
+            // Performance optimisation not to go to AU Stripe if UK is one gotten above
+            if (maybeUkStripeCustomer.nonEmpty) Future.successful(maybeUkStripeCustomer).liftM[OptionT]
+            else tp.auStripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+        } yield {
+          // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
+          card.copy(
+            cardType = maybeStripeCustomer.map(_.card).map(_.`type`),
+            paymentCardDetails = maybeStripeCustomer.map(_.card).map(card => PaymentCardDetails(card.last4, card.exp_month, card.exp_year))
+          )
+        }).run
+      case x => Future.successful(Some(x))
+    }.sequence.map { maybeUpdatedPaymentMethod =>
+      paymentDetails.copy(paymentMethod = maybeUpdatedPaymentMethod.flatten orElse paymentDetails.paymentMethod)
+    }
+  }
+
   def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
-    val tp = request.touchpoint
+    implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
-    logger.info(s"Attempting to retrieve payment details for identity user: $maybeUserId")
+    logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
       user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(tp.contactRepo.get(user))
@@ -78,15 +107,17 @@ class AccountController extends LazyLogging {
       sub = freeOrPaidSub.fold(identity, identity)
       account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error receiving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       publicKey = account.paymentGateway.flatMap(tp.stripeServicesByPaymentGateway.get).map(_.publicKey)
-    } yield (contact, details, publicKey).toResult).run.run.map {
+      paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
+      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(account.defaultPaymentMethodId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
+    } yield (contact, upToDatePaymentDetails, publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
-        logger.info(s"Successfully retrieved payment details result for identity user: $maybeUserId")
+        logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         result
       case \/-(None) =>
-        logger.info(s"identity user doesn't exist in SF: $maybeUserId")
+        logger.info(s"identity user doesn't exist in SF: ${maybeUserId.mkString}")
         Ok(Json.obj())
       case -\/(message) =>
-        logger.warn(s"Unable to retrieve payment details result for identity user $maybeUserId due to $message")
+        logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
         InternalServerError("Failed to retrieve payment details due to an internal error")
     }
   }

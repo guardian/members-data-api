@@ -75,7 +75,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         Future.successful(zuoraAttributesWithAdfree)
       else {
         zuoraAttributesWithAdfree match {
-          case Some(zuoraAttributes) => ///todo: what happens when the dynamo update fails? when the future fails?
+          case Some(zuoraAttributes) =>
             dynamoAttributeService.update(zuoraAttributes).map { result =>
               result.left.map { error: DynamoReadError =>
                 log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
