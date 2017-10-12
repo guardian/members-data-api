@@ -44,8 +44,8 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       "return attributes for a user who has many subscriptions" in new contributorDigitalPack {
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(contributorDigitalPackAttributes))
 
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(Some(contributorDigitalPackAttributes)).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", Some(contributorDigitalPackAttributes)).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
@@ -57,20 +57,20 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(outdatedAttributesButWithAdFree))
         mockDynamoAttributesService.update(contributorDigitalPackAdfreeAttributes) returns Future.successful(Right(contributorDigitalPackAdfreeAttributes))
 
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(Some(contributorDigitalPackAdfreeAttributes)).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", Some(contributorDigitalPackAdfreeAttributes)).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
       "return None if the user has no account ids" in new noAccounts {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(None).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", None).await
       }
 
       "return the attributes from Dynamo if Zuora query for account ids fails" in new errorWhenGettingAccounts {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(Some(supporterAttributes)).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Dynamo", Some(supporterAttributes)).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
@@ -78,23 +78,23 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       "return the attributes from Dynamo if Zuora call to get subscriptions fails" in new errorWhenGettingSubs {
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(supporterAttributes))
 
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(Some(supporterAttributes)).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Dynamo", Some(supporterAttributes)).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
       "return None if there are no attributes from Dynamo and the Zuora call to get subscriptions fails" in new errorWhenGettingSubs {
         mockDynamoAttributesService.get(testId) returns Future.successful(None)
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(None).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Dynamo", None).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
       "still return attributes if there aren't any stored in Dynamo" in new contributor {
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
-        attributes must be_==(Some(contributorAttributes)).await
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", Some(contributorAttributes)).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
@@ -106,9 +106,9 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
         def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(Nil))
 
-        val attributes: Future[Option[Attributes]] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
 
-        attributes must be_==(None).await
+        attributes must be_==("Zuora", None).await
 
         there was one(mockDynamoAttributesService).delete(testId)
       }
