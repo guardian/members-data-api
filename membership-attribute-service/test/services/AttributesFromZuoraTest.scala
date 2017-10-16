@@ -99,7 +99,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       }
 
       "still return attributes if there aren't any stored in Dynamo" in {
-
+        mockDynamoAttributesService.get(testId) returns Future.successful(None)
         mockDynamoAttributesService.update(contributorAttributes) returns Future.successful(Right(contributorAttributes))
 
         def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
@@ -183,23 +183,30 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     }
 
     "dynamoAndZuoraAgree" should {
-      "return true if the fields obtainable from zuora match " in new contributor {
+      "return true if the fields obtainable from zuora match " in {
         val fromDynamo = Some(supporterAttributes)
         val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
       }
 
-      "ignore the fields not obtainable from zuora" in new contributor {
+      "ignore the fields not obtainable from zuora" in {
         val fromDynamo = Some(supporterAttributes.copy(AdFree = Some(true)))
         val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
       }
 
-      "return false when dynamo is outdated and does not match zuora" in new contributor {
+      "return false when dynamo is outdated and does not match zuora" in {
         val fromDynamo = Some(supporterAttributes)
         val fromZuora = Some(friendAttributes)
+
+        AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(false)
+      }
+
+      "return false if dynamo is none and zuora has attributes" in {
+        val fromDynamo = None
+        val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(false)
       }

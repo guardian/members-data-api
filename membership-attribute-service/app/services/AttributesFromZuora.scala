@@ -143,16 +143,18 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
   }
 
   def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = {
-     val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes flatMap { zuoraAttributes =>
-       maybeDynamoAttributes map { dynamoAttributes =>
-         zuoraAttributes.copy(
-           AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
-           Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
-           MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
-           MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
-           DigitalSubscriptionExpiryDate = None
-         )
-       }
+    val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes map { zuoraAttributes =>
+      maybeDynamoAttributes match {
+        case Some(dynamoAttributes) => zuoraAttributes.copy(
+          AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
+          Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
+          MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
+          MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
+          DigitalSubscriptionExpiryDate = None
+        )
+        case None => zuoraAttributes
+      }
+
      }
      val dynamoAndZuoraAgree = zuoraAttributesWithIgnoredFields == maybeDynamoAttributes
      if (!dynamoAndZuoraAgree)
