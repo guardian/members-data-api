@@ -5,20 +5,22 @@ import services.AttributesFromZuora._
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
+import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.zuora.ZuoraRestService.{AccountIdRecord, QueryResponse}
 import models.Attributes
 import org.joda.time.LocalDate
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
-import org.specs2.specification.Scope
+import org.specs2.specification.{BeforeEach, Scope}
 import testdata.SubscriptionTestData
 
-import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
 import scalaz.\/
 
 
-class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito {
+class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach {
 
   override def referenceDate = new LocalDate(2016, 9, 20)
 
@@ -31,12 +33,16 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
   val twoAccountsQueryResponse = QueryResponse(records = List(AccountIdRecord(testAccountId), AccountIdRecord(anotherTestAccountId)), size = 2)
   val contributorAttributes = Attributes(UserId = testId, None, None, None, None, RecurringContributionPaymentPlan = Some("Monthly Contribution"), None, None)
 
-  val friendAttributes = Attributes(UserId = testId, Some("Friend"), None, None, None, None, Some(joinDate), None)
-  val supporterAttributes = Attributes(UserId = testId, Some("Supporter"), None, None, None, None, Some(joinDate), None)
+  val friendAttributes = Attributes(UserId = testId, Some("Friend"), None, None, None, None, Some(referenceDate), None)
+  val supporterAttributes = Attributes(UserId = testId, Some("Supporter"), None, None, None, None, Some(referenceDate), None)
 
   val mockDynamoAttributesService = mock[AttributeService]
 
   def dynamoAttributeUpdater(attributes: Attributes) = Future.successful(Right(attributes))
+
+  override def before = {
+    org.mockito.Mockito.reset(mockDynamoAttributesService)
+  }
 
   "ZuoraAttributeService" should {
 
@@ -92,10 +98,17 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
-      "still return attributes if there aren't any stored in Dynamo" in new contributor {
+      "still return attributes if there aren't any stored in Dynamo" in {
+        mockDynamoAttributesService.get(testId) returns Future.successful(None)
+        mockDynamoAttributesService.update(contributorAttributes) returns Future.successful(Right(contributorAttributes))
+
+        def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
+        def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(List(contributor)))
+
         val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(contributorAttributes)).await
 
+        there was one(mockDynamoAttributesService).update(contributorAttributes)
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -112,6 +125,25 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
         there was one(mockDynamoAttributesService).delete(testId)
       }
+
+
+      "update the attributes in dynamo if zuora is more up to date" in {
+        //friend in Dynamo, upgraded in Zuora
+        val friendAttributes = supporterAttributes.copy(Tier = Some("Friend"))
+
+        mockDynamoAttributesService.get(testId) returns Future.successful(Some(friendAttributes))
+        mockDynamoAttributesService.update(any[Attributes]) returns Future.successful(Right(supporterAttributes))
+
+        def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(List(membership)))
+        def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
+
+        val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", Some(supporterAttributes)).await
+
+        there was one(mockDynamoAttributesService).update(supporterAttributes)
+        there was no(mockDynamoAttributesService).delete(anyString)
+      }
+
 
     }
 
@@ -151,23 +183,30 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     }
 
     "dynamoAndZuoraAgree" should {
-      "return true if the fields obtainable from zuora match " in new contributor {
+      "return true if the fields obtainable from zuora match " in {
         val fromDynamo = Some(supporterAttributes)
         val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
       }
 
-      "ignore the fields not obtainable from zuora" in new contributor {
+      "ignore the fields not obtainable from zuora" in {
         val fromDynamo = Some(supporterAttributes.copy(AdFree = Some(true)))
         val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
       }
 
-      "return false when dynamo is outdated and does not match zuora" in new contributor {
+      "return false when dynamo is outdated and does not match zuora" in {
         val fromDynamo = Some(supporterAttributes)
         val fromZuora = Some(friendAttributes)
+
+        AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(false)
+      }
+
+      "return false if dynamo is none and zuora has attributes" in {
+        val fromDynamo = None
+        val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(false)
       }
@@ -180,14 +219,14 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
         val expectedResult = Some(contributorAttributes.copy(AdFree = Some(true)))
 
-        AttributesFromZuora.attributesWithFlagFromDynamo(fromZuora, fromDynamo) must be_==(expectedResult)
+        AttributesFromZuora.attributesWithAdFreeFlagFromDynamo(fromZuora, fromDynamo) must be_==(expectedResult)
       }
 
       "not have an AdFree status either if there isn't one in dynamo" in new contributor {
         val fromDynamo = Some(contributorAttributes.copy(Tier = Some("Partner")))
         val fromZuora = Some(contributorAttributes)
 
-        AttributesFromZuora.attributesWithFlagFromDynamo(fromZuora, fromDynamo) must be_==(Some(contributorAttributes))
+        AttributesFromZuora.attributesWithAdFreeFlagFromDynamo(fromZuora, fromDynamo) must be_==(Some(contributorAttributes))
       }
     }
 
