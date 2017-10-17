@@ -98,6 +98,21 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
+      "return a response from the cache if the future fails when calling Zuora" in {
+        List(Some(contributorAttributes), None) map { attributesFromCache =>
+          val testErrorMessage = "Something bad happened! D:"
+
+          def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.failed(new Exception(testErrorMessage))
+          def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.left(testErrorMessage))
+
+          mockDynamoAttributesService.get(testId) returns Future.successful(attributesFromCache)
+
+          val attributes: Future[(String, Option[Attributes])] = AttributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId, mockDynamoAttributesService, referenceDate)
+          attributes must be_==("Dynamo", attributesFromCache).await
+        }
+
+      }
+
       "still return attributes if there aren't any stored in Dynamo" in {
         mockDynamoAttributesService.get(testId) returns Future.successful(None)
         mockDynamoAttributesService.update(contributorAttributes) returns Future.successful(Right(contributorAttributes))

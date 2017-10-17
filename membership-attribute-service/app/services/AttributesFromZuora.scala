@@ -42,7 +42,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
 
 
-    val attributesFromDynamo = dynamoAttributeService.get(identityId)
+    val attributesFromDynamo: Future[(String, Option[Attributes])] = dynamoAttributeService.get(identityId) map { attributes => ("Dynamo", attributes)}
 
     val attributesFromZuora: Future[Disjunction[String, Option[Attributes]]] = attributesDisjunction.run.map {
         _.leftMap { errorMsg =>
@@ -54,13 +54,16 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     val attributesFromZuoraOrDynamoFallback: Future[(String, Option[Attributes])] = for {
       dynamoAttributes <- attributesFromDynamo
       attributesFromZuora <- attributesFromZuora
-    } yield attributesFromZuora.fold(_ => ("Dynamo", dynamoAttributes), ("Zuora", _))
+    } yield attributesFromZuora.fold(_ => dynamoAttributes, ("Zuora", _))
 
-    attributesFromZuoraOrDynamoFallback flatMap { attributesFromSomewhere =>
+    val zuoraOrCachedAttributes = attributesFromZuoraOrDynamoFallback fallbackTo attributesFromDynamo
+
+    zuoraOrCachedAttributes flatMap { attributesFromSomewhere =>
       val (fromWhere: String, attributes: Option[Attributes]) = attributesFromSomewhere
 
       if(fromWhere == "Zuora") {
-        attributesFromDynamo map { (dynamoAttributes: Option[Attributes]) =>
+        attributesFromDynamo map { sourceAndAttributes =>
+          val (_, dynamoAttributes) = sourceAndAttributes
           val canSkipCacheUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
           val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithAdFreeFlagFromDynamo(attributes, dynamoAttributes)
 
@@ -78,6 +81,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       else Future.successful(fromWhere, attributes)
     }
   }
+
   private def updateCache(identityId: String, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService): Future[Unit] = {
     zuoraAttributesWithAdfree match {
       case Some(attributes) =>
