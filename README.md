@@ -187,16 +187,6 @@ Responses:
 - Decrease the write throughput of you dynamoDB instance to 1
 
 - Check that no records have been altered during the time the command takes to run. It's easy to check via the Membership History object in Salesforce.
-
-## Metrics and Logs
-
-There is a Membership Attributes Service radiator. This uses standard ELB and DynamoBB CloudWatch metrics for the CloudFormation stack in the chosen stage.
-
-## Provisioning
-
-The packer cloud formation template should be used to create an AMI with Oracle Java 8 installed. The base AMI which should be used with this is Ubuntu Trusty 14.04 (ami-acc41cdb).
-
-The output AMI from packer should be used with the membership-attribute-service cloud formation template.
  
 ## Testing SalesForce hook
  
