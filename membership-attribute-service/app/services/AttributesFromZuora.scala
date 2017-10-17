@@ -62,8 +62,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       val (fromWhere: String, attributes: Option[Attributes]) = attributesFromSomewhere
 
       if(fromWhere == "Zuora") {
-        attributesFromDynamo map { sourceAndAttributes =>
-          val (_, dynamoAttributes) = sourceAndAttributes
+        attributesFromDynamo map { case (_, dynamoAttributes) =>
           val canSkipCacheUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
           val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithAdFreeFlagFromDynamo(attributes, dynamoAttributes)
 
