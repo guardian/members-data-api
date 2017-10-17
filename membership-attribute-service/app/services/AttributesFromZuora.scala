@@ -53,8 +53,8 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val attributesFromZuoraOrDynamoFallback: Future[(String, Option[Attributes])] = for {
       dynamoAttributes <- attributesFromDynamo
-      attributesFromZuora <- attributesFromZuora
-    } yield attributesFromZuora.fold(_ => dynamoAttributes, ("Zuora", _))
+      zuoraAttributes <- attributesFromZuora
+    } yield zuoraAttributes.fold(_ => dynamoAttributes, ("Zuora", _))
 
     val zuoraOrCachedAttributes = attributesFromZuoraOrDynamoFallback fallbackTo attributesFromDynamo
 
