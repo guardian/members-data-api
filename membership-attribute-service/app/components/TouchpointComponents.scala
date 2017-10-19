@@ -3,7 +3,6 @@ package components
 import akka.actor.ActorSystem
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
-
 import scalaz.std.scalaFuture._
 import com.gu.config
 import com.gu.memsub.services.PaymentService
@@ -23,7 +22,6 @@ import loghandling.ZuoraRequestCounter
 import prodtest.FeatureToggleDataUpdatedOnSchedule
 import services.IdentityService.IdentityConfig
 import services._
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -46,7 +44,6 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val dynamoAttributesTable = environmentConf.getString("dynamodb.table")
   lazy val dynamoBehaviourTable = environmentConf.getString("behaviour.dynamodb.table")
   lazy val dynamoFeatureToggleTable = environmentConf.getString("featureToggles.dynamodb.table")
-  lazy val giraffeSns = environmentConf.getString("giraffe.sns")
 
   lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
   lazy val productIds = config.SubsV2ProductIds(environmentConf.getConfig("zuora.productIds"))
@@ -61,8 +58,6 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.loggingRunner(metrics("stripe")))
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = Seq(ukStripeService, auStripeService).map(s => s.paymentGateway -> s).toMap
 
-  lazy val ukContributionsStripeService = new StripeService(tpConfig.stripeUKContributions, RequestRunners.loggingRunner(metrics("stripe")))
-
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap,
     RequestRunners.loggingRunner(metrics("zuora-soap")),
     RequestRunners.loggingRunner(metrics("zuora-soap"))
@@ -71,7 +66,6 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoAttributesTable)
   lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoBehaviourTable)
   lazy val featureToggleService: ScanamoFeatureToggleService = new ScanamoFeatureToggleService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoFeatureToggleTable)
-  lazy val snsGiraffeService: SNSGiraffeService = SNSGiraffeService(giraffeSns)
   lazy val zuoraService = new ZuoraService(soapClient)
   implicit lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
   lazy val patientSimpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30 seconds)))
