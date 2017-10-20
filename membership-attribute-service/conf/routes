@@ -18,7 +18,6 @@ POST       /user-behaviour/capture                          controllers.Behaviou
 POST       /user-behaviour/remove                           controllers.BehaviourController.remove
 POST       /abandoned-cart/email                            controllers.BehaviourController.sendCartReminderEmail
 
-POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
 POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs
 POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
 
