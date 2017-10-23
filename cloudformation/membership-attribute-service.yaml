@@ -80,7 +80,6 @@ Mappings:
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
-      GiraffeTopic: giraffe
 
     CODE:
       NotificationAlarmPeriod: 1200
@@ -91,7 +90,6 @@ Mappings:
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
-      GiraffeTopic: giraffe-code
 
 Resources:
   MembershipRole:
@@ -119,11 +117,6 @@ Resources:
           - Action: ec2:DescribeTags
             Resource: "*"
             Effect: Allow
-          - Effect: Allow
-            Action:
-            - sns:Publish
-            Resource:
-              Ref: TopicGiraffe
           - Action:
             - logs:*
             Resource:
@@ -334,11 +327,6 @@ Resources:
         FromPort: '443'
         ToPort: '443'
         CidrIp: 0.0.0.0/0
-  TopicGiraffe:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName:
-        Fn::FindInMap: [ StageVariables, { Ref: Stage }, GiraffeTopic ]
 Outputs:
   LoadBalancerUrl:
     Value:
