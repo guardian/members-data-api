@@ -18,8 +18,6 @@ POST       /user-behaviour/capture                          controllers.Behaviou
 POST       /user-behaviour/remove                           controllers.BehaviourController.remove
 POST       /abandoned-cart/email                            controllers.BehaviourController.sendCartReminderEmail
 
-POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
-
 # Contributions endpoints
 POST       /user-attributes/:identityId                     controllers.AttributeController.updateAttributes(identityId : String)
 #The endpoint below will replace /user-attributes/me/membership in the long term
