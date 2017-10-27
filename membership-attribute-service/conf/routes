@@ -14,6 +14,9 @@ OPTIONS    /user-attributes/me/membership-update-card       controllers.AccountC
 POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 
+POST       /user-attributes/me/contribution-update-card      controllers.AccountController.contributionUpdateCard
+OPTIONS    /user-attributes/me/contribution-update-card      controllers.AccountController.contributionUpdateCard
+
 POST       /user-behaviour/capture                          controllers.BehaviourController.capture
 POST       /user-behaviour/remove                           controllers.BehaviourController.remove
 POST       /abandoned-cart/email                            controllers.BehaviourController.sendCartReminderEmail
