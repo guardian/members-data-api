@@ -54,7 +54,8 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
 
   lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.loggingRunner(metrics("stripe")))
   lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.loggingRunner(metrics("stripe")))
-  lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = Seq(ukStripeService, auStripeService).map(s => s.paymentGateway -> s).toMap
+  lazy val allStripeServices = Seq(ukStripeService, auStripeService)
+  lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
 
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap,
     RequestRunners.loggingRunner(metrics("zuora-soap")),
