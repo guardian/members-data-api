@@ -8,7 +8,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
-import com.gu.stripe.StripeService
+import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
@@ -48,7 +48,8 @@ class AccountController extends LazyLogging {
     logger.info(s"Attempting to update card for $maybeUserId")
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      (stripeCardToken, stripePublicKey) <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
+      stripeDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
+      (stripeCardToken, stripePublicKey) = stripeDetails
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       stripeService <- EitherT(Future.successful(tp.allStripeServices.find(_.publicKey == stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
@@ -77,7 +78,14 @@ class AccountController extends LazyLogging {
           paymentMethodId <- OptionT(Future.successful(defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
           zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
           customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
-          maybeStripeCustomer <- stripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+          maybeAStripeCustomer <- stripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+          maybeStripeCustomer <- {
+            val alternateStripeService = tp.allStripeServices.filterNot(_ == stripeService).headOption
+            // Performance optimisation not to go to the alternate Stripe service if a customer record is found in the main one
+            if (maybeAStripeCustomer.nonEmpty) Future.successful(maybeAStripeCustomer).liftM[OptionT]
+            else if (alternateStripeService.nonEmpty) alternateStripeService.get.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
+            else Future.successful[Option[Stripe.Customer]](None).liftM[OptionT]
+          }
         } yield {
           // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
           card.copy(
