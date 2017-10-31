@@ -1,41 +1,32 @@
 package controllers
 import actions._
-import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.ZuoraRestService
-import com.gu.zuora.ZuoraRestService.QueryResponse
-import loghandling.ZuoraRequestCounter
 import configuration.Config
 import configuration.Config.authentication
 import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.LoggingWithLogstashFields
+import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
-import org.joda.time.LocalDate
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
-import services.{AttributeService, AttributesMaker, AuthenticationService, IdentityAuthService}
+import prodtest.Allocator._
+import services.{AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
-import scalaz.syntax.std.option._
-import prodtest.Allocator._
-
-import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
 import scalaz.syntax.std.either._
-import scalaz._
-import std.list._
-import syntax.traverse._
+import scalaz.syntax.std.option._
+import scalaz.{EitherT, OptionT, \/}
+import services.AttributesFromZuora._
 
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
@@ -59,170 +50,71 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
   {
-    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
+    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+      def attributesFromDynamo(identityId: String) = request.touchpoint.attrService.get(identityId)
+
       if(endpointEligibleForTest){
-        val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
+        val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
+        val percentageInTest = featureToggleData.TrafficPercentage
+        val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+
         isInTest(identityId, percentageInTest) match {
-          case true => ("Zuora", attributesFromZuora(identityId, request.touchpoint.patientZuoraRestService, request.touchpoint.subService, request.touchpoint.attrService))
-          case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
+          case true => {
+            if(ZuoraRequestCounter.get < concurrentCallThreshold) {
+              getAttributes(
+                identityId = identityId,
+                identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
+                subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
+                dynamoAttributeService = request.touchpoint.attrService)
+            } else {
+              attributesFromDynamo(identityId) map {("Dynamo - too many concurrent calls to Zuora", _)}
+            }
+
+          }
+          case false => attributesFromDynamo(identityId) map {("Dynamo - not in Zuora lookup bucket", _)}
         }
-      } else ("Dynamo", request.touchpoint.attrService.get(identityId))
+      } else attributesFromDynamo(identityId) map {("Dynamo - as this endpoint always does", _)}
     }
 
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          val (fromWhere, attributes) = pickAttributes(identityId)
-          def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+          pickAttributes(identityId) map { pickedAttributes =>
 
-          attributes.map {
-            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
-              logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
-              onSuccessMember(attrs).withHeaders(
-                "X-Gu-Membership-Tier" -> tier,
-                "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
-              )
-            case Some(attrs) =>
-              attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
-              }
-              attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
-              }
-              attrs.AdFree.foreach { _ =>
-                logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
-              }
-              logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
-              onSuccessSupporter(attrs)
-            case None if sendAttributesIfNotFound =>
-              Attributes(identityId, AdFree = Some(false))
-            case _ =>
-              onNotFound
-          }
-        case None =>
-          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-          Future(unauthorized)
+            val (fromWhere: String, attributes: Option[Attributes]) = pickedAttributes
 
-        }
-      }
-  }
+            def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
-
-  private def attributesFromZuora(identityId: String, patientZuoraRestService: ZuoraRestService[Future], subscriptionService: SubscriptionService[Future], attributeService: AttributeService): Future[Option[Attributes]] = {
-
-    def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]]) = {
-      import loghandling.StopWatch
-      val stopWatch = new StopWatch
-
-      futureResult.map { disjunction: Disjunction[String, R] =>
-        disjunction match {
-          case -\/(message) => log.warn(s"$whichCall failed with: $message")
-          case \/-(_) =>
-            val latency = stopWatch.elapsed
-            val zuoraConcurrencyCount = ZuoraRequestCounter.get
-            val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
-            logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
-        }
-      }.onFailure {
-        case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
-      }
-      futureResult
-    }
-
-    def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
-
-    def getSubscriptions(accountIds: List[AccountId]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
-
-      def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] =
-        subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)(anyPlanReads)
-
-      val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverseU(id => sub(id)).map(_.sequenceU.map(_.flatten))
-      maybeSubs.map {
-        _.leftMap { errorMsg =>
-          log.warn(s"We tried getting subscription for a user with identityId $identityId, but then $errorMsg")
-          s"We called Zuora to get subscriptions for a user with identityId $identityId but the call failed"
-        } map { subs =>
-          log.info(s"We got subs for identityId $identityId from Zuora and there were ${subs.length}")
-          subs
-        }
-      }
-    }
-
-    def zuoraAccountsQuery(identityId: String): Future[Disjunction[String, QueryResponse]] = patientZuoraRestService.getAccounts(identityId).map {
-      _.leftMap {error =>
-        log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: ${error}")
-        s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."
-      }
-    }
-
-    def compareThenLogAttributes(attributesFromDynamo: Future[Option[Attributes]], attributesFromZuora: Future[Option[Attributes]]): Unit = {
-      attributesFromDynamo map { maybeDynamoAttributes =>
-        attributesFromZuora map { maybeZuoraAttributes =>
-          val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes flatMap  { zuoraAttributes =>
-            maybeDynamoAttributes map { dynamoAttributes =>
-              zuoraAttributes.copy(
-                AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
-                Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
-                MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
-                MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
-                DigitalSubscriptionExpiryDate = None
-              )
+            attributes match {
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+                logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
+                onSuccessMember(attrs).withHeaders(
+                  "X-Gu-Membership-Tier" -> tier,
+                  "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
+                )
+              case Some(attrs) =>
+                attrs.DigitalSubscriptionExpiryDate.foreach { date =>
+                  logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
+                }
+                attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
+                  logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
+                }
+                attrs.AdFree.foreach { _ =>
+                  logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
+                }
+                logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+                onSuccessSupporter(attrs)
+              case None if sendAttributesIfNotFound =>
+                Attributes(identityId, AdFree = Some(false))
+              case _ =>
+                onNotFound
             }
           }
-          if (zuoraAttributesWithIgnoredFields != maybeDynamoAttributes)
-            log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-              s" Zuora attributes: $maybeZuoraAttributes. Dynamo attributes: $maybeDynamoAttributes.")
-        }
-      }
-    }
-
-    val attributesDisjunction = for {
-      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId)))
-      accountIds = queryToAccountIds(accounts)
-      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
-        if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds))
-        else Future.successful(\/.right {
-          log.info(s"User with identityId $identityId has no accountIds and thus no subscriptions.")
-          Nil
-        })
-      )
-    } yield {
-      AttributesMaker.attributes(identityId, subscriptions, LocalDate.now())
-    }
-
-    val attributes = attributesDisjunction.run.map {
-      _.leftMap { errorMsg =>
-        log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
-        errorMsg
-      }.fold(_ => None, identity)
-    }
-
-    val attributesFromDynamo: Future[Option[Attributes]] = attributeService.get(identityId)
-
-    compareThenLogAttributes(attributesFromDynamo, attributes)
-
-    val adFreeFlagFromDynamo = attributesFromDynamo map (_.flatMap(_.AdFree))
-
-    attributes flatMap { maybeAttributes =>
-      adFreeFlagFromDynamo map { adFree =>
-        maybeAttributes map {_.copy(AdFree = adFree)}
-      }
-    }
-  }
-
-  private def zuoraLookup(endpointDescription: String) =
-    backendAction.async { implicit request =>
-      authenticationService.userId(request) match {
-        case Some(identityId) =>
-          attributesFromZuora(identityId, request.touchpoint.patientZuoraRestService, request.touchpoint.subService, request.touchpoint.attrService).map {
-            case Some(attrs) =>
-              log.info(s"Successfully retrieved attributes from Zuora for user $identityId: $attrs")
-              attrs
-            case _ => notFound
-          }
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
+
+        }
       }
   }
 
@@ -238,7 +130,6 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true, sendAttributesIfNotFound = true)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
-  def zuoraMe = zuoraLookup("zuoraLookup")
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 
