@@ -124,6 +124,7 @@ class AccountController extends LazyLogging {
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
+  def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
