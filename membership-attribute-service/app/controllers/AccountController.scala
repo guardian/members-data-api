@@ -53,7 +53,6 @@ class AccountController extends LazyLogging {
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       stripeService <- EitherT(Future.successful(tp.allStripeServices.find(_.publicKey == stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
-      //invoiceTemplate <- invoiceTemplateIdsByCountry
       updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService, maybeUserId).map(_ \/> "something missing when try to zuora payment card"))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
