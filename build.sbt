@@ -70,6 +70,7 @@ def lib(name: String) = Project(name, file(name))
 def app(name: String) = lib(name)
   .settings(dynamoDBLocalSettings)
   .settings(buildDebSettings)
+  .settings(riffRaffArtifactResources += (file(s"${name}/target/scala-2.11/dependency-check-report.html"), s"${name}-dependency-check-report.html"))
 
 val api = app("membership-attribute-service")
   .settings(libraryDependencies ++= apiDependencies)

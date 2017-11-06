@@ -14,3 +14,5 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.1.6")
 addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "0.9.7")
 
 libraryDependencies += "org.vafer" % "jdeb" % "1.3" artifacts (Artifact("jdeb", "jar", "jar"))
+
+addSbtPlugin("net.vonbuchholtz" % "sbt-dependency-check" % "0.1.10")
