@@ -80,7 +80,6 @@ Mappings:
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
-      GiraffeTopic: giraffe
 
     CODE:
       NotificationAlarmPeriod: 1200
@@ -91,7 +90,6 @@ Mappings:
       DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
-      GiraffeTopic: giraffe-code
 
 Resources:
   MembershipRole:
@@ -119,11 +117,6 @@ Resources:
           - Action: ec2:DescribeTags
             Resource: "*"
             Effect: Allow
-          - Effect: Allow
-            Action:
-            - sns:Publish
-            Resource:
-              Ref: TopicGiraffe
           - Action:
             - logs:*
             Resource:
@@ -280,9 +273,6 @@ Resources:
           !Sub
             - |
               #!/bin/bash -ev
-              aws s3 cp s3://gu-membership-attribute-service-dist/set-ssh-keys.sh .
-              chmod +x set-ssh-keys.sh
-              ./set-ssh-keys.sh
               CONF_DIR=/etc/membership-attribute-service
               aws s3 cp s3://gu-membership-attribute-service-dist/membership/${Stage}/membership-attribute-service/membership-attribute-service_1.0-SNAPSHOT_all.deb /tmp
               dpkg -i /tmp/membership-attribute-service_1.0-SNAPSHOT_all.deb
@@ -337,11 +327,6 @@ Resources:
         FromPort: '443'
         ToPort: '443'
         CidrIp: 0.0.0.0/0
-  TopicGiraffe:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName:
-        Fn::FindInMap: [ StageVariables, { Ref: Stage }, GiraffeTopic ]
 Outputs:
   LoadBalancerUrl:
     Value:

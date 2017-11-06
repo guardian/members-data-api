@@ -1,7 +1,6 @@
 package configuration
 
 import java.time.Duration
-
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
@@ -16,10 +15,8 @@ import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import play.api.Configuration
 import play.filters.cors.CORSConfig
-
 import scala.collection.JavaConverters._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
 import scala.util.Try
 
 object Config {

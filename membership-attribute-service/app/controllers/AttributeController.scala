@@ -8,7 +8,7 @@ import com.gu.scanamo.error.DynamoReadError
 import configuration.Config
 import configuration.Config.authentication
 import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.LoggingWithLogstashFields
+import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -50,60 +50,65 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
   {
-    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): (String, Future[Option[Attributes]]) = {
+    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+      def attributesFromDynamo(identityId: String) = request.touchpoint.attrService.get(identityId)
+
       if(endpointEligibleForTest){
-        val percentageInTest = request.touchpoint.featureToggleData.getPercentageTrafficForZuoraLookupTask.get()
+        val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
+        val percentageInTest = featureToggleData.TrafficPercentage
+        val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+
         isInTest(identityId, percentageInTest) match {
           case true => {
-            val attributesFromZuora = getAttributes(
-              identityId = identityId,
-              identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
-              subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-              dynamoAttributeGetter = request.touchpoint.attrService.get)
+            if(ZuoraRequestCounter.get < concurrentCallThreshold) {
+              getAttributes(
+                identityId = identityId,
+                identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
+                subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
+                dynamoAttributeService = request.touchpoint.attrService)
+            } else {
+              attributesFromDynamo(identityId) map {("Dynamo - too many concurrent calls to Zuora", _)}
+            }
 
-              val cachedAttributes: OptionT[Future, Attributes] = for {
-                attributes <- OptionT(attributesFromZuora)
-                _ = request.touchpoint.attrService.update(attributes).onFailure {
-                  case error => log.warn(s"Tried updating attributes for $identityId but then ${error.getMessage}", error)
-                }
-              } yield attributes
-
-            ("Zuora", cachedAttributes.run)
           }
-          case false => ("Dynamo", request.touchpoint.attrService.get(identityId))
+          case false => attributesFromDynamo(identityId) map {("Dynamo - not in Zuora lookup bucket", _)}
         }
-      } else ("Dynamo", request.touchpoint.attrService.get(identityId))
+      } else attributesFromDynamo(identityId) map {("Dynamo - as this endpoint always does", _)}
     }
 
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
-          val (fromWhere, attributes) = pickAttributes(identityId)
-          def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+          pickAttributes(identityId) map { pickedAttributes =>
 
-          attributes.map {
-            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
-              logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
-              onSuccessMember(attrs).withHeaders(
-                "X-Gu-Membership-Tier" -> tier,
-                "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
-              )
-            case Some(attrs) =>
-              attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
-              }
-              attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
-              }
-              attrs.AdFree.foreach { _ =>
-                logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
-              }
-              logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
-              onSuccessSupporter(attrs)
-            case None if sendAttributesIfNotFound =>
-              Attributes(identityId, AdFree = Some(false))
-            case _ =>
-              onNotFound
+            val (fromWhere: String, attributes: Option[Attributes]) = pickedAttributes
+
+            def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+
+            attributes match {
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+                logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
+                onSuccessMember(attrs).withHeaders(
+                  "X-Gu-Membership-Tier" -> tier,
+                  "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
+                )
+              case Some(attrs) =>
+                attrs.DigitalSubscriptionExpiryDate.foreach { date =>
+                  logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
+                }
+                attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
+                  logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
+                }
+                attrs.AdFree.foreach { _ =>
+                  logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
+                }
+                logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+                onSuccessSupporter(attrs)
+              case None if sendAttributesIfNotFound =>
+                Attributes(identityId, AdFree = Some(false))
+              case _ =>
+                onNotFound
+            }
           }
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
