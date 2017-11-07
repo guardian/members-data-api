@@ -7,12 +7,16 @@ GET        /user-attributes/me/features                     controllers.Attribut
 GET        /user-attributes/me/mma-digitalpack              controllers.AccountController.digitalPackDetails
 GET        /user-attributes/me/mma-membership               controllers.AccountController.membershipDetails
 GET        /user-attributes/me/mma-monthlycontribution      controllers.AccountController.monthlyContributionDetails
+GET        /user-attributes/me/mma-paper                    controllers.AccountController.paperDetails
 
 POST       /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
 OPTIONS    /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
 
 POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
+
+POST       /user-attributes/me/paper-update-card      controllers.AccountController.paperUpdateCard
+OPTIONS    /user-attributes/me/paper-update-card      controllers.AccountController.paperUpdateCard
 
 POST       /user-attributes/me/contribution-update-card      controllers.AccountController.contributionUpdateCard
 OPTIONS    /user-attributes/me/contribution-update-card      controllers.AccountController.contributionUpdateCard
