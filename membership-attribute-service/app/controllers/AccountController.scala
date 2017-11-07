@@ -52,7 +52,7 @@ class AccountController extends LazyLogging {
       (stripeCardToken, stripePublicKey) = stripeDetails
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
-      stripeService <- EitherT(Future.successful(tp.allStripeServices.find(_.publicKey == stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
+      stripeService <- EitherT(Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
       updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService, maybeUserId).map(_ \/> "something missing when try to zuora payment card"))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
@@ -71,6 +71,15 @@ class AccountController extends LazyLogging {
     }
   }
 
+  private def findStripeCustomer(customerId: String, likelyStripeService: StripeService)(implicit tp: TouchpointComponents): Future[Option[Stripe.Customer]] = {
+    val alternativeStripeService = if (likelyStripeService == tp.ukStripeService) tp.auStripeService else tp.ukStripeService
+    likelyStripeService.Customer.read(customerId).recoverWith {
+      case _ => alternativeStripeService.Customer.read(customerId)
+    } map(Option(_)) recover {
+      case _ => None
+    }
+  }
+
   private def getUpToDatePaymentDetailsFromStripe(defaultPaymentMethodId: Option[String], paymentDetails: PaymentDetails, stripeService: StripeService)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
     paymentDetails.paymentMethod.map {
       case card: PaymentCard =>
@@ -78,24 +87,18 @@ class AccountController extends LazyLogging {
           paymentMethodId <- OptionT(Future.successful(defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
           zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
           customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
-          maybeAStripeCustomer <- stripeService.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
-          maybeStripeCustomer <- {
-            val alternateStripeService = tp.allStripeServices.filterNot(_ == stripeService).headOption
-            // Performance optimisation not to go to the alternate Stripe service if a customer record is found in the main one
-            if (maybeAStripeCustomer.nonEmpty) Future.successful(maybeAStripeCustomer).liftM[OptionT]
-            else if (alternateStripeService.nonEmpty) alternateStripeService.get.Customer.read(customerId).map(Option(_)).recover { case _ => None }.liftM[OptionT]
-            else Future.successful[Option[Stripe.Customer]](None).liftM[OptionT]
-          }
+          stripeCustomer <- OptionT(findStripeCustomer(customerId, stripeService))
+          stripeCard = stripeCustomer.card
         } yield {
           // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
           card.copy(
-            cardType = maybeStripeCustomer.map(_.card).map(_.`type`),
-            paymentCardDetails = maybeStripeCustomer.map(_.card).map(card => PaymentCardDetails(card.last4, card.exp_month, card.exp_year))
+            cardType = Some(stripeCard.`type`),
+            paymentCardDetails = Some(PaymentCardDetails(stripeCard.last4, stripeCard.exp_month, stripeCard.exp_year))
           )
         }).run
-      case x => Future.successful(Some(x))
-    }.sequence.map { maybeUpdatedPaymentMethod =>
-      paymentDetails.copy(paymentMethod = maybeUpdatedPaymentMethod.flatten orElse paymentDetails.paymentMethod)
+      case x => Future.successful(None) // not updated
+    }.sequence.map { maybeUpdatedPaymentCard =>
+      paymentDetails.copy(paymentMethod = maybeUpdatedPaymentCard.flatten orElse paymentDetails.paymentMethod)
     }
   }
 
