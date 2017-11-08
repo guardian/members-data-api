@@ -3,7 +3,7 @@ import actions._
 import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.{SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -83,13 +83,14 @@ class AccountController extends LazyLogging {
   private def getUpToDatePaymentDetailsFromStripe(accountId: Subscription.AccountId, paymentDetails: PaymentDetails)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
     paymentDetails.paymentMethod.map {
       case card: PaymentCard =>
+        def liftFuture[A](m: Option[A]): OptionT[Future, A] = OptionT(Future.successful(m))
         (for {
           account <- tp.zuoraService.getAccount(accountId).liftM[OptionT]
-          defaultPaymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
+          defaultPaymentMethodId <- liftFuture(account.defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty))
           zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(defaultPaymentMethodId).liftM[OptionT]
-          customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
-          paymentGateway <- OptionT(Future.successful(account.paymentGateway))
-          stripeService <- OptionT(Future.successful(tp.stripeServicesByPaymentGateway.get(paymentGateway)))
+          customerId <- liftFuture(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_")))
+          paymentGateway <- liftFuture(account.paymentGateway)
+          stripeService <- liftFuture(tp.stripeServicesByPaymentGateway.get(paymentGateway))
           stripeCustomer <- OptionT(findStripeCustomer(customerId, stripeService))
           stripeCard = stripeCustomer.card
         } yield {
@@ -116,10 +117,10 @@ class AccountController extends LazyLogging {
       freeOrPaidSub <- OptionEither(tp.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
       details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right))
       sub = freeOrPaidSub.fold(identity, identity)
-      accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId))
-      stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
-      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(accountSummary.id, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${accountSummary.id}. Reason: $x") })
+      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(sub.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${sub.accountId}. Reason: $x") })
+      accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
+      stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
     } yield (contact, upToDatePaymentDetails, stripeService.publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
