@@ -80,7 +80,7 @@ class AccountController extends LazyLogging {
     }
   }
 
-  private def getUpToDatePaymentDetailsFromStripe(accountId: Subscription.AccountId, paymentDetails: PaymentDetails, stripeService: StripeService)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
+  private def getUpToDatePaymentDetailsFromStripe(accountId: Subscription.AccountId, paymentDetails: PaymentDetails)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
     paymentDetails.paymentMethod.map {
       case card: PaymentCard =>
         (for {
@@ -88,6 +88,8 @@ class AccountController extends LazyLogging {
           defaultPaymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
           zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(defaultPaymentMethodId).liftM[OptionT]
           customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
+          paymentGateway <- OptionT(Future.successful(account.paymentGateway))
+          stripeService <- OptionT(Future.successful(tp.stripeServicesByPaymentGateway.get(paymentGateway)))
           stripeCustomer <- OptionT(findStripeCustomer(customerId, stripeService))
           stripeCard = stripeCustomer.card
         } yield {
