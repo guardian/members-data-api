@@ -48,7 +48,7 @@ class AccountController extends LazyLogging {
     logger.info(s"Attempting to update card for $maybeUserId")
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      stripeDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token submitted with request"))
+      stripeDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token and public key submitted with request"))
       (stripeCardToken, stripePublicKey) = stripeDetails
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
@@ -80,12 +80,13 @@ class AccountController extends LazyLogging {
     }
   }
 
-  private def getUpToDatePaymentDetailsFromStripe(defaultPaymentMethodId: Option[String], paymentDetails: PaymentDetails, stripeService: StripeService)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
+  private def getUpToDatePaymentDetailsFromStripe(accountId: Subscription.AccountId, paymentDetails: PaymentDetails, stripeService: StripeService)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
     paymentDetails.paymentMethod.map {
       case card: PaymentCard =>
         (for {
-          paymentMethodId <- OptionT(Future.successful(defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
-          zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(paymentMethodId).liftM[OptionT]
+          account <- tp.zuoraService.getAccount(accountId).liftM[OptionT]
+          defaultPaymentMethodId <- OptionT(Future.successful(account.defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty)))
+          zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(defaultPaymentMethodId).liftM[OptionT]
           customerId <- OptionT(Future.successful(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_"))))
           stripeCustomer <- OptionT(findStripeCustomer(customerId, stripeService))
           stripeCard = stripeCustomer.card
@@ -113,11 +114,10 @@ class AccountController extends LazyLogging {
       freeOrPaidSub <- OptionEither(tp.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
       details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right))
       sub = freeOrPaidSub.fold(identity, identity)
-      account <- OptionEither.liftOption(tp.zuoraService.getAccount(sub.accountId).map(\/.right).recover { case x => \/.left(s"error retrieving account for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
-      billToContact <- OptionEither.liftOption(tp.zuoraService.getContact(account.billToId).map(\/.right).recover { case x => \/.left(s"error retrieving bill to contact id (${account.billToId}) for account id ${account.id}. Reason $x")})
-      stripeService = billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
+      accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId))
+      stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
-      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(account.defaultPaymentMethodId, paymentDetails, stripeService).map(\/.right).recover { case x => \/.left(s"error getting up-to-date details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
+      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(accountSummary.id, paymentDetails, stripeService).map(\/.right).recover { case x => \/.left(s"error getting up-to-date details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
     } yield (contact, upToDatePaymentDetails, stripeService.publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
