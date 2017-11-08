@@ -124,11 +124,13 @@ class AccountController extends LazyLogging {
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
+  def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan]
   def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
+  def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
 }
 
 // this is helping us stack future/either/option
