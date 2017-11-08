@@ -119,7 +119,7 @@ class AccountController extends LazyLogging {
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId))
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
-      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(accountSummary.id, paymentDetails, stripeService).map(\/.right).recover { case x => \/.left(s"error getting up-to-date details for payment method id: ${account.defaultPaymentMethodId.mkString}. Reason: $x") })
+      upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(accountSummary.id, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${accountSummary.id}. Reason: $x") })
     } yield (contact, upToDatePaymentDetails, stripeService.publicKey).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
