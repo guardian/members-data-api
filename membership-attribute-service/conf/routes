@@ -21,8 +21,8 @@ OPTIONS    /user-attributes/me/paper-update-card      controllers.AccountControl
 POST       /user-attributes/me/contribution-update-card      controllers.AccountController.contributionUpdateCard
 OPTIONS    /user-attributes/me/contribution-update-card      controllers.AccountController.contributionUpdateCard
 
-POST       /user-attributes/me/cancel-account                controllers.AccountController.contributionCancelAccount
-OPTIONS    /user-attributes/me/cancel-account                controllers.AccountController.contributionCancelAccount
+POST       /user-attributes/me/cancel-regular-contribution   controllers.AccountController.contributionCancelAccount
+OPTIONS    /user-attributes/me/cancel-regular-contribution   controllers.AccountController.contributionCancelAccount
 
 POST       /user-behaviour/capture                          controllers.BehaviourController.capture
 POST       /user-behaviour/remove                           controllers.BehaviourController.remove

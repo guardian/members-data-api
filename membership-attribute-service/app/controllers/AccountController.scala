@@ -59,7 +59,7 @@ class AccountController extends Controller with LazyLogging {
       case -\/(message) =>
         logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
         NotFound()//notFound
-      case \/-(result) => Ok("todo")
+      case \/-(result) => Ok("Subscription cancelled correctly")
     }
 
   }
