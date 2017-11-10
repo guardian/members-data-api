@@ -40,12 +40,37 @@ class AccountController extends Controller with LazyLogging {
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 
+
+  def cancelAccount [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+    val tp = request.touchpoint
+    val cancelForm = Form { single("reason" -> nonEmptyText) }
+
+    val maybeUserId = authenticationService.userId
+    logger.info(s"Attempting to cancel account for $maybeUserId")
+
+    (for {
+      user <- EitherT(Future.successful( maybeUserId \/> "no identity cookie for user"))
+      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
+      zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error message: $message")
+      _ <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error message: $message")
+      updateReasonResult <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, cancelForm.bindFromRequest().value.get)).leftMap(message => s"Error message: $message")
+    } yield updateReasonResult).run.map {
+      case -\/(message) =>
+        logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
+        NotFound()//notFound
+      case \/-(result) => Ok("todo")
+    }
+
+  }
+
   def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
 
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
     val tp = request.touchpoint
+
     val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to update card for $maybeUserId")
     (for {
@@ -135,6 +160,8 @@ class AccountController extends Controller with LazyLogging {
         InternalServerError("Failed to retrieve payment details due to an internal error")
     }
   }
+
+  def contributionCancelAccount = cancelAccount[SubscriptionPlan.Contributor]
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
