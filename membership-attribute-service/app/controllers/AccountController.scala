@@ -41,7 +41,7 @@ class AccountController extends Controller with LazyLogging {
   lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 
 
-  def cancelAccount [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+  def cancelContribution [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
 
@@ -161,7 +161,7 @@ class AccountController extends Controller with LazyLogging {
     }
   }
 
-  def contributionCancelAccount = cancelAccount[SubscriptionPlan.Contributor]
+  def cancelRegularContribution = cancelContribution[SubscriptionPlan.Contributor]
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
