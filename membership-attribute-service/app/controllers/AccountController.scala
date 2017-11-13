@@ -41,23 +41,23 @@ class AccountController extends Controller with LazyLogging {
   lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 
 
-  def cancelContribution [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+  def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
 
     val maybeUserId = authenticationService.userId
-    logger.info(s"Attempting to cancel account for $maybeUserId")
+    logger.info(s"Attempting to cancel contribution for $maybeUserId")
 
     (for {
       user <- EitherT(Future.successful( maybeUserId \/> "no identity cookie for user"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
-      _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error message: $message")
-      _ <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error message: $message")
-      updateReasonResult <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, cancelForm.bindFromRequest().value.get)).leftMap(message => s"Error message: $message")
+      _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
+      _ <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error while cancelling subscription: $message")
+      updateReasonResult <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, cancelForm.bindFromRequest().value.get)).leftMap(message => s"Error while updating cancellation reason: $message")
     } yield updateReasonResult).run.map {
       case -\/(message) =>
-        logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
+        logger.warn(s"Failed to cancel subscription for user $maybeUserId, due to $message")
         NotFound()//notFound
       case \/-(result) => Ok("Subscription cancelled correctly")
     }
@@ -161,7 +161,7 @@ class AccountController extends Controller with LazyLogging {
     }
   }
 
-  def cancelRegularContribution = cancelContribution[SubscriptionPlan.Contributor]
+  def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor]
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
