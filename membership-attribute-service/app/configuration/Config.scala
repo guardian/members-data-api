@@ -1,6 +1,7 @@
 package configuration
 
 import java.time.Duration
+
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
@@ -15,8 +16,11 @@ import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import play.api.Configuration
 import play.filters.cors.CORSConfig
+
 import scala.collection.JavaConverters._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.filters.cors.CORSConfig.Origins
+
 import scala.util.Try
 
 object Config {
@@ -66,11 +70,15 @@ object Config {
   val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
 
   val mmaCorsConfig = CORSConfig.denyAll.copy(
-    allowedOrigins = config.getStringList("mma.cors.allowedOrigins").asScala.toSet
+    allowedOrigins = Origins.Matching( str =>
+      config.getStringList("mma.cors.allowedOrigins").contains(str)
+    )
   )
 
   val ftCorsConfig = CORSConfig.denyAll.copy(
-    allowedOrigins = config.getStringList("ft.cors.allowedOrigins").asScala.toSet
+    allowedOrigins = Origins.Matching( str =>
+      config.getStringList("ft.cors.allowedOrigins").contains(str)
+    )
   )
 
   lazy val mmaCardCorsConfig = Config.mmaCorsConfig.copy(
