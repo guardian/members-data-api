@@ -3,7 +3,7 @@ import actions._
 import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.{SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -18,7 +18,6 @@ import models.AccountDetails._
 import models.ApiErrors._
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.json.Json
 import play.api.mvc.Results._
 import play.filters.cors.CORSActionBuilder
@@ -34,8 +33,8 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 class AccountController extends LazyLogging {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
+  lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig)
+  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig)
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 

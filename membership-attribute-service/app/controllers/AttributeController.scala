@@ -14,7 +14,6 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
-import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -43,7 +42,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
     }
   }
 
-  lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
+  lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val backendForSyncWithZuora = NoCacheAction andThen apiKeyFilter andThen WithBackendFromUserIdAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
