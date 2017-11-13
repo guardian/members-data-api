@@ -225,5 +225,5 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   }
 
-  override def afterAll() = as.shutdown()
+  override def afterAll() = as.terminate()
 }
