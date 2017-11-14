@@ -9,6 +9,7 @@ GET        /user-attributes/me/mma-membership               controllers.AccountC
 GET        /user-attributes/me/mma-monthlycontribution      controllers.AccountController.monthlyContributionDetails
 GET        /user-attributes/me/mma-paper                    controllers.AccountController.paperDetails
 
+#NOCSRF
 POST       /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
 OPTIONS    /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
 
