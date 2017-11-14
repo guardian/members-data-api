@@ -16,6 +16,7 @@ import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
 import models.ApiErrors._
+import play.api.mvc.Controller
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.http.DefaultHttpErrorHandler
@@ -31,7 +32,7 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController extends LazyLogging {
+class AccountController extends Controller with LazyLogging {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig, DefaultHttpErrorHandler)
