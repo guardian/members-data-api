@@ -48,17 +48,21 @@ class AccountController extends Controller with LazyLogging {
     val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to cancel contribution for $maybeUserId")
 
+
+
     (for {
       user <- EitherT(Future.successful( maybeUserId \/> "no identity cookie for user"))
+      cancellationReason <- EitherT(Future.successful(cancelForm.bindFromRequest().value \/> "no reason for cancellation submitted with request"))
+      (reason) = cancellationReason
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
       _ <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error while cancelling subscription: $message")
-      updateReasonResult <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, cancelForm.bindFromRequest().value.get)).leftMap(message => s"Error while updating cancellation reason: $message")
+      updateReasonResult <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
     } yield updateReasonResult).run.map {
       case -\/(message) =>
         logger.warn(s"Failed to cancel subscription for user $maybeUserId, due to $message")
-        NotFound()//notFound
+        notFound //notFound
       case \/-(result) => Ok("Subscription cancelled correctly")
     }
 
@@ -93,7 +97,7 @@ class AccountController extends Controller with LazyLogging {
     }).run.map {
       case -\/(message) =>
         logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
-        notFound
+        InternalServerError(s"Failed to update card for user $maybeUserId")
       case \/-(result) => result
     }
   }
