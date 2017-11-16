@@ -3,7 +3,7 @@ import actions._
 import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -15,6 +15,7 @@ import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
+import models.ApiError
 import models.ApiErrors._
 import play.api.mvc.Controller
 import play.api.data.Form
@@ -40,12 +41,77 @@ class AccountController extends Controller with LazyLogging {
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
 
+
+
+  def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+
+    val tp = request.touchpoint
+    val cancelForm = Form { single("reason" -> nonEmptyText) }
+    val maybeUserId = authenticationService.userId
+
+    def handleInputBody(cancelForm: Form[String]): Future[ApiError \/ String] = Future.successful {
+      cancelForm.bindFromRequest().value.map { cancellationReason =>
+        \/-(cancellationReason)
+      }.getOrElse {
+        logger.warn("No reason for cancellation was submitted with the request.")
+        -\/(badRequest("Malformed request. Expected a valid reason for cancellation."))
+      }
+    }
+
+    def retrieveZuoraSubscription(user: String): Future[ApiError \/ Subscription[P]] = {
+      val getSubscriptionData = for {
+        sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"No Salesforce user: $user")))
+        zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"No current subscriptions for the Salesforce user: $sfUser"))
+      } yield zuoraSubscription
+
+      getSubscriptionData.run.map {
+        case -\/(message) =>
+          logger.warn(s"Failed to retrieve subscription information for user $maybeUserId, due to: $message")
+          -\/(notFound)
+        case \/-(subscription) =>
+          \/-(subscription)
+      }
+    }
+
+    def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
+      val cancellationSteps = for {
+        _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
+        _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
+        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error while cancelling subscription: $message")
+      } yield cancelResult
+
+      cancellationSteps.run.map {
+        case -\/(message) =>
+          logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $message")
+          -\/(notFound)
+        case \/-(()) => \/-(())
+      }
+    }
+
+    logger.info(s"Attempting to cancel contribution for $maybeUserId")
+
+    (for {
+      user <- EitherT(Future.successful(maybeUserId \/> unauthorized))
+      cancellationReason <- EitherT(handleInputBody(cancelForm))
+      zuoraSubscription <- EitherT(retrieveZuoraSubscription(user))
+      cancellation <- EitherT(executeCancellation(zuoraSubscription, cancellationReason))
+    } yield cancellation).run.map {
+      case -\/(apiError) =>
+        logger.error(s"Failed to cancel subscription for user $maybeUserId")
+        apiError
+      case \/-(_) =>
+        logger.info(s"Successfully cancelled subscription for user $maybeUserId")
+        Ok
+    }
+  }
+
   def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
 
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
     val tp = request.touchpoint
+
     val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to update card for $maybeUserId")
     (for {
@@ -68,7 +134,7 @@ class AccountController extends Controller with LazyLogging {
     }).run.map {
       case -\/(message) =>
         logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
-        notFound
+        InternalServerError(s"Failed to update card for user $maybeUserId")
       case \/-(result) => result
     }
   }
@@ -82,7 +148,7 @@ class AccountController extends Controller with LazyLogging {
     }
   }
 
-  private def getUpToDatePaymentDetailsFromStripe(accountId: Subscription.AccountId, paymentDetails: PaymentDetails)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
+  private def getUpToDatePaymentDetailsFromStripe(accountId: com.gu.memsub.Subscription.AccountId, paymentDetails: PaymentDetails)(implicit tp: TouchpointComponents): Future[PaymentDetails] = {
     paymentDetails.paymentMethod.map {
       case card: PaymentCard =>
         def liftFuture[A](m: Option[A]): OptionT[Future, A] = OptionT(Future.successful(m))
@@ -135,6 +201,8 @@ class AccountController extends Controller with LazyLogging {
         InternalServerError("Failed to retrieve payment details due to an internal error")
     }
   }
+
+  def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor]
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
