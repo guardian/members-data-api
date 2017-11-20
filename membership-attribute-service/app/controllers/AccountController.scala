@@ -143,26 +143,21 @@ class AccountController extends LazyLogging {
     val maybeUserId = authenticationService.userId
     val reasonForChange = "User-updated by MMA"
     logger.info(s"Attempting to update contribution amount for $maybeUserId")
-    for {
+    (for {
       newPrice <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       zuoraResult <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.id, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange))
-      //zuoraResult <- tp.zuoraRestService.updateChargeAmount(subscription.id, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange)
-      result <- parseOut(zuoraResult)
-    } yield result
-  }
-
-  def parseOut(z: \/[String, Unit]): Future[Result] = {
-    z match {
-      case -\/(message) => {
-        logger.error(s"Failed to update contribution amount for identity user")
-        Future.successful(notFound)
-      }
-      case _ => {
-        logger.info(s"Successfully updated card for identity user")
-        Future.successful(Ok("Success"))
+    } yield zuoraResult).run map { _ match {
+        case -\/(message) => {
+          logger.error(s"Failed to update contribution amount for identity user due to $message")
+          badRequest(s"Update could not be completed: $message")
+        }
+        case \/-(()) => {
+          logger.info(s"Successfully contribution for identity user")
+          Ok("Success")
+        }
       }
     }
   }
