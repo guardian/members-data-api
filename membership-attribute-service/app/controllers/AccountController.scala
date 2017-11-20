@@ -10,6 +10,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
+import com.gu.zuora.rest.ZuoraResponse
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import configuration.Config
@@ -20,6 +21,7 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.json.Json
+import play.api.mvc.Result
 import play.api.mvc.Results._
 import play.filters.cors.CORSActionBuilder
 
@@ -34,12 +36,12 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 class AccountController extends LazyLogging {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig, DefaultHttpErrorHandler)
+  lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
-  lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
+  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
 
-  def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
 
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
@@ -107,7 +109,7 @@ class AccountController extends LazyLogging {
     }
   }
 
-  def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
+  private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
@@ -135,10 +137,41 @@ class AccountController extends LazyLogging {
     }
   }
 
+  private def updateContributionAmount[P <: SubscriptionPlan.Paid : SubPlanReads] = mmaUpdateAction.async { implicit request =>
+    val updateForm = Form { single("newPaymentAmount" -> nonEmptyText) }
+    val tp = request.touchpoint
+    val maybeUserId = authenticationService.userId
+    val reasonForChange = "User-updated by MMA"
+    logger.info(s"Attempting to update contribution amount for $maybeUserId")
+    for {
+      newPrice <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
+      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
+      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
+      subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      zuoraResult <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.id, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange))
+      //zuoraResult <- tp.zuoraRestService.updateChargeAmount(subscription.id, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange)
+      result <- parseOut(zuoraResult)
+    } yield result
+  }
+
+  def parseOut(z: \/[String, Unit]): Future[Result] = {
+    z match {
+      case -\/(message) => {
+        logger.error(s"Failed to update contribution amount for identity user")
+        Future.successful(notFound)
+      }
+      case _ => {
+        logger.info(s"Successfully updated card for identity user")
+        Future.successful(Ok("Success"))
+      }
+    }
+  }
+
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
   def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan]
   def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor]
+  def contributionUpdateAmount = updateContributionAmount[SubscriptionPlan.Contributor]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
