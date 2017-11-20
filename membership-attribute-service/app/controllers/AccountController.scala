@@ -151,11 +151,11 @@ class AccountController extends LazyLogging {
       zuoraResult <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.id, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange))
     } yield zuoraResult).run map { _ match {
         case -\/(message) => {
-          logger.error(s"Failed to update contribution amount for identity user due to $message")
-          badRequest(s"Update could not be completed: $message")
+          logger.error(s"Failed to update contribution amount due to an error: $message")
+          badRequest(s"Contribution amount could not be updated: $message")
         }
         case \/-(()) => {
-          logger.info(s"Successfully contribution for identity user")
+          logger.info(s"Contribution amount updated")
           Ok("Success")
         }
       }
