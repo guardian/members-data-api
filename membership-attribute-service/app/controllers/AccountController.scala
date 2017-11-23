@@ -212,16 +212,14 @@ class AccountController extends Controller with LazyLogging {
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
-      zuoraResult <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.id, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange))
-    } yield zuoraResult).run map { _ match {
-        case -\/(message) => {
-          logger.error(s"Failed to update contribution amount due to an error: $message")
-          badRequest(s"Contribution amount could not be updated: $message")
-        }
-        case \/-(()) => {
-          logger.info("Contribution amount updated")
+      result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.nextChargeId, subscription.plan.productRatePlanId, newPrice.toDouble, reasonForChange)).leftMap(message => s"Error while updating contribution amount: $message")
+    } yield result).run map { _ match {
+        case -\/(message) =>
+          logger.warn(s"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
+          badRequest(message)
+        case \/-(()) =>
+          logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
           Ok("Success")
-        }
       }
     }
   }
