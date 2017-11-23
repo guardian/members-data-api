@@ -138,11 +138,11 @@ class AccountController extends LazyLogging {
   }
 
   private def updateContributionAmount[P <: SubscriptionPlan.Paid : SubPlanReads] = mmaUpdateAction.async { implicit request =>
-    val updateForm = Form { single("newPaymentAmount" -> nonEmptyText) }
+    val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
     val reasonForChange = "User-updated by MMA"
-    logger.info(s"Attempting to update contribution amount for $maybeUserId")
+    logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
     (for {
       newPrice <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
@@ -155,7 +155,7 @@ class AccountController extends LazyLogging {
           badRequest(s"Contribution amount could not be updated: $message")
         }
         case \/-(()) => {
-          logger.info(s"Contribution amount updated")
+          logger.info("Contribution amount updated")
           Ok("Success")
         }
       }
