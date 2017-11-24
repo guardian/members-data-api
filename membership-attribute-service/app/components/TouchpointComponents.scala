@@ -7,7 +7,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import scalaz.std.scalaFuture._
 import com.gu.config
 import com.gu.i18n.Country
-import com.gu.zuora.api.InvoiceTemplate
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
@@ -67,10 +66,11 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
     RequestRunners.loggingRunner(metrics("zuora-soap")),
     RequestRunners.loggingRunner(metrics("zuora-soap"))
   )
-  lazy val contactRepo = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
+  lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
+  lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
   lazy val attrService: AttributeService = new ScanamoAttributeService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoAttributesTable)
   lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoBehaviourTable)
-  lazy val featureToggleService: ScanamoFeatureToggleService = new ScanamoFeatureToggleService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoFeatureToggleTable)
+  lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(new AmazonDynamoDBAsyncClient(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1), dynamoFeatureToggleTable)
   lazy val zuoraService = new ZuoraService(soapClient)
   implicit lazy val simpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
   lazy val patientSimpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30 seconds)))

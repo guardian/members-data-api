@@ -1,6 +1,6 @@
 package services
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.gu.scanamo._
 import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.syntax.{set => scanamoSet, _}
@@ -13,7 +13,9 @@ import scalaz.\/
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
 
-class ScanamoFeatureToggleService(client: AmazonDynamoDBAsyncClient, table: String) extends LazyLogging {
+class ScanamoFeatureToggleService(client: AmazonDynamoDBAsync, table: String) extends FeatureToggleService with LazyLogging {
+
+  def checkHealth: Boolean = client.listTables(table).getTableNames.contains(table)
 
   private val scanamo = Table[FeatureToggle](table)
   def run[T] = ScanamoAsync.exec[T](client) _
