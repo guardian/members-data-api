@@ -33,7 +33,7 @@ class HealthCheckController extends Results with LazyLogging {
       }
   }
 
-  private lazy val services = Set(wrappedZuoraService, salesforceService, featureToggleService, attrService)
+  private lazy val services = Set(wrappedZuoraService, salesforceService, featureToggleService, attrService, behaviourService)
 
   private lazy val tests = services.map(service => new BoolTest(service.serviceName, () => service.checkHealth))
 

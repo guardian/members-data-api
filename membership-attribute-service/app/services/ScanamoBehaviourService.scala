@@ -12,6 +12,8 @@ import scala.concurrent.Future
 
 class ScanamoBehaviourService(client: AmazonDynamoDBAsync, table: String) extends BehaviourService with LazyLogging {
 
+  def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
+
   val scanamo = Table[Behaviour](table)
   def run[T] = ScanamoAsync.exec[T](client) _
 

@@ -16,7 +16,7 @@ import scala.concurrent.Future
 class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
     extends AttributeService with LazyLogging {
 
-  def checkHealth: Boolean = client.listTables(table).getTableNames.contains(table)
+  def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
 
   implicit val jodaStringFormat = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](
     LocalDate.parse(_)

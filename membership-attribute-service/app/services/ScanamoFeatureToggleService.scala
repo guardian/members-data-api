@@ -15,7 +15,7 @@ import scalaz.syntax.std.option._
 
 class ScanamoFeatureToggleService(client: AmazonDynamoDBAsync, table: String) extends FeatureToggleService with LazyLogging {
 
-  def checkHealth: Boolean = client.listTables(table).getTableNames.contains(table)
+  def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
 
   private val scanamo = Table[FeatureToggle](table)
   def run[T] = ScanamoAsync.exec[T](client) _
