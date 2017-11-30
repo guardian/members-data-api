@@ -1,10 +1,9 @@
 package controllers
 
-import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
-import components.NormalTouchpointComponents
-import com.github.nscala_time.time.Imports._
+import components.NormalTouchpointComponents._
+import com.typesafe.scalalogging.StrictLogging
 
 trait Test {
   def ok: Boolean
@@ -16,14 +15,12 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
   override def ok = exec()
 }
 
-class HealthCheckController extends Results {
-  lazy val zuora = NormalTouchpointComponents.zuoraService
-  lazy val salesforce = NormalTouchpointComponents.contactRepo.salesforce
+class HealthCheckController extends Results with StrictLogging {
 
-  val tests: Seq[Test] = Seq(
-    new BoolTest("ZuoraPing", () => zuora.lastPingTimeWithin(2.minutes)),
-    new BoolTest("Salesforce", () => salesforce.isAuthenticated)
-  )
+  // behaviourService, Stripe and all Zuora services are not critical
+  private lazy val services = Set(salesforceService, featureToggleService, attrService)
+
+  private lazy val tests = services.map(service => new BoolTest(service.serviceName, () => service.checkHealth))
 
   def healthCheck() = Action {
     Cached(1) {
@@ -32,7 +29,7 @@ class HealthCheckController extends Results {
       if (failures.isEmpty) {
         Ok(Json.obj("status" -> "ok", "gitCommitId" -> app.BuildInfo.gitCommitId))
       } else {
-        failures.flatMap(_.messages).foreach(msg => Logger.warn(msg))
+        failures.flatMap(_.messages).foreach(msg => logger.warn(msg))
         ServiceUnavailable("Service Unavailable")
       }
     }

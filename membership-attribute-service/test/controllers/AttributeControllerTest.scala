@@ -53,6 +53,7 @@ class AttributeControllerTest extends Specification with AfterAll {
   private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
     override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
       val a = new AttributeService {
+        override def checkHealth: Boolean = ???
         override def set(attributes: Attributes) = ???
         override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
         override def delete(userId: String) = ???
