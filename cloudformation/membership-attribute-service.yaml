@@ -128,6 +128,7 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTable ]
             Effect: Allow
@@ -137,6 +138,7 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTableTestUsers ]
             Effect: Allow
@@ -146,6 +148,7 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTable ]
             Effect: Allow
@@ -155,16 +158,19 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTableTestUsers ]
             Effect: Allow
           - Action:
             - dynamodb:GetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTable ]
             Effect: Allow
           - Action:
             - dynamodb:GetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
             Effect: Allow
