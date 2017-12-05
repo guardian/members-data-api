@@ -3,12 +3,8 @@ package configuration
 import java.time.Duration
 
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
-import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import com.amazonaws.services.sqs.AmazonSQSAsyncClient
 import com.getsentry.raven.dsn.Dsn
-import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, AmazonDynamoDBScalaMapper}
-import com.github.dwhjames.awswrap.sns.AmazonSNSScalaClient
 import com.github.dwhjames.awswrap.sqs.AmazonSQSScalaClient
 import com.gu.aws.CredentialsProvider
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
@@ -17,7 +13,6 @@ import com.typesafe.config.ConfigFactory
 import play.api.Configuration
 import play.filters.cors.CORSConfig
 
-import scala.collection.JavaConverters._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.filters.cors.CORSConfig.Origins
 
@@ -40,20 +35,6 @@ object Config {
 
   object authentication {
     val keys = config.getString("authentication.key").split(',')
-  }
-
-  lazy val dynamoMapper = {
-    val awsDynamoClient = new AmazonDynamoDBAsyncClient(CredentialsProvider)
-    awsDynamoClient.configureRegion(AWS.region)
-    val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
-    AmazonDynamoDBScalaMapper(dynamoClient)
-  }
-
-  lazy val snsClient = {
-    val awsSnsClient = new AmazonSNSAsyncClient(CredentialsProvider)
-    awsSnsClient.configureRegion(AWS.region)
-    val snsClient = new AmazonSNSScalaClient(awsSnsClient)
-    snsClient
   }
 
   lazy val sqsClient = {
