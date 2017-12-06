@@ -205,14 +205,16 @@ class AccountController extends Controller with LazyLogging {
     val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
-    val reasonForChange = "User-updated by MMA"
     logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
     (for {
       newPrice <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
-      result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange)).leftMap(message => s"Error while updating contribution amount: $message")
+      applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
+      oldPrice = subscription.plan.charges.price.prices.head.prettyAmount
+      reasonForChange = s"User-updated contribution amount by MMA from $oldPrice to $newPrice effective from $applyFromDate"
+      result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
     } yield result).run map { _ match {
         case -\/(message) =>
           logger.warn(s"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
