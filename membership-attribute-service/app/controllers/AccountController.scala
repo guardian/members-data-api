@@ -212,8 +212,9 @@ class AccountController extends Controller with LazyLogging {
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
       applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
-      oldPrice = subscription.plan.charges.price.prices.head.prettyAmount
-      reasonForChange = s"User-updated contribution amount by MMA from $oldPrice to $newPrice effective from $applyFromDate"
+      currencyGlyph = subscription.plan.charges.price.prices.head.currency.glyph
+      oldPrice = subscription.plan.charges.price.prices.head.amount
+      reasonForChange = s"User updated contribution amount by MMA from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
       result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
     } yield result).run map { _ match {
         case -\/(message) =>
