@@ -4,13 +4,13 @@ import akka.actor.ActorSystem
 import com.gu.memsub.util.ScheduledTask
 import com.typesafe.scalalogging.LazyLogging
 import models.ZuoraLookupFeatureData
-import services.ScanamoFeatureToggleService
+import services.FeatureToggleService
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import scalaz.{-\/, \/-}
 
-class FeatureToggleDataUpdatedOnSchedule(featureToggleService: ScanamoFeatureToggleService, stage: String)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
+class FeatureToggleDataUpdatedOnSchedule(featureToggleService: FeatureToggleService, stage: String)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
 
   private val updateZuoraLookupFeatureDataTask: ScheduledTask[ZuoraLookupFeatureData] = {
     val featureName = "AttributesFromZuoraLookup"

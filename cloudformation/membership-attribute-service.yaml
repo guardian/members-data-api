@@ -1,9 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Membership Attributes service
 Parameters:
-  KeyName:
-    Description: The EC2 Key Pair to allow SSH access to the instances
-    Type: AWS::EC2::KeyPair::KeyName
   Stage:
     Description: Environment name
     Type: String
@@ -128,6 +125,7 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTable ]
             Effect: Allow
@@ -137,6 +135,7 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTableTestUsers ]
             Effect: Allow
@@ -146,6 +145,7 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTable ]
             Effect: Allow
@@ -155,16 +155,19 @@ Resources:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
             - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTableTestUsers ]
             Effect: Allow
           - Action:
             - dynamodb:GetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTable ]
             Effect: Allow
           - Action:
             - dynamodb:GetItem
+            - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
             Effect: Allow
@@ -255,8 +258,6 @@ Resources:
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      KeyName:
-        Ref: KeyName
       ImageId:
         Ref: AmiId
       SecurityGroups:
