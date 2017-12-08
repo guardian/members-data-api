@@ -173,7 +173,7 @@ Resources:
           - Action:
             - logs:CreateLogStream
             - logs:PutLogEvents
-            Resource: !GetAtt MembersDataApiLogGroup
+            Resource: !GetAtt MembersDataApiLogGroup.Arn
             Effect: Allow
       ManagedPolicyArns:
       - !Ref 'LoggingPolicy'
