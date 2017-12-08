@@ -171,6 +171,7 @@ Resources:
             Resource: "*"
             Effect: Allow
           - Action:
+            - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
             Resource: !GetAtt MembersDataApiLogGroup.Arn
