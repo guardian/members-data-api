@@ -44,6 +44,8 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
   override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = {
+    val timestamp = LocalDate.now().plusDays(7).toDateTimeAtCurrentTime.getMillis / 1000
+    val attributesWithTimestamp = attributes.copy(TTLTimestamp = Some(timestamp))
 
     def scanamoSetOpt[T: DynamoFormat](field: (Symbol, Option[T])): Option[UpdateExpression] = field._2.map(scanamoSet(field._1, _))
 
@@ -58,7 +60,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
       case first :: remaining =>
         run(
           scanamo.update(
-            'UserId -> attributes.UserId,
+            'UserId -> attributesWithTimestamp.UserId,
             remaining.fold(first)(_.and(_))
           )
         )
