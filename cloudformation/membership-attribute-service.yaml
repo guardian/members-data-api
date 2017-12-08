@@ -115,11 +115,6 @@ Resources:
             Resource: "*"
             Effect: Allow
           - Action:
-            - logs:*
-            Resource:
-            - arn:aws:logs:*:*:*
-            Effect: Allow
-          - Action:
             - dynamodb:PutItem
             - dynamodb:GetItem
             - dynamodb:UpdateItem
@@ -172,13 +167,13 @@ Resources:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
             Effect: Allow
           - Action:
-            - cloudwatch:PutMetricData
+            - cloudwatch:*
             Resource: "*"
             Effect: Allow
           - Action:
             - logs:CreateLogStream
             - logs:PutLogEvents
-            Resource: !Ref MembersDataApiLogGroup
+            Resource: !GetAtt MembersDataApiLogGroup
             Effect: Allow
       ManagedPolicyArns:
       - !Ref 'LoggingPolicy'
@@ -336,7 +331,7 @@ Resources:
     Type: "AWS::Logs::LogGroup"
     Properties:
       LogGroupName: !Sub members-data-api-${Stage}
-      RetentionInDays: 14
+      RetentionInDays: 26
 Outputs:
   LoadBalancerUrl:
     Value:
