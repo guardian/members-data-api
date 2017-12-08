@@ -172,9 +172,13 @@ Resources:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
             Effect: Allow
           - Action:
-            - cloudwatch:*
-            - logs:*
+            - cloudwatch:PutMetricData
             Resource: "*"
+            Effect: Allow
+          - Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: !Ref MembersDataApiLogGroup
             Effect: Allow
       ManagedPolicyArns:
       - !Ref 'LoggingPolicy'
@@ -328,6 +332,11 @@ Resources:
         FromPort: '443'
         ToPort: '443'
         CidrIp: 0.0.0.0/0
+  MembersDataApiLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub members-data-api-${Stage}
+      RetentionInDays: 14
 Outputs:
   LoadBalancerUrl:
     Value:
