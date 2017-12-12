@@ -332,7 +332,7 @@ Resources:
     Type: "AWS::Logs::LogGroup"
     Properties:
       LogGroupName: !Sub members-data-api-${Stage}
-      RetentionInDays: 30
+      RetentionInDays: 14
 Outputs:
   LoadBalancerUrl:
     Value:
