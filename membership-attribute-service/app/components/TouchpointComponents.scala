@@ -74,9 +74,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
   lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
   lazy val zuoraService = new ZuoraService(soapClient)
   implicit lazy val simpleClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
-  lazy val patientSimpleClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30 seconds)))
   lazy val zuoraRestService = new ZuoraRestService[Future]()
-  lazy val patientZuoraRestService = new ZuoraRestService[Future]()(implicitly, patientSimpleClient)
   lazy val catalogService = new CatalogService[Future](productIds, simpleClient, Await.result(_, 10.seconds), stage)
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog.map(_.fold[CatalogMap](error => {println(s"error: ${error.list.mkString}"); Map()}, _.map))
 
