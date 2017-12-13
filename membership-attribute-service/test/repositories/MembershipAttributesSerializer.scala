@@ -1,5 +1,6 @@
 package repositories
 
+import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.github.dwhjames.awswrap.dynamodb._
 import models.Attributes
 import org.joda.time.LocalDate
