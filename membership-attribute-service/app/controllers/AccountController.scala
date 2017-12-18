@@ -214,7 +214,7 @@ class AccountController extends Controller with LazyLogging {
       applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
       currencyGlyph = subscription.plan.charges.price.prices.head.currency.glyph
       oldPrice = subscription.plan.charges.price.prices.head.amount
-      reasonForChange = s"User updated contribution amount by MMA from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
+      reasonForChange = s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
       result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
     } yield result).run map { _ match {
         case -\/(message) =>
