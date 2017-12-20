@@ -10,6 +10,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
+import com.gu.zuora.rest.ZuoraResponse
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import configuration.Config
@@ -22,6 +23,7 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.json.Json
+import play.api.mvc.Result
 import play.api.mvc.Results._
 import play.filters.cors.CORSActionBuilder
 
@@ -36,14 +38,12 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 class AccountController extends Controller with LazyLogging {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsCardFilter = CORSActionBuilder(Config.mmaCardCorsConfig, DefaultHttpErrorHandler)
+  lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
-  lazy val mmaCardAction = NoCacheAction andThen corsCardFilter andThen BackendFromCookieAction
+  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
 
-
-
-  def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+  def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
 
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
@@ -105,13 +105,12 @@ class AccountController extends Controller with LazyLogging {
     }
   }
 
-  def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaCardAction.async { implicit request =>
+  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
 
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
     val tp = request.touchpoint
-
     val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to update card for $maybeUserId")
     (for {
@@ -174,7 +173,7 @@ class AccountController extends Controller with LazyLogging {
     }
   }
 
-  def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
+  private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
@@ -202,12 +201,39 @@ class AccountController extends Controller with LazyLogging {
     }
   }
 
+  private def updateContributionAmount[P <: SubscriptionPlan.Paid : SubPlanReads] = mmaUpdateAction.async { implicit request =>
+    val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
+    val tp = request.touchpoint
+    val maybeUserId = authenticationService.userId
+    logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
+    (for {
+      newPrice <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
+      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
+      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
+      subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
+      currencyGlyph = subscription.plan.charges.price.prices.head.currency.glyph
+      oldPrice = subscription.plan.charges.price.prices.head.amount
+      reasonForChange = s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
+      result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
+    } yield result).run map { _ match {
+        case -\/(message) =>
+          logger.error(s"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
+          InternalServerError(message)
+        case \/-(()) =>
+          logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
+          Ok("Success")
+      }
+    }
+  }
+
   def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor]
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
   def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan]
   def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor]
+  def contributionUpdateAmount = updateContributionAmount[SubscriptionPlan.Contributor]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
