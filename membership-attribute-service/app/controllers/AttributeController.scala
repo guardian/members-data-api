@@ -1,4 +1,5 @@
 package controllers
+
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
@@ -19,16 +20,13 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
-import prodtest.Allocator._
 import services.{AuthenticationService, IdentityAuthService}
-
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
-import scalaz.{EitherT, OptionT, \/}
+import scalaz.{EitherT, \/}
 import services.AttributesFromZuora._
-
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
 
@@ -49,33 +47,23 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean, sendAttributesIfNotFound: Boolean = false) =
-  {
-    def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
-      def attributesFromDynamo(identityId: String) = request.touchpoint.attrService.get(identityId)
-
-      if(endpointEligibleForTest){
-        val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
-        val percentageInTest = featureToggleData.TrafficPercentage
-        val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
-
-        isInTest(identityId, percentageInTest) match {
-          case true => {
-            if(ZuoraRequestCounter.get < concurrentCallThreshold) {
-              getAttributes(
-                identityId = identityId,
-                identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
-                subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-                dynamoAttributeService = request.touchpoint.attrService)
-            } else {
-              attributesFromDynamo(identityId) map {("Dynamo - too many concurrent calls to Zuora", _)}
-            }
-
-          }
-          case false => attributesFromDynamo(identityId) map {("Dynamo - not in Zuora lookup bucket", _)}
-        }
-      } else attributesFromDynamo(identityId) map {("Dynamo - as this endpoint always does", _)}
+  def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+    val dynamoService = request.touchpoint.attrService
+    val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
+    val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+    if (ZuoraRequestCounter.get < concurrentCallThreshold) {
+      getAttributes(
+        identityId = identityId,
+        identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
+        subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
+        dynamoAttributeService = dynamoService
+      )
+    } else {
+      dynamoService.get(identityId) map {("Dynamo - too many concurrent calls to Zuora", _)}
     }
+  }
+
+  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
 
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
@@ -114,7 +102,6 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
-
         }
       }
   }
@@ -128,9 +115,9 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound, endpointEligibleForTest = true)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, endpointEligibleForTest = true, sendAttributesIfNotFound = true)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated, endpointEligibleForTest = true)
+  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound)
+  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, sendAttributesIfNotFound = true)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated)
 
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 

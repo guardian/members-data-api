@@ -162,7 +162,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
      val dynamoAndZuoraAgree = zuoraAttributesWithIgnoredFields == maybeDynamoAttributes
      if (!dynamoAndZuoraAgree)
        log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-         s" Zuora attributes: $maybeZuoraAttributes. Dynamo attributes: $maybeDynamoAttributes.")
+         s" Zuora attributes: $maybeZuoraAttributes, parsed as: $zuoraAttributesWithIgnoredFields. Dynamo attributes: $maybeDynamoAttributes.")
 
      dynamoAndZuoraAgree
   }

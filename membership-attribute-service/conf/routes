@@ -24,6 +24,9 @@ OPTIONS    /user-attributes/me/contribution-update-card      controllers.Account
 POST       /user-attributes/me/cancel-regular-contribution   controllers.AccountController.cancelRegularContribution
 OPTIONS    /user-attributes/me/cancel-regular-contribution   controllers.AccountController.cancelRegularContribution
 
+POST       /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
+OPTIONS    /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
+
 POST       /user-behaviour/capture                          controllers.BehaviourController.capture
 POST       /user-behaviour/remove                           controllers.BehaviourController.remove
 POST       /abandoned-cart/email                            controllers.BehaviourController.sendCartReminderEmail

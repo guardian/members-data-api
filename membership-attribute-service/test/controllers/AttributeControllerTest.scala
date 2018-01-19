@@ -2,7 +2,6 @@ package controllers
 
 import actions.BackendRequest
 import akka.actor.ActorSystem
-import com.gu.scanamo.error.DynamoReadError
 import components.TouchpointComponents
 import configuration.Config
 import models.{Attributes, CardDetails, Wallet}
@@ -14,16 +13,16 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.{AttributeService, AuthenticationService}
-
+import services.AuthenticationService
 import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification with AfterAll {
+
   implicit val as: ActorSystem = ActorSystem("test")
 
   private val validUserId = "123"
   private val invalidUserId = "456"
-  private val attributes = Attributes(
+  private val testAttributes = Attributes(
     UserId = validUserId,
     Tier = Some("patron"),
     MembershipNumber = Some("abc"),
@@ -52,18 +51,8 @@ class AttributeControllerTest extends Specification with AfterAll {
   // Succeeds for the valid user id
   private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
     override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
-      val a = new AttributeService {
-        override def checkHealth: Boolean = ???
-        override def set(attributes: Attributes) = ???
-        override def get(userId: String) = Future { if (userId == validUserId ) Some(attributes) else None }
-        override def delete(userId: String) = ???
-        override def getMany(userIds: List[String]): Future[Seq[Attributes]] = ???
-        override def update(attributes: Attributes) : Future[Either[DynamoReadError, Attributes]] = ???
-      }
 
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage) {
-        override lazy val attrService = a
-      }
+      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
       Future(Right(new BackendRequest[A](components, request)))
     }
@@ -72,6 +61,9 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val controller = new AttributeController {
     override lazy val authenticationService = fakeAuthService
     override lazy val backendAction = Action andThen FakeWithBackendAction
+    override def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
+      if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
+    }
   }
 
   private def verifyDefaultFeaturesResult(result: Future[Result]) = {
