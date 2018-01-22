@@ -7,11 +7,12 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
 import models.{Attributes, CardDetails, Wallet}
-import org.joda.time.LocalDate
+import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import repositories.MembershipAttributesSerializer.AttributeNames
 import services.ScanamoAttributeService
+import services.Timestamper._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -28,7 +29,9 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   private val testTable = "MembershipAttributes-TEST"
   implicit private val serializer = MembershipAttributesSerializer(testTable)
-  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
+  val referenceDate = new DateTime().withYear(2017).withMonthOfYear(12).withDayOfMonth(1)
+  def testExpiryDate = referenceDate
+  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable, testExpiryDate)
 
   val tableRequest =
     new CreateTableRequest()
@@ -90,7 +93,8 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   "update" should {
     "add the attribute if it's not already in the table" in {
-      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"))
+
+      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
 
       val result = for {
         _ <- repo.update(newAttributes)
@@ -98,11 +102,12 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       } yield retrieved
 
       result must be_==(Some(newAttributes)).await
+
     }
 
     "update a user who has bought a digital subscription" in {
       val oldAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
 
       val result = for {
         _ <- repo.set(oldAttributes)
@@ -113,8 +118,37 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(newAttributes)).await
     }
 
-    "leave attribute in the table if nothing has changed" in {
+    "only add the TTLTimestamp of the attribute in the table if nothing has changed and there is no existing timestamp" in {
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val attributesWithTimestamp = existingAttributes.copy(TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
+
+      val result = for {
+        _ <- repo.set(existingAttributes)
+        _ <- repo.update(existingAttributes)
+        retrieved <- repo.get("6789")
+      } yield retrieved
+
+      result must be_==(Some(attributesWithTimestamp)).await
+    }
+
+    "only update the TTLTimestamp of the attribute in the table if nothing has changed and the timestamp is old" in {
+      val tooOld = toDynamoTtl(referenceDate.minusDays(14))
+      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(tooOld))
+      val attributesWithUpdatedTimestamp = existingAttributes.copy(TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
+
+      val result = for {
+        _ <- repo.set(existingAttributes)
+        _ <- repo.update(existingAttributes)
+        retrieved <- repo.get("6789")
+      } yield retrieved
+
+      result must be_==(Some(attributesWithUpdatedTimestamp)).await
+    }
+
+
+    "not update anything if nothing has changed and the timestamp is recent enough" in {
+      val recentEnough = toDynamoTtl(referenceDate.minusHours(14))
+      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(recentEnough))
 
       val result = for {
         _ <- repo.set(existingAttributes)
@@ -125,11 +159,13 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(existingAttributes)).await
     }
 
+
     "leave existing values in an attribute that cannot be determined from zuora subscriptions alone" in {
+      //TODO: remove this test once we have determined where AdFree and wallet will be stored
       val testWallet = Wallet(membershipCard = Some(CardDetails(last4 = "5678", expirationMonth = 5, expirationYear = 20, forProduct = "test")))
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), Wallet = Some(testWallet))
       val attributesFromZuora = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
-      val attributesInDynamoAfterUpdate = existingAttributes.copy(DigitalSubscriptionExpiryDate = attributesFromZuora.DigitalSubscriptionExpiryDate)
+      val attributesInDynamoAfterUpdate = existingAttributes.copy(DigitalSubscriptionExpiryDate = attributesFromZuora.DigitalSubscriptionExpiryDate, TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
 
       val result = for {
         _ <- repo.set(existingAttributes)
@@ -139,5 +175,8 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
       result must be_==(Some(attributesInDynamoAfterUpdate)).await
     }
+
   }
 }
+
+
