@@ -29,9 +29,10 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   private val testTable = "MembershipAttributes-TEST"
   implicit private val serializer = MembershipAttributesSerializer(testTable)
-  val referenceDate = new DateTime().withYear(2017).withMonthOfYear(12).withDayOfMonth(1)
-  def testExpiryDate = referenceDate
-  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable, testExpiryDate)
+  val testExpiryDate = new DateTime().withYear(2017).withMonthOfYear(12).withDayOfMonth(1)
+  def testProjectionDate = testExpiryDate
+
+  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable, testProjectionDate)
 
   val tableRequest =
     new CreateTableRequest()
@@ -132,7 +133,7 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
     }
 
     "only update the TTLTimestamp of the attribute in the table if nothing has changed and the timestamp is old" in {
-      val tooOld = toDynamoTtl(referenceDate.minusDays(14))
+      val tooOld = toDynamoTtl(testExpiryDate.minusDays(14))
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(tooOld))
       val attributesWithUpdatedTimestamp = existingAttributes.copy(TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
 
@@ -147,7 +148,7 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
 
     "not update anything if nothing has changed and the timestamp is recent enough" in {
-      val recentEnough = toDynamoTtl(referenceDate.minusHours(14))
+      val recentEnough = toDynamoTtl(testExpiryDate.minusHours(14))
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(recentEnough))
 
       val result = for {

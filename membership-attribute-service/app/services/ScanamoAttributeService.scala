@@ -10,10 +10,11 @@ import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.concurrent.Execution.Implicits._
+import services.Timestamper.ttlUpdateRequired
 
 import scala.concurrent.Future
 
-class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String, timestamper: => DateTime = Timestamper.expiryDate)
+class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String, projectedExpiry: => DateTime = Timestamper.projectedExpiryDate)
     extends AttributeService with LazyLogging {
 
   def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
@@ -44,13 +45,15 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String, timest
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
   override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = {
-    val currentExpiry: Option[DateTime] = attributes.TTLTimestamp map { timestamp => Timestamper.toDateTime(timestamp) }
 
-    val newExpiry: DateTime = currentExpiry.map { expiry =>
-      if (timestamper.isAfter(expiry.plusDays(1))) timestamper else expiry
-    }.getOrElse(timestamper)
+    def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry.map { expiry =>
+      if (ttlUpdateRequired(expiry)) projectedExpiry else expiry
+    }.getOrElse(projectedExpiry)
 
     def scanamoSetOpt[T: DynamoFormat](field: (Symbol, Option[T])): Option[UpdateExpression] = field._2.map(scanamoSet(field._1, _))
+
+    val currentExpiry: Option[DateTime] = attributes.TTLTimestamp map { timestamp => Timestamper.toDateTime(timestamp) }
+    val newExpiry: DateTime = calculateExpiry(currentExpiry)
 
     List(
       scanamoSetOpt('Tier, attributes.Tier),
@@ -78,8 +81,11 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String, timest
 }
 
 object Timestamper {
-  def expiryDate: DateTime = DateTime.now().plusDays(7)
+
+  def projectedExpiryDate: DateTime = DateTime.now().plusDays(14)
   def toDynamoTtl(date: DateTime) = date.getMillis / 1000
   def toDateTime(seconds: Long) = new DateTime(seconds * 1000)
+  def ttlUpdateRequired(currentExpiry: DateTime) = projectedExpiryDate.isAfter(currentExpiry.plusDays(1))
+
 }
 
