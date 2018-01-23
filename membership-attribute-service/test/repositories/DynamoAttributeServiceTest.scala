@@ -29,10 +29,8 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   private val testTable = "MembershipAttributes-TEST"
   implicit private val serializer = MembershipAttributesSerializer(testTable)
-  val testExpiryDate = new DateTime().withYear(2017).withMonthOfYear(12).withDayOfMonth(1)
-  def testProjectionDate = testExpiryDate
 
-  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable, testProjectionDate)
+  private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
   val tableRequest =
     new CreateTableRequest()
@@ -46,6 +44,8 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   private val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
+
+  val testExpiryDate = DateTime.now()
 
   "get" should {
     "retrieve attributes for given user" in {
@@ -119,6 +119,7 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(newAttributes)).await
     }
 
+    //todo simplify when covered in attributesfromzuora instead
     "only add the TTLTimestamp of the attribute in the table if nothing has changed and there is no existing timestamp" in {
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
       val attributesWithTimestamp = existingAttributes.copy(TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))

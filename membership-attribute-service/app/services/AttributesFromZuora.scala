@@ -9,9 +9,8 @@ import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.Attributes
-import org.joda.time.LocalDate
+import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.concurrent.Execution.Implicits._
-
 import scala.concurrent.Future
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
@@ -25,7 +24,8 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
                     dynamoAttributeService: AttributeService,
-                    forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
+                    forDate: LocalDate = LocalDate.now(),
+                    projectedExpiry: => DateTime = Timestamper.projectedExpiryDate): Future[(String, Option[Attributes])] = {
 
     val attributesDisjunction: DisjunctionT[Future, String, Option[Attributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
@@ -63,14 +63,14 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
       if(fromWhere == "Zuora") {
         attributesFromDynamo map { case (_, dynamoAttributes) =>
-          val canSkipCacheUpdate: Boolean = dynamoAndZuoraAgree(dynamoAttributes, attributes, identityId)
           val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithAdFreeFlagFromDynamo(attributes, dynamoAttributes)
 
-          if(!canSkipCacheUpdate) {
+          val updateRequired = dynamoUpdateRequired(dynamoAttributes, attributes, identityId)
+          if(updateRequired) {
             updateCache(identityId, zuoraAttributesWithAdfree, dynamoAttributeService).onFailure {
               case e: Throwable =>
-                log.error(s"Future failed when attempting to update cache. Update was needed? $canSkipCacheUpdate", e)
-                log.warn(s"Future failed when attempting to update cache. Update was needed? $canSkipCacheUpdate. Attributes from Zuora: $attributes")
+                log.error(s"Future failed when attempting to update cache.", e)
+                log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
             }
           }
 
@@ -80,6 +80,37 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       else Future.successful(fromWhere, attributes)
     }
   }
+
+
+
+  def dynamoUpdateRequired(dynamoAttributes: Option[Attributes], zuoraAttributes: Option[Attributes], identityId: String, projectedExpiry: => DateTime = Timestamper.projectedExpiryDate) = {
+
+    def ttlUpdateRequired(currentExpiry: DateTime) = projectedExpiry.isAfter(currentExpiry.plusDays(1))
+
+    def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry.map { expiry =>
+      log.info(s"Calculating expiry for user ${identityId} with current expiry $expiry. Projected expiry is $projectedExpiry.")
+      if (ttlUpdateRequired(expiry)) {
+        log.info(s"TTL update required for user $identityId")
+        projectedExpiry
+      }  else {
+        log.info(s"No TTL update required for user $identityId")
+        expiry
+      }
+    }.getOrElse {
+      log.info(s"Record for user $identityId has no TTL so setting TTL to $projectedExpiry.")
+      projectedExpiry
+    }
+
+    val currentExpiry: Option[DateTime] = dynamoAttributes.flatMap { attributes => attributes.TTLTimestamp.map { timestamp => Timestamper.toDateTime(timestamp) } }
+    val newExpiry: DateTime = calculateExpiry(currentExpiry)
+
+    def expiryShouldChange(dynamoAttributes: Option[Attributes], currentExpiry: Option[DateTime], newExpiry: DateTime) = dynamoAttributes.isDefined && !currentExpiry.contains(newExpiry)
+
+    expiryShouldChange(dynamoAttributes, currentExpiry, newExpiry) || !dynamoAndZuoraAgree(dynamoAttributes, zuoraAttributes, identityId)
+
+  }
+
+
 
   private def updateCache(identityId: String, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService): Future[Unit] = {
     zuoraAttributesWithAdfree match {
@@ -145,7 +176,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     futureResult
   }
 
-  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = {
+  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = { //todo get identityid from attributes
     val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes map { zuoraAttributes =>
       maybeDynamoAttributes match {
         case Some(dynamoAttributes) => zuoraAttributes.copy(
@@ -153,7 +184,8 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
           Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
           MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
           MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
-          DigitalSubscriptionExpiryDate = None
+          DigitalSubscriptionExpiryDate = None,
+          TTLTimestamp = dynamoAttributes.TTLTimestamp //TTL only in dynamo
         )
         case None => zuoraAttributes
       }
