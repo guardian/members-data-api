@@ -176,7 +176,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     futureResult
   }
 
-  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = { //todo get identityid from attributes
+  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = {
     val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes map { zuoraAttributes =>
       maybeDynamoAttributes match {
         case Some(dynamoAttributes) => zuoraAttributes.copy(

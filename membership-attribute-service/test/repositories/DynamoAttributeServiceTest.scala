@@ -119,38 +119,8 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(newAttributes)).await
     }
 
-    //todo simplify when covered in attributesfromzuora instead
-    "only add the TTLTimestamp of the attribute in the table if nothing has changed and there is no existing timestamp" in {
+    "leave attribute in the table if nothing has changed" in {
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
-      val attributesWithTimestamp = existingAttributes.copy(TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
-
-      val result = for {
-        _ <- repo.set(existingAttributes)
-        _ <- repo.update(existingAttributes)
-        retrieved <- repo.get("6789")
-      } yield retrieved
-
-      result must be_==(Some(attributesWithTimestamp)).await
-    }
-
-    "only update the TTLTimestamp of the attribute in the table if nothing has changed and the timestamp is old" in {
-      val tooOld = toDynamoTtl(testExpiryDate.minusDays(14))
-      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(tooOld))
-      val attributesWithUpdatedTimestamp = existingAttributes.copy(TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
-
-      val result = for {
-        _ <- repo.set(existingAttributes)
-        _ <- repo.update(existingAttributes)
-        retrieved <- repo.get("6789")
-      } yield retrieved
-
-      result must be_==(Some(attributesWithUpdatedTimestamp)).await
-    }
-
-
-    "not update anything if nothing has changed and the timestamp is recent enough" in {
-      val recentEnough = toDynamoTtl(testExpiryDate.minusHours(14))
-      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(recentEnough))
 
       val result = for {
         _ <- repo.set(existingAttributes)
@@ -161,21 +131,20 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(existingAttributes)).await
     }
 
-
-    "leave existing values in an attribute that cannot be determined from zuora subscriptions alone" in {
+    "leave existing values in an attribute that cannot be determined from a zuora update alone" in {
       //TODO: remove this test once we have determined where AdFree and wallet will be stored
       val testWallet = Wallet(membershipCard = Some(CardDetails(last4 = "5678", expirationMonth = 5, expirationYear = 20, forProduct = "test")))
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), Wallet = Some(testWallet))
-      val attributesFromZuora = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
-      val attributesInDynamoAfterUpdate = existingAttributes.copy(DigitalSubscriptionExpiryDate = attributesFromZuora.DigitalSubscriptionExpiryDate, TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
+      val updatedAttributes = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val attributesWithPreservedValues = existingAttributes.copy(DigitalSubscriptionExpiryDate = updatedAttributes.DigitalSubscriptionExpiryDate) //TTL is also only in dynamo, but the logic for it is in attributesFromZuora.
 
       val result = for {
         _ <- repo.set(existingAttributes)
-        _ <- repo.update(attributesFromZuora)
+        _ <- repo.update(updatedAttributes)
         retrieved <- repo.get("6789")
       } yield retrieved
 
-      result must be_==(Some(attributesInDynamoAfterUpdate)).await
+      result must be_==(Some(attributesWithPreservedValues)).await
     }
 
   }
