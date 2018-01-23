@@ -12,7 +12,6 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import repositories.MembershipAttributesSerializer.AttributeNames
 import services.ScanamoAttributeService
-import services.Timestamper._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -46,6 +45,8 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
   val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
 
   val testExpiryDate = DateTime.now()
+
+  def toDynamoTtl(date: DateTime) = date.getMillis / 1000
 
   "get" should {
     "retrieve attributes for given user" in {

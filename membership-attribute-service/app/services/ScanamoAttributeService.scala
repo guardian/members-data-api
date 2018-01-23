@@ -74,12 +74,3 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
 
   override def delete(userId: String): Future[DeleteItemResult] = run(scanamo.delete('UserId -> userId))
 }
-
-object Timestamper {
-
-  def projectedExpiryDate: DateTime = DateTime.now().plusDays(14)
-  def toDynamoTtl(date: DateTime) = date.getMillis / 1000
-  def toDateTime(seconds: Long) = new DateTime(seconds * 1000)
-
-}
-

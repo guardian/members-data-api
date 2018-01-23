@@ -12,7 +12,6 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.{BeforeEach, Scope}
 import services.AttributesFromZuora._
-import services.Timestamper.toDynamoTtl
 import testdata.SubscriptionTestData
 
 import scala.concurrent.Future
@@ -37,6 +36,8 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
   val testExpiryDate = new DateTime().withYear(2017).withMonthOfYear(12).withDayOfMonth(1)
   def testProjectedExpiryDate = testExpiryDate
+
+  def toDynamoTtl(date: DateTime) = date.getMillis / 1000
 
   val mockDynamoAttributesService = mock[AttributeService]
 

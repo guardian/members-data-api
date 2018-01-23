@@ -24,8 +24,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
                     dynamoAttributeService: AttributeService,
-                    forDate: LocalDate = LocalDate.now(),
-                    projectedExpiry: => DateTime = Timestamper.projectedExpiryDate): Future[(String, Option[Attributes])] = {
+                    forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
 
     val attributesDisjunction: DisjunctionT[Future, String, Option[Attributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
@@ -83,7 +82,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
 
 
-  def dynamoUpdateRequired(dynamoAttributes: Option[Attributes], zuoraAttributes: Option[Attributes], identityId: String, projectedExpiry: => DateTime = Timestamper.projectedExpiryDate) = {
+  def dynamoUpdateRequired(dynamoAttributes: Option[Attributes], zuoraAttributes: Option[Attributes], identityId: String, projectedExpiry: => DateTime = DateTime.now().plusDays(14)) = {
 
     def ttlUpdateRequired(currentExpiry: DateTime) = projectedExpiry.isAfter(currentExpiry.plusDays(1))
 
@@ -101,7 +100,9 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       projectedExpiry
     }
 
-    val currentExpiry: Option[DateTime] = dynamoAttributes.flatMap { attributes => attributes.TTLTimestamp.map { timestamp => Timestamper.toDateTime(timestamp) } }
+    def timestampInSecondsToDateTime(seconds: Long) = new DateTime(seconds * 1000)
+
+    val currentExpiry: Option[DateTime] = dynamoAttributes.flatMap { attributes => attributes.TTLTimestamp.map { timestamp => timestampInSecondsToDateTime(timestamp) } }
     val newExpiry: DateTime = calculateExpiry(currentExpiry)
 
     def expiryShouldChange(dynamoAttributes: Option[Attributes], currentExpiry: Option[DateTime], newExpiry: DateTime) = dynamoAttributes.isDefined && !currentExpiry.contains(newExpiry)
