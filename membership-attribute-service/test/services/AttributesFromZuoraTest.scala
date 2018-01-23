@@ -1,11 +1,9 @@
 package services
 
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult
-import services.AttributesFromZuora._
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.zuora.ZuoraRestService.{AccountIdRecord, QueryResponse}
 import models.Attributes
 import org.joda.time.{DateTime, LocalDate}
@@ -13,11 +11,11 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.{BeforeEach, Scope}
+import services.AttributesFromZuora._
 import services.Timestamper.toDynamoTtl
 import testdata.SubscriptionTestData
 
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scalaz.\/
 
 
@@ -38,7 +36,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
   val supporterAttributes = Attributes(UserId = testId, Some("Supporter"), None, None, None, None, Some(referenceDate), None)
 
   val testExpiryDate = new DateTime().withYear(2017).withMonthOfYear(12).withDayOfMonth(1)
-  def testProjectionDate = testExpiryDate
+  def testProjectedExpiryDate = testExpiryDate
 
   val mockDynamoAttributesService = mock[AttributeService]
 
@@ -210,7 +208,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       }
 
       "ignore the fields not obtainable from zuora" in {
-        val fromDynamo = Some(supporterAttributes.copy(AdFree = Some(true), TTLTimestamp = Some(toDynamoTtl(testProjectionDate))))
+        val fromDynamo = Some(supporterAttributes.copy(AdFree = Some(true), TTLTimestamp = Some(toDynamoTtl(testProjectedExpiryDate))))
         val fromZuora = Some(supporterAttributes)
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
@@ -240,36 +238,36 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
     "dynamoUpdateRequired" should {
       "return true if there is no existing timestamp in the Dynamo attributes" in {
-        val updateRequired = dynamoUpdateRequired(Some(supporterAttributes), Some(supporterAttributes), supporterAttributes.UserId, testProjectionDate)
+        val updateRequired = dynamoUpdateRequired(Some(supporterAttributes), Some(supporterAttributes), supporterAttributes.UserId, testProjectedExpiryDate)
         updateRequired must be_==(true)
       }
 
       "return true if the timestamp is old" in {
-        val tooOld = toDynamoTtl(testProjectionDate.minusDays(14))
-        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterAttributes.copy(TTLTimestamp = Some(tooOld))), Some(supporterAttributes), supporterAttributes.UserId, testProjectionDate)
+        val tooOld = toDynamoTtl(testProjectedExpiryDate.minusDays(14))
+        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterAttributes.copy(TTLTimestamp = Some(tooOld))), Some(supporterAttributes), supporterAttributes.UserId, testProjectedExpiryDate)
 
         updateRequired must be_==(true)
       }
 
       "return true if zuora and dynamo disagree and the timestamp is recent" in {
-        val recentEnough = toDynamoTtl(testProjectionDate.minusHours(14))
+        val recentEnough = toDynamoTtl(testProjectedExpiryDate.minusHours(14))
         val dynamoAttributes = Some(supporterAttributes.copy(TTLTimestamp = Some(recentEnough)))
         val zuoraAttributes = Some(friendAttributes)
 
-        val updateRequired = dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, "123", testProjectionDate)
+        val updateRequired = dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, "123", testProjectedExpiryDate)
 
         updateRequired must be_==(true)
       }
 
       "return false if zuora and dynamo agree and the timestamp is recent enough" in {
-        val recentEnough = toDynamoTtl(testProjectionDate.minusHours(14))
-        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterAttributes.copy(TTLTimestamp = Some(recentEnough))), Some(supporterAttributes), supporterAttributes.UserId, testProjectionDate)
+        val recentEnough = toDynamoTtl(testProjectedExpiryDate.minusHours(14))
+        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterAttributes.copy(TTLTimestamp = Some(recentEnough))), Some(supporterAttributes), supporterAttributes.UserId, testProjectedExpiryDate)
 
         updateRequired must be_==(false)
       }
 
       "return false if there are no attributes in Zuora or Dynamo" in {
-        val updateRequired = dynamoUpdateRequired(None, None, supporterAttributes.UserId, testProjectionDate)
+        val updateRequired = dynamoUpdateRequired(None, None, supporterAttributes.UserId, testProjectedExpiryDate)
         updateRequired must be_==(false)
       }
 

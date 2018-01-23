@@ -22,7 +22,7 @@ import scala.concurrent.{Await, Future}
  *
  * Amazon's embedded version doesn't work with an async client, so using https://github.com/localytics/sbt-dynamodb
  */
-class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification {
+class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification {
 
   private val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
