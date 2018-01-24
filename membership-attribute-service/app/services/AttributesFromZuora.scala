@@ -88,18 +88,16 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     def ttlUpdateRequired(currentExpiry: DateTime) = twoWeekExpiry.isAfter(currentExpiry.plusDays(1))
 
-    def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry.map { expiry =>
-      log.info(s"Calculating expiry for user ${identityId} with current expiry $expiry. New expiry would be $twoWeekExpiry.")
-      if (ttlUpdateRequired(expiry)) {
-        log.info(s"TTL update required for user $identityId")
+    def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry match {
+      case Some(expiry) if (ttlUpdateRequired(expiry)) =>
+        log.info (s"TTL update required for user $identityId with current expiry $expiry. New expiry is $twoWeekExpiry.")
         twoWeekExpiry
-      }  else {
-        log.info(s"No TTL update required for user $identityId")
+      case Some(expiry) =>
+        log.info(s"No TTL update required for user $identityId with current expiry $expiry.")
         expiry
-      }
-    }.getOrElse {
-      log.info(s"Record for user $identityId has no TTL so setting TTL to $twoWeekExpiry.")
-      twoWeekExpiry
+      case None =>
+        log.info(s"Record for user $identityId has no TTL so setting TTL to $twoWeekExpiry.")
+        twoWeekExpiry
     }
 
     def timestampInSecondsToDateTime(seconds: Long) = new DateTime(seconds * 1000)
