@@ -50,7 +50,8 @@ case class Attributes(
   Wallet: Option[Wallet] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None
+  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  TTLTimestamp: Option[Long] = None
 ) {
 
   require(UserId.nonEmpty)
@@ -80,7 +81,8 @@ object Attributes {
     (__ \ "wallet").writeNullable[Wallet](Wallet.jsWrite) and
     (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
     (__ \ "membershipJoinDate").writeNullable[LocalDate] and
-    (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate]
+    (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
+      (__ \ "ttlTimestamp").writeNullable[Long]
     )(unlift(Attributes.unapply)).addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =

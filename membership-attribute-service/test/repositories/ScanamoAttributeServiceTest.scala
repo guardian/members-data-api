@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
 import models.{Attributes, CardDetails, Wallet}
-import org.joda.time.LocalDate
+import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import repositories.MembershipAttributesSerializer.AttributeNames
@@ -21,13 +21,14 @@ import scala.concurrent.{Await, Future}
  *
  * Amazon's embedded version doesn't work with an async client, so using https://github.com/localytics/sbt-dynamodb
  */
-class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification {
+class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification {
 
   private val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
   awsDynamoClient.setEndpoint("http://localhost:8000")
 
   private val testTable = "MembershipAttributes-TEST"
   implicit private val serializer = MembershipAttributesSerializer(testTable)
+
   private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
   val tableRequest =
@@ -42,6 +43,10 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   private val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
   val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
+
+  val testExpiryDate = DateTime.now()
+
+  def toDynamoTtl(date: DateTime) = date.getMillis / 1000
 
   "get" should {
     "retrieve attributes for given user" in {
@@ -90,7 +95,8 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
 
   "update" should {
     "add the attribute if it's not already in the table" in {
-      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"))
+
+      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
 
       val result = for {
         _ <- repo.update(newAttributes)
@@ -98,11 +104,12 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       } yield retrieved
 
       result must be_==(Some(newAttributes)).await
+
     }
 
     "update a user who has bought a digital subscription" in {
       val oldAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val newAttributes = Attributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = Some(toDynamoTtl(testExpiryDate)))
 
       val result = for {
         _ <- repo.set(oldAttributes)
@@ -125,19 +132,22 @@ class DynamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificatio
       result must be_==(Some(existingAttributes)).await
     }
 
-    "leave existing values in an attribute that cannot be determined from zuora subscriptions alone" in {
+    "leave existing values in an attribute that cannot be determined from a zuora update alone" in {
       val testWallet = Wallet(membershipCard = Some(CardDetails(last4 = "5678", expirationMonth = 5, expirationYear = 20, forProduct = "test")))
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), Wallet = Some(testWallet))
-      val attributesFromZuora = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
-      val attributesInDynamoAfterUpdate = existingAttributes.copy(DigitalSubscriptionExpiryDate = attributesFromZuora.DigitalSubscriptionExpiryDate)
+      val updatedAttributes = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
+      val attributesWithPreservedValues = existingAttributes.copy(DigitalSubscriptionExpiryDate = updatedAttributes.DigitalSubscriptionExpiryDate) //TTL is also only in dynamo, but the logic for it is in attributesFromZuora.
 
       val result = for {
         _ <- repo.set(existingAttributes)
-        _ <- repo.update(attributesFromZuora)
+        _ <- repo.update(updatedAttributes)
         retrieved <- repo.get("6789")
       } yield retrieved
 
-      result must be_==(Some(attributesInDynamoAfterUpdate)).await
+      result must be_==(Some(attributesWithPreservedValues)).await
     }
+
   }
 }
+
+

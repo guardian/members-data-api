@@ -8,7 +8,7 @@ import com.gu.scanamo.syntax.{set => scanamoSet, _}
 import com.gu.scanamo.update.UpdateExpression
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
-import org.joda.time.LocalDate
+import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scala.concurrent.Future
@@ -45,6 +45,9 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
 
   override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = {
 
+    val userId = attributes.UserId
+    logger.info(s"New TTL for user ${userId} will be ${attributes.TTLTimestamp}.")
+
     def scanamoSetOpt[T: DynamoFormat](field: (Symbol, Option[T])): Option[UpdateExpression] = field._2.map(scanamoSet(field._1, _))
 
     List(
@@ -53,12 +56,13 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
       scanamoSetOpt('RecurringContributionPaymentPlan -> attributes.RecurringContributionPaymentPlan),
       scanamoSetOpt('Wallet -> attributes.Wallet),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate),
-      scanamoSetOpt('DigitalSubscriptionExpiryDate -> attributes.DigitalSubscriptionExpiryDate)
+      scanamoSetOpt('DigitalSubscriptionExpiryDate -> attributes.DigitalSubscriptionExpiryDate),
+      scanamoSetOpt('TTLTimestamp -> attributes.TTLTimestamp)
     ).flatten match {
       case first :: remaining =>
         run(
           scanamo.update(
-            'UserId -> attributes.UserId,
+            'UserId -> userId,
             remaining.fold(first)(_.and(_))
           )
         )
