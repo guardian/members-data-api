@@ -133,7 +133,6 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     }
 
     "leave existing values in an attribute that cannot be determined from a zuora update alone" in {
-      //TODO: remove this test once we have determined where AdFree and wallet will be stored
       val testWallet = Wallet(membershipCard = Some(CardDetails(last4 = "5678", expirationMonth = 5, expirationYear = 20, forProduct = "test")))
       val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), Wallet = Some(testWallet))
       val updatedAttributes = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
