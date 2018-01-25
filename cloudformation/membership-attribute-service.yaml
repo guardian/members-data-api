@@ -88,6 +88,9 @@ Mappings:
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
 
+Conditions:
+  CreateProdMonitoring: !Equals [ !Ref Stage, PROD ]
+
 Resources:
   MembershipRole:
     Type: AWS::IAM::Role
@@ -333,6 +336,25 @@ Resources:
     Properties:
       LogGroupName: !Sub members-data-api-${Stage}
       RetentionInDays: 14
+  ExpiredTtlAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Condition: CreateProdMonitoring
+        Properties:
+          AlarmActions:
+          - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:subscriptions_dev
+          AlarmName: !Sub Item with expired TTL found in MembershipAttributes-${Stage} Table
+          ComparisonOperator: GreaterThanThreshold
+          Dimensions:
+            - Name: Services
+              Value: ScanamoAttributeService
+            - Name: Stage
+              Value: !Sub ${Stage}
+          EvaluationPeriods: 1
+          MetricName: Old Dynamo Item
+          Namespace: members-data-api
+          Period: 60
+          Statistic: Sum
+          Threshold: 1
 Outputs:
   LoadBalancerUrl:
     Value:

@@ -8,13 +8,15 @@ import com.gu.scanamo.syntax.{set => scanamoSet, _}
 import com.gu.scanamo.update.UpdateExpression
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
+import monitoring.Metrics
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.concurrent.Execution.Implicits._
-
 import scala.concurrent.Future
 
 class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
     extends AttributeService with LazyLogging {
+
+  val metrics = Metrics("ScanamoAttributeService") //referenced in CloudFormation
 
   def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
 
@@ -73,4 +75,25 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
   }
 
   override def delete(userId: String): Future[DeleteItemResult] = run(scanamo.delete('UserId -> userId))
+
+  override def ttlAgeCheck(dynamoAttributes: Option[Attributes], identityId: String, currentDate: LocalDate): Unit = {
+    // Dynamo typically cleans up within 48 hours of expiry. I'm allowing slightly older expiry dates to avoid false alarms
+    // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/howitworks-ttl.html
+    val oldestAcceptedAge = currentDate.toDateTimeAtCurrentTime.minusDays(3)
+    val tooOld = for {
+      attributes <- dynamoAttributes
+      ttl <- attributes.TTLTimestamp
+    } yield TtlConversions.secondsToDateTime(ttl).isBefore(oldestAcceptedAge)
+    if (tooOld.contains(true)) {
+      logger.error(s"Dynamo Attributes for $identityId have an old TTL. The oldest accepted age is: $oldestAcceptedAge - are we still cleaning the table correctly?")
+      metrics.put("Old Dynamo Item", 1)
+    }
+  }
+
 }
+
+object TtlConversions {
+  def toDynamoTtlInSeconds(dateTime: DateTime) = dateTime.getMillis / 1000
+  def secondsToDateTime(seconds: Long) = new DateTime(seconds * 1000)
+}
+
