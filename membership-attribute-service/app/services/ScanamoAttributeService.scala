@@ -8,7 +8,7 @@ import com.gu.scanamo.syntax.{set => scanamoSet, _}
 import com.gu.scanamo.update.UpdateExpression
 import com.typesafe.scalalogging.LazyLogging
 import models.Attributes
-import org.joda.time.{DateTime, LocalDate}
+import org.joda.time.LocalDate
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scala.concurrent.Future
@@ -54,7 +54,6 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
       scanamoSetOpt('Tier, attributes.Tier),
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
       scanamoSetOpt('RecurringContributionPaymentPlan -> attributes.RecurringContributionPaymentPlan),
-      scanamoSetOpt('Wallet -> attributes.Wallet),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate),
       scanamoSetOpt('DigitalSubscriptionExpiryDate -> attributes.DigitalSubscriptionExpiryDate),
       scanamoSetOpt('TTLTimestamp -> attributes.TTLTimestamp)

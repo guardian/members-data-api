@@ -184,7 +184,6 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       maybeDynamoAttributes match {
         case Some(dynamoAttributes) => zuoraAttributes.copy(
           AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
-          Wallet = dynamoAttributes.Wallet, //can't be found based on Zuora lookups, and not currently used
           MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
           MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
           TTLTimestamp = dynamoAttributes.TTLTimestamp //TTL only in dynamo
