@@ -18,7 +18,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = None,
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
@@ -32,7 +31,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = None,
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
@@ -50,7 +48,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = Some("Supporter"),
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = Some(referenceDate)
       )
@@ -64,7 +61,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = None,
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = None
       )
@@ -79,7 +75,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = None,
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = None
       )
@@ -93,7 +88,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = Some("Supporter"),
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = Some(referenceDate)
       )
@@ -107,7 +101,6 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
         Tier = Some("Friend"),
         MembershipNumber = None,
         AdFree = None,
-        Wallet = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = Some(referenceDate)
       )

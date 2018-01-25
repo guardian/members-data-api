@@ -4,7 +4,7 @@ import actions.BackendRequest
 import akka.actor.ActorSystem
 import components.TouchpointComponents
 import configuration.Config
-import models.{Attributes, CardDetails, Wallet}
+import models.Attributes
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
@@ -27,10 +27,6 @@ class AttributeControllerTest extends Specification with AfterAll {
     Tier = Some("patron"),
     MembershipNumber = Some("abc"),
     AdFree = Some(false),
-    Wallet = Some(Wallet(
-      recurringContributionCard = Some(CardDetails("4321", 6, 2018, "contribution")),
-      membershipCard = Some(CardDetails("1234", 5, 2017, "membership"))
-    )),
     MembershipJoinDate = Some(new LocalDate(2017, 5, 13)),
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
     DigitalSubscriptionExpiryDate = Some(new LocalDate(2100, 1, 1))
@@ -87,9 +83,7 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   "userId": "123",
                    |   "adblockMessage": false,
                    |   "adFree": false,
-                   |   "membershipJoinDate": "2017-05-13",
-                   |   "cardHasExpiredForProduct": "membership",
-                   |   "cardExpiredOn": "2017-05-31"
+                   |   "membershipJoinDate": "2017-05-13"
                    | }
                  """.stripMargin)
   }
@@ -121,20 +115,6 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   "tier": "patron",
                    |   "membershipNumber": "abc",
                    |   "userId": "123",
-                   |   "wallet": {
-                   |     "membershipCard": {
-                   |       "last4": "1234",
-                   |       "expirationMonth": 5,
-                   |       "expirationYear": 2017,
-                   |       "forProduct": "membership"
-                   |     },
-                   |     "recurringContributionCard": {
-                   |       "last4": "4321",
-                   |       "expirationMonth": 6,
-                   |       "expirationYear": 2018,
-                   |       "forProduct": "contribution"
-                   |     }
-                   |   },
                    |   "adFree": false,
                    |   "membershipJoinDate": "2017-05-13",
                    |   "recurringContributionPaymentPlan":"Monthly Contribution",

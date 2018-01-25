@@ -19,35 +19,11 @@ object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 
-case class CardDetails(last4: String, expirationMonth: Int, expirationYear: Int, forProduct: String) {
-  def asLocalDate: LocalDate = new LocalDate(expirationYear, expirationMonth, 1).plusMonths(1).minusDays(1)
-}
-
-object CardDetails {
-  def fromStripeCard(stripeCard: com.gu.stripe.Stripe.Card, product: String) = {
-    CardDetails(last4 = stripeCard.last4, expirationMonth = stripeCard.exp_month, expirationYear = stripeCard.exp_year, forProduct = product)
-  }
-}
-
-case class Wallet(membershipCard: Option[CardDetails] = None, recurringContributionCard: Option[CardDetails] = None) {
-  val expiredCards: Seq[CardDetails] = Seq(membershipCard, recurringContributionCard).flatten.filter(_.asLocalDate.isBefore(now))
-  // TODO - val cardsExpiringSoon - I assume within 1 calendar month?
-}
-
-object Wallet {
-
-  implicit val cardWriter = Json.writes[CardDetails]
-
-  implicit val jsWrite = Json.writes[Wallet]
-
-}
-
 case class Attributes(
   UserId: String,
   Tier: Option[String] = None,
   MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
-  Wallet: Option[Wallet] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
@@ -78,7 +54,6 @@ object Attributes {
     (__ \ "tier").writeNullable[String] and
     (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
-    (__ \ "wallet").writeNullable[Wallet](Wallet.jsWrite) and
     (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
     (__ \ "membershipJoinDate").writeNullable[LocalDate] and
     (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
