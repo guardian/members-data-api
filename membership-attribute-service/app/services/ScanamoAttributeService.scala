@@ -86,7 +86,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
     } yield TtlConversions.secondsToDateTime(ttl).isBefore(oldestAcceptedAge)
     if (tooOld.contains(true)) {
       logger.error(s"Dynamo Attributes for $identityId have an old TTL. The oldest accepted age is: $oldestAcceptedAge - are we still cleaning the table correctly?")
-      metrics.put("Old Dynamo Item", 1)
+      metrics.put("Old Dynamo Item", 1) //referenced in CloudFormation
     }
   }
 
