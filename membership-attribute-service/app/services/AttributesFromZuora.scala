@@ -17,7 +17,6 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
-
 object AttributesFromZuora extends LoggingWithLogstashFields {
 
   def getAttributes(identityId: String,
@@ -43,7 +42,10 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
 
 
-    val attributesFromDynamo: Future[(String, Option[Attributes])] = dynamoAttributeService.get(identityId) map { attributes => ("Dynamo", attributes)}
+    val attributesFromDynamo: Future[(String, Option[Attributes])] = dynamoAttributeService.get(identityId) map { attributes =>
+      dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
+      ("Dynamo", attributes)
+    }
 
     val attributesFromZuora: Future[Disjunction[String, Option[Attributes]]] = attributesDisjunction.run.map {
         _.leftMap { errorMsg =>
@@ -82,8 +84,6 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
   }
 
-
-
   def dynamoUpdateRequired(dynamoAttributes: Option[Attributes], zuoraAttributes: Option[Attributes], identityId: String, twoWeekExpiry: => DateTime) = {
 
     def ttlUpdateRequired(currentExpiry: DateTime) = twoWeekExpiry.isAfter(currentExpiry.plusDays(1))
@@ -100,9 +100,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         twoWeekExpiry
     }
 
-    def timestampInSecondsToDateTime(seconds: Long) = new DateTime(seconds * 1000)
-
-    val currentExpiry: Option[DateTime] = dynamoAttributes.flatMap { attributes => attributes.TTLTimestamp.map { timestamp => timestampInSecondsToDateTime(timestamp) } }
+    val currentExpiry: Option[DateTime] = dynamoAttributes.flatMap { attributes => attributes.TTLTimestamp.map { timestamp => TtlConversions.secondsToDateTime(timestamp) } }
     val newExpiry: DateTime = calculateExpiry(currentExpiry)
 
     def expiryShouldChange(dynamoAttributes: Option[Attributes], currentExpiry: Option[DateTime], newExpiry: DateTime) = dynamoAttributes.isDefined && !currentExpiry.contains(newExpiry)
@@ -111,11 +109,8 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
   }
 
-
-
   private def updateCache(identityId: String, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService, twoWeekExpiry: => DateTime): Future[Unit] = {
-    def toDynamoTtlInSeconds(dateTime: DateTime) = dateTime.getMillis / 1000
-    val attributesWithTTL = zuoraAttributesWithAdfree.map(_.copy(TTLTimestamp = Some(toDynamoTtlInSeconds(twoWeekExpiry))))
+    val attributesWithTTL = zuoraAttributesWithAdfree.map(_.copy(TTLTimestamp = Some(TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry))))
     attributesWithTTL match {
       case Some(attributes) =>
         dynamoAttributeService.update(attributes).map { result =>
