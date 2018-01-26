@@ -56,7 +56,6 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
       scanamoSetOpt('Tier, attributes.Tier),
       scanamoSetOpt('MembershipNumber -> attributes.MembershipNumber),
       scanamoSetOpt('RecurringContributionPaymentPlan -> attributes.RecurringContributionPaymentPlan),
-      scanamoSetOpt('Wallet -> attributes.Wallet),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate),
       scanamoSetOpt('DigitalSubscriptionExpiryDate -> attributes.DigitalSubscriptionExpiryDate),
       scanamoSetOpt('TTLTimestamp -> attributes.TTLTimestamp)

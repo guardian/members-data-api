@@ -6,7 +6,7 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
-import models.{Attributes, CardDetails, Wallet}
+import models.Attributes
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
@@ -133,8 +133,7 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     }
 
     "leave existing values in an attribute that cannot be determined from a zuora update alone" in {
-      val testWallet = Wallet(membershipCard = Some(CardDetails(last4 = "5678", expirationMonth = 5, expirationYear = 20, forProduct = "test")))
-      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), Wallet = Some(testWallet))
+      val existingAttributes = Attributes(UserId = "6789", AdFree = Some(true), DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"))
       val updatedAttributes = Attributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)))
       val attributesWithPreservedValues = existingAttributes.copy(DigitalSubscriptionExpiryDate = updatedAttributes.DigitalSubscriptionExpiryDate) //TTL is also only in dynamo, but the logic for it is in attributesFromZuora.
 
