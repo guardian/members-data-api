@@ -44,6 +44,13 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
  
 ## API Docs
 
+The MembershipAttributes Dynamo table has identity id as a primary key. Corresponding to each identity id in the table 
+we have information about that user's membership, subscriptions, and/or digital pack. 
+
+On each lookup call (i.e. /user-attributes/{me}), we derive this information from subscriptions via Zuora, 
+and then update the entry if it's out of date. If we can't get subscriptions from Zuora, we fall back to the 
+MembershipAttributes table. There is a TTL on the MembershipAttributes table. 
+
 ### GET /user-attributes/me
 
 #### User is a member
@@ -172,23 +179,3 @@ Responses:
       "userId": "123",
       "membershipJoinDate": "2017-04-04"
     }
-
-## Loading initial dataset - FIXME when would you want to do that?
-
-- Make sure that the outbound messages are pointing to your instance
-
-- Truncate your DB
-
-- Download a CSV report file from Salesforce containing the required fields. The header should be
-
-```
-    "IdentityID","Membership Number","Membership Tier","Last Modified Date"
-```
-
-- Increase the write throughput of you dynamoDB instance (100 should be enough)
-
-- run `sbt -Dconfig.resource=[DEV|PROD].conf ";project membership-attribute-service ;batch-load <path/to/csvfile.csv>"`
-
-- Decrease the write throughput of you dynamoDB instance to 1
-
-- Check that no records have been altered during the time the command takes to run. It's easy to check via the Membership History object in Salesforce.
