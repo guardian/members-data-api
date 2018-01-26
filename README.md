@@ -52,19 +52,13 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         "userId": "xxxx",
         "tier": "Supporter",
         "membershipNumber": "1234",
-        "wallet": {
-            "membershipCard": {
-                "last4": "4242",
-                "expirationMonth": 4,
-                "expirationYear": 2024,
-                "forProduct": "membership"
-            }
-        },
         "membershipJoinDate": "2017-06-26",
         "contentAccess": {
             "member": true,
             "paidMember": true,
-            "recurringContributor": false
+            "recurringContributor": false,
+            "digitalPack": false
+
         }
     }
 
@@ -76,7 +70,9 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         "contentAccess": {
             "member":false,
             "paidMember":false,
-            "recurringContributor":true
+            "recurringContributor":true,
+            "digitalPack": false
+
         }
     }
 
@@ -96,20 +92,27 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         "userId": "xxxx",
         "tier": "Supporter",
         "membershipNumber": "324154",
-        "wallet": {
-            "membershipCard": {
-                "last4": "4242",
-                "expirationMonth": 4,
-                "expirationYear": 2024,
-                "forProduct": "membership"
-            }
-        },
         "recurringContributionPaymentPlan": "Monthly Contribution",
         "membershipJoinDate": "2017-06-26",
         "contentAccess": {
             "member": true,
             "paidMember": true,
-            "recurringContributor": true
+            "recurringContributor": true,
+            "digitalPack": false
+
+        }
+    }
+    
+#### User has a digital pack only
+
+    {
+        "userId": "30000549",
+        "digitalSubscriptionExpiryDate": "2018-11-29",
+        "contentAccess": {
+            "member": false,
+            "paidMember": false,
+            "recurringContributor": false,
+            "digitalPack": true
         }
     }
 
@@ -150,6 +153,7 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         }
     }
 
+
 #### User is not a member and not a contributor
 
     {
@@ -163,9 +167,10 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
 Responses:
 
     {
-      "adfree": true,
+      "adFree": true,
       "adblockMessage": false,
-      "userId": "123"
+      "userId": "123",
+      "membershipJoinDate": "2017-04-04"
     }
 
 ## Loading initial dataset - FIXME when would you want to do that?
