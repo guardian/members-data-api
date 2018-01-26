@@ -36,16 +36,5 @@ class AttributesTest extends Specification {
         attrs.copy(Tier = Some("Friend"), RecurringContributionPaymentPlan = None).isContributor shouldEqual false
       }
     }
-
-    "expiredCards returns" should {
-      "all expired cards in the wallet" in {
-        val bothCards = Seq(CardDetails("1234", 1, 2017, "foo"), CardDetails("1234", 2, 2017, "foo"))
-        Wallet(membershipCard = bothCards.headOption, recurringContributionCard = bothCards.tail.headOption).expiredCards shouldEqual bothCards
-      }
-      "only the expired card in the wallet" in {
-        val bothCards = Seq(CardDetails("1234", 1, 2017, "foo"), CardDetails("1234", 2, 3000, "foo"))
-        Wallet(membershipCard = bothCards.headOption, recurringContributionCard = bothCards.tail.headOption).expiredCards shouldEqual bothCards.headOption.toSeq
-      }
-    }
   }
 }
