@@ -30,17 +30,6 @@ import services.AttributesFromZuora._
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
 
-  val keys = authentication.keys.map(key => s"Bearer $key")
-
-  def apiKeyFilter(): ActionBuilder[Request] = new ActionBuilder[Request] {
-    def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
-      request.headers.get("Authorization") match {
-        case Some(header) if keys.contains(header) => block(request)
-        case _ => Future.successful(ApiErrors.invalidApiKey)
-      }
-    }
-  }
-
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
