@@ -7,7 +7,6 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
 import configuration.Config
-import configuration.Config.authentication
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._

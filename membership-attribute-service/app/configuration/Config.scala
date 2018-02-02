@@ -33,10 +33,6 @@ object Config {
     val region = Regions.EU_WEST_1
   }
 
-  object authentication {
-    val keys = config.getString("authentication.key").split(',')
-  }
-
   lazy val sqsClient = {
     val awsSqsClient = new AmazonSQSAsyncClient(CredentialsProvider)
     awsSqsClient.configureRegion(AWS.region)
