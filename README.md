@@ -44,6 +44,13 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
  
 ## API Docs
 
+The MembershipAttributes Dynamo table has identity id as a primary key. Corresponding to each identity id in the table 
+we have information about that user's membership, subscriptions, and/or digital pack. 
+
+On each lookup call (i.e. /user-attributes/{me}), we derive this information from subscriptions via Zuora, 
+and then update the entry if it's out of date. If we can't get subscriptions from Zuora, we fall back to the 
+MembershipAttributes table. There is a TTL on the MembershipAttributes table. 
+
 ### GET /user-attributes/me
 
 #### User is a member
@@ -52,19 +59,13 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         "userId": "xxxx",
         "tier": "Supporter",
         "membershipNumber": "1234",
-        "wallet": {
-            "membershipCard": {
-                "last4": "4242",
-                "expirationMonth": 4,
-                "expirationYear": 2024,
-                "forProduct": "membership"
-            }
-        },
         "membershipJoinDate": "2017-06-26",
         "contentAccess": {
             "member": true,
             "paidMember": true,
-            "recurringContributor": false
+            "recurringContributor": false,
+            "digitalPack": false
+
         }
     }
 
@@ -76,7 +77,9 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         "contentAccess": {
             "member":false,
             "paidMember":false,
-            "recurringContributor":true
+            "recurringContributor":true,
+            "digitalPack": false
+
         }
     }
 
@@ -96,20 +99,27 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         "userId": "xxxx",
         "tier": "Supporter",
         "membershipNumber": "324154",
-        "wallet": {
-            "membershipCard": {
-                "last4": "4242",
-                "expirationMonth": 4,
-                "expirationYear": 2024,
-                "forProduct": "membership"
-            }
-        },
         "recurringContributionPaymentPlan": "Monthly Contribution",
         "membershipJoinDate": "2017-06-26",
         "contentAccess": {
             "member": true,
             "paidMember": true,
-            "recurringContributor": true
+            "recurringContributor": true,
+            "digitalPack": false
+
+        }
+    }
+    
+#### User has a digital pack only
+
+    {
+        "userId": "30000549",
+        "digitalSubscriptionExpiryDate": "2018-11-29",
+        "contentAccess": {
+            "member": false,
+            "paidMember": false,
+            "recurringContributor": false,
+            "digitalPack": true
         }
     }
 
@@ -150,6 +160,7 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
         }
     }
 
+
 #### User is not a member and not a contributor
 
     {
@@ -163,27 +174,8 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
 Responses:
 
     {
-      "adfree": true,
+      "adFree": true,
       "adblockMessage": false,
-      "userId": "123"
+      "userId": "123",
+      "membershipJoinDate": "2017-04-04"
     }
-
-## Loading initial dataset - FIXME when would you want to do that?
-
-- Make sure that the outbound messages are pointing to your instance
-
-- Truncate your DB
-
-- Download a CSV report file from Salesforce containing the required fields. The header should be
-
-```
-    "IdentityID","Membership Number","Membership Tier","Last Modified Date"
-```
-
-- Increase the write throughput of you dynamoDB instance (100 should be enough)
-
-- run `sbt -Dconfig.resource=[DEV|PROD].conf ";project membership-attribute-service ;batch-load <path/to/csvfile.csv>"`
-
-- Decrease the write throughput of you dynamoDB instance to 1
-
-- Check that no records have been altered during the time the command takes to run. It's easy to check via the Membership History object in Salesforce.
