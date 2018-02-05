@@ -7,7 +7,6 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
 import configuration.Config
-import configuration.Config.authentication
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
@@ -30,20 +29,8 @@ import services.AttributesFromZuora._
 
 class AttributeController extends Controller with LoggingWithLogstashFields {
 
-  val keys = authentication.keys.map(key => s"Bearer $key")
-
-  def apiKeyFilter(): ActionBuilder[Request] = new ActionBuilder[Request] {
-    def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
-      request.headers.get("Authorization") match {
-        case Some(header) if keys.contains(header) => block(request)
-        case _ => Future.successful(ApiErrors.invalidApiKey)
-      }
-    }
-  }
-
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
-  lazy val backendForSyncWithZuora = NoCacheAction andThen apiKeyFilter andThen WithBackendFromUserIdAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
@@ -119,38 +106,4 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, sendAttributesIfNotFound = true)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated)
 
-  def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
-
-    val tp = request.touchpoint
-
-    val result: EitherT[Future, String, Attributes] =
-      // TODO - add the Stripe lookups for the Contribution and Membership cards to this flow, then we can deprecate the Salesforce hook.
-      for {
-        contact <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No contact for $identityId")))
-        memSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Member]]](tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
-        conSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Contributor]]](tp.subService.current[SubscriptionPlan.Contributor](contact).map(a => \/.right(a.headOption)))
-        memSub <- memSubF
-        conSub <- conSubF
-        _ <- EitherT(Future.successful(if (memSub.isEmpty && conSub.isEmpty) \/.left("No recurring relationship") else \/.right(())))
-        attributes = Attributes(
-          UserId = identityId,
-          Tier = memSub.map(_.plan.charges.benefit.id),
-          MembershipNumber = contact.regNumber,
-          RecurringContributionPaymentPlan = conSub.map(_.plan.name),
-          MembershipJoinDate = memSub.map(_.startDate)
-        )
-        res <- EitherT(tp.attrService.update(attributes).map(_.disjunction)).leftMap(e => s"Dynamo failed to update the user attributes: ${DynamoReadError.describe(e)}")
-      } yield attributes
-
-    result.fold(
-      {  error =>
-        log.error(s"Failed to update attributes - $error")
-        ApiErrors.badRequest(error)
-      },
-      { attributes =>
-        log.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.RecurringContributionPaymentPlan}")
-        Ok(Json.obj("updated" -> true))
-      }
-    )
-  }
 }

@@ -35,9 +35,4 @@ object ApiErrors {
     statusCode = 401
   )
 
-  val invalidApiKey = ApiError(
-    message = "Forbidden",
-    details = "Invalid API key",
-    statusCode = 403
-  )
 }
