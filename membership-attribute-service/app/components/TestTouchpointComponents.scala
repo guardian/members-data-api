@@ -1,6 +1,5 @@
 package components
+import akka.actor.ActorSystem
 import configuration.Config
-import play.libs.Akka.system
-import play.api.Play.current
 
-object TestTouchpointComponents extends TouchpointComponents(Config.testTouchpointBackendStage)(system)
+class TestTouchpointComponents(system:ActorSystem) extends TouchpointComponents(Config.testTouchpointBackendStage)(system)

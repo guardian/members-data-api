@@ -12,7 +12,7 @@ import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraResponse
 import com.typesafe.scalalogging.LazyLogging
-import components.TouchpointComponents
+import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
@@ -35,13 +35,13 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController extends Controller with LazyLogging {
+class AccountController(touchpointBackends: TouchpointBackends) extends Controller with LazyLogging {
 
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
-  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
+  lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction(touchpointBackends)
+  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction(touchpointBackends)
 
   def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
 

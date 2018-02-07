@@ -1,4 +1,4 @@
-import components.TouchpointComponents
+import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import play.api.mvc._
 
@@ -9,8 +9,9 @@ package object actions {
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
+  //todo just a hack to see if it works!
 
-  val BackendFromCookieAction = NoCacheAction andThen WithBackendFromCookieAction
+  def BackendFromCookieAction(touchpointBackends: TouchpointBackends) = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends)
 
   class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
 
