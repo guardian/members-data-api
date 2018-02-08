@@ -15,7 +15,7 @@ import scala.concurrent.Future
  * This is a candidate for inclusion in https://github.com/guardian/memsub-common-play-auth ,
  * this particular version is a tweaked copy from https://github.com/guardian/subscriptions-frontend/blob/ea805479/app/filters/AddGuIdentityHeaders.scala
  */
-class AddGuIdentityHeaders @Inject()(implicit val mat: Materializer) extends Filter {
+class AddGuIdentityHeaders (implicit val mat: Materializer) extends Filter {
 
   def apply(nextFilter: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] = for {
     result <- nextFilter(request)
