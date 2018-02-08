@@ -5,14 +5,14 @@ import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
 import com.typesafe.scalalogging.LazyLogging
-import models.Attributes
-import org.joda.time.LocalDate
+import models.{Attributes, DynamoAttributes, ZuoraAttributes}
+import org.joda.time.{DateTime, LocalDate}
 
 import scalaz.syntax.std.boolean._
 
 class AttributesMaker extends LazyLogging {
 
-  def attributes(identityId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[Attributes] = {
+  def zuoraAttributes(identityId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[ZuoraAttributes] = {
 
     def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
       GetCurrentPlans(subscription, forDate).map(_.list).toList.flatten  // it's expected that users may not have any current plans
@@ -40,13 +40,39 @@ class AttributesMaker extends LazyLogging {
       val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
       val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
       val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
-      Attributes(
+      ZuoraAttributes(
         UserId = identityId,
         Tier = tier,
         RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
         MembershipJoinDate = membershipJoinDate,
         DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate
       )
+    }
+  }
+
+  def attributesAndSource(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes]): (String, Option[Attributes]) = {
+    (zuoraAttributes, dynamoAttributes) match {
+      case (Some(zuora), Some(dynamo)) =>
+        ("Zuora", Some(Attributes(
+          UserId = zuora.UserId,
+          Tier = zuora.Tier,
+          RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
+          MembershipJoinDate = zuora.MembershipJoinDate,
+          DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
+          MembershipNumber = dynamo.MembershipNumber,
+          AdFree = dynamo.AdFree
+        )))
+      case (Some(zuora), None) =>
+        ("Zuora", Some(Attributes(
+          UserId = zuora.UserId,
+          Tier = zuora.Tier,
+          RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
+          MembershipJoinDate = zuora.MembershipJoinDate,
+          DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
+          MembershipNumber = None,
+          AdFree = None
+        )))
+      case (None, _) => ("Zuora", None)
     }
   }
 

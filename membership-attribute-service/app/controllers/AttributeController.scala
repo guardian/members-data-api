@@ -46,7 +46,8 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
         dynamoAttributeService = dynamoService
       )
     } else {
-      dynamoService.get(identityId) map {("Dynamo - too many concurrent calls to Zuora", _)}
+      val attributes: Future[Option[Attributes]] = dynamoService.get(identityId) map { maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))}
+      attributes map {("Dynamo - too many concurrent calls to Zuora", _)}
     }
   }
 
@@ -62,7 +63,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             attributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
