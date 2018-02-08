@@ -75,14 +75,15 @@ object DynamoAttributes {
   )
 
   def asZuoraAttributes(dynamoAttributes: DynamoAttributes): ZuoraAttributes = ZuoraAttributes(
-      UserId = dynamoAttributes.UserId,
-      Tier = dynamoAttributes.Tier,
-      RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
-      MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
-      DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
-    )
+    UserId = dynamoAttributes.UserId,
+    Tier = dynamoAttributes.Tier,
+    RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
+    MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
+    DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
+  )
 
 }
+
 object Attributes {
 
   implicit val jsAttributesWrites: OWrites[Attributes] = (

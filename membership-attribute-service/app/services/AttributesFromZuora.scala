@@ -42,28 +42,31 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, forDate)
     }
 
-    val attributesFromZuora: Future[Option[ZuoraAttributes]] = zuoraAttributesDisjunction.run.map {
-      _.leftMap { errorMsg =>
-        log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
-        errorMsg
-      }.getOrElse(None) // TODO: make sure to return from dynamo if this happens and with fromWhere = "Dynamo"
-    }
-
-
     val attributesFromDynamo: Future[Option[DynamoAttributes]] = dynamoAttributeService.get(identityId) map { attributes =>
       dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
       attributes
     }
 
+    val defaultIfZuoraFails: Future[Option[ZuoraAttributes]] = attributesFromDynamo map { maybeDynamoAttributes => maybeDynamoAttributes map {DynamoAttributes.asZuoraAttributes(_)}}
+
+    val attributesFromZuora: Future[Option[ZuoraAttributes]] = defaultIfZuoraFails flatMap  { default =>
+      zuoraAttributesDisjunction.run.map {
+        _.leftMap { errorMsg =>
+          log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
+          errorMsg
+        }.getOrElse(default) // TODO: make sure to return from dynamo if this happens and with fromWhere = "Dynamo"
+      }
+    }
+
     def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]) = {
-        val updateRequired = dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)
-        if(updateRequired) {
-          updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
-            case e: Throwable =>
-              log.error(s"Future failed when attempting to update cache.", e)
-              log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
-          }
+      val updateRequired = dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)
+      if(updateRequired) {
+        updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
+          case e: Throwable =>
+            log.error(s"Future failed when attempting to update cache.", e)
+            log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
         }
+      }
     }
 
     //attributes are derived from dynamo if zuora fails, otherwise derive from both
@@ -71,7 +74,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       dynamo <- attributesFromDynamo
       zuora <- attributesFromZuora
       combinedAttributes = AttributesMaker.attributesAndSource(zuora, dynamo)
-      _ = updateIfNeeded(zuora, dynamo, combinedAttributes._2)   // never update if the future fails
+      _ = updateIfNeeded(zuora, dynamo, combinedAttributes._2)
     } yield combinedAttributes
 
     val cached = attributesFromDynamo map { maybeAttributes => ("Dynamo", maybeAttributes map (DynamoAttributes.asAttributes(_)))}
