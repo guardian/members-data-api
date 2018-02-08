@@ -10,6 +10,7 @@ import play.api.mvc.Results.Ok
 
 import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
+import json._
 
 case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean, digitalPack: Boolean)
 
@@ -44,20 +45,7 @@ case class ZuoraAttributes(UserId: String,
                            Tier: Option[String] = None,
                            RecurringContributionPaymentPlan: Option[String] = None,
                            MembershipJoinDate: Option[LocalDate] = None,
-                           DigitalSubscriptionExpiryDate: Option[LocalDate] = None) {
-  lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
-  lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
-  lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
-  lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
-  lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
-  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
-  lazy val isContributor = RecurringContributionPaymentPlan.isDefined
-  lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
-  lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
-  lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
-
-  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
-}
+                           DigitalSubscriptionExpiryDate: Option[LocalDate] = None)
 
 case class DynamoAttributes(UserId: String,
                             Tier: Option[String] = None,
@@ -67,21 +55,12 @@ case class DynamoAttributes(UserId: String,
                             MembershipNumber: Option[String],
                             AdFree: Option[Boolean],
                             TTLTimestamp: Long) {
-  lazy val isAdFree = AdFree.exists(identity)
-
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
-  lazy val isContributor = RecurringContributionPaymentPlan.isDefined
-  lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
-  lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
-  lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
-
-  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
-
 }
 
 object DynamoAttributes {
@@ -114,26 +93,7 @@ object Attributes {
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "membershipNumber").writeNullable[String] and
       (__ \ "adFree").writeNullable[Boolean]
-  )(unlift(Attributes.unapply))//.addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate).addField("contentAccess", _.contentAccess)
-
-  implicit val jsZuoraWrite: OWrites[ZuoraAttributes] = (
-    (__ \ "userId").write[String] and
-      (__ \ "tier").writeNullable[String] and
-      (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-      (__ \ "membershipJoinDate").writeNullable[LocalDate] and
-      (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate]
-    )(unlift(ZuoraAttributes.unapply))
-
-  implicit val jsWrite: OWrites[DynamoAttributes] = (
-    (__ \ "userId").write[String] and
-      (__ \ "tier").writeNullable[String] and
-      (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-      (__ \ "membershipJoinDate").writeNullable[LocalDate] and
-      (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
-      (__ \ "membershipNumber").writeNullable[String] and
-      (__ \ "adFree").writeNullable[Boolean] and
-      (__ \ "ttlTimestamp").write[Long]
-    )(unlift(DynamoAttributes.unapply))
+  )(unlift(Attributes.unapply)).addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate).addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
