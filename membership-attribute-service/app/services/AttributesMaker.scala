@@ -50,10 +50,10 @@ class AttributesMaker extends LazyLogging {
     }
   }
 
-  def attributesAndSource(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes]): (String, Option[Attributes]) = {
+  def zuoraAttributesWithAddedDynamoFields(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes]): Option[Attributes] = {
     (zuoraAttributes, dynamoAttributes) match {
       case (Some(zuora), Some(dynamo)) =>
-        ("Zuora", Some(Attributes(
+        Some(Attributes(
           UserId = zuora.UserId,
           Tier = zuora.Tier,
           RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
@@ -61,9 +61,9 @@ class AttributesMaker extends LazyLogging {
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
           AdFree = dynamo.AdFree
-        )))
+        ))
       case (Some(zuora), None) =>
-        ("Zuora", Some(Attributes(
+        Some(Attributes(
           UserId = zuora.UserId,
           Tier = zuora.Tier,
           RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
@@ -71,8 +71,8 @@ class AttributesMaker extends LazyLogging {
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = None,
           AdFree = None
-        )))
-      case (None, _) => ("Zuora", None)
+        ))
+      case (None, _) => None
     }
   }
 

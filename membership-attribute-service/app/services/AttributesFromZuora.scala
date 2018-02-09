@@ -71,9 +71,9 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
       case \/-(maybeZuoraAttributes) => attributesFromDynamo map { dynamoAttr: Option[DynamoAttributes] =>
-        val combinedAttributes = AttributesMaker.attributesAndSource(maybeZuoraAttributes, dynamoAttr)
-        updateIfNeeded(maybeZuoraAttributes, dynamoAttr, combinedAttributes._2)
-        combinedAttributes
+        val combinedAttributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(maybeZuoraAttributes, dynamoAttr)
+        updateIfNeeded(maybeZuoraAttributes, dynamoAttr, combinedAttributes)
+        ("Zuora", combinedAttributes)
       }
     }
     // return what we know from Dynamo if the future times out/fails

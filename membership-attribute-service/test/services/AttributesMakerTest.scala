@@ -117,7 +117,7 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
           TTLTimestamp = referenceDateAsDynamoTimestamp
         )
 
-        val expected = ("Zuora", Some(
+        val expected = Some(
           Attributes(
             UserId = testId,
             Tier = None,
@@ -125,9 +125,9 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
             MembershipJoinDate = None,
             DigitalSubscriptionExpiryDate = None
           )
-        ))
+        )
 
-        val attributes = AttributesMaker.attributesAndSource(Some(zuoraAttributes), Some(dynamoAttributes))
+        val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), Some(dynamoAttributes))
 
         attributes === expected
       }
@@ -141,7 +141,7 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
           DigitalSubscriptionExpiryDate = None
         )
 
-        val expected = ("Zuora", Some(
+        val expected = Some(
           Attributes(
             UserId = testId,
             Tier = None,
@@ -149,15 +149,15 @@ class AttributesMakerTest extends Specification with SubscriptionTestData {
             MembershipJoinDate = None,
             DigitalSubscriptionExpiryDate = None
           )
-        ))
+        )
 
-        val attributes = AttributesMaker.attributesAndSource(Some(zuoraAttributes), None)
+        val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), None)
 
         attributes === expected
       }
 
       "return none if both Dynamo and Zuora attributes are none" in {
-        AttributesMaker.attributesAndSource(None, None) === ("Zuora", None)
+        AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, None) === None
       }
     }
   }
