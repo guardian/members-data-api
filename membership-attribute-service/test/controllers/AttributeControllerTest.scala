@@ -1,8 +1,8 @@
 package controllers
 
-import actions.BackendRequest
+import actions.{BackendRequest, CommonActions}
 import akka.actor.ActorSystem
-import components.TouchpointComponents
+import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.Attributes
 import org.joda.time.LocalDate
@@ -14,6 +14,7 @@ import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.AuthenticationService
+
 import scala.concurrent.Future
 
 class AttributeControllerTest extends Specification with AfterAll {
@@ -54,7 +55,11 @@ class AttributeControllerTest extends Specification with AfterAll {
     }
   }
 
-  private val controller = new AttributeController {
+  private val actorSystem = ActorSystem()
+  private val touchpointBackends = new TouchpointBackends(actorSystem)
+  private val commonActions = new CommonActions(touchpointBackends)
+  private val controller = new AttributeController(commonActions) {
+
     override lazy val authenticationService = fakeAuthService
     override lazy val backendAction = Action andThen FakeWithBackendAction
     override def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
