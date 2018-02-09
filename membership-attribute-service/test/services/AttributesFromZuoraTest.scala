@@ -5,7 +5,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.zuora.ZuoraRestService.{AccountIdRecord, QueryResponse}
-import models.{Attributes, DynamoAttributes}
+import models.{Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mock.Mockito
@@ -45,7 +45,16 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     DigitalSubscriptionExpiryDate = None,
     TTLTimestamp = referenceDateInSeconds)
 
-  val supporterZuoraAttributes = DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes)
+  def asZuoraAttributes(dynamoAttributes: DynamoAttributes): ZuoraAttributes = ZuoraAttributes(
+    UserId = dynamoAttributes.UserId,
+    Tier = dynamoAttributes.Tier,
+    RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
+    MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
+    DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
+  )
+
+
+  val supporterZuoraAttributes = asZuoraAttributes(supporterDynamoAttributes)
   val supporterAttributes = DynamoAttributes.asAttributes(supporterDynamoAttributes)
 
   val friendAttributes = supporterDynamoAttributes.copy(Tier = Some("friend"))
@@ -256,28 +265,28 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     "dynamoAndZuoraAgree" should {
       "return true if the fields obtainable from zuora match " in {
         val fromDynamo = Some(supporterDynamoAttributes)
-        val fromZuora = Some(DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes))
+        val fromZuora = Some(asZuoraAttributes(supporterDynamoAttributes))
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
       }
 
       "ignore the fields not obtainable from zuora" in {
         val fromDynamo = Some(supporterDynamoAttributes.copy(AdFree = Some(true), TTLTimestamp = toDynamoTtl(twoWeeksFromReferenceDate)))
-        val fromZuora = Some(DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes))
+        val fromZuora = Some(asZuoraAttributes(supporterDynamoAttributes))
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
       }
 
       "return false when dynamo is outdated and does not match zuora" in {
         val fromDynamo = Some(supporterDynamoAttributes)
-        val fromZuora = Some(DynamoAttributes.asZuoraAttributes(friendAttributes))
+        val fromZuora = Some(asZuoraAttributes(friendAttributes))
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(false)
       }
 
       "return false if dynamo is none and zuora has attributes" in {
         val fromDynamo = None
-        val fromZuora = Some(DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes))
+        val fromZuora = Some(asZuoraAttributes(supporterDynamoAttributes))
 
         AttributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(false)
       }
@@ -292,13 +301,13 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
     "dynamoUpdateRequired" should {
       "return true if there is no existing timestamp in the Dynamo attributes" in {
-        val updateRequired = dynamoUpdateRequired(Some(supporterDynamoAttributes), Some(DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
+        val updateRequired = dynamoUpdateRequired(Some(supporterDynamoAttributes), Some(asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
         updateRequired must be_==(true)
       }
 
       "return true if the timestamp is old" in {
         val tooOld = toDynamoTtl(twoWeeksFromReferenceDate.minusDays(14))
-        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = tooOld)), Some(DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
+        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = tooOld)), Some(asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
 
         updateRequired must be_==(true)
       }
@@ -306,7 +315,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       "return true if zuora and dynamo disagree and the timestamp is recent" in {
         val recentEnough = toDynamoTtl(twoWeeksFromReferenceDate.minusHours(14))
         val dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = recentEnough))
-        val zuoraAttributes = Some(DynamoAttributes.asZuoraAttributes(friendAttributes))
+        val zuoraAttributes = Some(asZuoraAttributes(friendAttributes))
 
         val updateRequired = dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, "123", twoWeeksFromReferenceDate)
 
@@ -315,7 +324,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
       "return false if zuora and dynamo agree and the timestamp is recent enough" in {
         val recentEnough = toDynamoTtl(twoWeeksFromReferenceDate.minusHours(14))
-        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = recentEnough)), Some(DynamoAttributes.asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
+        val updateRequired = dynamoUpdateRequired(dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = recentEnough)), Some(asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
 
         updateRequired must be_==(false)
       }
@@ -347,7 +356,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       DigitalSubscriptionExpiryDate = Some(digitalPackExpirationDate),
       TTLTimestamp = toDynamoTtl(twoWeeksFromReferenceDate)
     )
-    val zuoraContributorDigitalPackAttributes = DynamoAttributes.asZuoraAttributes(dynamoContributorDigitalPackAttributes)
+    val zuoraContributorDigitalPackAttributes = asZuoraAttributes(dynamoContributorDigitalPackAttributes)
     val contributorDigitalPackAttributes = DynamoAttributes.asAttributes(dynamoContributorDigitalPackAttributes)
 
     mockDynamoAttributesService.update(dynamoContributorDigitalPackAttributes) returns Future.successful(Right(dynamoContributorDigitalPackAttributes))

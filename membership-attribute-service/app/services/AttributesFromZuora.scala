@@ -166,7 +166,15 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
   }
 
   def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[DynamoAttributes], maybeZuoraAttributes: Option[ZuoraAttributes], identityId: String): Boolean = {
-    val dynamoAttributesForComparing: Option[ZuoraAttributes] = maybeDynamoAttributes map { DynamoAttributes.asZuoraAttributes(_) }
+    val dynamoAttributesForComparing: Option[ZuoraAttributes] = maybeDynamoAttributes map { dynamoAttributes =>
+      ZuoraAttributes(
+        UserId = dynamoAttributes.UserId,
+        Tier = dynamoAttributes.Tier,
+        RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
+        MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
+        DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
+      )
+    }
 
     val dynamoAndZuoraAgree = dynamoAttributesForComparing == maybeZuoraAttributes
 

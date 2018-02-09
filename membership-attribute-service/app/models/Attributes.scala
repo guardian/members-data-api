@@ -73,15 +73,6 @@ object DynamoAttributes {
     MembershipNumber = dynamoAttributes.MembershipNumber,
     AdFree = dynamoAttributes.AdFree
   )
-
-  def asZuoraAttributes(dynamoAttributes: DynamoAttributes): ZuoraAttributes = ZuoraAttributes(
-    UserId = dynamoAttributes.UserId,
-    Tier = dynamoAttributes.Tier,
-    RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
-    MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
-    DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
-  )
-
 }
 
 object Attributes {

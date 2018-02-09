@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
 import com.typesafe.scalalogging.LazyLogging
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
-import org.joda.time.{DateTime, LocalDate}
+import org.joda.time.LocalDate
 
 import scalaz.syntax.std.boolean._
 
