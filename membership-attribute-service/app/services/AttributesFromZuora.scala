@@ -55,8 +55,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
 
     def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]) = {
-      val updateRequired = dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)
-      if(updateRequired) {
+      if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
           case e: Throwable =>
             log.error(s"Future failed when attempting to update cache.", e)
