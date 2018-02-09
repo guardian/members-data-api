@@ -1,6 +1,6 @@
 package controllers
-
 import actions._
+import actions.CommonActions
 import com.typesafe.scalalogging.LazyLogging
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
@@ -16,18 +16,20 @@ import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEma
 
 import scala.concurrent.Future
 
-class BehaviourController(touchpointBackends: TouchpointBackends) extends Controller with LazyLogging {
+class BehaviourController(touchpointBackends: TouchpointBackends, commonActions: CommonActions) extends Controller with LazyLogging {
+
+  import commonActions._
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
-  lazy val backendAction = corsFilter andThen BackendFromCookieAction(touchpointBackends)
+  lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
 
-  def capture() = BackendFromCookieAction(touchpointBackends).async { implicit request =>
+  def capture() = BackendFromCookieAction.async { implicit request =>
     awsAction(request, "upsert")
   }
 
-  def remove = BackendFromCookieAction(touchpointBackends).async { implicit request =>
+  def remove = BackendFromCookieAction.async { implicit request =>
     awsAction(request, "delete")
   }
 

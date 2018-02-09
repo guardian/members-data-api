@@ -35,13 +35,13 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController(touchpointBackends: TouchpointBackends) extends Controller with LazyLogging {
-
+class AccountController(touchpointBackends: TouchpointBackends, commonActions: CommonActions) extends Controller with LazyLogging {
+  import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
   lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction(touchpointBackends)
-  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction(touchpointBackends)
+  lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
+  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
 
   def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
 
