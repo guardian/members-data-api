@@ -3,7 +3,7 @@ package configuration
 import java.time.Duration
 
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.sqs.AmazonSQSAsyncClient
+import com.amazonaws.services.sqs.{AmazonSQSAsyncClient, AmazonSQSAsyncClientBuilder}
 import com.getsentry.raven.dsn.Dsn
 import com.github.dwhjames.awswrap.sqs.AmazonSQSScalaClient
 import com.gu.aws.CredentialsProvider
@@ -12,7 +12,6 @@ import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import play.api.Configuration
 import play.filters.cors.CORSConfig
-
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.filters.cors.CORSConfig.Origins
 
@@ -34,9 +33,13 @@ object Config {
   }
 
   lazy val sqsClient = {
-    val awsSqsClient = new AmazonSQSAsyncClient(CredentialsProvider)
-    awsSqsClient.configureRegion(AWS.region)
-    val sqsClient = new AmazonSQSScalaClient(awsSqsClient, defaultContext)
+    lazy val awsSqsClient = AmazonSQSAsyncClientBuilder
+      .standard
+      .withCredentials(CredentialsProvider)
+      .withRegion(AWS.region)
+      .build()
+
+    val sqsClient = new AmazonSQSScalaClient(awsSqsClient.asInstanceOf[AmazonSQSAsyncClient], defaultContext)
     sqsClient
   }
 
