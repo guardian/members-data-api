@@ -1,3 +1,5 @@
+package wiring
+
 import actions.CommonActions
 import components.{TouchpointBackends}
 import configuration.Config
@@ -12,7 +14,7 @@ import play.api.mvc.EssentialFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
 
-class MyApplicationLoader extends ApplicationLoader {
+class AppLoader extends ApplicationLoader {
   def load(context: Context) = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
@@ -27,7 +29,6 @@ class MyComponents(context: Context)
   extends BuiltInComponentsFromContext(context)
     with AhcWSComponents
     with CSRFComponents {
-
 
   val touchPointBackends = new TouchpointBackends(actorSystem)
   val commonActions = new CommonActions(touchPointBackends)
@@ -47,5 +48,4 @@ class MyComponents(context: Context)
     new AddGuIdentityHeaders(),
     new CheckCacheHeadersFilter()
   )
-
 }
