@@ -11,6 +11,7 @@ import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.EssentialFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
+
 class MyApplicationLoader extends ApplicationLoader {
   def load(context: Context) = {
     LoggerConfigurator(context.environment.classLoader).foreach {
@@ -25,11 +26,10 @@ class MyApplicationLoader extends ApplicationLoader {
 class MyComponents(context: Context)
   extends BuiltInComponentsFromContext(context)
     with AhcWSComponents
-    with CSRFComponents
-{
+    with CSRFComponents {
 
 
-  val touchPointBackends =  new TouchpointBackends(actorSystem)
+  val touchPointBackends = new TouchpointBackends(actorSystem)
   val commonActions = new CommonActions(touchPointBackends)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(environment, configuration, sourceMapper, Some(router))
@@ -37,9 +37,9 @@ class MyComponents(context: Context)
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends),
-    new AttributeController(touchPointBackends, commonActions),
-    new AccountController(touchPointBackends, commonActions),
-    new BehaviourController(touchPointBackends, commonActions)
+    new AttributeController(commonActions),
+    new AccountController(commonActions),
+    new BehaviourController(commonActions)
   )
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(

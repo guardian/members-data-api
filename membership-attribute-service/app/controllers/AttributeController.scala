@@ -21,7 +21,7 @@ import services.{AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import services.AttributesFromZuora._
 
-class AttributeController(touchpointBackends: TouchpointBackends, commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
+class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)

@@ -1,6 +1,5 @@
 package actions
 
-import actions.BackendRequest
 import components.TouchpointBackends
 import configuration.Config
 import play.api.mvc.{ActionRefiner, Request, Result}

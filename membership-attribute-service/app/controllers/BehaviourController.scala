@@ -16,7 +16,7 @@ import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEma
 
 import scala.concurrent.Future
 
-class BehaviourController(touchpointBackends: TouchpointBackends, commonActions: CommonActions) extends Controller with LazyLogging {
+class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
 
   import commonActions._
 
