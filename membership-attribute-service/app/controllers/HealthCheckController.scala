@@ -1,8 +1,9 @@
 package controllers
 
+
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
-import components.NormalTouchpointComponents._
+import components.TouchpointBackends
 import com.typesafe.scalalogging.StrictLogging
 
 trait Test {
@@ -15,10 +16,11 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
   override def ok = exec()
 }
 
-class HealthCheckController extends Results with StrictLogging {
+class HealthCheckController(touchPointBackends:TouchpointBackends) extends Results with StrictLogging {
 
+  val touchpointComponents = touchPointBackends.normal
   // behaviourService, Stripe and all Zuora services are not critical
-  private lazy val services = Set(salesforceService, featureToggleService, attrService)
+  private lazy val services = Set(touchpointComponents.salesforceService, touchpointComponents.featureToggleService, touchpointComponents.attrService)
 
   private lazy val tests = services.map(service => new BoolTest(service.serviceName, () => service.checkHealth))
 

@@ -1,3 +1,7 @@
+package wiring
+
+import actions.CommonActions
+import components.{TouchpointBackends}
 import configuration.Config
 import controllers._
 import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
@@ -8,10 +12,9 @@ import play.api._
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.EssentialFilter
 import play.filters.csrf.CSRFComponents
-import play.filters.headers.{SecurityHeadersConfig, SecurityHeadersFilter}
 import router.Routes
 
-class MyApplicationLoader extends ApplicationLoader {
+class AppLoader extends ApplicationLoader {
   def load(context: Context) = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
@@ -25,19 +28,19 @@ class MyApplicationLoader extends ApplicationLoader {
 class MyComponents(context: Context)
   extends BuiltInComponentsFromContext(context)
     with AhcWSComponents
-    with CSRFComponents
-{
+    with CSRFComponents {
 
-
+  val touchPointBackends = new TouchpointBackends(actorSystem)
+  val commonActions = new CommonActions(touchPointBackends)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(environment, configuration, sourceMapper, Some(router))
 
   lazy val router: Routes = new Routes(
     httpErrorHandler,
-    new HealthCheckController(),
-    new AttributeController(),
-    new AccountController(),
-    new BehaviourController()
+    new HealthCheckController(touchPointBackends),
+    new AttributeController(commonActions),
+    new AccountController(commonActions),
+    new BehaviourController(commonActions)
   )
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
@@ -45,5 +48,4 @@ class MyComponents(context: Context)
     new AddGuIdentityHeaders(),
     new CheckCacheHeadersFilter()
   )
-
 }

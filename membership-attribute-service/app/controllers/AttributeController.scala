@@ -2,10 +2,7 @@ package controllers
 
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.reads.ChargeListReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.scanamo.error.DynamoReadError
+import components.TouchpointBackends
 import configuration.Config
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -20,15 +17,13 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
 import services.{AuthenticationService, IdentityAuthService}
+
 import scala.concurrent.Future
-import scalaz.std.scalaFuture._
-import scalaz.syntax.std.either._
-import scalaz.syntax.std.option._
-import scalaz.{EitherT, \/}
 import services.AttributesFromZuora._
 
-class AttributeController extends Controller with LoggingWithLogstashFields {
+class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
 
+  import commonActions._
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
