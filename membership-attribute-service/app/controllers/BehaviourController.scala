@@ -1,7 +1,8 @@
 package controllers
-
 import actions._
+import actions.CommonActions
 import com.typesafe.scalalogging.LazyLogging
+import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.Behaviour
 import monitoring.Metrics
@@ -15,7 +16,9 @@ import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEma
 
 import scala.concurrent.Future
 
-class BehaviourController extends Controller with LazyLogging {
+class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
+
+  import commonActions._
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
