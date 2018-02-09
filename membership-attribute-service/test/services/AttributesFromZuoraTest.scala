@@ -384,7 +384,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     val testErrorMessage = "Something bad happened! D:"
 
     def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
-    def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.failed(new Exception(testErrorMessage))
+    def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.left(testErrorMessage))
   }
 
   trait errorWhenGettingAccounts extends Scope {
@@ -392,7 +392,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
     mockDynamoAttributesService.get(testId) returns Future.successful(Some(supporterDynamoAttributes))
 
-    def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.failed(new Exception(testErrorMessage))
+    def identityIdToAccountIds(identityId: String): Future[\/[String, QueryResponse]] = Future.successful(\/.left(testErrorMessage))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(Nil))
   }
 

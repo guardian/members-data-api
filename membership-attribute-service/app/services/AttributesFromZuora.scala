@@ -28,6 +28,11 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
 
+    val attributesFromDynamo: Future[Option[DynamoAttributes]] = dynamoAttributeService.get(identityId) map { attributes =>
+      dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
+      attributes
+    }
+
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Option[ZuoraAttributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
@@ -42,20 +47,11 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, forDate)
     }
 
-    val attributesFromDynamo: Future[Option[DynamoAttributes]] = dynamoAttributeService.get(identityId) map { attributes =>
-      dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
-      attributes
-    }
-
-    val defaultIfZuoraFails: Future[Option[ZuoraAttributes]] = attributesFromDynamo map { maybeDynamoAttributes => maybeDynamoAttributes map {DynamoAttributes.asZuoraAttributes(_)}}
-
-    val attributesFromZuora: Future[Option[ZuoraAttributes]] = defaultIfZuoraFails flatMap  { default =>
-      zuoraAttributesDisjunction.run.map {
+    val attributesFromZuora: Future[Disjunction[String, Option[ZuoraAttributes]]] = zuoraAttributesDisjunction.run.map {
         _.leftMap { errorMsg =>
           log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
           errorMsg
-        }.getOrElse(default) // TODO: make sure to return from dynamo if this happens and with fromWhere = "Dynamo"
-      }
+        }
     }
 
     def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]) = {
@@ -69,18 +65,21 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       }
     }
 
-    //attributes are derived from dynamo if zuora fails, otherwise derive from both
-    val attributes: Future[(String, Option[Attributes])] = for {
-      dynamo <- attributesFromDynamo
-      zuora <- attributesFromZuora
-      combinedAttributes = AttributesMaker.attributesAndSource(zuora, dynamo)
-      _ = updateIfNeeded(zuora, dynamo, combinedAttributes._2)
-    } yield combinedAttributes
+    //return what we know from Dynamo if Zuora returns an error
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map {DynamoAttributes.asAttributes(_)})}
 
-    val cached = attributesFromDynamo map { maybeAttributes => ("Dynamo", maybeAttributes map (DynamoAttributes.asAttributes(_)))}
-    val attributesOrCache: Future[(String, Option[Attributes])] = attributes fallbackTo cached
+    val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
+      case -\/(error) => fallbackIfZuoraFails
+      case \/-(maybeZuoraAttributes) => attributesFromDynamo map { dynamoAttr: Option[DynamoAttributes] =>
+        val combinedAttributes = AttributesMaker.attributesAndSource(maybeZuoraAttributes, dynamoAttr)
+        updateIfNeeded(maybeZuoraAttributes, dynamoAttr, combinedAttributes._2)
+        combinedAttributes
+      }
+    }
+    // return what we know from Dynamo if the future times out/fails
+    val attributesOrFallbackToDynamo: Future[(String, Option[Attributes])] = attributesFromZuoraUnlessFallback fallbackTo fallbackIfZuoraFails
 
-    attributesOrCache
+    attributesOrFallbackToDynamo
   }
 
   def dynamoUpdateRequired(dynamoAttributes: Option[DynamoAttributes], zuoraAttributes: Option[ZuoraAttributes], identityId: String, twoWeekExpiry: => DateTime): Boolean = {
