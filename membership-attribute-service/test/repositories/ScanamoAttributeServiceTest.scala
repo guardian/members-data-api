@@ -2,47 +2,57 @@ package repositories
 
 import java.util.UUID
 
-import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
-import com.github.dwhjames.awswrap.dynamodb.{AmazonDynamoDBScalaClient, Schema}
+import com.amazonaws.client.builder.AwsClientBuilder
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
+import com.amazonaws.services.dynamodbv2.model._
 import models.{Attributes, DynamoAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
-import repositories.MembershipAttributesSerializer.AttributeNames
 import services.ScanamoAttributeService
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
+
 /**
- * Depends upon DynamoDB Local to be running on the default port of 8000.
- *
- * Amazon's embedded version doesn't work with an async client, so using https://github.com/localytics/sbt-dynamodb
- */
+  * Depends upon DynamoDB Local to be running on the default port of 8000.
+  *
+  * Amazon's embedded version doesn't work with an async client, so using https://github.com/localytics/sbt-dynamodb
+  */
 class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specification {
 
-  private val awsDynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
-  awsDynamoClient.setEndpoint("http://localhost:8000")
+  object AttributeNames {
+    val userId = "UserId"
+    val membershipNumber = "MembershipNumber"
+    val tier = "Tier"
+    val membershipJoinDate = "MembershipJoinDate"
+  }
+
+  private val endpoint = new AwsClientBuilder.EndpointConfiguration("http://localhost:8000/", "eu-west-1")
+  private val awsDynamoClient = AmazonDynamoDBAsyncClientBuilder
+    .standard()
+    .withEndpointConfiguration(endpoint) // .withCredentials(new BasicAWSCredentials("foo", "bar"))
+    .build()
+  //  private val awsDynamoClient1 = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
+  //  awsDynamoClient.setEndpoint("http://localhost:8000")
 
   private val testTable = "MembershipAttributes-TEST"
-  implicit private val serializer = MembershipAttributesSerializer(testTable)
+  //implicit private val serializer = MembershipAttributesSerializer(testTable)
 
   private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
+  val provisionedThroughput = new ProvisionedThroughput().withReadCapacityUnits(10L).withWriteCapacityUnits(5L)
+  val userIdAtt = new AttributeDefinition().withAttributeName(AttributeNames.userId).withAttributeType(ScalarAttributeType.S)
+  val keySchema = new KeySchemaElement().withAttributeName(AttributeNames.userId).withKeyType(KeyType.HASH)
   val tableRequest =
     new CreateTableRequest()
       .withTableName(testTable)
-      .withProvisionedThroughput(
-        Schema.provisionedThroughput(10L, 5L))
-      .withAttributeDefinitions(
-        Schema.stringAttribute(AttributeNames.userId))
-      .withKeySchema(
-        Schema.hashKey(AttributeNames.userId))
+      .withProvisionedThroughput(provisionedThroughput)
+      .withAttributeDefinitions(userIdAtt)
+      .withKeySchema(keySchema)
 
-  private val dynamoClient = new AmazonDynamoDBScalaClient(awsDynamoClient)
-  val createTableResult = Await.result(dynamoClient.createTable(tableRequest), 5.seconds)
+  val createTableResult = awsDynamoClient.createTable(tableRequest)
 
   val testExpiryDate = DateTime.now()
 
@@ -56,7 +66,7 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
       val attributes = DynamoAttributes(
         UserId = userId,
         Tier = Some("Patron"),
-        MembershipNumber =  Some("abc"),
+        MembershipNumber = Some("abc"),
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = Some(new LocalDate(2017, 6, 13)),
         TTLTimestamp = toDynamoTtl(testExpiryDate),

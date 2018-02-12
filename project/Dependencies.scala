@@ -16,7 +16,6 @@ object Dependencies {
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
   val scanamo = "com.gu" %% "scanamo" % "0.9.3"
-  val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
@@ -29,7 +28,7 @@ object Dependencies {
   //projects
 
   val apiDependencies = Seq(sentryRavenLogback, identityCookie, identityPlayAuth, identityTestUsers, scalaUri,
-    playWS, playCache, playFilters, scanamo, awsWrap, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
+    playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
     specs2, kinesis, logstash, jacksonCbor)
 
 }
