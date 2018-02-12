@@ -3,16 +3,14 @@ package configuration
 import java.time.Duration
 
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.sqs.{AmazonSQSAsyncClient, AmazonSQSAsyncClientBuilder}
+import com.amazonaws.services.sqs.AmazonSQSAsyncClientBuilder
 import com.getsentry.raven.dsn.Dsn
-import com.github.dwhjames.awswrap.sqs.AmazonSQSScalaClient
 import com.gu.aws.CredentialsProvider
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import play.api.Configuration
 import play.filters.cors.CORSConfig
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.filters.cors.CORSConfig.Origins
 
 import scala.util.Try
@@ -32,16 +30,12 @@ object Config {
     val region = Regions.EU_WEST_1
   }
 
-  lazy val sqsClient = {
-    lazy val awsSqsClient = AmazonSQSAsyncClientBuilder
+  lazy val sqsClient = AmazonSQSAsyncClientBuilder
       .standard
       .withCredentials(CredentialsProvider)
       .withRegion(AWS.region)
       .build()
 
-    val sqsClient = new AmazonSQSScalaClient(awsSqsClient.asInstanceOf[AmazonSQSAsyncClient], defaultContext)
-    sqsClient
-  }
 
   lazy val testUsernames = TestUsernames(Encoder.withSecret(config.getString("identity.test.users.secret")), Duration.ofDays(2))
 
