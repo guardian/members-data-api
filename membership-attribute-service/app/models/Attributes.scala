@@ -18,13 +18,14 @@ object ContentAccess {
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 
-case class Attributes(UserId: String,
-                      Tier: Option[String] = None,
-                      RecurringContributionPaymentPlan: Option[String] = None,
-                      MembershipJoinDate: Option[LocalDate] = None,
-                      DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-                      MembershipNumber: Option[String] = None,
-                      AdFree: Option[Boolean] = None) {
+case class Attributes(
+  UserId: String,
+  Tier: Option[String] = None,
+  RecurringContributionPaymentPlan: Option[String] = None,
+  MembershipJoinDate: Option[LocalDate] = None,
+  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  MembershipNumber: Option[String] = None,
+  AdFree: Option[Boolean] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -41,20 +42,22 @@ case class Attributes(UserId: String,
   lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
 }
 
-case class ZuoraAttributes(UserId: String,
-                           Tier: Option[String] = None,
-                           RecurringContributionPaymentPlan: Option[String] = None,
-                           MembershipJoinDate: Option[LocalDate] = None,
-                           DigitalSubscriptionExpiryDate: Option[LocalDate] = None)
+case class ZuoraAttributes(
+  UserId: String,
+  Tier: Option[String] = None,
+  RecurringContributionPaymentPlan: Option[String] = None,
+  MembershipJoinDate: Option[LocalDate] = None,
+  DigitalSubscriptionExpiryDate: Option[LocalDate] = None)
 
-case class DynamoAttributes(UserId: String,
-                            Tier: Option[String] = None,
-                            RecurringContributionPaymentPlan: Option[String] = None,
-                            MembershipJoinDate: Option[LocalDate] = None,
-                            DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-                            MembershipNumber: Option[String],
-                            AdFree: Option[Boolean],
-                            TTLTimestamp: Long) {
+case class DynamoAttributes(
+  UserId: String,
+  Tier: Option[String] = None,
+  RecurringContributionPaymentPlan: Option[String] = None,
+  MembershipJoinDate: Option[LocalDate] = None,
+  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  MembershipNumber: Option[String],
+  AdFree: Option[Boolean],
+  TTLTimestamp: Long) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -85,7 +88,9 @@ object Attributes {
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "membershipNumber").writeNullable[String] and
       (__ \ "adFree").writeNullable[Boolean]
-  )(unlift(Attributes.unapply)).addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate).addField("contentAccess", _.contentAccess)
+  )(unlift(Attributes.unapply))
+    .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
+    .addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))
