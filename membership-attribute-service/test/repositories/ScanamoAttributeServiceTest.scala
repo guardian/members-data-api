@@ -34,11 +34,8 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     .standard()
     .withEndpointConfiguration(endpoint) // .withCredentials(new BasicAWSCredentials("foo", "bar"))
     .build()
-  //  private val awsDynamoClient1 = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("foo", "bar"))
-  //  awsDynamoClient.setEndpoint("http://localhost:8000")
 
   private val testTable = "MembershipAttributes-TEST"
-  //implicit private val serializer = MembershipAttributesSerializer(testTable)
 
   private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
