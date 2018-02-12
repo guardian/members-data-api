@@ -8,9 +8,10 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.ZuoraRestService.QueryResponse
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
-import models.Attributes
+import models.{Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.concurrent.Execution.Implicits._
+
 import scala.concurrent.Future
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
@@ -27,7 +28,12 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
 
-    val attributesDisjunction: DisjunctionT[Future, String, Option[Attributes]] = for {
+    val attributesFromDynamo: Future[Option[DynamoAttributes]] = dynamoAttributeService.get(identityId) map { attributes =>
+      dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
+      attributes
+    }
+
+    val zuoraAttributesDisjunction: DisjunctionT[Future, String, Option[ZuoraAttributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
       subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
@@ -38,56 +44,46 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         })
       )
     } yield {
-      AttributesMaker.attributes(identityId, subscriptions, forDate)
+      AttributesMaker.zuoraAttributes(identityId, subscriptions, forDate)
     }
 
-
-    val attributesFromDynamo: Future[(String, Option[Attributes])] = dynamoAttributeService.get(identityId) map { attributes =>
-      dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
-      ("Dynamo", attributes)
-    }
-
-    val attributesFromZuora: Future[Disjunction[String, Option[Attributes]]] = attributesDisjunction.run.map {
+    val attributesFromZuora: Future[Disjunction[String, Option[ZuoraAttributes]]] = zuoraAttributesDisjunction.run.map {
         _.leftMap { errorMsg =>
           log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
           errorMsg
-      }
+        }
     }
 
-    val attributesFromZuoraOrDynamoFallback: Future[(String, Option[Attributes])] = for {
-      dynamoAttributes <- attributesFromDynamo
-      zuoraAttributes <- attributesFromZuora
-    } yield zuoraAttributes.fold(_ => dynamoAttributes, ("Zuora", _))
-
-    val zuoraOrCachedAttributes = attributesFromZuoraOrDynamoFallback fallbackTo attributesFromDynamo
-
-    zuoraOrCachedAttributes flatMap { attributesFromSomewhere =>
-      val (fromWhere: String, attributes: Option[Attributes]) = attributesFromSomewhere
-
-      if(fromWhere == "Zuora") {
-        attributesFromDynamo map { case (_, dynamoAttributes) =>
-          val zuoraAttributesWithAdfree: Option[Attributes] = attributesWithAdFreeFlagFromDynamo(attributes, dynamoAttributes)
-
-          val updateRequired = dynamoUpdateRequired(dynamoAttributes, attributes, identityId, twoWeekExpiry)
-          if(updateRequired) {
-            updateCache(identityId, zuoraAttributesWithAdfree, dynamoAttributeService, twoWeekExpiry).onFailure {
-              case e: Throwable =>
-                log.error(s"Future failed when attempting to update cache.", e)
-                log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
-            }
-          }
-
-          (fromWhere, zuoraAttributesWithAdfree)
+    def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]) = {
+      if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
+        updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
+          case e: Throwable =>
+            log.error(s"Future failed when attempting to update cache.", e)
+            log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
         }
       }
-      else Future.successful(fromWhere, attributes)
     }
+
+    //return what we know from Dynamo if Zuora returns an error
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map {DynamoAttributes.asAttributes(_)})}
+
+    val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
+      case -\/(error) => fallbackIfZuoraFails
+      case \/-(maybeZuoraAttributes) => attributesFromDynamo map { dynamoAttr: Option[DynamoAttributes] =>
+        val combinedAttributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(maybeZuoraAttributes, dynamoAttr)
+        updateIfNeeded(maybeZuoraAttributes, dynamoAttr, combinedAttributes)
+        ("Zuora", combinedAttributes)
+      }
+    }
+    // return what we know from Dynamo if the future times out/fails
+    val attributesOrFallbackToDynamo: Future[(String, Option[Attributes])] = attributesFromZuoraUnlessFallback fallbackTo fallbackIfZuoraFails
+
+    attributesOrFallbackToDynamo
   }
 
-  def dynamoUpdateRequired(dynamoAttributes: Option[Attributes], zuoraAttributes: Option[Attributes], identityId: String, twoWeekExpiry: => DateTime) = {
+  def dynamoUpdateRequired(dynamoAttributes: Option[DynamoAttributes], zuoraAttributes: Option[ZuoraAttributes], identityId: String, twoWeekExpiry: => DateTime): Boolean = {
 
     def ttlUpdateRequired(currentExpiry: DateTime) = twoWeekExpiry.isAfter(currentExpiry.plusDays(1))
-
     def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry match {
       case Some(expiry) if (ttlUpdateRequired(expiry)) =>
         log.info (s"TTL update required for user $identityId with current expiry $expiry. New expiry is $twoWeekExpiry.")
@@ -100,17 +96,28 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         twoWeekExpiry
     }
 
-    val currentExpiry: Option[DateTime] = dynamoAttributes.flatMap { attributes => attributes.TTLTimestamp.map { timestamp => TtlConversions.secondsToDateTime(timestamp) } }
+    val currentExpiry: Option[DateTime] = dynamoAttributes.map { attributes => TtlConversions.secondsToDateTime(attributes.TTLTimestamp) }
     val newExpiry: DateTime = calculateExpiry(currentExpiry)
 
-    def expiryShouldChange(dynamoAttributes: Option[Attributes], currentExpiry: Option[DateTime], newExpiry: DateTime) = dynamoAttributes.isDefined && !currentExpiry.contains(newExpiry)
+    def expiryShouldChange(dynamoAttributes: Option[DynamoAttributes], currentExpiry: Option[DateTime], newExpiry: DateTime) = dynamoAttributes.isDefined && !currentExpiry.contains(newExpiry)
 
     expiryShouldChange(dynamoAttributes, currentExpiry, newExpiry) || !dynamoAndZuoraAgree(dynamoAttributes, zuoraAttributes, identityId)
-
   }
 
-  private def updateCache(identityId: String, zuoraAttributesWithAdfree: Option[Attributes], dynamoAttributeService: AttributeService, twoWeekExpiry: => DateTime): Future[Unit] = {
-    val attributesWithTTL = zuoraAttributesWithAdfree.map(_.copy(TTLTimestamp = Some(TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry))))
+  private def updateCache(identityId: String, maybeAttributes: Option[Attributes], dynamoAttributeService: AttributeService, twoWeekExpiry: => DateTime): Future[Unit] = {
+    val attributesWithTTL: Option[DynamoAttributes] = maybeAttributes map { attributes =>
+        DynamoAttributes(
+        attributes.UserId,
+        attributes.Tier,
+        attributes.RecurringContributionPaymentPlan,
+        attributes.MembershipJoinDate,
+        attributes.DigitalSubscriptionExpiryDate,
+        attributes.MembershipNumber,
+        attributes.AdFree,
+        TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
+      )
+    }
+
     attributesWithTTL match {
       case Some(attributes) =>
         dynamoAttributeService.update(attributes).map { result =>
@@ -123,14 +130,6 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         dynamoAttributeService.delete(identityId) map { result =>
           log.info(s"Deleting the dynamo entry for $identityId. $result")
         }
-    }
-  }
-
-  def attributesWithAdFreeFlagFromDynamo(attributesFromZuora: Option[Attributes], attributesFromDynamo: Option[Attributes]) = {
-    val adFreeFlagFromDynamo = attributesFromDynamo flatMap (_.AdFree)
-
-    attributesFromZuora map { zuoraAttributes =>
-      zuoraAttributes.copy(AdFree = adFreeFlagFromDynamo)
     }
   }
 
@@ -174,25 +173,24 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     futureResult
   }
 
-  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[Attributes], maybeZuoraAttributes: Option[Attributes], identityId: String): Boolean = {
-    val zuoraAttributesWithIgnoredFields = maybeZuoraAttributes map { zuoraAttributes =>
-      maybeDynamoAttributes match {
-        case Some(dynamoAttributes) => zuoraAttributes.copy(
-          AdFree = dynamoAttributes.AdFree, //fetched from Dynamo in the Zuora lookup anyway (dynamo is the source of truth)
-          MembershipNumber = dynamoAttributes.MembershipNumber, //I don't think membership number is needed and it comes from Salesforce
-          MembershipJoinDate = dynamoAttributes.MembershipJoinDate.flatMap(_ => zuoraAttributes.MembershipJoinDate), //only compare if dynamo has value
-          TTLTimestamp = dynamoAttributes.TTLTimestamp //TTL only in dynamo
-        )
-        case None => zuoraAttributes
-      }
+  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[DynamoAttributes], maybeZuoraAttributes: Option[ZuoraAttributes], identityId: String): Boolean = {
+    val dynamoAttributesForComparison: Option[ZuoraAttributes] = maybeDynamoAttributes map { dynamoAttributes =>
+      ZuoraAttributes(
+        UserId = dynamoAttributes.UserId,
+        Tier = dynamoAttributes.Tier,
+        RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
+        MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
+        DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
+      )
+    }
 
-     }
-     val dynamoAndZuoraAgree = zuoraAttributesWithIgnoredFields == maybeDynamoAttributes
-     if (!dynamoAndZuoraAgree)
-       log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-         s" Zuora attributes: $maybeZuoraAttributes, parsed as: $zuoraAttributesWithIgnoredFields. Dynamo attributes: $maybeDynamoAttributes.")
+    val dynamoAndZuoraAgree = dynamoAttributesForComparison == maybeZuoraAttributes
 
-     dynamoAndZuoraAgree
+    if (!dynamoAndZuoraAgree)
+      log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
+        s" Zuora attributes: $maybeZuoraAttributes, parsed as: $dynamoAttributesForComparison. Dynamo attributes: $maybeDynamoAttributes.")
+
+    dynamoAndZuoraAgree
   }
 
   def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
