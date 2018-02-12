@@ -106,7 +106,16 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
   private def updateCache(identityId: String, maybeAttributes: Option[Attributes], dynamoAttributeService: AttributeService, twoWeekExpiry: => DateTime): Future[Unit] = {
     val attributesWithTTL: Option[DynamoAttributes] = maybeAttributes map { attributes =>
-      DynamoAttributes(attributes.UserId, attributes.Tier, attributes.RecurringContributionPaymentPlan, attributes.MembershipJoinDate, attributes.DigitalSubscriptionExpiryDate, attributes.MembershipNumber, attributes.AdFree, TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry))
+        DynamoAttributes(
+        attributes.UserId,
+        attributes.Tier,
+        attributes.RecurringContributionPaymentPlan,
+        attributes.MembershipJoinDate,
+        attributes.DigitalSubscriptionExpiryDate,
+        attributes.MembershipNumber,
+        attributes.AdFree,
+        TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
+      )
     }
 
     attributesWithTTL match {
@@ -165,7 +174,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
   }
 
   def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[DynamoAttributes], maybeZuoraAttributes: Option[ZuoraAttributes], identityId: String): Boolean = {
-    val dynamoAttributesForComparing: Option[ZuoraAttributes] = maybeDynamoAttributes map { dynamoAttributes =>
+    val dynamoAttributesForComparison: Option[ZuoraAttributes] = maybeDynamoAttributes map { dynamoAttributes =>
       ZuoraAttributes(
         UserId = dynamoAttributes.UserId,
         Tier = dynamoAttributes.Tier,
@@ -175,11 +184,11 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       )
     }
 
-    val dynamoAndZuoraAgree = dynamoAttributesForComparing == maybeZuoraAttributes
+    val dynamoAndZuoraAgree = dynamoAttributesForComparison == maybeZuoraAttributes
 
     if (!dynamoAndZuoraAgree)
       log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-        s" Zuora attributes: $maybeZuoraAttributes, parsed as: $dynamoAttributesForComparing. Dynamo attributes: $maybeDynamoAttributes.")
+        s" Zuora attributes: $maybeZuoraAttributes, parsed as: $dynamoAttributesForComparison. Dynamo attributes: $maybeDynamoAttributes.")
 
     dynamoAndZuoraAgree
   }
