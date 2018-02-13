@@ -1,7 +1,7 @@
 package models
 
 import org.joda.time.LocalDate
-import play.api.libs.json.Json
+import play.api.libs.json.{JsString, Json, Writes}
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
 
@@ -9,6 +9,10 @@ import scala.language.implicitConversions
 
 object Features {
 
+  //TODO TEST THAT THE DATE IS CORRECTLY FORMATTED AND REMOVE DUPLICATION
+implicit val localDateWrites = new  Writes[LocalDate] {
+  override def writes(d: LocalDate) = JsString(d.toString("yyyy-MM-dd"))
+}
   implicit val jsWrite = Json.writes[Features]
 
   implicit def toResult(attrs: Features): Result =

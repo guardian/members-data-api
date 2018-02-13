@@ -1,5 +1,6 @@
 package controllers
 import actions._
+import akka.stream.Materializer
 import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
@@ -21,7 +22,8 @@ import models.ApiErrors._
 import play.api.mvc.Controller
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.http.DefaultHttpErrorHandler
+import play.api.http.{DefaultHttpErrorHandler, ParserConfiguration}
+import play.api.libs.Files.SingletonTemporaryFileCreator
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.mvc.Results._
@@ -35,11 +37,13 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
+class AccountController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LazyLogging {
   import commonActions._
+  //todo check how to configure this!!
+  val parserConfig = ParserConfiguration()
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
+  lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler, parserConfig , SingletonTemporaryFileCreator)
+  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler, parserConfig, SingletonTemporaryFileCreator)
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
 

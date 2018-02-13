@@ -1,6 +1,7 @@
 package controllers
 
 import actions._
+import akka.stream.Materializer
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import components.TouchpointBackends
 import configuration.Config
@@ -11,7 +12,8 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
-import play.api.http.DefaultHttpErrorHandler
+import play.api.http.{DefaultHttpErrorHandler, ParserConfiguration}
+import play.api.libs.Files.SingletonTemporaryFileCreator
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -21,10 +23,11 @@ import services.{AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import services.AttributesFromZuora._
 
-class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
+class AttributeController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
-  lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
+  //todo see what to do with the parserConfiguration and temporary file creator
+  lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler, ParserConfiguration() , SingletonTemporaryFileCreator)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")

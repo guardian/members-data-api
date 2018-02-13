@@ -15,6 +15,7 @@ import json._
 case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean, digitalPack: Boolean)
 
 object ContentAccess {
+
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 
@@ -80,6 +81,10 @@ object DynamoAttributes {
 
 object Attributes {
 
+  //TODO TEST THAT THE DATE IS CORRECTLY FORMATTED AND REMOVE DUPLICATION
+  implicit val localDateWrites = new  Writes[LocalDate] {
+    override def writes(d: LocalDate) = JsString(d.toString("yyyy-MM-dd"))
+  }
   implicit val jsAttributesWrites: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and

@@ -2,17 +2,21 @@ package actions
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import play.api.mvc._
-import scala.concurrent.Future
+
+import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-class CommonActions(touchpointBackends: TouchpointBackends) {
+
+class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent], ex: ExecutionContext) {
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
+  val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends, ex)
 
-  val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends)
-
-  private def resultModifier(f: Result => Result) = new ActionBuilder[Request] {
+  private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
+    //see how to get this to work
+    override val parser = bodyParser
+    override val executionContext: ExecutionContext = ex
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = block(request).map(f)
   }
 }
