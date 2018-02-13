@@ -1,5 +1,5 @@
 import Dependencies._
-import com.typesafe.sbt.packager.archetypes.systemloader.SystemdPlugin
+
 val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
 
@@ -43,9 +43,11 @@ lazy val dynamoDBLocalSettings = Seq(
   testOptions in Test += (dynamoDBLocalTestCleanup).value
 )
 
+import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 enablePlugins(SystemdPlugin)
 
 val buildDebSettings = Seq(
+  serverLoading in Debian := Some(Systemd),
   debianPackageDependencies := Seq("openjdk-8-jre-headless"),
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
