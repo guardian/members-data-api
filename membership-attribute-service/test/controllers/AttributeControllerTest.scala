@@ -2,6 +2,7 @@ package controllers
 
 import actions.{BackendRequest, CommonActions}
 import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.Attributes
@@ -47,6 +48,7 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   // Succeeds for the valid user id
   private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
+    override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
@@ -57,8 +59,10 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   private val actorSystem = ActorSystem()
   private val touchpointBackends = new TouchpointBackends(actorSystem)
-  private val commonActions = new CommonActions(touchpointBackends)
-  private val controller = new AttributeController(commonActions) {
+  //todo see how to pass fake body parser instead of null
+  private val commonActions = new CommonActions(touchpointBackends, null, scala.concurrent.ExecutionContext.global)
+  //todo see how to get a fake materializer instead of null
+  private val controller = new AttributeController(commonActions)(null) {
 
     override lazy val authenticationService = fakeAuthService
     override lazy val backendAction = Action andThen FakeWithBackendAction
