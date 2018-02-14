@@ -44,8 +44,6 @@ lazy val dynamoDBLocalSettings = Seq(
 )
 
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
-enablePlugins(SystemdPlugin)
-
 val buildDebSettings = Seq(
   serverLoading in Debian := Some(Systemd),
   debianPackageDependencies := Seq("openjdk-8-jre-headless"),
@@ -67,7 +65,7 @@ val buildDebSettings = Seq(
 )
 
 def lib(name: String) = Project(name, file(name))
-  .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging).settings(commonSettings)
+  .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging).settings(commonSettings)
 
 def app(name: String) = lib(name)
   .settings(dynamoDBLocalSettings)
