@@ -2,6 +2,7 @@ package repositories
 
 import java.util.UUID
 
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.dynamodbv2.model._
@@ -32,7 +33,8 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
   private val endpoint = new AwsClientBuilder.EndpointConfiguration("http://localhost:8000/", "eu-west-1")
   private val awsDynamoClient = AmazonDynamoDBAsyncClientBuilder
     .standard()
-    .withEndpointConfiguration(endpoint) // .withCredentials(new BasicAWSCredentials("foo", "bar"))
+    .withEndpointConfiguration(endpoint)
+    .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("foo", "bar")))
     .build()
 
   private val testTable = "MembershipAttributes-TEST"
