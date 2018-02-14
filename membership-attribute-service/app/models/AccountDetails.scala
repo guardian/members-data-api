@@ -2,16 +2,11 @@ package models
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
 import com.gu.salesforce._
 import com.gu.services.model._
-import org.joda.time.LocalDate
+import json.localDateWrites
 import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
 object AccountDetails {
-
-  //TODO TEST THAT THE DATE IS CORRECTLY FORMATTED AND REMOVE DUPLICATION
-  implicit val localDateWrites = new  Writes[LocalDate] {
-    override def writes(d: LocalDate) = JsString(d.toString("yyyy-MM-dd"))
-  }
 
   implicit class ResultLike(details: (Contact, PaymentDetails, String)) {
 

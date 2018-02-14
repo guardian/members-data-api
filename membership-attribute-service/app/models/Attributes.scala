@@ -7,7 +7,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
-
+import json.localDateWrites
 import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
 import json._
@@ -81,10 +81,6 @@ object DynamoAttributes {
 
 object Attributes {
 
-  //TODO TEST THAT THE DATE IS CORRECTLY FORMATTED AND REMOVE DUPLICATION
-  implicit val localDateWrites = new  Writes[LocalDate] {
-    override def writes(d: LocalDate) = JsString(d.toString("yyyy-MM-dd"))
-  }
   implicit val jsAttributesWrites: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and

@@ -14,9 +14,8 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends, ex)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
-    //see how to get this to work
     override val parser = bodyParser
-    override val executionContext: ExecutionContext = ex
+    override val executionContext = ex
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = block(request).map(f)
   }
 }
