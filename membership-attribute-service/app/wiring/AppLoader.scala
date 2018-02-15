@@ -31,7 +31,7 @@ class MyComponents(context: Context)
     with CSRFComponents {
 
   val touchPointBackends = new TouchpointBackends(actorSystem)
-  val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, executionContext)
+  val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(environment, configuration, sourceMapper, Some(router))
 

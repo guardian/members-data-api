@@ -12,12 +12,9 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
-import play.api.http.{DefaultHttpErrorHandler, ParserConfiguration}
-import play.api.libs.Files.SingletonTemporaryFileCreator
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
-import play.filters.cors.CORSActionBuilder
 import services.{AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
@@ -26,7 +23,7 @@ import services.AttributesFromZuora._
 class AttributeController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
-  lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler, ParserConfiguration() , SingletonTemporaryFileCreator)
+  lazy val corsFilter = CORSFilter(Config.corsConfig)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
