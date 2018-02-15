@@ -34,7 +34,7 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LazyLogging {
+class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
   import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsMmaUpdateFilter = CORSFilter(Config.mmaUpdateCorsConfig)

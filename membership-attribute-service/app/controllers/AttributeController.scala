@@ -20,7 +20,7 @@ import services.{AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import services.AttributesFromZuora._
 
-class AttributeController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LoggingWithLogstashFields {
+class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
   lazy val corsFilter = CORSFilter(Config.corsConfig)

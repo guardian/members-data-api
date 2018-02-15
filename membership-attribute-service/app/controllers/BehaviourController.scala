@@ -14,7 +14,7 @@ import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEma
 
 import scala.concurrent.Future
 
-class BehaviourController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LazyLogging {
+class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
 
   import commonActions._
   lazy val corsFilter = CORSFilter(Config.corsConfig)
