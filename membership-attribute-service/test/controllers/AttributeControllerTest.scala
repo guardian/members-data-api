@@ -12,7 +12,7 @@ import org.specs2.specification.AfterAll
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
-import play.api.test.FakeRequest
+import play.api.test._
 import play.api.test.Helpers._
 import services.AuthenticationService
 
@@ -59,10 +59,10 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   private val actorSystem = ActorSystem()
   private val touchpointBackends = new TouchpointBackends(actorSystem)
-  //todo see how to pass fake body parser instead of null
-  private val commonActions = new CommonActions(touchpointBackends, null, scala.concurrent.ExecutionContext.global)
-  //todo see how to get a fake materializer instead of null
-  private val controller = new AttributeController(commonActions)(null) {
+  private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
+  private val commonActions = new CommonActions(touchpointBackends, stubParser, scala.concurrent.ExecutionContext.global)
+  private val mat = ActorMaterializer()
+  private val controller = new AttributeController(commonActions)(mat) {
 
     override lazy val authenticationService = fakeAuthService
     override lazy val backendAction = Action andThen FakeWithBackendAction

@@ -39,7 +39,6 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
 class AccountController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LazyLogging {
   import commonActions._
-  //todo check how to configure this!!
   val parserConfig = ParserConfiguration()
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler, parserConfig , SingletonTemporaryFileCreator)

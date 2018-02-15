@@ -46,7 +46,7 @@ trait SubscriptionTestData {
       promoCode = None,
       isCancelled = isCancelled,
       hasPendingFreePlan = false,
-      plans = CovariantNonEmptyList(plans.head, plans.tail.toList), //todo not sure if this is the right way of fixing this...
+      plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
       readerType = ReaderType.Direct,
       autoRenew = true
     )

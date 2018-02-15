@@ -21,7 +21,6 @@ import scala.concurrent.Future
 class BehaviourController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LazyLogging {
 
   import commonActions._
-  //todo see what to do with the parserConfiguration and temporary file creator
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler, ParserConfiguration() , SingletonTemporaryFileCreator)
   lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService

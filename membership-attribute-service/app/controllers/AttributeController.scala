@@ -26,7 +26,6 @@ import services.AttributesFromZuora._
 class AttributeController(commonActions: CommonActions)(implicit val mat:Materializer) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
-  //todo see what to do with the parserConfiguration and temporary file creator
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler, ParserConfiguration() , SingletonTemporaryFileCreator)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
