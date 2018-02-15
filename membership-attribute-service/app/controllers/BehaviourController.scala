@@ -1,7 +1,6 @@
 package controllers
 import actions._
 import actions.CommonActions
-import akka.stream.Materializer
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.Behaviour

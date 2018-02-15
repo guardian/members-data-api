@@ -1,9 +1,7 @@
 package controllers
 
 import actions._
-import akka.stream.Materializer
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import components.TouchpointBackends
 import configuration.Config
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}

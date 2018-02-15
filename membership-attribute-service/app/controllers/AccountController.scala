@@ -1,6 +1,5 @@
 package controllers
 import actions._
-import akka.stream.Materializer
 import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
@@ -21,11 +20,7 @@ import models.ApiErrors._
 import play.api.mvc.Controller
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.http.{DefaultHttpErrorHandler, ParserConfiguration}
-import play.api.libs.Files.SingletonTemporaryFileCreator
 import play.api.libs.json.Json
-import play.filters.cors.CORSActionBuilder
-
 import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
