@@ -1,6 +1,5 @@
 package controllers
 
-
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
 import components.TouchpointBackends

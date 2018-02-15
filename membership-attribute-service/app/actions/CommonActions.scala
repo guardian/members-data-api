@@ -5,10 +5,8 @@ import controllers.NoCache
 import play.api.http.{DefaultHttpErrorHandler, ParserConfiguration}
 import play.api.libs.Files.SingletonTemporaryFileCreator
 import play.api.mvc._
-
 import scala.concurrent.{ExecutionContext, Future}
 import play.filters.cors.{CORSActionBuilder, CORSConfig}
-
 
 class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent])(implicit ex: ExecutionContext, mat:Materializer) {
   def noCache(result: Result): Result = NoCache(result)
@@ -27,4 +25,3 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 }
 
 class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
-

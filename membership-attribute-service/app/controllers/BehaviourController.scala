@@ -10,7 +10,6 @@ import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{AnyContent, Controller}
 import services.IdentityService.IdentityId
 import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEmailService}
-
 import scala.concurrent.Future
 
 class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
