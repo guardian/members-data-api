@@ -18,7 +18,7 @@ import services.{AuthenticationService, IdentityAuthService}
 import scala.concurrent.Future
 import services.AttributesFromZuora._
 
-class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
+class AttributeController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LoggingWithLogstashFields {
 
   import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
