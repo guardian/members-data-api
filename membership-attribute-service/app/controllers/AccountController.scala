@@ -10,9 +10,8 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
-import com.gu.zuora.rest.ZuoraResponse
 import com.typesafe.scalalogging.LazyLogging
-import components.{TouchpointBackends, TouchpointComponents}
+import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
@@ -21,12 +20,7 @@ import models.ApiErrors._
 import play.api.mvc.Controller
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.json.Json
-import play.api.mvc.Result
-import play.api.mvc.Results._
-import play.filters.cors.CORSActionBuilder
-
 import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -38,8 +32,8 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
   import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
+  lazy val corsMmaUpdateFilter = CORSFilter(Config.mmaUpdateCorsConfig)
+  lazy val mmaCorsFilter = CORSFilter(Config.mmaCorsConfig)
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
 

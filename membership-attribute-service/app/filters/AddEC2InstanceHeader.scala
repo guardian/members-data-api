@@ -1,11 +1,8 @@
 package filters
 
-import javax.inject.Inject
-
 import akka.stream.Materializer
-import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.ws.{WS, WSClient}
+import play.api.libs.ws.{WSClient}
 import play.api.mvc._
 
 import scala.concurrent.Future
