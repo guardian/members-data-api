@@ -15,7 +15,7 @@ class AttributesMaker extends LazyLogging {
   def zuoraAttributes(identityId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[ZuoraAttributes] = {
 
     def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
-      GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
+      GetCurrentPlans(subscription, forDate).map(_.list).toList.flatten  // it's expected that users may not have any current plans
     }
     def getTopProduct(subscription: Subscription[AnyPlan]): Option[Product] = {
       getCurrentPlans(subscription).headOption.map(_.product)
@@ -24,7 +24,7 @@ class AttributesMaker extends LazyLogging {
       getCurrentPlans(subscription).headOption.map(_.name)
     }
     def getAllBenefits(subscription: Subscription[AnyPlan]): Set[Benefit] = {
-      getCurrentPlans(subscription).flatMap(_.charges.benefits.list.toList).toSet
+      getCurrentPlans(subscription).flatMap(_.charges.benefits.list).toSet
     }
 
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
