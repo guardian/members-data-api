@@ -10,7 +10,6 @@ import play.api.routing.Router
 import play.core.SourceMapper
 import models.ApiErrors.{notFound, internalError, badRequest}
 import play.api.libs.json.Json
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent._
 
 class ErrorHandler(
@@ -18,7 +17,7 @@ class ErrorHandler(
                     config: Configuration,
                     sourceMapper: Option[SourceMapper],
                     router: => Option[Router]
-                  ) extends DefaultHttpErrorHandler(env, config, sourceMapper, router) with LazyLogging{
+                  )(implicit executionContext: ExecutionContext) extends DefaultHttpErrorHandler(env, config, sourceMapper, router) with LazyLogging{
 
   override def onClientError(request: RequestHeader, statusCode: Int, message: String = ""): Future[Result] = {
     super.onClientError(request, statusCode, message).map(Cached(_))

@@ -6,14 +6,13 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.scanamo.syntax.{set => scanamoSet, _}
 import com.typesafe.scalalogging.LazyLogging
 import models.FeatureToggle
-import play.api.libs.concurrent.Execution.Implicits._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
 
-class ScanamoFeatureToggleService(client: AmazonDynamoDBAsync, table: String) extends FeatureToggleService with LazyLogging {
+class ScanamoFeatureToggleService(client: AmazonDynamoDBAsync, table: String)(implicit executionContext: ExecutionContext) extends FeatureToggleService with LazyLogging {
 
   def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
 
