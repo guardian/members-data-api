@@ -2,10 +2,12 @@ package models
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
 import com.gu.salesforce._
 import com.gu.services.model._
+import json.localDateWrites
 import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
 object AccountDetails {
+
   implicit class ResultLike(details: (Contact, PaymentDetails, String)) {
 
     def toResult = {
