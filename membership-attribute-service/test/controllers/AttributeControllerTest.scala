@@ -61,7 +61,7 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val touchpointBackends = new TouchpointBackends(actorSystem)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer())
-  private val controller = new AttributeController(commonActions) {
+  private val controller = new AttributeController(commonActions, Helpers.stubControllerComponents()) {
 
     override lazy val authenticationService = fakeAuthService
     override lazy val backendAction = Action andThen FakeWithBackendAction

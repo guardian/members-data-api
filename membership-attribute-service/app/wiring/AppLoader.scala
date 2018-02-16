@@ -38,9 +38,9 @@ class MyComponents(context: Context)
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends),
-    new AttributeController(commonActions),
-    new AccountController(commonActions),
-    new BehaviourController(commonActions)
+    new AttributeController(commonActions, controllerComponents),
+    new AccountController(commonActions, controllerComponents),
+    new BehaviourController(commonActions, controllerComponents)
   )
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(

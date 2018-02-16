@@ -17,10 +17,11 @@ import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
 import models.ApiError
 import models.ApiErrors._
-import play.api.mvc.Controller
+import play.api.mvc.{BaseController, ControllerComponents}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
+
 import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -29,7 +30,7 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
+class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
   import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsMmaUpdateFilter = CORSFilter(Config.mmaUpdateCorsConfig)
