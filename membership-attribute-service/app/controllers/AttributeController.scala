@@ -10,17 +10,16 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
-import services.{AuthenticationService, IdentityAuthService}
+import services.{AttributesFromZuora, AuthenticationService, IdentityAuthService}
 
-import scala.concurrent.Future
-import services.AttributesFromZuora._
+import scala.concurrent.{ExecutionContext, Future}
 
-class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
-
+class AttributeController(attributesFromZuora: AttributesFromZuora, commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LoggingWithLogstashFields {
+  import attributesFromZuora._
   import commonActions._
+  implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val corsFilter = CORSFilter(Config.corsConfig)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
@@ -38,8 +37,8 @@ class AttributeController(commonActions: CommonActions) extends Controller with 
         dynamoAttributeService = dynamoService
       )
     } else {
-      val attributes: Future[Option[Attributes]] = dynamoService.get(identityId) map { maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))}
-      attributes map {("Dynamo - too many concurrent calls to Zuora", _)}
+      val attributes: Future[Option[Attributes]] = dynamoService.get(identityId).map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))(executionContext)
+      attributes.map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
     }
   }
 

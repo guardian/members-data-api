@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.Json
-import play.api.mvc.{Action, Results}
+import play.api.mvc.{BaseController, ControllerComponents, Results}
 import components.TouchpointBackends
 import com.typesafe.scalalogging.StrictLogging
 
@@ -15,7 +15,7 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
   override def ok = exec()
 }
 
-class HealthCheckController(touchPointBackends:TouchpointBackends) extends Results with StrictLogging {
+class HealthCheckController(touchPointBackends:TouchpointBackends,  override val controllerComponents: ControllerComponents) extends BaseController with StrictLogging {
 
   val touchpointComponents = touchPointBackends.normal
   // behaviourService, Stripe and all Zuora services are not critical
