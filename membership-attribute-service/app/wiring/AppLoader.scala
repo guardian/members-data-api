@@ -38,7 +38,7 @@ class MyComponents(context: Context)
   val attributesFromZuora = new AttributesFromZuora()
   lazy val router: Routes = new Routes(
     httpErrorHandler,
-    new HealthCheckController(touchPointBackends),
+    new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(attributesFromZuora, commonActions, controllerComponents),
     new AccountController(commonActions, controllerComponents),
     new BehaviourController(commonActions, controllerComponents)
