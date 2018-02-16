@@ -181,6 +181,7 @@ Resources:
             Effect: Allow
       ManagedPolicyArns:
       - !Ref 'LoggingPolicy'
+      - 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
