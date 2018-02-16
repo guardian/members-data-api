@@ -10,10 +10,10 @@ import com.typesafe.scalalogging.LazyLogging
 import models.DynamoAttributes
 import monitoring.Metrics
 import org.joda.time.{DateTime, LocalDate}
+import play.api.libs.concurrent.Execution.Implicits._
+import scala.concurrent.Future
 
-import scala.concurrent.{ExecutionContext, Future}
-
-class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)(implicit executionContext: ExecutionContext)
+class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)
     extends AttributeService with LazyLogging {
 
   val metrics = Metrics("ScanamoAttributeService") //referenced in CloudFormation

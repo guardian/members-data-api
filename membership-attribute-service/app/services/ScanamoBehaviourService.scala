@@ -6,10 +6,11 @@ import com.gu.scanamo.syntax._
 import com.gu.scanamo.{ScanamoAsync, Table}
 import com.typesafe.scalalogging.LazyLogging
 import models.Behaviour
+import play.api.libs.concurrent.Execution.Implicits._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class ScanamoBehaviourService(client: AmazonDynamoDBAsync, table: String)(implicit ex: ExecutionContext) extends BehaviourService with LazyLogging {
+class ScanamoBehaviourService(client: AmazonDynamoDBAsync, table: String) extends BehaviourService with LazyLogging {
 
   def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
 

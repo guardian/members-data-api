@@ -1,5 +1,6 @@
 package controllers
 import actions._
+import play.api.libs.concurrent.Execution.Implicits._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
@@ -16,12 +17,11 @@ import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
 import models.ApiError
 import models.ApiErrors._
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.Controller
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
-
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
@@ -29,9 +29,8 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 
-class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
+class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
   import commonActions._
-  implicit val executionContext: ExecutionContext= controllerComponents.executionContext
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val corsMmaUpdateFilter = CORSFilter(Config.mmaUpdateCorsConfig)
   lazy val mmaCorsFilter = CORSFilter(Config.mmaCorsConfig)
@@ -244,7 +243,7 @@ object OptionEither {
   def apply[A](m: Future[\/[String, Option[A]]]): OptionT[FutureEither, A] =
     OptionT[FutureEither, A](EitherT[Future, String, Option[A]](m))
 
-  def liftOption[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
+  def liftOption[A](x: Future[\/[String, A]]): OptionT[FutureEither, A] =
     apply(x.map(_.map[Option[A]](Some.apply)))
 
   def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =

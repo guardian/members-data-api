@@ -2,13 +2,14 @@ package services
 
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.{JsValue, Json, __}
+import play.api.libs.concurrent.Execution.Implicits._
 import java.net.URLEncoder.encode
 
 import IdentityService._
 import com.gu.okhttp.RequestRunners
 import okhttp3.{MediaType, Request, RequestBody, ResponseBody}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 object IdentityService {
 
@@ -32,7 +33,7 @@ object IdentityService {
 
 }
 
-class IdentityService(state: IdentityConfig, client: RequestRunners.FutureHttpClient)(implicit executionContext: ExecutionContext) extends LazyLogging {
+class IdentityService(state: IdentityConfig, client: RequestRunners.FutureHttpClient) extends LazyLogging {
 
   def user(id: IdentityId) = {
     client(userIdRequest(state)(id).build).map { response =>
