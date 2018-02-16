@@ -1,15 +1,12 @@
 package filters
 
-import javax.inject.Inject
-
 import akka.stream.Materializer
 import controllers.Cached.suitableForCaching
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class CheckCacheHeadersFilter (implicit val mat: Materializer) extends Filter {
+class CheckCacheHeadersFilter (implicit val mat: Materializer, ex: ExecutionContext) extends Filter {
 
   def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
     nextFilter(requestHeader).map { result =>
