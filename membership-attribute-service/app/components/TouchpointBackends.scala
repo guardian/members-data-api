@@ -3,7 +3,9 @@ package components
 import akka.actor.ActorSystem
 import configuration.Config
 
-class TouchpointBackends(actorSystem: ActorSystem){
-  val normal =  new TouchpointComponents(Config.defaultTouchpointBackendStage)(actorSystem)
-  val test = new TouchpointComponents(Config.testTouchpointBackendStage)(actorSystem)
+import scala.concurrent.ExecutionContext
+
+class TouchpointBackends(actorSystem: ActorSystem)(implicit executionContext: ExecutionContext){
+  val normal =  new TouchpointComponents(Config.defaultTouchpointBackendStage)(actorSystem, executionContext)
+  val test = new TouchpointComponents(Config.testTouchpointBackendStage)(actorSystem, executionContext)
 }

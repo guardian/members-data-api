@@ -24,10 +24,11 @@ import loghandling.ZuoraRequestCounter
 import prodtest.FeatureToggleDataUpdatedOnSchedule
 import services.IdentityService.IdentityConfig
 import services._
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 
-class TouchpointComponents(stage: String)(implicit system: ActorSystem) {
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
+
+class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executionContext: ExecutionContext) {
   implicit val ec = system.dispatcher
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")

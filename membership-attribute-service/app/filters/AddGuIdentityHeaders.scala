@@ -1,21 +1,17 @@
 package filters
 
-import javax.inject.Inject
-
 import akka.stream.Materializer
 import configuration.Config
-import play.api.http.HeaderNames
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc._
 import services.IdentityAuthService
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /*
  * This is a candidate for inclusion in https://github.com/guardian/memsub-common-play-auth ,
  * this particular version is a tweaked copy from https://github.com/guardian/subscriptions-frontend/blob/ea805479/app/filters/AddGuIdentityHeaders.scala
  */
-class AddGuIdentityHeaders (implicit val mat: Materializer) extends Filter {
+class AddGuIdentityHeaders (implicit val mat: Materializer, ex: ExecutionContext) extends Filter {
 
   def apply(nextFilter: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] = for {
     result <- nextFilter(request)
