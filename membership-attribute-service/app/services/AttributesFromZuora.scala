@@ -10,13 +10,15 @@ import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
-import scala.concurrent.{ExecutionContext, Future}
+import play.api.libs.concurrent.Execution.Implicits._
+
+import scala.concurrent.Future
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
-class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
+object AttributesFromZuora extends LoggingWithLogstashFields {
 
   def getAttributes(identityId: String,
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],

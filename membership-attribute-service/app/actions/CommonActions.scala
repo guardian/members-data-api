@@ -12,7 +12,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends)
+  val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends, ex)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser
