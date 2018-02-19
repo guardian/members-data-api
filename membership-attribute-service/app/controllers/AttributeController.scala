@@ -2,6 +2,7 @@ package controllers
 
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import components.TouchpointBackends
 import configuration.Config
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -10,9 +11,11 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
+import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
+import play.filters.cors.CORSActionBuilder
 import services.{AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
@@ -21,7 +24,7 @@ import services.AttributesFromZuora._
 class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
-  lazy val corsFilter = CORSFilter(Config.corsConfig)
+  lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
