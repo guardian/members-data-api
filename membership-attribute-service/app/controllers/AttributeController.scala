@@ -21,8 +21,6 @@ import services.AttributesFromZuora._
 class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
-  lazy val corsFilter = CORSFilter(Config.corsConfig)
-  lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
@@ -44,8 +42,7 @@ class AttributeController(commonActions: CommonActions) extends Controller with 
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
-
-    backendAction.async { implicit request =>
+    BackendFromCookieAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
           pickAttributes(identityId) map { pickedAttributes =>

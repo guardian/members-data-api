@@ -15,8 +15,6 @@ import scala.concurrent.Future
 class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
 
   import commonActions._
-  lazy val corsFilter = CORSFilter(Config.corsConfig)
-  lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
 
@@ -28,7 +26,7 @@ class BehaviourController(commonActions: CommonActions) extends Controller with 
     awsAction(request, "delete")
   }
 
-  def sendCartReminderEmail = backendAction.async { implicit request =>
+  def sendCartReminderEmail = BackendFromCookieAction.async { implicit request =>
     val receivedBehaviour = behaviourFromBody(request.body.asJson)
     for {
       paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
