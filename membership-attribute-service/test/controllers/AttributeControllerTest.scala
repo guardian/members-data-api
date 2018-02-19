@@ -60,11 +60,12 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val actorSystem = ActorSystem()
   private val touchpointBackends = new TouchpointBackends(actorSystem)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
-  private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer())
+  private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
+    override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
+  }
   private val controller = new AttributeController(commonActions) {
 
     override lazy val authenticationService = fakeAuthService
-    override lazy val backendAction = Action andThen FakeWithBackendAction
     override def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
     }
