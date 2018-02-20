@@ -4,7 +4,7 @@ import com.amazonaws.services.dynamodbv2.model.DeleteItemResult
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.zuora.ZuoraRestService.{AccountIdRecord, QueryResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountIdRecord, QueryResponse}
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv

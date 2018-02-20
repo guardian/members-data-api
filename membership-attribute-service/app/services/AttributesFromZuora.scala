@@ -5,7 +5,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.ZuoraRestService.QueryResponse
+import com.gu.zuora.rest.ZuoraRestService.QueryResponse
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
