@@ -7,7 +7,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
-
+import json.localDateWrites
 import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
 import json._
@@ -15,6 +15,7 @@ import json._
 case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean, digitalPack: Boolean)
 
 object ContentAccess {
+
   implicit val jsWrite = Json.writes[ContentAccess]
 }
 

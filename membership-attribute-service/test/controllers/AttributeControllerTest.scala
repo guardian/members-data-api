@@ -2,6 +2,7 @@ package controllers
 
 import actions.{BackendRequest, CommonActions}
 import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.Attributes
@@ -11,7 +12,7 @@ import org.specs2.specification.AfterAll
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
-import play.api.test.FakeRequest
+import play.api.test._
 import play.api.test.Helpers._
 import services.AuthenticationService
 
@@ -47,6 +48,7 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   // Succeeds for the valid user id
   private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
+    override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
@@ -57,11 +59,13 @@ class AttributeControllerTest extends Specification with AfterAll {
 
   private val actorSystem = ActorSystem()
   private val touchpointBackends = new TouchpointBackends(actorSystem)
-  private val commonActions = new CommonActions(touchpointBackends)
+  private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
+  private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
+    override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
+  }
   private val controller = new AttributeController(commonActions) {
 
     override lazy val authenticationService = fakeAuthService
-    override lazy val backendAction = Action andThen FakeWithBackendAction
     override def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
     }

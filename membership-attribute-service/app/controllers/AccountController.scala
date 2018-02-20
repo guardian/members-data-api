@@ -10,9 +10,8 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
-import com.gu.zuora.rest.ZuoraResponse
 import com.typesafe.scalalogging.LazyLogging
-import components.{TouchpointBackends, TouchpointComponents}
+import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
@@ -21,12 +20,7 @@ import models.ApiErrors._
 import play.api.mvc.Controller
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.json.Json
-import play.api.mvc.Result
-import play.api.mvc.Results._
-import play.filters.cors.CORSActionBuilder
-
 import scala.concurrent.Future
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -38,12 +32,8 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
   import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsMmaUpdateFilter = CORSActionBuilder(Config.mmaUpdateCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaCorsFilter = CORSActionBuilder(Config.mmaCorsConfig, DefaultHttpErrorHandler)
-  lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
-  lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
 
-  def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
+   def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
 
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
@@ -105,8 +95,7 @@ class AccountController(commonActions: CommonActions) extends Controller with La
     }
   }
 
-  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
-
+  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
@@ -173,10 +162,9 @@ class AccountController(commonActions: CommonActions) extends Controller with La
     }
   }
 
-  private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = mmaAction.async { implicit request =>
+  private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
-
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
       user <- OptionEither.liftFutureEither(maybeUserId)
@@ -201,7 +189,7 @@ class AccountController(commonActions: CommonActions) extends Controller with La
     }
   }
 
-  private def updateContributionAmount[P <: SubscriptionPlan.Paid : SubPlanReads] = mmaUpdateAction.async { implicit request =>
+  private def updateContributionAmount[P <: SubscriptionPlan.Paid : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId

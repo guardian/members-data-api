@@ -2,26 +2,19 @@ package controllers
 import actions._
 import actions.CommonActions
 import com.typesafe.scalalogging.LazyLogging
-import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.Behaviour
 import monitoring.Metrics
-import play.api.http.DefaultHttpErrorHandler
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{AnyContent, Controller}
-import play.filters.cors.CORSActionBuilder
 import services.IdentityService.IdentityId
 import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEmailService}
-
 import scala.concurrent.Future
 
 class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
 
   import commonActions._
-
-  lazy val corsFilter = CORSActionBuilder(Config.corsConfig, DefaultHttpErrorHandler)
-  lazy val backendAction = corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
 
@@ -33,7 +26,7 @@ class BehaviourController(commonActions: CommonActions) extends Controller with 
     awsAction(request, "delete")
   }
 
-  def sendCartReminderEmail = backendAction.async { implicit request =>
+  def sendCartReminderEmail = BackendFromCookieAction.async { implicit request =>
     val receivedBehaviour = behaviourFromBody(request.body.asJson)
     for {
       paidTier <- request.touchpoint.attrService.get(receivedBehaviour.userId).map(_.exists(_.isPaidTier))
