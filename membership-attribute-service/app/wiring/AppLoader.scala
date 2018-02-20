@@ -69,9 +69,10 @@ class MyComponents(context: Context)
     "/user-attributes/me/contribution-update-amount")
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
+    new CheckCacheHeadersFilter(),
+    csrfFilter,
     new AddEC2InstanceHeader(wsClient),
     new AddGuIdentityHeaders(),
-    new CheckCacheHeadersFilter(),
     CORSFilter(corsConfig = Config.mmaCorsConfig, pathPrefixes = mmaPaths),
     CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = mmaUpdatePaths),
     CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = regularCorsPaths)
