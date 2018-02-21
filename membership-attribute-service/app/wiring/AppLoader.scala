@@ -15,6 +15,7 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.CORSFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
+import services.AttributesFromZuora
 
 class AppLoader extends ApplicationLoader {
   def load(context: Context) = {
@@ -36,13 +37,13 @@ class MyComponents(context: Context)
   val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(environment, configuration, sourceMapper, Some(router))
-
+  val attributesFromZuora = new AttributesFromZuora()
   lazy val router: Routes = new Routes(
     httpErrorHandler,
-    new HealthCheckController(touchPointBackends),
-    new AttributeController(commonActions),
-    new AccountController(commonActions),
-    new BehaviourController(commonActions)
+    new HealthCheckController(touchPointBackends, controllerComponents),
+    new AttributeController(attributesFromZuora, commonActions, controllerComponents),
+    new AccountController(commonActions, controllerComponents),
+    new BehaviourController(commonActions, controllerComponents)
   )
 
   val regularCorsPaths = Seq(

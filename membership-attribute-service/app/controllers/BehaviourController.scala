@@ -5,17 +5,18 @@ import com.typesafe.scalalogging.LazyLogging
 import configuration.Config
 import models.Behaviour
 import monitoring.Metrics
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.{AnyContent, Controller}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import services.IdentityService.IdentityId
 import services.{AuthenticationService, IdentityAuthService, SQSAbandonedCartEmailService}
-import scala.concurrent.Future
 
-class BehaviourController(commonActions: CommonActions) extends Controller with LazyLogging {
+import scala.concurrent.{ExecutionContext, Future}
+
+class BehaviourController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
 
   import commonActions._
-  lazy val authenticationService: AuthenticationService = IdentityAuthService
+  implicit val executionContext: ExecutionContext = controllerComponents.executionContext
+   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("BehaviourController")
 
   def capture() = BackendFromCookieAction.async { implicit request =>
