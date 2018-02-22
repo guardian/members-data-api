@@ -8,6 +8,7 @@ deployments:
       amiTags:
         Recipe: xenial-membership
         AmigoStage: PROD
+      amiEncrypted: true
       amiParameter: AmiId
   membership-attribute-service:
     type: autoscaling
