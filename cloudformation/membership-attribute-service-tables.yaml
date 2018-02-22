@@ -42,4 +42,4 @@ Outputs:
     Description: supporter attributes fallback table
     Value: !GetAtt [ SupporterAttributesFallbackTable, "Arn" ]
     Export:
-      Name: !Sub ${AWS::StackName}-SupporterAttributesFallbackA
+      Name: !Sub ${AWS::StackName}-SupporterAttributesFallback
