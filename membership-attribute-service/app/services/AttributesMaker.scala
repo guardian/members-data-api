@@ -1,13 +1,18 @@
 package services
 
 import com.github.nscala_time.time.OrderingImplicits._
+import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.SubscriptionPlan.Member
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
-import com.gu.memsub.{Benefit, Product}
+import com.gu.memsub.{Benefit, PaymentMethod, Product}
+import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
 import com.typesafe.scalalogging.LazyLogging
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.LocalDate
 
+import scala.concurrent.{ExecutionContext, Future}
+import scalaz.{\/, \/-}
 import scalaz.syntax.std.boolean._
 
 class AttributesMaker extends LazyLogging {
@@ -73,6 +78,43 @@ class AttributesMaker extends LazyLogging {
           AdFree = None
         ))
       case (None, _) => None
+    }
+  }
+
+  def actionAvailableFor(accountsAndSubs: List[(AccountSummary, Subscription[AnyPlan])],
+                         paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext): Future[Option[String]] = {
+
+    def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
+
+    def actionForSub(accountSummary: AccountSummary, sub: Subscription[AnyPlan]): Future[String \/ Option[String]] = {
+      (accountSummary, sub) match {
+        case (account, member: Subscription[Member]) => {
+          if(account.balance > 0 && account.defaultPaymentMethod.isDefined) {
+              val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(account.defaultPaymentMethod.get.id) //todo get
+              eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
+                maybePaymentMethod.map { pm: PaymentMethodResponse =>
+                  if(creditCard(pm) && pm.numConsecutiveFailures > 0)
+                    Some("membership")
+                  else None
+                }
+              }
+          } else Future.successful(\/.right(None))
+        }
+        case _ => Future.successful(\/.right(None))
+      }
+    }
+
+    val maybeAccountAndMembership: Option[(AccountSummary, Subscription[AnyPlan])] = accountsAndSubs.find { accountAndSub =>
+      val sub = accountAndSub._2
+      sub match {
+        case member: Subscription[Member] => true
+        case _ => false
+      }
+    }
+
+    maybeAccountAndMembership match {
+      case Some((accountSummary, membershipSub)) => actionForSub(accountSummary, membershipSub) map {(_.getOrElse(None))}
+      case None => Future.successful(None)
     }
   }
 
