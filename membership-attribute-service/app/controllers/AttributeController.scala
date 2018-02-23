@@ -33,7 +33,8 @@ class AttributeController(commonActions: CommonActions) extends Controller with 
         identityId = identityId,
         identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-        dynamoAttributeService = dynamoService
+        dynamoAttributeService = dynamoService,
+        accountSummaryForAccountId = request.touchpoint.zuoraRestService.getAccount
       )
     } else {
       val attributes: Future[Option[Attributes]] = dynamoService.get(identityId) map { maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))}

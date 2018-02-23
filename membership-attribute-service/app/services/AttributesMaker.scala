@@ -17,7 +17,9 @@ import scalaz.syntax.std.boolean._
 
 class AttributesMaker extends LazyLogging {
 
-  def zuoraAttributes(identityId: String, subs: List[Subscription[AnyPlan]], forDate: LocalDate): Option[ZuoraAttributes] = {
+  def zuoraAttributes(identityId: String, subsWithAccounts: List[(Option[Subscription[AnyPlan]], AccountSummary)], forDate: LocalDate): Option[ZuoraAttributes] = {
+
+    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.map(subAccount => subAccount._1).flatten
 
     def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
       GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans

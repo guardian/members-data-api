@@ -5,7 +5,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.QueryResponse
+import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, QueryResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
@@ -20,11 +20,15 @@ import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
 object AttributesFromZuora extends LoggingWithLogstashFields {
 
+  type SubscriptionWithAccount = (Option[Subscription[AnyPlan]], AccountSummary)
+
   def getAttributes(identityId: String,
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
+                    accountSummaryForAccountId: AccountId => Future[\/[String, AccountSummary]],
                     dynamoAttributeService: AttributeService,
                     forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
+
 
     def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
 
@@ -36,8 +40,15 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Option[ZuoraAttributes]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
-      subscriptions <- EitherT[Future, String, List[Subscription[AnyPlan]]](
-        if(accountIds.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountIds, identityId, subscriptionsForAccountId), identityId)
+      accountSummaries <- EitherT[Future, String, List[AccountSummary]](
+        if(accountIds.nonEmpty) withTimer(s"ZuoraGetAccountSummaries", getAccountSummaries(accountIds, identityId, accountSummaryForAccountId), identityId)
+        else Future.successful(\/.right {
+          log.info(s"User with identityId $identityId has no accountIds and thus no account summaries")
+          Nil
+        })
+      )
+      subscriptions <- EitherT[Future, String, List[SubscriptionWithAccount]](
+        if(accountSummaries.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), identityId)
         else Future.successful(\/.right {
           log.info(s"User with identityId $identityId has no accountIds and thus no subscriptions.")
           Nil
@@ -133,15 +144,18 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
     }
   }
 
-  def getSubscriptions(accountIds: List[AccountId],
+  def getSubscriptions(accountSummaries: List[AccountSummary],
                        identityId: String,
-                       subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = {
+                       subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[SubscriptionWithAccount]]] = {
 
-    def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = subscriptionsForAccountId(accountId)(anyPlanReads)
+//    def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = subscriptionsForAccountId(accountId)(anyPlanReads)
+    def subWithAccount(accountSummary: AccountSummary)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, (Option[Subscription[AnyPlan]], AccountSummary)]] = subscriptionsForAccountId(accountSummary.id)(anyPlanReads) map { maybeSub =>
+       maybeSub map {subList => (subList.headOption, accountSummary)}      //todo do accounts ever have multiple subs ?
+    }
 
-    val maybeSubs: Future[Disjunction[String, List[Subscription[AnyPlan]]]] = accountIds.traverse[Future, Disjunction[String, List[Subscription[AnyPlan]]]](id => {
-      sub(id)
-    }).map(_.sequenceU.map(_.flatten))
+    val maybeSubs: Future[Disjunction[String, List[SubscriptionWithAccount]]] = accountSummaries.traverse[Future, Disjunction[String, SubscriptionWithAccount]](summary => {
+      subWithAccount(summary)(anyPlanReads)
+    }).map(_.sequenceU)
 
     maybeSubs.map {
       _.leftMap { errorMsg =>
@@ -150,6 +164,23 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       } map { subs =>
         log.info(s"We got subs for identityId $identityId from Zuora and there were ${subs.length}")
         subs
+      }
+    }
+  }
+
+  def getAccountSummaries(accountIds: List[AccountId],
+                       identityId: String,
+                       accountSummaryForAccountId: AccountId => Future[Disjunction[String, AccountSummary]]): Future[Disjunction[String, List[AccountSummary]]] = {
+
+    val maybeAccountSummaries = accountIds.traverse[Future, Disjunction[String, AccountSummary]](id => {
+      accountSummaryForAccountId(id)
+    }).map(_.sequenceU)    //todo generalise me?
+
+
+    maybeAccountSummaries.map {
+      _.leftMap { errorMsg =>
+        log.warn(s"We tried getting account summaries for a user with identityId $identityId, but then $errorMsg")
+        s"We called Zuora to get account summaries for a user with identityId $identityId but the call failed because $errorMsg"
       }
     }
   }
