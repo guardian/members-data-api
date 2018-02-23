@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Dynamo tables for Membership Attributes service
+Parameters:
+  TouchpointBackend:
+    Description: Environment name ( DEV, UAT or PROD)
+    Type: String
+    Default: DEV
+Mappings:
+  StageVariables:
+    DEV:
+      DynamoWriteCapacity: 1
+      DynamoReadCapacity: 5
+    UAT:
+      DynamoWriteCapacity: 1
+      DynamoReadCapacity: 5
+    PROD:
+      DynamoWriteCapacity: 10
+      DynamoReadCapacity: 200
+Resources:
+  SupporterAttributesFallbackTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+          - AttributeName: "UserId"
+            AttributeType: "S"
+      KeySchema:
+          - AttributeName: "UserId"
+            KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits:
+          Fn::FindInMap: [ StageVariables, { Ref: TouchpointBackend }, DynamoReadCapacity ]
+        WriteCapacityUnits:
+          Fn::FindInMap: [ StageVariables, { Ref: TouchpointBackend }, DynamoWriteCapacity ]
+      SSESpecification:
+        SSEEnabled: true
+      TableName: !Sub SupporterAttributesFallback-${TouchpointBackend}
+      TimeToLiveSpecification:
+        AttributeName: "TTLTimestamp"
+        Enabled: true
+Outputs:
+  SupporterAttributesFallbackTable:
+    Description: This Dynamo table is used to provide a failover if we cannot fetch a user's attributes from Zuora.
+    Value: !GetAtt [ SupporterAttributesFallbackTable, "Arn" ]
+    Export:
+      Name: !Sub ${AWS::StackName}-SupporterAttributesFallback
