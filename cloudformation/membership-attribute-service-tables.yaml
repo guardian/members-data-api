@@ -8,11 +8,11 @@ Parameters:
 Mappings:
   StageVariables:
     DEV:
-          DynamoWriteCapacity: 1
-          DynamoReadCapacity: 5
+      DynamoWriteCapacity: 1
+      DynamoReadCapacity: 5
     UAT:
-          DynamoWriteCapacity: 1
-          DynamoReadCapacity: 5
+      DynamoWriteCapacity: 1
+      DynamoReadCapacity: 5
     PROD:
       DynamoWriteCapacity: 10
       DynamoReadCapacity: 200
@@ -30,7 +30,7 @@ Resources:
         ReadCapacityUnits:
           Fn::FindInMap: [ StageVariables, { Ref: TouchpointBackend }, DynamoReadCapacity ]
         WriteCapacityUnits:
-          Fn::FindInMap: [ StageVariables, { Ref: TouchpointBackend }, DynamoReadCapacity ]
+          Fn::FindInMap: [ StageVariables, { Ref: TouchpointBackend }, DynamoWriteCapacity ]
       SSESpecification:
         SSEEnabled: true
       TableName: !Sub SupporterAttributesFallback-${TouchpointBackend}
@@ -39,7 +39,7 @@ Resources:
         Enabled: true
 Outputs:
   SupporterAttributesFallbackTable:
-    Description: supporter attributes fallback table
+    Description: This Dynamo table is used to provide a failover if we cannot fetch a user's attributes from Zuora.
     Value: !GetAtt [ SupporterAttributesFallbackTable, "Arn" ]
     Export:
       Name: !Sub ${AWS::StackName}-SupporterAttributesFallback
