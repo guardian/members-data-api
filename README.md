@@ -1,6 +1,6 @@
 # Membership Attribute Service
 
-The membership attribute service provides an API for managing and retrieving membership attributes associated with a user. It runs on https://members-data-api.theguardian.com/
+The membership attribute service provides an API for managing and retrieving supporter attributes associated with a user. It runs on https://members-data-api.theguardian.com/
 
 ## Setting it up locally
 
@@ -19,7 +19,7 @@ Get Janus credentials for membership.
 
 To start the service run ./start-api.sh
 
-The service will be running on 9400 and use the MembershipAttributes-DEV DynamoDB table.
+The service will be running on 9400 and use the SupporterAttributesFallback-DEV DynamoDB table.
 
 go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership
 
@@ -44,12 +44,12 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
  
 ## API Docs
 
-The MembershipAttributes Dynamo table has identity id as a primary key. Corresponding to each identity id in the table 
+The SupporterAttributesFallback Dynamo table has identity id as a primary key. Corresponding to each identity id in the table 
 we have information about that user's membership, subscriptions, and/or digital pack. 
 
 On each lookup call (i.e. /user-attributes/{me}), we derive this information from subscriptions via Zuora, 
 and then update the entry if it's out of date. If we can't get subscriptions from Zuora, we fall back to the 
-MembershipAttributes table. There is a TTL on the MembershipAttributes table. 
+SupporterAttributesFallback table. There is a TTL on the SupporterAttributesFallback table. 
 
 ### GET /user-attributes/me
 
