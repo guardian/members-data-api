@@ -71,8 +71,6 @@ Mappings:
     PROD:
       NotificationAlarmPeriod: 1200
       InstanceName: PROD:membership-attribute-service
-      DynamoDBUnencryptedTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-PROD
-      DynamoDBUnencryptedTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBTable: "Memb-Attributes-Tables-PROD-SupporterAttributesFallback"
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
@@ -83,8 +81,6 @@ Mappings:
     CODE:
       NotificationAlarmPeriod: 1200
       InstanceName: CODE:membership-attribute-service
-      DynamoDBUnencryptedTable: arn:aws:dynamodb:*:*:table/MembershipAttributes-DEV
-      DynamoDBUnencryptedTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipAttributes-UAT
       DynamoDBTable: "Memb-Attributes-Tables-DEV-SupporterAttributesFallback"
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
@@ -120,26 +116,6 @@ Resources:
             Effect: Allow
           - Action: ec2:DescribeTags
             Resource: "*"
-            Effect: Allow
-          - Action:
-              - dynamodb:PutItem
-              - dynamodb:GetItem
-              - dynamodb:UpdateItem
-              - dynamodb:DeleteItem
-              - dynamodb:BatchGetItem
-              - dynamodb:DescribeTable
-            Resource:
-                Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBUnencryptedTable ]
-            Effect: Allow
-          - Action:
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-            - dynamodb:BatchGetItem
-            - dynamodb:DescribeTable
-            Resource:
-                Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBUnencryptedTableTestUsers ]
             Effect: Allow
           - Action:
             - dynamodb:PutItem
