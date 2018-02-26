@@ -34,6 +34,7 @@ class AttributeController(commonActions: CommonActions) extends Controller with 
         identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
         dynamoAttributeService = dynamoService,
+        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
         accountSummaryForAccountId = request.touchpoint.zuoraRestService.getAccount
       )
     } else {

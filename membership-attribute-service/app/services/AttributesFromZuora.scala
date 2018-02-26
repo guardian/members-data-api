@@ -5,7 +5,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, QueryResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse, QueryResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
@@ -26,6 +26,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
                     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
                     accountSummaryForAccountId: AccountId => Future[\/[String, AccountSummary]],
+                    paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
                     dynamoAttributeService: AttributeService,
                     forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
 
@@ -37,7 +38,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
       attributes
     }
 
-    val zuoraAttributesDisjunction: DisjunctionT[Future, String, Option[ZuoraAttributes]] = for {
+    val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
       accountSummaries <- EitherT[Future, String, List[AccountSummary]](
@@ -55,15 +56,15 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
         })
       )
     } yield {
-      AttributesMaker.zuoraAttributes(identityId, subscriptions, forDate)
+      AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
 
-    val attributesFromZuora: Future[Disjunction[String, Option[ZuoraAttributes]]] = zuoraAttributesDisjunction.run.map {
-        _.leftMap { errorMsg =>
+    val attributesFromZuora = zuoraAttributesDisjunction.run.map { attributesDisjunction: Disjunction[String, Future[Option[ZuoraAttributes]]] =>
+      attributesDisjunction.leftMap { errorMsg =>
           log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
           errorMsg
         }
-    }
+      }
 
     def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]) = {
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
@@ -80,10 +81,12 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
-      case \/-(maybeZuoraAttributes) => attributesFromDynamo map { dynamoAttr: Option[DynamoAttributes] =>
-        val combinedAttributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(maybeZuoraAttributes, dynamoAttr)
-        updateIfNeeded(maybeZuoraAttributes, dynamoAttr, combinedAttributes)
-        ("Zuora", combinedAttributes)
+      case \/-(maybeZuoraAttributes) => maybeZuoraAttributes flatMap { zuoraAttributes: Option[ZuoraAttributes] =>
+        attributesFromDynamo map { dynamoAttributes =>
+          val combinedAttributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(zuoraAttributes, dynamoAttributes)
+          updateIfNeeded(zuoraAttributes, dynamoAttributes, combinedAttributes)
+          ("Zuora", combinedAttributes)
+        }
       }
     }
     // return what we know from Dynamo if the future times out/fails
@@ -148,9 +151,8 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
                        identityId: String,
                        subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[SubscriptionWithAccount]]] = {
 
-//    def sub(accountId: AccountId): Future[Disjunction[String, List[Subscription[AnyPlan]]]] = subscriptionsForAccountId(accountId)(anyPlanReads)
     def subWithAccount(accountSummary: AccountSummary)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, (Option[Subscription[AnyPlan]], AccountSummary)]] = subscriptionsForAccountId(accountSummary.id)(anyPlanReads) map { maybeSub =>
-       maybeSub map {subList => (subList.headOption, accountSummary)}      //todo do accounts ever have multiple subs ?
+       maybeSub map {subList => (subList.headOption, accountSummary)}
     }
 
     val maybeSubs: Future[Disjunction[String, List[SubscriptionWithAccount]]] = accountSummaries.traverse[Future, Disjunction[String, SubscriptionWithAccount]](summary => {

@@ -1,11 +1,9 @@
 package services
 
 import com.github.nscala_time.time.OrderingImplicits._
-import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.SubscriptionPlan.Member
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription, SubscriptionPlan}
-import com.gu.memsub.{Benefit, PaymentMethod, Product}
+import com.gu.memsub.{Benefit, Product}
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
 import com.typesafe.scalalogging.LazyLogging
 import models.{Attributes, DynamoAttributes, ZuoraAttributes}
@@ -17,9 +15,12 @@ import scalaz.syntax.std.boolean._
 
 class AttributesMaker extends LazyLogging {
 
-  def zuoraAttributes(identityId: String, subsWithAccounts: List[(Option[Subscription[AnyPlan]], AccountSummary)], forDate: LocalDate): Option[ZuoraAttributes] = {
+  def zuoraAttributes(identityId: String,
+                      subsWithAccounts: List[(Option[Subscription[AnyPlan]], AccountSummary)],
+                      paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+                      forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = { //TODO subs with account should be CustomerAccount case class
 
-    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.map(subAccount => subAccount._1).flatten
+    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount._1)
 
     def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
       GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
@@ -42,18 +43,31 @@ class AttributesMaker extends LazyLogging {
 
     val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
 
-    hasAttributableProduct.option {
-      val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
-      val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
-      val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
-      val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
-      ZuoraAttributes(
-        UserId = identityId,
-        Tier = tier,
-        RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
-        MembershipJoinDate = membershipJoinDate,
-        DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate
-      )
+    val maybeMembershipSubAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount._1 == Some(sub)) }
+
+    val maybeActionAvailable = maybeMembershipSubAndAccount flatMap { subAndAccount: (Option[Subscription[AnyPlan]], AccountSummary) => subAndAccount._1 map { sub: Subscription[AnyPlan] =>
+        actionAvailableFor(subAndAccount._2, sub, paymentMethodGetter) map { actionAvailable: Boolean =>
+          if(actionAvailable) Some("membership")
+          else None
+        }
+      }
+    }
+
+    maybeActionAvailable.getOrElse(Future.successful(None))  map { action =>
+      hasAttributableProduct.option {
+        val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
+        val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
+        val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
+        val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
+        ZuoraAttributes(
+          UserId = identityId,
+          Tier = tier,
+          RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
+          MembershipJoinDate = membershipJoinDate,
+          DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
+          ActionAvailableFor = action
+        )
+      }
     }
   }
 
@@ -67,7 +81,8 @@ class AttributesMaker extends LazyLogging {
           MembershipJoinDate = zuora.MembershipJoinDate,
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
-          AdFree = dynamo.AdFree
+          AdFree = dynamo.AdFree,
+          ActionAvailableFor = zuora.ActionAvailableFor
         ))
       case (Some(zuora), None) =>
         Some(Attributes(
@@ -77,7 +92,8 @@ class AttributesMaker extends LazyLogging {
           MembershipJoinDate = zuora.MembershipJoinDate,
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = None,
-          AdFree = None
+          AdFree = None,
+          ActionAvailableFor = zuora.ActionAvailableFor
         ))
       case (None, _) => None
     }

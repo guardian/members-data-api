@@ -27,7 +27,7 @@ case class Attributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
-  actionAvailableFor: Option[String] = None) {
+  ActionAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -50,7 +50,7 @@ case class ZuoraAttributes(
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-  actionAvailableFor: Option[String] = None)
+  ActionAvailableFor: Option[String] = None)
 
 case class DynamoAttributes(
   UserId: String,

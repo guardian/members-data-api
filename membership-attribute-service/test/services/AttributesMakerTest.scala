@@ -19,6 +19,10 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
   val referenceDateAsDynamoTimestamp = referenceDate.toDateTimeAtStartOfDay.getMillis / 1000
   val identityId = "123"
 
+  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
+  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
+  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
+
   "zuoraAttributes" should {
     val anotherAccountSummary = accountSummaryWithZeroBalance.copy(id = AccountId("another accountId"))
 
@@ -30,7 +34,8 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
-      AttributesMaker.zuoraAttributes(identityId, List((Some(digipack), accountSummaryWithZeroBalance)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(digipack), accountSummaryWithZeroBalance)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return attributes when one of the subs has a digital benefit" in {
@@ -41,11 +46,13 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
-      AttributesMaker.zuoraAttributes(identityId, List((Some(sunday), accountSummaryWithZeroBalance), (Some(sundayPlus), anotherAccountSummary)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(sunday), accountSummaryWithZeroBalance), (Some(sundayPlus), anotherAccountSummary)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return none when only sub is expired" in {
-      AttributesMaker.zuoraAttributes(identityId, List((Some(expiredMembership), accountSummaryWithZeroBalance)), referenceDate) === None
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(expiredMembership), accountSummaryWithZeroBalance)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(None).await
     }
 
     "return attributes when there is one membership sub" in {
@@ -56,7 +63,8 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      AttributesMaker.zuoraAttributes(identityId, List((Some(membership), accountSummaryWithZeroBalance)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(membership), accountSummaryWithZeroBalance)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return attributes when one sub is expired and one is not" in {
@@ -68,7 +76,9 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       )
       )
 
-      AttributesMaker.zuoraAttributes(identityId, List((Some(expiredMembership), accountSummaryWithZeroBalance), (Some(contributor), accountSummaryWithZeroBalance)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(expiredMembership), accountSummaryWithZeroBalance), (Some(contributor), accountSummaryWithZeroBalance)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
+
     }
 
     "return attributes when one sub is a recurring contribution" in {
@@ -79,7 +89,9 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None
       )
       )
-      AttributesMaker.zuoraAttributes(identityId, List((Some(contributor), accountSummaryWithZeroBalance)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(contributor), accountSummaryWithZeroBalance)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
+
     }
 
     "return attributes relevant to both when one sub is a contribution and the other a membership" in {
@@ -90,7 +102,8 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      AttributesMaker.zuoraAttributes(identityId, List((Some(contributor), accountSummaryWithZeroBalance), (Some(membership), accountSummaryWithZeroBalance)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(contributor), accountSummaryWithZeroBalance), (Some(membership), accountSummaryWithZeroBalance)),  paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return attributes when the membership is a friend tier" in {
@@ -101,7 +114,21 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      AttributesMaker.zuoraAttributes(identityId, List((Some(friend), accountSummaryWithZeroBalance)), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(friend), accountSummaryWithZeroBalance)), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
+    }
+
+    "return actionAvailableFor=membership for an active membership in payment failure" in {
+      val expected = Some(ZuoraAttributes(
+        UserId = identityId,
+        Tier = Some("Supporter"),
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = Some(referenceDate),
+        ActionAvailableFor = Some("membership")
+      )
+      )
+      val result = AttributesMaker.zuoraAttributes(identityId, List((Some(membership), accountSummaryWithBalance)), paymentMethodResponseRecentFailure, referenceDate)
+      result must be_==(expected).await
     }
   }
 
@@ -174,10 +201,6 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
   "actionAvailableFor" should {
 
-    def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
-    def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
-    def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
-
     "return false for a member with a zero balance" in {
       val result = AttributesMaker.actionAvailableFor(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
 
@@ -186,6 +209,12 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
     "return false for a member with a failed payment more than 27 days ago" in {
       val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseStaleFailure)
+
+      result must be_==(false).await
+    }
+
+    "return false for a member with a balance but no failed payments" in {
+      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseNoFailures)
 
       result must be_==(false).await
     }
