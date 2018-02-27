@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription, SubscriptionPlan}
 import com.gu.memsub.{Benefit, Product}
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
 import com.typesafe.scalalogging.LazyLogging
-import models.{Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,11 +16,11 @@ import scalaz.syntax.std.boolean._
 class AttributesMaker extends LazyLogging {
 
   def zuoraAttributes(identityId: String,
-                      subsWithAccounts: List[(Option[Subscription[AnyPlan]], AccountSummary)],
+                      subsWithAccounts: List[CustomerAccount],
                       paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
-                      forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = { //TODO subs with account should be CustomerAccount case class
+                      forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
-    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount._1)
+    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscription)
 
     def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
       GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
@@ -43,17 +43,17 @@ class AttributesMaker extends LazyLogging {
 
     val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
 
-    val maybeMembershipSubAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount._1 == Some(sub)) }
+    val maybeMembershipSubAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount.subscription == Some(sub)) }
 
-    val maybeActionAvailable = maybeMembershipSubAndAccount flatMap { subAndAccount: (Option[Subscription[AnyPlan]], AccountSummary) => subAndAccount._1 map { sub: Subscription[AnyPlan] =>
-        actionAvailableFor(subAndAccount._2, sub, paymentMethodGetter) map { actionAvailable: Boolean =>
+    val maybeActionAvailable = maybeMembershipSubAndAccount flatMap { subAndAccount: CustomerAccount => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
+        actionAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { actionAvailable: Boolean =>
           if(actionAvailable) Some("membership")
           else None
         }
       }
     }
 
-    maybeActionAvailable.getOrElse(Future.successful(None))  map { action =>
+    maybeActionAvailable.getOrElse(Future.successful(None)) map { action =>
       hasAttributableProduct.option {
         val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
         val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)

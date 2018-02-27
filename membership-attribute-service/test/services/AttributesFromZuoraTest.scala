@@ -5,7 +5,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.zuora.rest.ZuoraRestService.{AccountIdRecord, PaymentMethodId, PaymentMethodResponse, QueryResponse}
-import models.{Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mock.Mockito
@@ -241,14 +241,14 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val anotherAccountSummary = accountSummaryWithZeroBalance.copy(id = anotherTestAccountId)
         val subscriptions = AttributesFromZuora.getSubscriptions(List(accountSummaryWithZeroBalance, anotherAccountSummary), testId, subscriptionFromAccountId)
 
-        val expected = List((Some(contributor), accountSummaryWithZeroBalance), (Some(digipack), anotherAccountSummary))
+        val expected = List(CustomerAccount(accountSummaryWithZeroBalance, Some(contributor)), CustomerAccount(anotherAccountSummary, Some(digipack)))
         subscriptions must be_==(\/.right(expected)).await
       }
 
       "get an empty list of subscriptions for a user who doesn't have any " in new accountButNoSubscriptions {
         val subscriptions = AttributesFromZuora.getSubscriptions(List(accountSummaryWithZeroBalance), testId, subscriptionFromAccountId)
 
-        subscriptions must be_==(\/.right(List((None, accountSummaryWithZeroBalance)))).await
+        subscriptions must be_==(\/.right(List(CustomerAccount(accountSummaryWithZeroBalance, None)))).await
       }
 
       "return a left with error message if the subscription service returns a left" in new errorWhenGettingSubs {

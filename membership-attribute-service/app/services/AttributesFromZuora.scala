@@ -8,7 +8,7 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse, QueryResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
-import models.{Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.concurrent.Execution.Implicits._
 
@@ -19,8 +19,6 @@ import scalaz.syntax.traverse._
 import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
 object AttributesFromZuora extends LoggingWithLogstashFields {
-
-  type SubscriptionWithAccount = (Option[Subscription[AnyPlan]], AccountSummary)
 
   def getAttributes(identityId: String,
                     identityIdToAccountIds: String => Future[String \/ QueryResponse],
@@ -48,7 +46,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
           Nil
         })
       )
-      subscriptions <- EitherT[Future, String, List[SubscriptionWithAccount]](
+      subscriptions <- EitherT[Future, String, List[CustomerAccount]](
         if(accountSummaries.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), identityId)
         else Future.successful(\/.right {
           log.info(s"User with identityId $identityId has no accountIds and thus no subscriptions.")
@@ -149,13 +147,13 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
   def getSubscriptions(accountSummaries: List[AccountSummary],
                        identityId: String,
-                       subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[SubscriptionWithAccount]]] = {
+                       subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[CustomerAccount]]] = {
 
-    def subWithAccount(accountSummary: AccountSummary)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, (Option[Subscription[AnyPlan]], AccountSummary)]] = subscriptionsForAccountId(accountSummary.id)(anyPlanReads) map { maybeSub =>
-       maybeSub map {subList => (subList.headOption, accountSummary)}
+    def subWithAccount(accountSummary: AccountSummary)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, CustomerAccount]] = subscriptionsForAccountId(accountSummary.id)(anyPlanReads) map { maybeSub =>
+       maybeSub map {subList => CustomerAccount(accountSummary, subList.headOption)}
     }
 
-    val maybeSubs: Future[Disjunction[String, List[SubscriptionWithAccount]]] = accountSummaries.traverse[Future, Disjunction[String, SubscriptionWithAccount]](summary => {
+    val maybeSubs: Future[Disjunction[String, List[CustomerAccount]]] = accountSummaries.traverse[Future, Disjunction[String, CustomerAccount]](summary => {
       subWithAccount(summary)(anyPlanReads)
     }).map(_.sequenceU)
 
@@ -176,7 +174,7 @@ object AttributesFromZuora extends LoggingWithLogstashFields {
 
     val maybeAccountSummaries = accountIds.traverse[Future, Disjunction[String, AccountSummary]](id => {
       accountSummaryForAccountId(id)
-    }).map(_.sequenceU)    //todo generalise me?
+    }).map(_.sequenceU)
 
 
     maybeAccountSummaries.map {
