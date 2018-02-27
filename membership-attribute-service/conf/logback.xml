@@ -3,6 +3,14 @@
     <contextName>membership-attribute-service</contextName>
 
     <appender name="LOGFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>SENTRY</marker>
+            </evaluator>
+            <onMatch>DENY</onMatch>
+        </filter>
+
         <file>logs/membership-attribute-service.log</file>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">

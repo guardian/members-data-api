@@ -2,18 +2,19 @@ package services
 
 import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
+import com.gu.monitoring.SafeLogger
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
-import com.typesafe.scalalogging.LazyLogging
 import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
+import com.gu.monitoring.SafeLogger._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{\/, \/-}
 import scalaz.syntax.std.boolean._
 
-class AttributesMaker extends LazyLogging {
+class AttributesMaker {
 
   def zuoraAttributes(identityId: String,
                       subsWithAccounts: List[CustomerAccount],
@@ -53,7 +54,9 @@ class AttributesMaker extends LazyLogging {
       }
     }
 
-    maybeActionAvailable.getOrElse(Future.successful(None)) map { action =>
+    maybeActionAvailable.getOrElse(Future.successful(None)) map { maybeAction =>
+      maybeAction map { action => SafeLogger.info(s"User $identityId has an action available: $action") }
+
       hasAttributableProduct.option {
         val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
         val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
@@ -65,7 +68,10 @@ class AttributesMaker extends LazyLogging {
           RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
-          ActionAvailableFor = action
+          //First we will just log if we have determined we have a membership action for the user. Once we assess the logs,
+          //we can start returning the value we've calculated
+          //ActionAvailableFor = maybeAction
+          ActionAvailableFor = None
         )
       }
     }

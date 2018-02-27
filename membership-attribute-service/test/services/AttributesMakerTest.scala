@@ -2,7 +2,7 @@ package services
 
 import com.github.nscala_time.time.Implicits._
 import com.gu.memsub.Subscription.AccountId
-import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, BillToContact, DefaultPaymentMethod, PaymentMethodId, PaymentMethodResponse, SoldToContact}
+import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
@@ -118,18 +118,21 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       result must be_==(expected).await
     }
 
-    "return actionAvailableFor=membership for an active membership in payment failure" in {
-      val expected = Some(ZuoraAttributes(
-        UserId = identityId,
-        Tier = Some("Supporter"),
-        RecurringContributionPaymentPlan = None,
-        MembershipJoinDate = Some(referenceDate),
-        ActionAvailableFor = Some("membership")
-      )
-      )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(CustomerAccount(accountSummaryWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
-      result must be_==(expected).await
-    }
+    // We are currently returning actionAvailableFor = None always in AttributesMaker and just logging the value we've calculated
+    //This test should be uncommented once we resume returning the calculated value
+
+//    "return actionAvailableFor=membership for an active membership in payment failure" in {
+//      val expected = Some(ZuoraAttributes(
+//        UserId = identityId,
+//        Tier = Some("Supporter"),
+//        RecurringContributionPaymentPlan = None,
+//        MembershipJoinDate = Some(referenceDate),
+//        ActionAvailableFor = Some("membership")
+//      )
+//      )
+//      val result = AttributesMaker.zuoraAttributes(identityId, List(CustomerAccount(accountSummaryWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
+//      result must be_==(expected).await
+//    }
   }
 
 
