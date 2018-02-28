@@ -3,7 +3,7 @@ package testdata
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, BillToContact, DefaultPaymentMethod, PaymentMethodId, SoldToContact}
 
-object AccountSummaryTestData { //todo should this be an object?
+object AccountSummaryTestData {
   val testAccountId = AccountId("accountId")
   val testPaymentMethodId = PaymentMethodId("testme")
   val testIdentityId = "123"

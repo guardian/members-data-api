@@ -54,8 +54,8 @@ class AttributesMaker {
       }
     }
 
-    maybeAlertAvailable.getOrElse(Future.successful(None)) map { maybeAction =>
-      maybeAction map { action => SafeLogger.info(s"User $identityId has an action available: $action") }
+    maybeAlertAvailable.getOrElse(Future.successful(None)) map { maybeAlert =>
+      maybeAlert map { alert => SafeLogger.info(s"User $identityId has an alert available: $alert") }
 
       hasAttributableProduct.option {
         val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
@@ -68,7 +68,7 @@ class AttributesMaker {
           RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
-          //First we will just log if we have determined we have a membership action for the user. Once we assess the logs,
+          //First we will just log if we have determined we have a membership alert for the user. Once we assess the logs,
           //we can start returning the value we've calculated
           //AlertAvailableFor = maybeAlert
           AlertAvailableFor = None
