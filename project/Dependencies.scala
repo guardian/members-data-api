@@ -22,12 +22,11 @@ object Dependencies {
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.9"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.2"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
-  val jacksonCbor = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % "2.9.4"
 
   //projects
 
   val apiDependencies = Seq(sentryLogback, identityCookie, identityPlayAuth, identityTestUsers,
     playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
-    specs2, kinesis, logstash, jacksonCbor)
+    specs2, kinesis, logstash)
 
 }
