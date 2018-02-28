@@ -34,23 +34,20 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       attributes
     }
 
+    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureResult: Future[Disjunction[String, R]], default: R, identityId: String): Future[Disjunction[String, R]] = {
+      if(shouldCallFunction) {
+        withTimer(whichCall, futureResult, identityId)
+      } else Future.successful(\/.right {
+        log.info(s"User with identityId $identityId has no accountIds/account summaries and so $whichCall is not needed.")
+        default
+      })
+    }
+
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
-      accountSummaries <- EitherT[Future, String, List[AccountSummary]](
-        if(accountIds.nonEmpty) withTimer(s"ZuoraGetAccountSummaries", getAccountSummaries(accountIds, identityId, accountSummaryForAccountId), identityId)
-        else Future.successful(\/.right {
-          log.info(s"User with identityId $identityId has no accountIds and thus no account summaries")
-          Nil
-        })
-      )
-      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](
-        if(accountSummaries.nonEmpty) withTimer(s"ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), identityId)
-        else Future.successful(\/.right {
-          log.info(s"User with identityId $identityId has no accountIds and thus no subscriptions.")
-          Nil
-        })
-      )
+      accountSummaries <- EitherT[Future, String, List[AccountSummary]](getResultIf(accountIds.nonEmpty, "ZuoraGetAccountSummaries", getAccountSummaries(accountIds, identityId, accountSummaryForAccountId), Nil, identityId))
+      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accountSummaries.nonEmpty, "ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), Nil, identityId))
     } yield {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
