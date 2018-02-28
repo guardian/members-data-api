@@ -18,14 +18,14 @@ import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
 
-  def getAttributes(identityId: String,
-                    identityIdToAccountIds: String => Future[String \/ QueryResponse],
-                    subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-                    accountSummaryForAccountId: AccountId => Future[\/[String, AccountSummary]],
-                    paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
-                    dynamoAttributeService: AttributeService,
-                    forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
-
+  def getAttributes(
+     identityId: String,
+     identityIdToAccountIds: String => Future[String \/ QueryResponse],
+     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
+     accountSummaryForAccountId: AccountId => Future[\/[String, AccountSummary]],
+     paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+     dynamoAttributeService: AttributeService,
+     forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
 
     def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
 
@@ -143,9 +143,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
   }
 
-  def getSubscriptions(accountSummaries: List[AccountSummary],
-                       identityId: String,
-                       subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[CustomerAccount]]] = {
+  def getSubscriptions(
+    accountSummaries: List[AccountSummary],
+    identityId: String,
+    subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[CustomerAccount]]] = {
 
     def subWithAccount(accountSummary: AccountSummary)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, CustomerAccount]] = subscriptionsForAccountId(accountSummary.id)(anyPlanReads) map { maybeSub =>
        maybeSub map {subList => CustomerAccount(accountSummary, subList.headOption)}

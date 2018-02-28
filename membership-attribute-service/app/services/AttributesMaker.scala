@@ -8,18 +8,18 @@ import com.gu.monitoring.SafeLogger
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
 import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
-import com.gu.monitoring.SafeLogger._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.{\/, \/-}
+import scalaz.{EitherT, \/, \/-}
 import scalaz.syntax.std.boolean._
 
 class AttributesMaker {
 
-  def zuoraAttributes(identityId: String,
-                      subsWithAccounts: List[CustomerAccount],
-                      paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
-                      forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
+  def zuoraAttributes(
+    identityId: String,
+    subsWithAccounts: List[CustomerAccount],
+    paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+    forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
     val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscription)
 
@@ -105,29 +105,32 @@ class AttributesMaker {
     }
   }
 
-  def actionAvailableFor(accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
-                         paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext): Future[Boolean] = {
+  def actionAvailableFor(
+    accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
+    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
+    )(implicit ec: ExecutionContext): Future[Boolean] = {
 
     def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
 
     val stillFreshInDays = 27
     def recentEnough(lastTransationDateTime: DateTime) = lastTransationDateTime.plusDays(stillFreshInDays).isAfterNow
 
-    def actionForSub(accountSummary: AccountSummary, sub: Subscription[AnyPlan]): Future[String \/ Boolean] = {
+    val userInPaymentFailure: Future[\/[String, Boolean]] = {
       if(accountSummary.balance > 0 && accountSummary.defaultPaymentMethod.isDefined) {
         val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(accountSummary.defaultPaymentMethod.get.id)
+
         eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
           maybePaymentMethod.map { pm: PaymentMethodResponse =>
-            if(creditCard(pm) && pm.numConsecutiveFailures > 0 && recentEnough(pm.lastTransactionDateTime))
-              true
-            else false
+            creditCard(pm) &&
+              pm.numConsecutiveFailures > 0 &&
+              recentEnough(pm.lastTransactionDateTime)
           }
         }
       }
       else Future.successful(\/.right(false))
     }
 
-    actionForSub(accountSummary, subscription) map (_.getOrElse(false))
+    userInPaymentFailure map (_.getOrElse(false))
   }
 }
 

@@ -119,20 +119,22 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
     }
 
     // We are currently returning actionAvailableFor = None always in AttributesMaker and just logging the value we've calculated
-    //This test should be uncommented once we resume returning the calculated value
+    //This test should be un-ignored once we resume returning the calculated value
 
-//    "return actionAvailableFor=membership for an active membership in payment failure" in {
-//      val expected = Some(ZuoraAttributes(
-//        UserId = identityId,
-//        Tier = Some("Supporter"),
-//        RecurringContributionPaymentPlan = None,
-//        MembershipJoinDate = Some(referenceDate),
-//        ActionAvailableFor = Some("membership")
-//      )
-//      )
-//      val result = AttributesMaker.zuoraAttributes(identityId, List(CustomerAccount(accountSummaryWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
-//      result must be_==(expected).await
-//    }
+    "return actionAvailableFor=membership for an active membership in payment failure" in {
+      skipped {
+        val expected = Some(ZuoraAttributes(
+          UserId = identityId,
+          Tier = Some("Supporter"),
+          RecurringContributionPaymentPlan = None,
+          MembershipJoinDate = Some(referenceDate),
+          ActionAvailableFor = Some("membership")
+        )
+        )
+        val result = AttributesMaker.zuoraAttributes(identityId, List(CustomerAccount(accountSummaryWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
+        result must be_==(expected).await
+      }
+    }
   }
 
 
@@ -218,6 +220,14 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
     "return false for a member with a balance but no failed payments" in {
       val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseNoFailures)
+
+      result must be_==(false).await
+    }
+
+    "return false for a member who pays via paypal" in {
+      def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
+
+      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponsePaypal)
 
       result must be_==(false).await
     }
