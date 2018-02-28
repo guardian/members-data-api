@@ -118,17 +118,17 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       result must be_==(expected).await
     }
 
-    // We are currently returning actionAvailableFor = None always in AttributesMaker and just logging the value we've calculated
+    // We are currently returning alertAvailableFor = None always in AttributesMaker and just logging the value we've calculated
     //This test should be un-ignored once we resume returning the calculated value
 
-    "return actionAvailableFor=membership for an active membership in payment failure" in {
+    "return alertAvailableFor=membership for an active membership in payment failure" in {
       skipped {
         val expected = Some(ZuoraAttributes(
           UserId = identityId,
           Tier = Some("Supporter"),
           RecurringContributionPaymentPlan = None,
           MembershipJoinDate = Some(referenceDate),
-          ActionAvailableFor = Some("membership")
+          AlertAvailableFor = Some("membership")
         )
         )
         val result = AttributesMaker.zuoraAttributes(identityId, List(CustomerAccount(accountSummaryWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
@@ -204,22 +204,22 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
   }
 
-  "actionAvailableFor" should {
+  "alertAvailableFor" should {
 
     "return false for a member with a zero balance" in {
-      val result = AttributesMaker.actionAvailableFor(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
 
       result must be_==(false).await
     }
 
     "return false for a member with a failed payment more than 27 days ago" in {
-      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseStaleFailure)
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseStaleFailure)
 
       result must be_==(false).await
     }
 
     "return false for a member with a balance but no failed payments" in {
-      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseNoFailures)
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseNoFailures)
 
       result must be_==(false).await
     }
@@ -227,19 +227,19 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
     "return false for a member who pays via paypal" in {
       def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
 
-      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponsePaypal)
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponsePaypal)
 
       result must be_==(false).await
     }
 
     "return true for for a member with a failed payment in the last 27 days" in {
-      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
 
       result must be_==(true).await
     }
 
     "return true for for a non-membership sub with a failed payment in the last 27 days too" in {
-      val result = AttributesMaker.actionAvailableFor(accountSummaryWithBalance, digipack, paymentMethodResponseRecentFailure)
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, digipack, paymentMethodResponseRecentFailure)
 
       result must be_==(true).await
     }

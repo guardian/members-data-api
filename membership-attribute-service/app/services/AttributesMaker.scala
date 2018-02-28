@@ -46,15 +46,15 @@ class AttributesMaker {
 
     val maybeMembershipSubAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount.subscription == Some(sub)) }
 
-    val maybeActionAvailable = maybeMembershipSubAndAccount flatMap { subAndAccount: CustomerAccount => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
-        actionAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { actionAvailable: Boolean =>
-          if(actionAvailable) Some("membership")
+    val maybeAlertAvailable = maybeMembershipSubAndAccount flatMap { subAndAccount: CustomerAccount => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
+        alertAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { alertAvailable: Boolean =>
+          if(alertAvailable) Some("membership")
           else None
         }
       }
     }
 
-    maybeActionAvailable.getOrElse(Future.successful(None)) map { maybeAction =>
+    maybeAlertAvailable.getOrElse(Future.successful(None)) map { maybeAction =>
       maybeAction map { action => SafeLogger.info(s"User $identityId has an action available: $action") }
 
       hasAttributableProduct.option {
@@ -70,8 +70,8 @@ class AttributesMaker {
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
           //First we will just log if we have determined we have a membership action for the user. Once we assess the logs,
           //we can start returning the value we've calculated
-          //ActionAvailableFor = maybeAction
-          ActionAvailableFor = None
+          //AlertAvailableFor = maybeAlert
+          AlertAvailableFor = None
         )
       }
     }
@@ -88,7 +88,7 @@ class AttributesMaker {
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
           AdFree = dynamo.AdFree,
-          ActionAvailableFor = zuora.ActionAvailableFor
+          AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (Some(zuora), None) =>
         Some(Attributes(
@@ -99,13 +99,13 @@ class AttributesMaker {
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = None,
           AdFree = None,
-          ActionAvailableFor = zuora.ActionAvailableFor
+          AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (None, _) => None
     }
   }
 
-  def actionAvailableFor(
+  def alertAvailableFor(
     accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
     paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
     )(implicit ec: ExecutionContext): Future[Boolean] = {
