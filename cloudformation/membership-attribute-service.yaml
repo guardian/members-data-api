@@ -112,7 +112,7 @@ Resources:
             Resource: arn:aws:s3:::gu-membership-*/*
             Effect: Allow
           - Action: s3:GetObject
-            Resource: arn:aws:s3:::members-data-api-private/*
+            Resource: arn:aws:s3:::gu-reader-revenue-private/${Stack}/members-data-api/${Stage}/*
             Effect: Allow
           - Action: ec2:DescribeTags
             Resource: "*"
@@ -284,7 +284,7 @@ Resources:
               aws s3 cp s3://gu-membership-attribute-service-dist/membership/${Stage}/membership-attribute-service/membership-attribute-service_1.0-SNAPSHOT_all.deb /tmp
               dpkg -i /tmp/membership-attribute-service_1.0-SNAPSHOT_all.deb
               mkdir -p /etc/gu
-              aws --region ${AWS::Region} s3 cp s3://members-data-api-private/${Stage}/members-data-api.private.conf /etc/gu
+              aws --region ${AWS::Region} s3 cp s3://gu-reader-revenue-private/membership/members-data-api/${Stage}/members-data-api.private.conf /etc/gu
               chown membership-attribute-service /etc/gu/members-data-api.private.conf
               chmod 0600 /etc/gu/members-data-api.private.conf
 
