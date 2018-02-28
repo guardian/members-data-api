@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
 import com.gu.monitoring.SafeLogger
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
-import models.{Attributes, CustomerAccount, DynamoAttributes, ZuoraAttributes}
+import models.{Attributes, AccountWithSubscription, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,7 +17,7 @@ class AttributesMaker {
 
   def zuoraAttributes(
     identityId: String,
-    subsWithAccounts: List[CustomerAccount],
+    subsWithAccounts: List[AccountWithSubscription],
     paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
     forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
@@ -44,9 +44,9 @@ class AttributesMaker {
 
     val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
 
-    val maybeMembershipSubAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount.subscription == Some(sub)) }
+    val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount.subscription == Some(sub)) }
 
-    val maybeAlertAvailable = maybeMembershipSubAndAccount flatMap { subAndAccount: CustomerAccount => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
+    val maybeAlertAvailable = maybeMembershipAndAccount flatMap { subAndAccount: AccountWithSubscription => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
         alertAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { alertAvailable: Boolean =>
           if(alertAvailable) Some("membership")
           else None
