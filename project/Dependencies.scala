@@ -6,7 +6,7 @@ object Dependencies {
   //versions
   val awsClientVersion = "1.11.286"
   //libraries
-  val sentryRavenLogback = "com.getsentry.raven" % "raven-logback" % "8.0.3"
+  val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.0"
   val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.99"
   val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "2.1"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
@@ -26,7 +26,7 @@ object Dependencies {
 
   //projects
 
-  val apiDependencies = Seq(sentryRavenLogback, identityCookie, identityPlayAuth, identityTestUsers,
+  val apiDependencies = Seq(sentryLogback, identityCookie, identityPlayAuth, identityTestUsers,
     playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
     specs2, kinesis, logstash, jacksonCbor)
 
