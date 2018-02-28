@@ -24,7 +24,7 @@ object Config {
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val useFixtures = config.getBoolean("use-fixtures")
-  lazy val sentryDsn = config.getString("sentry.dsn")
+  lazy val sentryDsn = Try(config.getString("sentry.dsn")).toOption
 
   object AWS {
     val region = Regions.EU_WEST_1
