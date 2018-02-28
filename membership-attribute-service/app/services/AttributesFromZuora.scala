@@ -167,9 +167,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
   }
 
-  def getAccountSummaries(accountIds: List[AccountId],
-                       identityId: String,
-                       accountSummaryForAccountId: AccountId => Future[Disjunction[String, AccountSummary]]): Future[Disjunction[String, List[AccountSummary]]] = {
+  def getAccountSummaries(
+    accountIds: List[AccountId],
+    identityId: String,
+    accountSummaryForAccountId: AccountId => Future[Disjunction[String, AccountSummary]]): Future[Disjunction[String, List[AccountSummary]]] = {
 
     val maybeAccountSummaries = accountIds.traverse[Future, Disjunction[String, AccountSummary]](id => {
       accountSummaryForAccountId(id)
