@@ -1,165 +1,250 @@
 package services
 
 import com.github.nscala_time.time.Implicits._
-import models.{Attributes, DynamoAttributes, ZuoraAttributes}
-import org.joda.time.LocalDate
+import com.gu.memsub.Subscription.AccountId
+import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
+import models.{Attributes, AccountWithSubscription, DynamoAttributes, ZuoraAttributes}
+import org.joda.time.{DateTime, LocalDate}
+import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import testdata.SubscriptionTestData
+import testdata.AccountSummaryTestData._
 
-class AttributesMakerTest extends Specification with SubscriptionTestData {
-  override def referenceDate = new LocalDate(2016, 10, 26)
+import scala.concurrent.Future
+import scalaz.\/
+
+class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with SubscriptionTestData {
+  override def referenceDate = new LocalDate()
+
   val referenceDateAsDynamoTimestamp = referenceDate.toDateTimeAtStartOfDay.getMillis / 1000
+  val identityId = "123"
 
+  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
+  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
+  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
 
   "zuoraAttributes" should {
-    val testId = "123"
+    val anotherAccountSummary = accountSummaryWithZeroBalance.copy(id = AccountId("another accountId"))
 
     "return attributes when digipack sub" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
-      AttributesMaker.zuoraAttributes(testId, List(digipack), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(digipack))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return attributes when one of the subs has a digital benefit" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
-      AttributesMaker.zuoraAttributes(testId, List(sunday, sundayPlus), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(sunday)), AccountWithSubscription(anotherAccountSummary, Some(sundayPlus))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return none when only sub is expired" in {
-      AttributesMaker.zuoraAttributes(testId, List(expiredMembership), referenceDate) === None
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(expiredMembership))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(None).await
     }
 
     "return attributes when there is one membership sub" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = Some("Supporter"),
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      AttributesMaker.zuoraAttributes(testId, List(membership), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(membership))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return attributes when one sub is expired and one is not" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = None,
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = None
       )
       )
 
-      AttributesMaker.zuoraAttributes(testId, List(expiredMembership, contributor), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(expiredMembership)), AccountWithSubscription(accountSummaryWithZeroBalance, Some(contributor))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
+
     }
 
     "return attributes when one sub is a recurring contribution" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = None,
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = None
       )
       )
-      AttributesMaker.zuoraAttributes(testId, List(contributor), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(contributor))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
+
     }
 
     "return attributes relevant to both when one sub is a contribution and the other a membership" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = Some("Supporter"),
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      AttributesMaker.zuoraAttributes(testId, List(contributor, membership), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(contributor)), AccountWithSubscription(accountSummaryWithZeroBalance, Some(membership))),  paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
     "return attributes when the membership is a friend tier" in {
       val expected = Some(ZuoraAttributes(
-        UserId = testId,
+        UserId = identityId,
         Tier = Some("Friend"),
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      AttributesMaker.zuoraAttributes(testId, List(friend), referenceDate) === expected
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithZeroBalance, Some(friend))), paymentMethodResponseNoFailures, referenceDate)
+      result must be_==(expected).await
     }
 
-    "attributes" should  {
-      "return up to date Zuora attributes when they match the dynamo attributes" in {
-        val zuoraAttributes = ZuoraAttributes(
-          UserId = testId,
-          Tier = None,
-          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-          MembershipJoinDate = None,
-          DigitalSubscriptionExpiryDate = None
+    // We are currently returning alertAvailableFor = None always in AttributesMaker and just logging the value we've calculated
+    //This test should be un-ignored once we resume returning the calculated value
+
+    "return alertAvailableFor=membership for an active membership in payment failure" in {
+      skipped {
+        val expected = Some(ZuoraAttributes(
+          UserId = identityId,
+          Tier = Some("Supporter"),
+          RecurringContributionPaymentPlan = None,
+          MembershipJoinDate = Some(referenceDate),
+          AlertAvailableFor = Some("membership")
         )
-
-        val dynamoAttributes = DynamoAttributes(
-          UserId = testId,
-          Tier = None,
-          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-          MembershipJoinDate = None,
-          DigitalSubscriptionExpiryDate = None,
-          MembershipNumber = None,
-          AdFree = None,
-          TTLTimestamp = referenceDateAsDynamoTimestamp
         )
-
-        val expected = Some(
-          Attributes(
-            UserId = testId,
-            Tier = None,
-            RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-            MembershipJoinDate = None,
-            DigitalSubscriptionExpiryDate = None
-          )
-        )
-
-        val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), Some(dynamoAttributes))
-
-        attributes === expected
-      }
-
-      "still return Zuora attributes when the user is not in Dynamo" in {
-        val zuoraAttributes = ZuoraAttributes(
-          UserId = testId,
-          Tier = None,
-          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-          MembershipJoinDate = None,
-          DigitalSubscriptionExpiryDate = None
-        )
-
-        val expected = Some(
-          Attributes(
-            UserId = testId,
-            Tier = None,
-            RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-            MembershipJoinDate = None,
-            DigitalSubscriptionExpiryDate = None
-          )
-        )
-
-        val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), None)
-
-        attributes === expected
-      }
-
-      "return none if both Dynamo and Zuora attributes are none" in {
-        AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, None) === None
+        val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountSummaryWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
+        result must be_==(expected).await
       }
     }
   }
+
+
+  "attributes" should {
+    "return up to date Zuora attributes when they match the dynamo attributes" in {
+      val zuoraAttributes = ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None
+      )
+
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = None,
+        AdFree = None,
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), Some(dynamoAttributes))
+
+      attributes === expected
+    }
+
+    "still return Zuora attributes when the user is not in Dynamo" in {
+      val zuoraAttributes = ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), None)
+
+      attributes === expected
+    }
+
+    "return none if both Dynamo and Zuora attributes are none" in {
+      AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, None) === None
+    }
+
+  }
+
+  "alertAvailableFor" should {
+
+    "return false for a member with a zero balance" in {
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
+
+      result must be_==(false).await
+    }
+
+    "return false for a member with a failed payment more than 27 days ago" in {
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseStaleFailure)
+
+      result must be_==(false).await
+    }
+
+    "return false for a member with a balance but no failed payments" in {
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseNoFailures)
+
+      result must be_==(false).await
+    }
+
+    "return false for a member who pays via paypal" in {
+      def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
+
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponsePaypal)
+
+      result must be_==(false).await
+    }
+
+    "return true for for a member with a failed payment in the last 27 days" in {
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+
+      result must be_==(true).await
+    }
+
+    "return true for for a non-membership sub with a failed payment in the last 27 days too" in {
+      val result = AttributesMaker.alertAvailableFor(accountSummaryWithBalance, digipack, paymentMethodResponseRecentFailure)
+
+      result must be_==(true).await
+    }
+
+  }
+
 }
 

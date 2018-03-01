@@ -26,7 +26,8 @@ case class Attributes(
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String] = None,
-  AdFree: Option[Boolean] = None) {
+  AdFree: Option[Boolean] = None,
+  AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -48,7 +49,8 @@ case class ZuoraAttributes(
   Tier: Option[String] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None)
+  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  AlertAvailableFor: Option[String] = None)
 
 case class DynamoAttributes(
   UserId: String,
@@ -88,7 +90,8 @@ object Attributes {
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "membershipNumber").writeNullable[String] and
-      (__ \ "adFree").writeNullable[Boolean]
+      (__ \ "adFree").writeNullable[Boolean] and
+      (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("contentAccess", _.contentAccess)

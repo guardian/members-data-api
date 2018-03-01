@@ -32,7 +32,9 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         identityId = identityId,
         identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-        dynamoAttributeService = dynamoService
+        dynamoAttributeService = dynamoService,
+        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
+        accountSummaryForAccountId = request.touchpoint.zuoraRestService.getAccount
       )
     } else {
       val attributes: Future[Option[Attributes]] = dynamoService.get(identityId).map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))(executionContext)
@@ -51,7 +53,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             attributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,

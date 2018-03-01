@@ -17,8 +17,9 @@ import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
 import com.gu.zuora.rest.SimpleClient
+import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.soap.ClientWithFeatureSupplier
-import com.gu.zuora.{ZuoraRestService, ZuoraService}
+import com.gu.zuora.ZuoraSoapService
 import configuration.Config
 import loghandling.ZuoraRequestCounter
 import prodtest.FeatureToggleDataUpdatedOnSchedule
@@ -73,7 +74,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
   lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(dynamoClientBuilder.build(), dynamoBehaviourTable)
   lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
-  lazy val zuoraService = new ZuoraService(soapClient)
+  lazy val zuoraService = new ZuoraSoapService(soapClient)
   implicit lazy val simpleClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
   lazy val zuoraRestService = new ZuoraRestService[Future]()
   lazy val catalogService = new CatalogService[Future](productIds, simpleClient, Await.result(_, 10.seconds), stage)
