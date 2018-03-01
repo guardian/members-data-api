@@ -4,16 +4,17 @@ import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
-import com.gu.monitoring.SafeLogger
 import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
-import models.{Attributes, AccountWithSubscription, DynamoAttributes, ZuoraAttributes}
+import loghandling.LoggingField.LogFieldString
+import loghandling.LoggingWithLogstashFields
+import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.{EitherT, \/, \/-}
+import scalaz.\/
 import scalaz.syntax.std.boolean._
 
-class AttributesMaker {
+class AttributesMaker extends LoggingWithLogstashFields{
 
   def zuoraAttributes(
     identityId: String,
@@ -55,7 +56,9 @@ class AttributesMaker {
     }
 
     maybeAlertAvailable.getOrElse(Future.successful(None)) map { maybeAlert =>
-      maybeAlert map { alert => SafeLogger.info(s"User $identityId has an alert available: $alert") }
+      def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
+
+      maybeAlert foreach { alert => logInfoWithCustomFields(s"User $identityId has an alert available: $alert", customFields(identityId, alert)) }
 
       hasAttributableProduct.option {
         val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
