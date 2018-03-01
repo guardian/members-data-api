@@ -192,7 +192,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         case \/-(_) =>
           val latency = stopWatch.elapsed
           val zuoraConcurrencyCount = ZuoraRequestCounter.get
-          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identityId" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
+          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identity_id" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
           logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
       }
     }.onFailure {
