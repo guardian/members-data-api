@@ -34,7 +34,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       attributes
     }
 
-    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureResult: Future[Disjunction[String, R]], default: R, identityId: String): Future[Disjunction[String, R]] = {
+    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureResult: Future[Disjunction[String, R]], default: R): Future[Disjunction[String, R]] = {
       if(shouldCallFunction) {
         withTimer(whichCall, futureResult, identityId)
       } else Future.successful(\/.right {
@@ -46,8 +46,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       accountIds = queryToAccountIds(accounts)
-      accountSummaries <- EitherT[Future, String, List[AccountSummary]](getResultIf(accountIds.nonEmpty, "ZuoraGetAccountSummaries", getAccountSummaries(accountIds, identityId, accountSummaryForAccountId), Nil, identityId))
-      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accountSummaries.nonEmpty, "ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), Nil, identityId))
+      accountSummaries <- EitherT[Future, String, List[AccountSummary]](getResultIf(accountIds.nonEmpty, "ZuoraGetAccountSummaries", getAccountSummaries(accountIds, identityId, accountSummaryForAccountId), Nil))
+      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accountSummaries.nonEmpty, "ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), Nil))
     } yield {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }

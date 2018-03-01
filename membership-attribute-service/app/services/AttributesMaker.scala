@@ -13,6 +13,7 @@ import org.joda.time.{DateTime, LocalDate}
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
+import services.PaymentFailureAlerter._
 
 class AttributesMaker extends LoggingWithLogstashFields{
 
@@ -106,34 +107,6 @@ class AttributesMaker extends LoggingWithLogstashFields{
         ))
       case (None, _) => None
     }
-  }
-
-  def alertAvailableFor(
-    accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
-    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
-    )(implicit ec: ExecutionContext): Future[Boolean] = {
-
-    def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
-
-    val stillFreshInDays = 27
-    def recentEnough(lastTransationDateTime: DateTime) = lastTransationDateTime.plusDays(stillFreshInDays).isAfterNow
-
-    val userInPaymentFailure: Future[\/[String, Boolean]] = {
-      if(accountSummary.balance > 0 && accountSummary.defaultPaymentMethod.isDefined) {
-        val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(accountSummary.defaultPaymentMethod.get.id)
-
-        eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
-          maybePaymentMethod.map { pm: PaymentMethodResponse =>
-            creditCard(pm) &&
-              pm.numConsecutiveFailures > 0 &&
-              recentEnough(pm.lastTransactionDateTime)
-          }
-        }
-      }
-      else Future.successful(\/.right(false))
-    }
-
-    userInPaymentFailure map (_.getOrElse(false))
   }
 }
 
