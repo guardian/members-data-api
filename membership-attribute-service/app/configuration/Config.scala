@@ -4,7 +4,7 @@ import java.time.Duration
 
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.sqs.AmazonSQSAsyncClientBuilder
-import com.getsentry.raven.dsn.Dsn
+import io.sentry.dsn.Dsn
 import com.gu.aws.CredentialsProvider
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
@@ -24,7 +24,7 @@ object Config {
 
   val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val useFixtures = config.getBoolean("use-fixtures")
-  lazy val sentryDsn = Try(new Dsn(config.getString("sentry.dsn")))
+  lazy val sentryDsn = Try(config.getString("sentry.dsn")).toOption
 
   object AWS {
     val region = Regions.EU_WEST_1
