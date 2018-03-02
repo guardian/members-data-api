@@ -36,9 +36,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       attributes
     }
 
-    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureResult: Future[Disjunction[String, R]], default: R, identityId: String): Future[Disjunction[String, R]] = {
+    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureToExecute: () => Future[Disjunction[String, R]], default: R, identityId: String): Future[Disjunction[String, R]] = {
       if(shouldCallFunction) {
-        withTimer(whichCall, futureResult, identityId)
+        withTimer(whichCall, futureToExecute, identityId)
       } else Future.successful(\/.right {
         log.info(s"User with identityId $identityId has no accountIds/account summaries and so $whichCall is not needed.")
         default
@@ -46,8 +46,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
-      accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
-      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
+      accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", () => zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
+      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
     } yield {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
@@ -182,10 +182,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
   }
 
-  private def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]], identityId: String): Future[Disjunction[String, R]] = {
+  private def withTimer[R](whichCall: String, executeFuture: () => Future[Disjunction[String, R]], identityId: String): Future[Disjunction[String, R]] = {
     import loghandling.StopWatch
     val stopWatch = new StopWatch
 
+    val futureResult = executeFuture()
     futureResult.map { disjunction: Disjunction[String, R] =>
       disjunction match {
         case -\/(message) => log.warn(s"$whichCall failed with: $message")
