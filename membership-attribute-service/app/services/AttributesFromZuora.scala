@@ -1,15 +1,18 @@
 package services
+import com.gu.i18n.Currency
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse, QueryResponse}
+import com.gu.zuora.rest.ZuoraRestService
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
-import models.{Attributes, AccountWithSubscription, DynamoAttributes, ZuoraAttributes}
+import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
+
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
@@ -20,9 +23,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
   def getAttributes(
      identityId: String,
-     identityIdToAccountIds: String => Future[String \/ QueryResponse],
+     identityIdToAccountIds: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-     accountSummaryForAccountId: AccountId => Future[\/[String, AccountSummary]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
      forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
@@ -44,10 +46,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
-      accounts <- EitherT[Future, String, QueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
-      accountIds = queryToAccountIds(accounts)
-      accountSummaries <- EitherT[Future, String, List[AccountSummary]](getResultIf(accountIds.nonEmpty, "ZuoraGetAccountSummaries", getAccountSummaries(accountIds, identityId, accountSummaryForAccountId), Nil, identityId))
-      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accountSummaries.nonEmpty, "ZuoraGetSubscriptions", getSubscriptions(accountSummaries, identityId, subscriptionsForAccountId), Nil, identityId))
+      accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
+      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
     } yield {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
@@ -59,7 +59,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         }
       }
 
-    def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]) = {
+    def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
           case e: Throwable =>
@@ -70,7 +70,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     //return what we know from Dynamo if Zuora returns an error
-    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map {DynamoAttributes.asAttributes(_)})}
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map DynamoAttributes.asAttributes)}
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
@@ -92,7 +92,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
     def ttlUpdateRequired(currentExpiry: DateTime) = twoWeekExpiry.isAfter(currentExpiry.plusDays(1))
     def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry match {
-      case Some(expiry) if (ttlUpdateRequired(expiry)) =>
+      case Some(expiry) if ttlUpdateRequired(expiry) =>
         log.info (s"TTL update required for user $identityId with current expiry $expiry. New expiry is $twoWeekExpiry.")
         twoWeekExpiry
       case Some(expiry) =>
@@ -141,16 +141,16 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
   }
 
   def getSubscriptions(
-    accountSummaries: List[AccountSummary],
+    getAccountsResponse: GetAccountsQueryResponse,
     identityId: String,
     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[AccountWithSubscription]]] = {
 
-    def subWithAccount(accountSummary: AccountSummary)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscription]] = subscriptionsForAccountId(accountSummary.id)(anyPlanReads) map { maybeSub =>
-       maybeSub map {subList => AccountWithSubscription(accountSummary, subList.headOption)}
+    def subWithAccount(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscription]] = subscriptionsForAccountId(account.Id)(anyPlanReads) map { maybeSub =>
+       maybeSub map {subList => AccountWithSubscription(account, subList.headOption)}
     }
 
-    val maybeSubs: Future[Disjunction[String, List[AccountWithSubscription]]] = accountSummaries.traverse[Future, Disjunction[String, AccountWithSubscription]](summary => {
-      subWithAccount(summary)(anyPlanReads)
+    val maybeSubs: Future[Disjunction[String, List[AccountWithSubscription]]] = getAccountsResponse.records.traverse[Future, Disjunction[String, AccountWithSubscription]](accountObject => {
+      subWithAccount(accountObject)(anyPlanReads)
     }).map(_.sequenceU)
 
     maybeSubs.map {
@@ -221,12 +221,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     dynamoAndZuoraAgree
   }
 
-  def queryToAccountIds(response: QueryResponse): List[AccountId] =  response.records.map(_.Id)
+  def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] =  response.records.map(_.Id)
 
-  def zuoraAccountsQuery(identityId: String, identityIdToAccountIds: String => Future[String \/ QueryResponse]): Future[Disjunction[String, QueryResponse]] =
+  def zuoraAccountsQuery(identityId: String, identityIdToAccountIds: String => Future[String \/ GetAccountsQueryResponse]): Future[Disjunction[String, GetAccountsQueryResponse]] =
     identityIdToAccountIds(identityId).map {
       _.leftMap { error =>
-        log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: ${error}")
+        log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: $error")
         s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."
     }
   }
