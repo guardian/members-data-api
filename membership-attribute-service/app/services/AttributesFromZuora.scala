@@ -1,12 +1,10 @@
 package services
-import com.gu.i18n.Currency
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -14,10 +12,11 @@ import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttri
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
+import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
 
@@ -36,9 +35,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       attributes
     }
 
-    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureResult: Future[Disjunction[String, R]], default: R, identityId: String): Future[Disjunction[String, R]] = {
+    def getResultIf[R](shouldCallFunction: Boolean, whichCall: String, futureToExecute: () => Future[Disjunction[String, R]], default: R, identityId: String): Future[Disjunction[String, R]] = {
       if(shouldCallFunction) {
-        withTimer(whichCall, futureResult, identityId)
+        withTimer(whichCall, futureToExecute, identityId)
       } else Future.successful(\/.right {
         log.info(s"User with identityId $identityId has no accountIds/account summaries and so $whichCall is not needed.")
         default
@@ -46,8 +45,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
-      accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
-      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
+      accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", () => zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
+      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
     } yield {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
@@ -182,21 +181,19 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
   }
 
-  private def withTimer[R](whichCall: String, futureResult: Future[Disjunction[String, R]], identityId: String): Future[Disjunction[String, R]] = {
+  private def withTimer[R](whichCall: String, executeFuture: () => Future[Disjunction[String, R]], identityId: String): Future[Disjunction[String, R]] = {
     import loghandling.StopWatch
     val stopWatch = new StopWatch
 
-    futureResult.map { disjunction: Disjunction[String, R] =>
-      disjunction match {
-        case -\/(message) => log.warn(s"$whichCall failed with: $message")
-        case \/-(_) =>
-          val latency = stopWatch.elapsed
-          val zuoraConcurrencyCount = ZuoraRequestCounter.get
-          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identity_id" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
-          logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
-      }
-    }.onFailure {
-      case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
+    val futureResult = executeFuture()
+    futureResult.onComplete {
+      case Success(-\/(message)) => log.warn(s"$whichCall failed with: $message")
+      case Success(\/-(_)) =>
+        val latency = stopWatch.elapsed
+        val zuoraConcurrencyCount = ZuoraRequestCounter.get
+        val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identity_id" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
+        logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
+      case Failure(e) => log.error(s"Future failed when attempting $whichCall.", e)
     }
     futureResult
   }
