@@ -1,12 +1,10 @@
 package services
-import com.gu.i18n.Currency
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -14,10 +12,11 @@ import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttri
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, Disjunction, EitherT, \/, \/-, _}
+import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
 
@@ -187,17 +186,14 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     val stopWatch = new StopWatch
 
     val futureResult = executeFuture()
-    futureResult.map { disjunction: Disjunction[String, R] =>
-      disjunction match {
-        case -\/(message) => log.warn(s"$whichCall failed with: $message")
-        case \/-(_) =>
-          val latency = stopWatch.elapsed
-          val zuoraConcurrencyCount = ZuoraRequestCounter.get
-          val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identity_id" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
-          logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
-      }
-    }.onFailure {
-      case e: Throwable => log.error(s"Future failed when attempting $whichCall.", e)
+    futureResult.onComplete {
+      case Success(-\/(message)) => log.warn(s"$whichCall failed with: $message")
+      case Success(\/-(_)) =>
+        val latency = stopWatch.elapsed
+        val zuoraConcurrencyCount = ZuoraRequestCounter.get
+        val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identity_id" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
+        logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
+      case Failure(e) => log.error(s"Future failed when attempting $whichCall.", e)
     }
     futureResult
   }
