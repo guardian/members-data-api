@@ -1,6 +1,9 @@
 package services
 
+import java.util.Locale
+
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
+import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
@@ -59,8 +62,31 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       }
 
     }
-    "membershipAlert" in {
-      ok
+    "membershipAlertText" should {
+      "not return any text usually" in {
+        val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
+
+        result must be_==(None).await
+      }
+
+      "return none if one of the zuora calls returns a left" in {
+
+      }
+
+      "return a message for a member who is in payment failure" in {
+        val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+
+        // DateTime.now().minusDays(1)
+        val attemptDateTime = DateTime.now().minusDays(1)
+
+        val formatter = DateTimeFormat.forPattern("dd MMMM yyyy").withLocale(Locale.ENGLISH)
+        val whatami = attemptDateTime.toString(formatter)
+
+        val expectedActionText = s"Our attempt to take payment for your membership failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
+
+        result must be_==(Some(expectedActionText)).await
+      }
+
     }
 
   }
