@@ -4,7 +4,8 @@ import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
-import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.api.{StripeAUMembershipGateway, StripeUKMembershipGateway}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
@@ -13,7 +14,6 @@ import org.joda.time.{DateTime, LocalDate}
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
-import services.PaymentFailureAlerter._
 
 class AttributesMaker extends LoggingWithLogstashFields{
 
@@ -46,7 +46,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
 
-    val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(subWithAccount => subWithAccount.subscription == Some(sub)) }
+    val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(_.subscription.contains(sub)) }
 
     val maybeAlertAvailable = maybeMembershipAndAccount flatMap { subAndAccount: AccountWithSubscription => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
         alertAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { alertAvailable: Boolean =>
@@ -107,6 +107,35 @@ class AttributesMaker extends LoggingWithLogstashFields{
         ))
       case (None, _) => None
     }
+  }
+
+  def alertAvailableFor(
+    account: AccountObject, subscription: Subscription[AnyPlan],
+    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
+  )(implicit ec: ExecutionContext): Future[Boolean] = {
+
+    def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
+
+    val stillFreshInDays = 27
+    def recentEnough(lastTransationDateTime: DateTime) = lastTransationDateTime.plusDays(stillFreshInDays).isAfterNow
+    val isActionablePaymentGateway = account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway)
+
+    val userInPaymentFailure: Future[\/[String, Boolean]] = {
+      if(account.Balance > 0 && account.DefaultPaymentMethodId.isDefined && isActionablePaymentGateway) {
+        val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(account.DefaultPaymentMethodId.get)
+
+        eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
+          maybePaymentMethod.map { pm: PaymentMethodResponse =>
+            creditCard(pm) &&
+              pm.numConsecutiveFailures > 0 &&
+              recentEnough(pm.lastTransactionDateTime)
+          }
+        }
+      }
+      else Future.successful(\/.right(false))
+    }
+
+    userInPaymentFailure map (_.getOrElse(false))
   }
 }
 

@@ -33,8 +33,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
         dynamoAttributeService = dynamoService,
-        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
-        accountSummaryForAccountId = request.touchpoint.zuoraRestService.getAccount
+        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)
       )
     } else {
       val attributes: Future[Option[Attributes]] = dynamoService.get(identityId).map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))(executionContext)
