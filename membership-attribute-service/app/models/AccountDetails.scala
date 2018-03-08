@@ -57,7 +57,6 @@ object AccountDetails {
         )
       }
 
-
       Json.obj(
         "joinDate" -> paymentDetails.startDate,
         "optIn" -> !paymentDetails.pendingCancellation,

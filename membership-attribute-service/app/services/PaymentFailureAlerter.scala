@@ -29,7 +29,7 @@ object PaymentFailureAlerter {
                           paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
-      val formatter = DateTimeFormat.forPattern("dd MMMM yyyy").withLocale(Locale.ENGLISH)
+      val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
       val paymentMethodLatestDateFormatted: Future[String \/ String] = accountSummary.defaultPaymentMethod.map(_.id) match {
         case Some(id) => {
           val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
@@ -40,7 +40,8 @@ object PaymentFailureAlerter {
 
       paymentMethodLatestDateFormatted.map { formattedDateDisjunction: Disjunction[String, String] =>
         val alertTextWithDate = formattedDateDisjunction map { date: String =>
-          s"Our attempt to take payment for your membership failed on ${date}. Please check below that your card details are up to date."
+          val productName = subscription.plan.name
+          s"Our attempt to take payment for your $productName membership failed on $date. Please check below that your card details are up to date."
         }
         alertTextWithDate.toOption
       }

@@ -39,8 +39,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)
-        val formatter = DateTimeFormat.forPattern("dd MMMM yyyy").withLocale(Locale.ENGLISH)
-        val expectedActionText = s"Our attempt to take payment for your membership failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
+        val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
+        val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
 
         result must be_==(Some(expectedActionText)).await
       }
