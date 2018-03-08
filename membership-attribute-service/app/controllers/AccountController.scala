@@ -67,7 +67,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
       val cancellationSteps = for {
         _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
-        _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, cancellationReason = "Customer", userCancellationReason = reason)).leftMap(message => s"Error while updating cancellation reason: $message")
+        _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
         cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error while cancelling subscription: $message")
       } yield cancelResult
 
