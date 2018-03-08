@@ -49,7 +49,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
     val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(_.subscription.contains(sub)) }
 
     val maybeAlertAvailable = maybeMembershipAndAccount flatMap { subAndAccount: AccountWithSubscription => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
-        alertAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { alertAvailable: Boolean =>
+        PaymentFailureAlerter.alertAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { alertAvailable: Boolean =>
           if(alertAvailable) Some("membership")
           else None
         }
@@ -107,35 +107,6 @@ class AttributesMaker extends LoggingWithLogstashFields{
         ))
       case (None, _) => None
     }
-  }
-
-  def alertAvailableFor(
-    account: AccountObject, subscription: Subscription[AnyPlan],
-    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
-  )(implicit ec: ExecutionContext): Future[Boolean] = {
-
-    def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
-
-    val stillFreshInDays = 27
-    def recentEnough(lastTransationDateTime: DateTime) = lastTransationDateTime.plusDays(stillFreshInDays).isAfterNow
-    val isActionablePaymentGateway = account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway)
-
-    val userInPaymentFailure: Future[\/[String, Boolean]] = {
-      if(account.Balance > 0 && account.DefaultPaymentMethodId.isDefined && isActionablePaymentGateway) {
-        val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(account.DefaultPaymentMethodId.get)
-
-        eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
-          maybePaymentMethod.map { pm: PaymentMethodResponse =>
-            creditCard(pm) &&
-              pm.numConsecutiveFailures > 0 &&
-              recentEnough(pm.lastTransactionDateTime)
-          }
-        }
-      }
-      else Future.successful(\/.right(false))
-    }
-
-    userInPaymentFailure map (_.getOrElse(false))
   }
 }
 

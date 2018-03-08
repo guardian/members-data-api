@@ -7,6 +7,7 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
+import testdata.AccountObjectTestData.{accountObjectWithBalance, accountObjectWithZeroBalance}
 import testdata.AccountSummaryTestData.{accountSummaryWithBalance, accountSummaryWithZeroBalance}
 import testdata.SubscriptionTestData
 
@@ -20,6 +21,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
   def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
   def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
   def paymentMethodLeftResponse(id: PaymentMethodId) = Future.successful(\/.left("Something's gone wrong!"))
+  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
 
   "PaymentFailureAlerterTest" should {
     "membershipAlertText" should {
@@ -43,6 +45,48 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
 
         result must be_==(Some(expectedActionText)).await
+      }
+
+    }
+
+    "alertAvailableFor" should {
+
+      "return false for a member with a zero balance" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithZeroBalance, membership, paymentMethodResponseNoFailures)
+
+        result must be_==(false).await
+      }
+
+      "return false for a member with a failed payment more than 27 days ago" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseStaleFailure)
+
+        result must be_==(false).await
+      }
+
+      "return false for a member with a balance but no failed payments" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseNoFailures)
+
+        result must be_==(false).await
+      }
+
+      "return false for a member who pays via paypal" in {
+        def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
+
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal)
+
+        result must be_==(false).await
+      }
+
+      "return true for for a member with a failed payment in the last 27 days" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseRecentFailure)
+
+        result must be_==(true).await
+      }
+
+      "return true for for a non-membership sub with a failed payment in the last 27 days too" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, digipack, paymentMethodResponseRecentFailure)
+
+        result must be_==(true).await
       }
 
     }

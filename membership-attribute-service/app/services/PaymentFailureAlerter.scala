@@ -4,8 +4,9 @@ import java.util.Locale
 
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.zuora.api.RegionalStripeGateways
+import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, PaymentMethodId, PaymentMethodResponse}
+import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -15,7 +16,7 @@ import scalaz.{Disjunction, \/}
 
 object PaymentFailureAlerter {
 
-  def accountObject(accountSummary: AccountSummary) =
+  private def accountObject(accountSummary: AccountSummary) =
     AccountObject(
       Id = accountSummary.id,
       Balance = accountSummary.balance,
@@ -47,9 +48,38 @@ object PaymentFailureAlerter {
       }
     }
 
-    AttributesMaker.alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap  { shouldShowAlert: Boolean =>
+    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap  { shouldShowAlert: Boolean =>
       expectedAlertText.map { someText => shouldShowAlert.option (someText).flatten }
     }
 
+  }
+
+  def alertAvailableFor(
+    account: AccountObject, subscription: Subscription[AnyPlan],
+    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
+  )(implicit ec: ExecutionContext): Future[Boolean] = {
+
+    def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
+
+    val stillFreshInDays = 27
+    def recentEnough(lastTransationDateTime: DateTime) = lastTransationDateTime.plusDays(stillFreshInDays).isAfterNow
+    val isActionablePaymentGateway = account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway)
+
+    val userInPaymentFailure: Future[\/[String, Boolean]] = {
+      if(account.Balance > 0 && account.DefaultPaymentMethodId.isDefined && isActionablePaymentGateway) {
+        val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(account.DefaultPaymentMethodId.get)
+
+        eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
+          maybePaymentMethod.map { pm: PaymentMethodResponse =>
+            creditCard(pm) &&
+              pm.numConsecutiveFailures > 0 &&
+              recentEnough(pm.lastTransactionDateTime)
+          }
+        }
+      }
+      else Future.successful(\/.right(false))
+    }
+
+    userInPaymentFailure map (_.getOrElse(false))
   }
 }
