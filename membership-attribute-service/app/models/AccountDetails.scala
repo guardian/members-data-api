@@ -15,14 +15,21 @@ object AccountDetails {
       val paymentDetails = details._2
       val stripePublicKey = details._3
       val membershipAlertText = details._4
-      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails, stripePublicKey, membershipAlertText: Option[String]))
+
+      val accountJsonObj = memberDetails(contact, paymentDetails) ++ toJson(paymentDetails, stripePublicKey)
+      val accountWithAlertJsonObj = membershipAlertText match {
+        case Some(text) => accountJsonObj ++ Json.obj("alertText" -> text)
+        case None => accountJsonObj
+      }
+
+      Ok(accountWithAlertJsonObj)
     }
 
     private def memberDetails(contact: Contact, paymentDetails: PaymentDetails) =
       Json.obj("tier" -> paymentDetails.plan.name, "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)) ++
         contact.regNumber.fold(Json.obj())({m => Json.obj("regNumber" -> m)})
 
-    private def toJson(paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String]): JsObject = {
+    private def toJson(paymentDetails: PaymentDetails, stripePublicKey: String): JsObject = {
 
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
@@ -50,7 +57,6 @@ object AccountDetails {
         )
       }
 
-      val maybeMembershipAlertText = Json.obj("alertText" -> membershipAlertText)
 
       Json.obj(
         "joinDate" -> paymentDetails.startDate,
@@ -70,7 +76,8 @@ object AccountDetails {
             "currency" -> paymentDetails.plan.price.currency.glyph,
             "interval" -> paymentDetails.plan.interval.mkString
           )))
-      ) ++ maybeMembershipAlertText
+      )
+
     }
   }
 }
