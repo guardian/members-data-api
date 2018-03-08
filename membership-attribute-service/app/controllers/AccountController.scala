@@ -2,6 +2,7 @@ package controllers
 import actions._
 import services.{AuthenticationService, IdentityAuthService}
 import services.AttributesMaker._
+import services.PaymentFailureAlerter._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
@@ -175,13 +176,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(tp.contactRepo.get(user))
       freeOrPaidSub <- OptionEither(tp.subService.either[F, P](contact).map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")))
-      details <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right))
       sub = freeOrPaidSub.fold(identity, identity)
       paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x") })
       upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(sub.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${sub.accountId}. Reason: $x") })
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
-    } yield (contact, upToDatePaymentDetails, stripeService.publicKey, None).toResult).run.run.map {
+      alertText <- EitherT.right(membershipAlertText(accountSummary, sub, id => tp.zuoraRestService.getPaymentMethod(id.get)))
+    } yield (contact, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         result
@@ -247,5 +248,4 @@ object OptionEither {
 
   def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
     apply(Future.successful(\/.right[String,Option[A]](x)))
-
 }

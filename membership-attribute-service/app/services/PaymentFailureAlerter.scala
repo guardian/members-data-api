@@ -32,7 +32,7 @@ object PaymentFailureAlerter {
       val formatter = DateTimeFormat.forPattern("dd MMMM yyyy").withLocale(Locale.ENGLISH)
       val paymentMethodLatestDateFormatted: Future[String \/ String] = accountSummary.defaultPaymentMethod.map(_.id) match {
         case Some(id) => {
-          val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method")) //todo do I want to do this??
+          val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
           paymentMethod map { paymentMethodDisjunction: Disjunction[String, PaymentMethodResponse] => paymentMethodDisjunction map { pm => pm.lastTransactionDateTime.toString(formatter)}}
         }
         case None => Future.successful(\/.left("No payment method id and so no payment method!"))
