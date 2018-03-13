@@ -11,7 +11,7 @@ import org.joda.time.format.DateTimeFormat
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.syntax.std.boolean._
-import scalaz.{Disjunction, \/}
+import scalaz.{Disjunction, EitherT, \/}
 
 
 object PaymentFailureAlerter {
@@ -32,20 +32,19 @@ object PaymentFailureAlerter {
 
     def expectedAlertText: Future[Option[String]] = {
       val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
-      val paymentMethodLatestDate: Future[String \/ DateTime] = accountSummary.defaultPaymentMethod.map(_.id) match {
-        case Some(id) => {
+
+      val maybePaymentMethodLatestDate: Future[Option[DateTime]] = accountSummary.defaultPaymentMethod.map(_.id) match {
+        case Some(id) =>
           val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
-          paymentMethod map { paymentMethodDisjunction: Disjunction[String, PaymentMethodResponse] => paymentMethodDisjunction map { pm => pm.lastTransactionDateTime}}
-        }
-        case None => Future.successful(\/.left("No payment method id and so no payment method!"))
+          paymentMethod.map (_.map ( _.lastTransactionDateTime).toOption)
+        case None => Future.successful(None)
       }
 
-      paymentMethodLatestDate.map { formattedDateDisjunction: Disjunction[String, DateTime] =>
-        val alertTextWithDate = formattedDateDisjunction map { date: DateTime =>
+      maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
+        maybeDate map { latestDate: DateTime =>
           val productName = subscription.plan.productName
-          s"Our attempt to take payment for your $productName membership failed on ${date.toString(formatter)}. Please check below that your card details are up to date."
+          s"Our attempt to take payment for your $productName membership failed on ${latestDate.toString(formatter)}. Please check below that your card details are up to date."
         }
-        alertTextWithDate.toOption
       }
     }
 
