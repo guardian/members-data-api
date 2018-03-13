@@ -6,15 +6,17 @@ import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, PaymentMethodId, PaymentMethodResponse}
+import loghandling.LoggingField.LogFieldString
+import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.syntax.std.boolean._
-import scalaz.{Disjunction, EitherT, \/}
+import scalaz.{Disjunction, \/}
 
 
-object PaymentFailureAlerter {
+object PaymentFailureAlerter extends LoggingWithLogstashFields {
 
   private def accountObject(accountSummary: AccountSummary) =
     AccountObject(
@@ -40,18 +42,30 @@ object PaymentFailureAlerter {
         case None => Future.successful(None)
       }
 
+      def customFields(identityId: Option[String], paymentFailedDate: String, productName: String): List[LogFieldString] = {
+        val logFields = List(LogFieldString("payment_failed_date", paymentFailedDate), LogFieldString("product_name", productName))
+        identityId match {
+          case Some(id) => LogFieldString("identity_id", id) :: logFields
+          case None => logFields
+        }
+      }
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
         maybeDate map { latestDate: DateTime =>
           val productName = subscription.plan.productName
-          s"Our attempt to take payment for your $productName membership failed on ${latestDate.toString(formatter)}. Please check below that your card details are up to date."
+          val membershipAlertText = s"Our attempt to take payment for your $productName membership failed on ${latestDate.toString(formatter)}. Please check below that your card details are up to date."
+          val fields = customFields(accountSummary.identityId, latestDate.toString(formatter), productName)
+          logInfoWithCustomFields(s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}", fields)
+          membershipAlertText
         }
       }
+      // For now, we want to just log and don't ever return the alertText
+      // Line below is very temporary and will be removed once we want alertText on calls to /mma-membership
+      Future.successful(None)
     }
 
-    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap  { shouldShowAlert: Boolean =>
+    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap { shouldShowAlert: Boolean =>
       expectedAlertText.map { someText => shouldShowAlert.option (someText).flatten }
     }
-
   }
 
   def alertAvailableFor(

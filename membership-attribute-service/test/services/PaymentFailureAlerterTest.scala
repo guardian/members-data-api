@@ -37,15 +37,29 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(None).await
       }
 
+      // We are currently never returning alertText on calls to /mma-membership
+      //This test should be un-ignored once we resume returning the alertText, if relevant.
       "return a message for a member who is in payment failure" in {
+        skipped {
+          val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+
+          val attemptDateTime = DateTime.now().minusDays(1)
+          val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
+          val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
+
+          result must be_==(Some(expectedActionText)).await
+        }
+      }
+
+      // Temporarily the expected behaviour - delete once we start returning alertText
+      "TEMPORARY - still not return alertText even if a member is payment failure" in {
         val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
-        val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
 
-        result must be_==(Some(expectedActionText)).await
-      }
+        result must be_==(None).await
+        }
 
     }
 
