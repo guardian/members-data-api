@@ -26,23 +26,24 @@ object PaymentFailureAlerter {
     )
 
 
-  def membershipAlertText(accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
-                          paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
+  def membershipAlertText(
+    accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
+    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
       val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
-      val paymentMethodLatestDateFormatted: Future[String \/ String] = accountSummary.defaultPaymentMethod.map(_.id) match {
+      val paymentMethodLatestDate: Future[String \/ DateTime] = accountSummary.defaultPaymentMethod.map(_.id) match {
         case Some(id) => {
           val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
-          paymentMethod map { paymentMethodDisjunction: Disjunction[String, PaymentMethodResponse] => paymentMethodDisjunction map { pm => pm.lastTransactionDateTime.toString(formatter)}}
+          paymentMethod map { paymentMethodDisjunction: Disjunction[String, PaymentMethodResponse] => paymentMethodDisjunction map { pm => pm.lastTransactionDateTime}}
         }
         case None => Future.successful(\/.left("No payment method id and so no payment method!"))
       }
 
-      paymentMethodLatestDateFormatted.map { formattedDateDisjunction: Disjunction[String, String] =>
-        val alertTextWithDate = formattedDateDisjunction map { date: String =>
-          val productName = subscription.plan.name
-          s"Our attempt to take payment for your $productName membership failed on $date. Please check below that your card details are up to date."
+      paymentMethodLatestDate.map { formattedDateDisjunction: Disjunction[String, DateTime] =>
+        val alertTextWithDate = formattedDateDisjunction map { date: DateTime =>
+          val productName = subscription.plan.productName
+          s"Our attempt to take payment for your $productName membership failed on ${date.toString(formatter)}. Please check below that your card details are up to date."
         }
         alertTextWithDate.toOption
       }

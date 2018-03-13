@@ -18,7 +18,7 @@ import components.TouchpointComponents
 import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
-import models.ApiError
+import models.{AccountDetails, ApiError}
 import models.ApiErrors._
 import org.joda.time.DateTime
 import play.api.mvc.{BaseController, ControllerComponents}
@@ -183,9 +183,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(sub.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${sub.accountId}. Reason: $x") })
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
-//      alertText <- OptionT(membershipAlertText(accountSummary, sub, getPaymentMethod).map(Option(_)))
-      alertText <- OptionEither.liftEither(membershipAlertText(accountSummary, sub, getPaymentMethod))
-    } yield (contact, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
+      alertText <- OptionEither.liftEitherOption(membershipAlertText(accountSummary, sub, getPaymentMethod))
+    } yield AccountDetails(contact, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         result
@@ -252,9 +251,9 @@ object OptionEither {
   def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
     apply(Future.successful(\/.right[String,Option[A]](x)))
 
-  def liftEither[A](x: Future[Option[A]])(implicit ex: ExecutionContext): OptionT[FutureEither, Option[A]] = {
-    apply(x map { y: Option[A] =>
-      \/.right[String, Option[Option[A]]](Some(y))
+  def liftEitherOption[A](future: Future[A])(implicit ex: ExecutionContext): OptionT[FutureEither, A] = {
+    apply(future map { value: A =>
+      \/.right[String, Option[A]](Some(value))
     })
   }
 
