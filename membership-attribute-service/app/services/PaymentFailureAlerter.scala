@@ -58,9 +58,6 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
           membershipAlertText
         }
       }
-      // For now, we want to just log and don't ever return the alertText
-      // Line below is very temporary and will be removed once we want alertText on calls to /mma-membership
-      Future.successful(None)
     }
 
     alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap { shouldShowAlert: Boolean =>
