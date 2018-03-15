@@ -204,47 +204,5 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
   }
 
-  "alertAvailableFor" should {
-
-    "return false for a member with a zero balance" in {
-      val result = AttributesMaker.alertAvailableFor(accountObjectWithZeroBalance, membership, paymentMethodResponseNoFailures)
-
-      result must be_==(false).await
-    }
-
-    "return false for a member with a failed payment more than 27 days ago" in {
-      val result = AttributesMaker.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseStaleFailure)
-
-      result must be_==(false).await
-    }
-
-    "return false for a member with a balance but no failed payments" in {
-      val result = AttributesMaker.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseNoFailures)
-
-      result must be_==(false).await
-    }
-
-    "return false for a member who pays via paypal" in {
-      def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
-
-      val result = AttributesMaker.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal)
-
-      result must be_==(false).await
-    }
-
-    "return true for for a member with a failed payment in the last 27 days" in {
-      val result = AttributesMaker.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseRecentFailure)
-
-      result must be_==(true).await
-    }
-
-    "return true for for a non-membership sub with a failed payment in the last 27 days too" in {
-      val result = AttributesMaker.alertAvailableFor(accountObjectWithBalance, digipack, paymentMethodResponseRecentFailure)
-
-      result must be_==(true).await
-    }
-
-  }
-
 }
 

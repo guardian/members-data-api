@@ -1,20 +1,26 @@
 package models
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
-import com.gu.salesforce._
-import com.gu.services.model._
+import com.gu.salesforce.{Contact, _}
+import com.gu.services.model.{PaymentDetails, _}
 import json.localDateWrites
 import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
+case class AccountDetails(contact: Contact, paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String])
+
 object AccountDetails {
 
-  implicit class ResultLike(details: (Contact, PaymentDetails, String)) {
+  implicit class ResultLike(accountDetails: AccountDetails) {
 
     def toResult = {
-      val contact = details._1
-      val paymentDetails = details._2
-      val stripePublicKey = details._3
-      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails, stripePublicKey))
+
+      val accountJsonObj = memberDetails(accountDetails.contact, accountDetails.paymentDetails) ++ toJson(accountDetails.paymentDetails, accountDetails.stripePublicKey)
+      val accountWithAlertJsonObj = accountDetails.membershipAlertText match {
+        case Some(text) => accountJsonObj ++ Json.obj("alertText" -> text)
+        case None => accountJsonObj
+      }
+
+      Ok(accountWithAlertJsonObj)
     }
 
     private def memberDetails(contact: Contact, paymentDetails: PaymentDetails) =
@@ -68,6 +74,7 @@ object AccountDetails {
             "interval" -> paymentDetails.plan.interval.mkString
           )))
       )
+
     }
   }
 }
