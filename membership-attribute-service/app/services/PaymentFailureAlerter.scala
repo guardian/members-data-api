@@ -31,7 +31,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
   def latestUnpaidInvoiceDate(invoices: List[Invoice]): Option[DateTime] = {
     implicit def latestFirstDateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter  _)
 
-    val unpaidInvoices = invoices.filter(invoice => invoice.balance > 0)
+    val unpaidInvoices = invoices.filter(invoice => invoice.balance > 0 && invoice.status == "Posted")
     val latestUnpaidInvoice = unpaidInvoices.sortBy(invoice => invoice.invoiceDate).headOption
 
     latestUnpaidInvoice.map (_.invoiceDate)

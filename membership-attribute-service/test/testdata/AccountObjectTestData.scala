@@ -38,7 +38,8 @@ object AccountSummaryTestData {
         id = InvoiceId("someid"),
         invoiceDate = DateTime.now().minusDays(14),
         dueDate = DateTime.now().minusDays(7),
-        balance = balance
+        balance = balance,
+        status = "Posted"
       )),
       currency = None,
       balance = balance,
