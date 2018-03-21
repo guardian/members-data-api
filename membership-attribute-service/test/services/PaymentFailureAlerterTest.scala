@@ -2,12 +2,12 @@ package services
 
 import java.util.Locale
 
-import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{Invoice, InvoiceId, PaymentMethodId, PaymentMethodResponse}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
-import testdata.AccountObjectTestData.{accountObjectWithBalance, accountObjectWithZeroBalance}
+import testdata.AccountObjectTestData._
 import testdata.AccountSummaryTestData.{accountSummaryWithBalance, accountSummaryWithZeroBalance}
 import testdata.SubscriptionTestData
 
@@ -57,8 +57,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(false).await
       }
 
-      "return false for a member with a failed payment more than 27 days ago" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseStaleFailure)
+      "return false for a member with last invoice more than 27 days ago" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalanceAndOldInvoice, membership, paymentMethodResponseStaleFailure)
 
         result must be_==(false).await
       }
@@ -77,7 +77,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(false).await
       }
 
-      "return true for for a member with a failed payment in the last 27 days" in {
+      "return true for for a member with a failed payment and an invoice in the last 27 days" in {
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseRecentFailure)
 
         result must be_==(true).await
@@ -89,7 +89,90 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(true).await
       }
 
+      "return false for for a cancelled membership with a failed payment in the last 27 days" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, cancelledMembership, paymentMethodResponseRecentFailure)
+
+        result must be_==(false).await
+      }
+
+      "return false for an active membership with a failed payment in the last 27 days but no invoice in the last 27 days" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalanceAndOldInvoice, membership, paymentMethodResponseRecentFailure)
+
+        result must be_==(false).await
+      }
+
+    }
+    "lastUnpaidInvoiceDate" should {
+      "return None if there's one invoice and it has no balance" in {
+        val freshNoBalanceInvoice = Invoice(
+          InvoiceId("someId"),
+          DateTime.now().minusDays(14),
+          DateTime.now().minusDays(7),
+          balance = 0
+        )
+
+        val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshNoBalanceInvoice))
+
+        lastUnpaidInvoiceDate.isEmpty
+      }
+
+      "return the invoice date if there is one invoice and it has a balance" in {
+        val invoiceDate = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+
+        val freshInvoiceWithABalance = Invoice(
+          InvoiceId("someId"),
+          invoiceDate,
+          DateTime.now().minusDays(7),
+          balance = 12.34
+        )
+        val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshInvoiceWithABalance))
+
+        lastUnpaidInvoiceDate === Some(invoiceDate)
+      }
+
+      "return the latest invoice date if there are two, both with a balance" in {
+        val invoiceDateLatest = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+        val invoiceDateOlder = DateTime.now().minusDays(21).withTimeAtStartOfDay()
+
+        val latestInvoiceWithABalance = Invoice(
+          InvoiceId("someId"),
+          invoiceDateLatest,
+          DateTime.now().minusDays(7),
+          balance = 12.34
+        )
+
+        val oldInvoiceWithABalance = Invoice(
+          InvoiceId("someId2"),
+          invoiceDateOlder,
+          DateTime.now().minusDays(14),
+          balance = 12.34
+        )
+        val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(latestInvoiceWithABalance, oldInvoiceWithABalance))
+
+        lastUnpaidInvoiceDate === Some(invoiceDateLatest)
+      }
     }
 
+    "return the latest unpaid invoice date if there is a more recent paid invoice too" in {
+      val invoiceDateLatest = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+      val invoiceDateOlder = DateTime.now().minusDays(21).withTimeAtStartOfDay()
+
+      val latestInvoiceWithNoBalance = Invoice(
+        InvoiceId("someId"),
+        invoiceDateLatest,
+        DateTime.now().minusDays(7),
+        balance = 0
+      )
+
+      val oldInvoiceWithABalance = Invoice(
+        InvoiceId("someId2"),
+        invoiceDateOlder,
+        DateTime.now().minusDays(14),
+        balance = 12.34
+      )
+      val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(latestInvoiceWithNoBalance, oldInvoiceWithABalance))
+
+      lastUnpaidInvoiceDate === Some(invoiceDateOlder)
+    }
   }
 }

@@ -5,7 +5,7 @@ import java.util.Locale
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime
@@ -24,8 +24,18 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
       Balance = accountSummary.balance,
       Currency = accountSummary.currency,
       DefaultPaymentMethodId = accountSummary.defaultPaymentMethod.map(_.id),
-      PaymentGateway = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry)
+      PaymentGateway = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry),
+      LastInvoiceDate = latestUnpaidInvoiceDate(accountSummary.invoices)
     )
+
+  def latestUnpaidInvoiceDate(invoices: List[Invoice]): Option[DateTime] = {
+    implicit def latestFirstDateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter  _)
+
+    val unpaidInvoices = invoices.filter(invoice => invoice.balance > 0)
+    val latestUnpaidInvoice = unpaidInvoices.sortBy(invoice => invoice.invoiceDate).headOption
+
+    latestUnpaidInvoice.map (_.invoiceDate)
+  }
 
 
   def membershipAlertText(
@@ -73,24 +83,31 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
 
     val stillFreshInDays = 27
-    def recentEnough(lastTransationDateTime: DateTime) = lastTransationDateTime.plusDays(stillFreshInDays).isAfterNow
+    def recentEnough(lastInvoiceDateTime: DateTime) = lastInvoiceDateTime.plusDays(stillFreshInDays).isAfterNow
     val isActionablePaymentGateway = account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway)
 
-    val userInPaymentFailure: Future[\/[String, Boolean]] = {
-      if(account.Balance > 0 && account.DefaultPaymentMethodId.isDefined && isActionablePaymentGateway) {
-        val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(account.DefaultPaymentMethodId.get)
-
-        eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
-          maybePaymentMethod.map { pm: PaymentMethodResponse =>
-            creditCard(pm) &&
-              pm.numConsecutiveFailures > 0 &&
-              recentEnough(pm.lastTransactionDateTime)
-          }
+    def hasFailureForCreditCardPaymentMethod(paymentMethodId: PaymentMethodId): Future[\/[String, Boolean]] = {
+      val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(paymentMethodId)
+      eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
+        maybePaymentMethod.map { pm: PaymentMethodResponse =>
+          creditCard(pm) && pm.numConsecutiveFailures > 0
         }
       }
-      else Future.successful(\/.right(false))
     }
 
-    userInPaymentFailure map (_.getOrElse(false))
+    val alertAvailable = for {
+      invoiceDate: DateTime <- account.LastInvoiceDate
+      paymentMethodId: PaymentMethodId <- account.DefaultPaymentMethodId
+    } yield {
+      if (account.Balance > 0 &&
+        isActionablePaymentGateway &&
+        !subscription.isCancelled &&
+        recentEnough(invoiceDate)
+      ) hasFailureForCreditCardPaymentMethod(paymentMethodId)
+
+      else Future.successful(\/.right(false))
+    }.map(_.getOrElse(false))
+
+    alertAvailable.getOrElse(Future.successful(false))
   }
 }
