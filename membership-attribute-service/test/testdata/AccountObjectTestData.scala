@@ -4,7 +4,8 @@ import com.gu.i18n.Country
 import com.gu.i18n.Currency.GBP
 import com.gu.zuora.api.StripeUKMembershipGateway
 import com.gu.memsub.Subscription.AccountId
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, BillToContact, DefaultPaymentMethod, PaymentMethodId, SoldToContact}
+import com.gu.zuora.rest.ZuoraRestService._
+import org.joda.time.DateTime
 
 
 object AccountObjectTestData {
@@ -12,8 +13,9 @@ object AccountObjectTestData {
   private val testPaymentMethodId = PaymentMethodId("testme")
   private val testIdentityId = "123"
   private val currency = GBP
-  val accountObjectWithBalance = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway))
-  val accountObjectWithZeroBalance = AccountObject(testAccountId, 0, Some(currency), Some(testPaymentMethodId))
+  val accountObjectWithBalanceAndOldInvoice = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(30)))
+  val accountObjectWithBalance = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(3)))
+  val accountObjectWithZeroBalance = AccountObject(testAccountId, 0, Some(currency), Some(testPaymentMethodId), None, None)
 }
 
 object AccountSummaryTestData {
@@ -32,6 +34,12 @@ object AccountSummaryTestData {
         lastName = "Bloggs",
         None, None, None, None, None, None
       ),
+      invoices = List(Invoice(
+        id = InvoiceId("someid"),
+        invoiceDate = DateTime.now().minusDays(14),
+        dueDate = DateTime.now().minusDays(7),
+        balance = balance
+      )),
       currency = None,
       balance = balance,
       defaultPaymentMethod = Some(DefaultPaymentMethod(paymentMethodId))
