@@ -108,7 +108,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
           InvoiceId("someId"),
           DateTime.now().minusDays(14),
           DateTime.now().minusDays(7),
-          balance = 0
+          balance = 0,
+          status = "Posted"
         )
 
         val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshNoBalanceInvoice))
@@ -123,7 +124,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
           InvoiceId("someId"),
           invoiceDate,
           DateTime.now().minusDays(7),
-          balance = 12.34
+          balance = 12.34,
+          status = "Posted"
         )
         val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshInvoiceWithABalance))
 
@@ -138,14 +140,16 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
           InvoiceId("someId"),
           invoiceDateLatest,
           DateTime.now().minusDays(7),
-          balance = 12.34
+          balance = 12.34,
+          status = "Posted"
         )
 
         val oldInvoiceWithABalance = Invoice(
           InvoiceId("someId2"),
           invoiceDateOlder,
           DateTime.now().minusDays(14),
-          balance = 12.34
+          balance = 12.34,
+          status = "Posted"
         )
         val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(latestInvoiceWithABalance, oldInvoiceWithABalance))
 
@@ -161,18 +165,35 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         InvoiceId("someId"),
         invoiceDateLatest,
         DateTime.now().minusDays(7),
-        balance = 0
+        balance = 0,
+        status = "Posted"
       )
 
       val oldInvoiceWithABalance = Invoice(
         InvoiceId("someId2"),
         invoiceDateOlder,
         DateTime.now().minusDays(14),
-        balance = 12.34
+        balance = 12.34,
+        status = "Posted"
       )
       val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(latestInvoiceWithNoBalance, oldInvoiceWithABalance))
 
       lastUnpaidInvoiceDate === Some(invoiceDateOlder)
+    }
+
+    "ignore an invoice that isn't posted" in {
+      val invoiceDate = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+
+      val freshDraftInvoiceWithABalance = Invoice(
+        InvoiceId("someId"),
+        invoiceDate,
+        DateTime.now().minusDays(7),
+        balance = 12.34,
+        status = "Draft"
+      )
+      val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshDraftInvoiceWithABalance))
+
+      lastUnpaidInvoiceDate === None
     }
   }
 }
