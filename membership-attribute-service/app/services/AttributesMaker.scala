@@ -72,10 +72,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
-          //First we will just log if we have determined we have a membership alert for the user. Once we assess the logs,
-          //we can start returning the value we've calculated
-          //AlertAvailableFor = maybeAlert
-          AlertAvailableFor = None
+          AlertAvailableFor = maybeAlert
         )
       }
     }
