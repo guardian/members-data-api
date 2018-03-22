@@ -118,17 +118,22 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       result must be_==(expected).await
     }
 
+    // We are currently returning alertAvailableFor = None always in AttributesMaker and just logging the value we've calculated
+    //This test should be un-ignored once we resume returning the calculated value
+
     "return alertAvailableFor=membership for an active membership in payment failure" in {
-      val expected = Some(ZuoraAttributes(
-        UserId = identityId,
-        Tier = Some("Supporter"),
-        RecurringContributionPaymentPlan = None,
-        MembershipJoinDate = Some(referenceDate),
-        AlertAvailableFor = Some("membership")
-      )
-      )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
-      result must be_==(expected).await
+      skipped {
+        val expected = Some(ZuoraAttributes(
+          UserId = identityId,
+          Tier = Some("Supporter"),
+          RecurringContributionPaymentPlan = None,
+          MembershipJoinDate = Some(referenceDate),
+          AlertAvailableFor = Some("membership")
+        )
+        )
+        val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
+        result must be_==(expected).await
+      }
     }
   }
 
