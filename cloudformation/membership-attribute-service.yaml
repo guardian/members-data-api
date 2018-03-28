@@ -190,17 +190,6 @@ Resources:
       Path: "/"
       Roles:
       - Ref: MembershipRole
-  GuardianAccessSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: SSH access from Guardian network
-      VpcId:
-        Ref: VpcId
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: '22'
-        ToPort: '22'
-        CidrIp: 77.91.248.0/21
   LoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
@@ -268,7 +257,6 @@ Resources:
         Ref: AmiId
       SecurityGroups:
       - Ref: InstanceSecurityGroup
-      - Ref: GuardianAccessSecurityGroup
       - Ref: VulnerabilityScanningSecurityGroup
       InstanceType:
         Ref: InstanceType
@@ -322,8 +310,12 @@ Resources:
     Properties:
       VpcId:
         Ref: VpcId
-      GroupDescription: Open up HTTP access to load balancer
+      GroupDescription: Open up HTTP access to load balancer, SSH to office
       SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp: 77.91.248.0/21
       - IpProtocol: tcp
         FromPort: '9000'
         ToPort: '9000'
