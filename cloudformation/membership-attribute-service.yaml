@@ -73,8 +73,6 @@ Mappings:
       InstanceName: PROD:membership-attribute-service
       DynamoDBTable: "Memb-Attributes-Tables-PROD-SupporterAttributesFallback"
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
-      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-PROD
-      DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
 
@@ -83,8 +81,6 @@ Mappings:
       InstanceName: CODE:membership-attribute-service
       DynamoDBTable: "Memb-Attributes-Tables-DEV-SupporterAttributesFallback"
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
-      DynamoDBBehaviourTable: arn:aws:dynamodb:*:*:table/MembershipBehaviour-DEV
-      DynamoDBBehaviourTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipBehaviour-UAT
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
 
@@ -138,26 +134,6 @@ Resources:
             Resource:
               Fn::ImportValue:
                 Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTableTestUsers ]
-            Effect: Allow
-          - Action:
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-            - dynamodb:BatchGetItem
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTable ]
-            Effect: Allow
-          - Action:
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-            - dynamodb:BatchGetItem
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBBehaviourTableTestUsers ]
             Effect: Allow
           - Action:
             - dynamodb:GetItem
