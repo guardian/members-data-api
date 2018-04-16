@@ -42,17 +42,13 @@ class MyComponents(context: Context)
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(attributesFromZuora, commonActions, controllerComponents),
-    new AccountController(commonActions, controllerComponents),
-    new BehaviourController(commonActions, controllerComponents)
+    new AccountController(commonActions, controllerComponents)
   )
 
   val regularCorsPaths = Seq(
     "/user-attributes/me/membership",
     "/user-attributes/me/features",
-    "/user-attributes/me",
-    "/user-behaviour/capture",
-    "/user-behaviour/remove",
-    "/abandoned-cart/email"
+    "/user-attributes/me"
   )
 
   val mmaPaths = Seq(

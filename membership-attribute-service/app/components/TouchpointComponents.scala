@@ -23,7 +23,6 @@ import com.gu.zuora.ZuoraSoapService
 import configuration.Config
 import loghandling.ZuoraRequestCounter
 import prodtest.FeatureToggleDataUpdatedOnSchedule
-import services.IdentityService.IdentityConfig
 import services._
 
 import scala.concurrent.duration._
@@ -34,12 +33,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")
 
-  lazy val identityConfig = new IdentityConfig {
-    override def token: String = environmentConf.getString("identity.marketingToken")
-    override def url: String = environmentConf.getString("identity.apiUrl")
-  }
-
-  lazy val identityService = new IdentityService(identityConfig, RequestRunners.futureRunner)
   lazy val digitalPackConf = environmentConf.getConfig(s"zuora.ratePlanIds.digitalpack")
   lazy val paperCatalogConf = environmentConf.getConfig(s"zuora.productIds.subscriptions")
   lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
@@ -72,7 +65,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
   lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
-  lazy val behaviourService: BehaviourService = new ScanamoBehaviourService(dynamoClientBuilder.build(), dynamoBehaviourTable)
   lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
   lazy val zuoraService = new ZuoraSoapService(soapClient)
   implicit lazy val simpleClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
