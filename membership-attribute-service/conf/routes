@@ -27,10 +27,6 @@ OPTIONS    /user-attributes/me/cancel-regular-contribution   controllers.Account
 POST       /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
 OPTIONS    /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
 
-POST       /user-behaviour/capture                          controllers.BehaviourController.capture
-POST       /user-behaviour/remove                           controllers.BehaviourController.remove
-POST       /abandoned-cart/email                            controllers.BehaviourController.sendCartReminderEmail
-
 #The endpoint below will replace /user-attributes/me/membership in the long term
 GET        /user-attributes/me                              controllers.AttributeController.attributes
 
