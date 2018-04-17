@@ -61,8 +61,6 @@ object Config {
     supportsCredentials = true
   )
 
-  val abandonedCartEmailQueue = config.getString("abandoned.cart.email.queue")
-
   object Logstash {
     private val param = Try{config.getConfig("param.logstash")}.toOption
     val stream = Try{param.map(_.getString("stream"))}.toOption.flatten
