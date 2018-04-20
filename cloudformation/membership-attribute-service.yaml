@@ -16,23 +16,6 @@ Parameters:
     - m3.medium
     - m3.large
     - m3.xlarge
-    - m3.2xlarge
-    - c3.large
-    - c3.xlarge
-    - c3.2xlarge
-    - c3.4xlarge
-    - c3.8xlarge
-    - g2.2xlarge
-    - r3.large
-    - r3.xlarge
-    - r3.2xlarge
-    - r3.4xlarge
-    - r3.8xlarge
-    - i2.xlarge
-    - i2.2xlarge
-    - i2.4xlarge
-    - i2.8xlarge
-    - hs1.8xlarge
     ConstraintDescription: must be a valid EC2 instance type.
   MaxInstances:
     Description: Maximum number of instances. This should be (at least) double the
@@ -75,6 +58,9 @@ Mappings:
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
+      ReadableS3Resources:
+        - arn:aws:s3:::gu-membership-attribute-service-dist/*
+        - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/PROD/*
 
     CODE:
       NotificationAlarmPeriod: 1200
@@ -83,6 +69,9 @@ Mappings:
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
+      ReadableS3Resources:
+        - arn:aws:s3:::gu-membership-attribute-service-dist/*
+        - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/CODE/*
 
 Conditions:
   CreateProdMonitoring: !Equals [ !Ref Stage, PROD ]
@@ -104,12 +93,14 @@ Resources:
       - PolicyName: root
         PolicyDocument:
           Statement:
-          - Action: s3:GetObject
-            Resource: arn:aws:s3:::gu-membership-*/*
-            Effect: Allow
-          - Action: s3:GetObject
-            Resource: arn:aws:s3:::gu-reader-revenue-private/${Stack}/members-data-api/${Stage}/*
-            Effect: Allow
+          # Explicitly deny access to all S3 resources except for those defined in ReadableS3Resources
+          # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html#policy-eval-denyallow
+          - Effect: Deny
+            Action: s3:*
+            NotResource: !FindInMap [StageVariables, !Ref Stage, ReadableS3Resources]
+          - Effect: Allow
+            Action: s3:GetObject
+            Resource: !FindInMap [StageVariables, !Ref Stage, ReadableS3Resources]
           - Action: ec2:DescribeTags
             Resource: "*"
             Effect: Allow
@@ -159,7 +150,7 @@ Resources:
             Effect: Allow
       ManagedPolicyArns:
       - !Ref 'LoggingPolicy'
-      - 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+      - !Sub arn:aws:iam::${AWS::AccountId}:policy/guardian-ec2-role-for-ssm
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
