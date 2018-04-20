@@ -59,7 +59,7 @@ Mappings:
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       ReadableS3Resources:
-        - arn:aws:s3:::gu-membership-attribute-service-dist/PROD/*
+        - arn:aws:s3:::gu-membership-attribute-service-dist/membership/PROD/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/PROD/*
 
     CODE:
@@ -70,7 +70,7 @@ Mappings:
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       ReadableS3Resources:
-        - arn:aws:s3:::gu-membership-attribute-service-dist/CODE/*
+        - arn:aws:s3:::gu-membership-attribute-service-dist/membership/CODE/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/CODE/*
 
 Conditions:
