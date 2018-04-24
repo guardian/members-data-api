@@ -2,7 +2,7 @@ package services
 
 import java.util.Locale
 
-import com.gu.memsub.subsv2.Subscription
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, PaymentMethodId, PaymentMethodResponse}
@@ -37,8 +37,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     latestUnpaidInvoice.map (_.invoiceDate)
   }
 
-
-  def membershipAlertText(
+  def alertText(
     accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
     paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
 
@@ -52,6 +51,14 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
         case None => Future.successful(None)
       }
 
+      def getProductDescription(subscription: Subscription[SubscriptionPlan.AnyPlan]) = if (subscription.asMembership.isDefined) {
+        s"${subscription.plan.productName} membership"
+      } else if (subscription.asContribution.isDefined) {
+        "contribution"
+      } else { //TODO SEE WHAT GENERIC TEXT WE SHOULD RETURN HERE
+        subscription.plan.productName
+      }
+
       def customFields(identityId: Option[String], paymentFailedDate: String, productName: String): List[LogFieldString] = {
         val logFields = List(LogFieldString("payment_failed_date", paymentFailedDate), LogFieldString("product_name", productName))
         identityId match {
@@ -61,11 +68,13 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
       }
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
         maybeDate map { latestDate: DateTime =>
+          val productDescription = getProductDescription(subscription)
           val productName = subscription.plan.productName
-          val membershipAlertText = s"Our attempt to take payment for your $productName membership failed on ${latestDate.toString(formatter)}. Please check below that your card details are up to date."
+
           val fields = customFields(accountSummary.identityId, latestDate.toString(formatter), productName)
           logInfoWithCustomFields(s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}", fields)
-          membershipAlertText
+
+          s"Our attempt to take payment for your $productDescription failed on ${latestDate.toString(formatter)}. Please check below that your card details are up to date."
         }
       }
     }

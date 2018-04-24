@@ -183,7 +183,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(sub.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${sub.accountId}. Reason: $x") })
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
-      alertText <- OptionEither.liftEitherOption(membershipAlertText(accountSummary, sub, getPaymentMethod))
+      alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
     } yield AccountDetails(contact, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")

@@ -26,19 +26,19 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
   "PaymentFailureAlerterTest" should {
     "membershipAlertText" should {
       "not return any for a user with no balance" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
+        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
 
         result must be_==(None).await
       }
 
       "return none if one of the zuora calls returns a left" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithBalance, membership, paymentMethodLeftResponse)
+        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodLeftResponse)
 
         result must be_==(None).await
       }
 
       "return a message for a member who is in payment failure" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.membershipAlertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
