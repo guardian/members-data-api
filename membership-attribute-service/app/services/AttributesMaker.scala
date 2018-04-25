@@ -50,7 +50,8 @@ class AttributesMaker extends LoggingWithLogstashFields{
       val firstSubPerProduct = groupedAccountWithNonEmptySubs.collect { case (Some(k), sub :: _) => (k, sub) }
       val alertableSubs = firstSubPerProduct.filterKeys(product => alertableProducts.contains(product))
       val results = alertableSubs.mapValues { case (account, sub) => PaymentFailureAlerter.alertAvailableFor(account, sub, paymentMethodGetter) }
-      val futureList = results.map { case (product, res) => res.map(res1 => (product, res1)) }
+      val sortedResults = results.toList.sortWith { case ((product1, result1), (product2, result2)) => product1.name < product2.name }
+      val futureList = sortedResults.map { case (product, res) => res.map(res1 => (product, res1)) }
       Future.sequence(futureList).map(x => x.collect { case (product, true) => product.name })
     }
 
@@ -62,8 +63,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(_.subscription.contains(sub)) }
 
-    //TODO JUST FOR NOW RETURN IT AS A STRING CONCAT
-    val maybeAlertAvailable = alertsAvailable.map(x=> if (x.isEmpty) None else Some(x.mkString(", ")))
+    val maybeAlertAvailable = alertsAvailable.map(_.headOption)
 
     maybeAlertAvailable map { maybeAlert =>
       def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
