@@ -4,6 +4,7 @@ import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
+import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
@@ -13,6 +14,8 @@ import org.joda.time.LocalDate
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
+
+case class ProductData(product:Product, account: ZuoraRestService.AccountObject, subscription:Subscription[AnyPlan])
 
 class AttributesMaker extends LoggingWithLogstashFields{
 
@@ -41,18 +44,27 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
 
-    val accountsWithNonEmptySubs = subsWithAccounts.collect {case AccountWithSubscription(account, Some(subscription)) => (account,subscription)}
-    val groupedAccountWithNonEmptySubs = accountsWithNonEmptySubs.groupBy {
-      case (account, subscription) => getTopProduct(subscription)
+    val sortedProductData: List[ProductData] = {
+      val accountsWithNonEmptySubs = subsWithAccounts.collect { case AccountWithSubscription(account, Some(subscription)) => (account, subscription) }
+
+      val groupedByProduct = accountsWithNonEmptySubs.groupBy { case (account, subscription) => getTopProduct(subscription) }
+
+      val firstSubPerProduct = groupedByProduct.collect { case (Some(k), sub :: _) => (k, sub) }
+
+      val justAlertableProducts = firstSubPerProduct.filterKeys(product => alertableProducts.contains(product))
+
+      justAlertableProducts.map { case (product, (account, subscription)) => ProductData(product, account, subscription) }.toList.sortWith(_.product.name > _.product.name)
     }
 
-    val alertsAvailable = {
-      val firstSubPerProduct = groupedAccountWithNonEmptySubs.collect { case (Some(k), sub :: _) => (k, sub) }
-      val alertableSubs = firstSubPerProduct.filterKeys(product => alertableProducts.contains(product))
-      val results = alertableSubs.mapValues { case (account, sub) => PaymentFailureAlerter.alertAvailableFor(account, sub, paymentMethodGetter) }
-      val sortedResults = results.toList.sortWith { case ((product1, result1), (product2, result2)) => product1.name < product2.name }
-      val futureList = sortedResults.map { case (product, res) => res.map(res1 => (product, res1)) }
-      Future.sequence(futureList).map(x => x.collect { case (product, true) => product.name })
+    def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {
+      case Nil => Future.successful(None)
+
+      case headProductData :: productDataTail => {
+        PaymentFailureAlerter.alertAvailableFor(headProductData.account, headProductData.subscription, paymentMethodGetter).flatMap { alertAvailable =>
+          if (alertAvailable) Future.successful(Some(headProductData.product.name)) else findFirstAlert(productDataTail)
+        }
+
+      }
     }
 
     val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil).headOption         // Assumes only 1 membership per Identity customer
@@ -63,9 +75,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(_.subscription.contains(sub)) }
 
-    val maybeAlertAvailable = alertsAvailable.map(_.headOption)
-
-    maybeAlertAvailable map { maybeAlert =>
+    findFirstAlert(sortedProductData) map { maybeAlert =>
       def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
 
       maybeAlert foreach { alert => logInfoWithCustomFields(s"User $identityId has an alert available: $alert", customFields(identityId, alert)) }
