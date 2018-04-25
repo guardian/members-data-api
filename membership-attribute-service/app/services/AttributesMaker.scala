@@ -53,7 +53,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
       val justAlertableProducts = firstSubPerProduct.filterKeys(product => alertableProducts.contains(product))
 
-      justAlertableProducts.map { case (product, (account, subscription)) => ProductData(product, account, subscription) }.toList.sortWith(_.product.name > _.product.name)
+      justAlertableProducts.map { case (product, (account, subscription)) => ProductData(product, account, subscription) }.toList.sortWith(_.product.name < _.product.name)
     }
 
     def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {
