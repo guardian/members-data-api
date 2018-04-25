@@ -19,7 +19,6 @@ case class ProductData(product:Product, account: ZuoraRestService.AccountObject,
 
 class AttributesMaker extends LoggingWithLogstashFields{
 
-  val alertableProducts = List(Product.Membership, Product.Contribution)
 
   def zuoraAttributes(
     identityId: String,
@@ -51,9 +50,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
       val firstSubPerProduct = groupedByProduct.collect { case (Some(k), sub :: _) => (k, sub) }
 
-      val justAlertableProducts = firstSubPerProduct.filterKeys(product => alertableProducts.contains(product))
-
-      justAlertableProducts.map { case (product, (account, subscription)) => ProductData(product, account, subscription) }.toList.sortWith(_.product.name < _.product.name)
+      firstSubPerProduct.map { case (product, (account, subscription)) => ProductData(product, account, subscription) }.toList.sortWith(_.product.name < _.product.name)
     }
 
     def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {

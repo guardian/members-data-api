@@ -2,6 +2,7 @@ package services
 
 import java.util.Locale
 
+import com.gu.memsub.Product
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
@@ -55,7 +56,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
         s"${subscription.plan.productName} membership"
       } else if (subscription.asContribution.isDefined) {
         "contribution"
-      } else { //TODO SEE WHAT GENERIC TEXT WE SHOULD RETURN HERE
+      } else {
         subscription.plan.productName
       }
 
@@ -83,12 +84,14 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
       expectedAlertText.map { someText => shouldShowAlert.option (someText).flatten }
     }
   }
+  val alertableProducts = List(Product.Membership, Product.Contribution)
 
   def alertAvailableFor(
     account: AccountObject, subscription: Subscription[AnyPlan],
     paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
   )(implicit ec: ExecutionContext): Future[Boolean] = {
 
+    def isAlertableProduct =  alertableProducts.contains(subscription.plan.product)
     def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
 
     val stillFreshInDays = 27
@@ -108,7 +111,8 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
       invoiceDate: DateTime <- account.LastInvoiceDate
       paymentMethodId: PaymentMethodId <- account.DefaultPaymentMethodId
     } yield {
-      if (account.Balance > 0 &&
+      if (isAlertableProduct &&
+        account.Balance > 0 &&
         isActionablePaymentGateway &&
         !subscription.isCancelled &&
         recentEnough(invoiceDate)
