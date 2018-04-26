@@ -39,7 +39,8 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
   }
 
   def alertText(
-    accountSummary: AccountSummary, subscription: Subscription[AnyPlan],
+    accountSummary: AccountSummary,
+    subscription: Subscription[AnyPlan],
     paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {

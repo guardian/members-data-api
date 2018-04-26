@@ -47,6 +47,16 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(Some(expectedActionText)).await
       }
 
+      "return a message for a contributor who is in payment failure" in {
+        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, contributor, paymentMethodResponseRecentFailure)
+
+        val attemptDateTime = DateTime.now().minusDays(1)
+        val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
+        val expectedActionText = s"Our attempt to take payment for your contribution failed on ${attemptDateTime.toString(formatter)}. Please check below that your card details are up to date."
+
+        result must be_==(Some(expectedActionText)).await
+      }
+
     }
 
     "alertAvailableFor" should {
@@ -77,19 +87,19 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(false).await
       }
 
-      "return true for for a member with a failed payment and an invoice in the last 27 days" in {
+      "return true for a member with a failed payment and an invoice in the last 27 days" in {
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseRecentFailure)
 
         result must be_==(true).await
       }
 
-      "return true for for a non-membership sub with a failed payment in the last 27 days too" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, digipack, paymentMethodResponseRecentFailure)
+      "return true for a contributor with a failed payment and an invoice in the last 27 days" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, contributor, paymentMethodResponseRecentFailure)
 
         result must be_==(true).await
       }
 
-      "return false for for a cancelled membership with a failed payment in the last 27 days" in {
+      "return false for a cancelled membership with a failed payment in the last 27 days" in {
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, cancelledMembership, paymentMethodResponseRecentFailure)
 
         result must be_==(false).await
