@@ -130,6 +130,45 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
       result must be_==(expected).await
     }
+    "return alertAvailableFor=contribution for an active recurring contribution in payment failure" in {
+      val expected = Some(ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        AlertAvailableFor = Some("contribution")
+      )
+      )
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      result must be_==(expected).await
+    }
+
+    "return alertAvailableFor=contribution when there is an active contribution and membership, both in payment failure" in {
+      val expected = Some(ZuoraAttributes(
+        UserId = identityId,
+        Tier = Some("Supporter"),
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = Some(referenceDate),
+        AlertAvailableFor = Some("contribution")
+      )
+      )
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(membership)), AccountWithSubscription(accountObjectWithBalance, Some(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      result must be_==(expected).await
+    }
+
+    "still return alertAvailableFor=contribution when there is an active contribution and paper sub, both in payment failure" in {
+      val expected = Some(ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        AlertAvailableFor = Some("contribution")
+      )
+      )
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(sunday)), AccountWithSubscription(accountObjectWithBalance, Some(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      result must be_==(expected).await
+    }
+
   }
 
 
