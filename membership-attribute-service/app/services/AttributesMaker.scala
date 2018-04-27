@@ -10,7 +10,7 @@ import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.LocalDate
-
+import PaymentFailureAlerter.alertAvailableFor
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
@@ -44,23 +44,35 @@ class AttributesMaker extends LoggingWithLogstashFields{
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
 
     val sortedProductData: List[ProductData] = {
-      val accountsWithNonEmptySubs = subsWithAccounts.collect { case AccountWithSubscription(account, Some(subscription)) => (account, subscription) }
+      val accountsWithNonEmptySubs = subsWithAccounts.collect {
+        case AccountWithSubscription(account, Some(subscription)) => (account, subscription)
+      }
 
-      val groupedByProduct = accountsWithNonEmptySubs.groupBy { case (account, subscription) => getTopProduct(subscription) }
+      val groupedByProduct = accountsWithNonEmptySubs.groupBy {
+        case (account, subscription) => getTopProduct(subscription)
+      }
 
-      val firstSubPerProduct = groupedByProduct.collect { case (Some(k), sub :: _) => (k, sub) }
+      val firstSubPerProduct = groupedByProduct.collect {
+        case (Some(k), sub :: _) => (k, sub)
+      }
 
-      firstSubPerProduct.map { case (product, (account, subscription)) => ProductData(product, account, subscription) }.toList.sortWith(_.product.name < _.product.name)
+      firstSubPerProduct.map {
+        case (product, (account, subscription)) => ProductData(product, account, subscription)
+      }.toList.sortWith(_.product.name < _.product.name)
     }
 
     def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {
+
       case Nil => Future.successful(None)
 
       case headProductData :: productDataTail => {
-        PaymentFailureAlerter.alertAvailableFor(headProductData.account, headProductData.subscription, paymentMethodGetter).flatMap { alertAvailable =>
-          if (alertAvailable) Future.successful(Some(headProductData.product.name)) else findFirstAlert(productDataTail)
+        alertAvailableFor(headProductData.account, headProductData.subscription, paymentMethodGetter).flatMap { alertAvailable =>
+          if (alertAvailable) {
+            Future.successful(Some(headProductData.product.name))
+          } else {
+            findFirstAlert(productDataTail)
+          }
         }
-
       }
     }
 
