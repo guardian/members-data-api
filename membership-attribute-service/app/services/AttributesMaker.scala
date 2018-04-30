@@ -4,18 +4,21 @@ import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, Subscription}
 import com.gu.memsub.{Benefit, Product}
-import com.gu.zuora.api.{StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService
+import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
-import org.joda.time.{DateTime, LocalDate}
-
+import org.joda.time.LocalDate
+import PaymentFailureAlerter.alertAvailableFor
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
 
+case class ProductData(product:Product, account: ZuoraRestService.AccountObject, subscription:Subscription[AnyPlan])
+
 class AttributesMaker extends LoggingWithLogstashFields{
+
 
   def zuoraAttributes(
     identityId: String,
@@ -40,6 +43,39 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
 
+    val sortedProductData: List[ProductData] = {
+      val accountsWithNonEmptySubs = subsWithAccounts.collect {
+        case AccountWithSubscription(account, Some(subscription)) => (account, subscription)
+      }
+
+      val groupedByProduct = accountsWithNonEmptySubs.groupBy {
+        case (account, subscription) => getTopProduct(subscription)
+      }
+
+      val firstSubPerProduct = groupedByProduct.collect {
+        case (Some(k), sub :: _) => (k, sub)
+      }
+
+      firstSubPerProduct.map {
+        case (product, (account, subscription)) => ProductData(product, account, subscription)
+      }.toList.sortWith(_.product.name < _.product.name)
+    }
+
+    def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {
+
+      case Nil => Future.successful(None)
+
+      case headProductData :: productDataTail => {
+        alertAvailableFor(headProductData.account, headProductData.subscription, paymentMethodGetter).flatMap { alertAvailable =>
+          if (alertAvailable) {
+            Future.successful(Some(headProductData.product.name))
+          } else {
+            findFirstAlert(productDataTail)
+          }
+        }
+      }
+    }
+
     val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil).headOption         // Assumes only 1 membership per Identity customer
     val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption     // Assumes only 1 regular contribution per Identity customer
     val subsWhichIncludeDigitalPack = subs.filter(getAllBenefits(_).contains(Benefit.Digipack))
@@ -48,15 +84,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(_.subscription.contains(sub)) }
 
-    val maybeAlertAvailable = maybeMembershipAndAccount flatMap { subAndAccount: AccountWithSubscription => subAndAccount.subscription map { sub: Subscription[AnyPlan] =>
-        PaymentFailureAlerter.alertAvailableFor(subAndAccount.account, sub, paymentMethodGetter) map { alertAvailable: Boolean =>
-          if(alertAvailable) Some("membership")
-          else None
-        }
-      }
-    }
-
-    maybeAlertAvailable.getOrElse(Future.successful(None)) map { maybeAlert =>
+    findFirstAlert(sortedProductData) map { maybeAlert =>
       def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
 
       maybeAlert foreach { alert => logInfoWithCustomFields(s"User $identityId has an alert available: $alert", customFields(identityId, alert)) }
