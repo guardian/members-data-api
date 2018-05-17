@@ -24,6 +24,12 @@ OPTIONS    /user-attributes/me/contribution-update-card      controllers.Account
 POST       /user-attributes/me/cancel-regular-contribution   controllers.AccountController.cancelRegularContribution
 OPTIONS    /user-attributes/me/cancel-regular-contribution   controllers.AccountController.cancelRegularContribution
 
+POST       /user-attributes/me/cancel-membership   controllers.AccountController.cancelMembership
+OPTIONS    /user-attributes/me/cancel-membership   controllers.AccountController.cancelMembership
+
+POST       /user-attributes/me/cancel-free-membership   controllers.AccountController.cancelFreeMembership
+OPTIONS    /user-attributes/me/cancel-free-membership   controllers.AccountController.cancelFreeMembership
+
 POST       /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
 OPTIONS    /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
 
