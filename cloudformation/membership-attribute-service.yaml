@@ -40,12 +40,6 @@ Parameters:
   VulnerabilityScanningSecurityGroup:
     Description: Security group that grants access to the account's Vulnerability Scanner
     Type: AWS::EC2::SecurityGroup::Id
-  LoggingKinesisStream:
-    Description: Kinesis stream id to send logging to e.g. elk-stack-ElkKinesisStream-12345
-    Type: String
-  LoggingPolicy:
-    Description: Policy needed to access the kinesis stream
-    Type: String
   ELBSSLCertificate:
     Description: ELB SSL Certificate ARN
     Type: String
@@ -149,7 +143,6 @@ Resources:
             Resource: !GetAtt MembersDataApiLogGroup.Arn
             Effect: Allow
       ManagedPolicyArns:
-      - !Ref 'LoggingPolicy'
       - !Sub arn:aws:iam::${AWS::AccountId}:policy/guardian-ec2-role-for-ssm
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -242,13 +235,6 @@ Resources:
               aws --region ${AWS::Region} s3 cp s3://gu-reader-revenue-private/membership/members-data-api/${Stage}/members-data-api.private.conf /etc/gu
               chown membership-attribute-service /etc/gu/members-data-api.private.conf
               chmod 0600 /etc/gu/members-data-api.private.conf
-
-              cat <<EOF >>/etc/gu/members-data-api.private.conf
-              param.logstash {
-                stream="${LoggingKinesisStream}"
-                streamRegion="${AWS::Region}"
-              }
-              EOF
 
               wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
               sed -i -e "s/__DATE/$(date +%F)/" -e 's/__STAGE/${Stage}/' $CONF_DIR/logger.conf
