@@ -2,6 +2,8 @@ package controllers
 
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import configuration.Config
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -25,6 +27,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
   def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
+    SafeLogger.error(scrub"* TEST * My, you are looking radiant today! $identityId")
     val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
     val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
     if (ZuoraRequestCounter.get < concurrentCallThreshold) {
