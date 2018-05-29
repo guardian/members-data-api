@@ -10,7 +10,7 @@ import io.sentry.Sentry
 import configuration.Config
 
 import scala.collection.JavaConversions._
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 object SentryLogging {
   def init() {
@@ -24,6 +24,7 @@ object SentryLogging {
             val tags = Map("stage" -> Config.stage) ++ buildInfo
             sentryClient.setTags(tags)
           } match {
+            case Success(_) => SafeLogger.debug("Sentry logging configured.")
             case Failure(e) => SafeLogger.error(scrub"Something went wrong when setting up Sentry logging ${e.getStackTrace}")
           }
       }
