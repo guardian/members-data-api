@@ -4,6 +4,8 @@ import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
@@ -53,7 +55,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
     val attributesFromZuora = zuoraAttributesDisjunction.run.map { attributesDisjunction: Disjunction[String, Future[Option[ZuoraAttributes]]] =>
       attributesDisjunction.leftMap { errorMsg =>
-          log.error(s"Tried to get Attributes for $identityId but failed with $errorMsg")
+          SafeLogger.error(scrub"Tried to get Attributes for $identityId but failed with $errorMsg")
           errorMsg
         }
       }
@@ -62,7 +64,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
           case e: Throwable =>
-            log.error(s"Future failed when attempting to update cache.", e)
+            SafeLogger.error(scrub"Future failed when attempting to update cache.", e)
             log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
         }
       }
@@ -129,7 +131,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         dynamoAttributeService.update(attributes).map { result =>
           result.left.map { error: DynamoReadError =>
             log.warn(s"Tried updating attributes for $identityId but then ${DynamoReadError.describe(error)}")
-            log.error("Tried updating attributes with updated values from Zuora but there was a dynamo error.")
+            SafeLogger.error(scrub"Tried updating attributes with updated values from Zuora but there was a dynamo error.")
           }
         }
       case None =>
@@ -193,7 +195,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         val zuoraConcurrencyCount = ZuoraRequestCounter.get
         val customFields: List[LogField] = List("zuora_latency_millis" -> latency.toInt, "zuora_call" -> whichCall, "identity_id" -> identityId, "zuora_concurrency_count" -> zuoraConcurrencyCount)
         logInfoWithCustomFields(s"$whichCall took ${latency}ms.", customFields)
-      case Failure(e) => log.error(s"Future failed when attempting $whichCall.", e)
+      case Failure(e) => SafeLogger.error(scrub"Future failed when attempting $whichCall.", e)
     }
     futureResult
   }

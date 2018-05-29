@@ -2,6 +2,10 @@ package monitoring
 
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.filter.Filter
+import ch.qos.logback.core.spi.FilterReply
+import com.gu.monitoring.SafeLogger
 import io.sentry.Sentry
 import configuration.Config
 
@@ -25,4 +29,9 @@ object SentryLogging {
       }
 
   }
+}
+
+class PiiFilter extends Filter[ILoggingEvent] {
+  override def decide(event: ILoggingEvent): FilterReply = if (event.getMarker.contains(SafeLogger.sanitizedLogMessage)) FilterReply.ACCEPT
+  else FilterReply.DENY
 }

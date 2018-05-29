@@ -1,4 +1,6 @@
 package monitoring
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.typesafe.scalalogging.LazyLogging
 import controllers.{Cached, NoCache}
 import filters.AddGuIdentityHeaders
@@ -8,8 +10,9 @@ import play.api.mvc.Results._
 import play.api.mvc._
 import play.api.routing.Router
 import play.core.SourceMapper
-import models.ApiErrors.{notFound, internalError, badRequest}
+import models.ApiErrors.{badRequest, internalError, notFound}
 import play.api.libs.json.Json
+
 import scala.concurrent._
 
 class ErrorHandler(
@@ -32,7 +35,7 @@ class ErrorHandler(
   }
 
   override protected def onProdServerError(request: RequestHeader, ex: UsefulException): Future[Result] = {
-       logger.error(s"Error handling request request: $request", ex)
+       SafeLogger.error(scrub"Error handling request request: $request", ex)
        Future { AddGuIdentityHeaders.headersFor(request, internalError) }
   }
   override protected def onBadRequest(request: RequestHeader, message: String): Future[Result] = {
