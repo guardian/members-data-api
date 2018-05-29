@@ -2,7 +2,6 @@ package monitoring
 
 import io.sentry.Sentry
 import configuration.Config
-
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Try}
 

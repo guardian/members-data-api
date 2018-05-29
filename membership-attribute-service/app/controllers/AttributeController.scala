@@ -26,7 +26,6 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   lazy val metrics = Metrics("AttributesController")
 
   def pickAttributes(identityId: String) (implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
-    SafeLogger.error(scrub"*TEST* more spam from Leigh-Anne: Don't tell, reader, but you are my favourite colleague. ")
     val dynamoService = request.touchpoint.attrService
     val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
     val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
