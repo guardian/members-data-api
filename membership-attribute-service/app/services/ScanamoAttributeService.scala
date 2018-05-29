@@ -2,6 +2,8 @@ package services
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult}
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo._
 import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.scanamo.syntax.{set => scanamoSet, _}
@@ -83,7 +85,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)(implic
       attributes <- dynamoAttributes
     } yield TtlConversions.secondsToDateTime(attributes.TTLTimestamp).isBefore(oldestAcceptedAge)
     if (tooOld.contains(true)) {
-      logger.error(s"Dynamo Attributes for $identityId have an old TTL. The oldest accepted age is: $oldestAcceptedAge - are we still cleaning the table correctly?")
+      SafeLogger.error(scrub"Dynamo Attributes for $identityId have an old TTL. The oldest accepted age is: $oldestAcceptedAge - are we still cleaning the table correctly?")
       metrics.put("Old Dynamo Item", 1) //referenced in CloudFormation
     }
   }

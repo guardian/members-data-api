@@ -19,9 +19,6 @@ trait LoggingWithLogstashFields {
     log.logger.warn(customFieldMarkers(customFields), message)
   }
 
-  def logErrorWithCustomFields(message: String, customFields: List[LogField]): Unit = {
-    log.logger.error(customFieldMarkers(customFields), message)
-  }
 }
 
 object LoggingField {
