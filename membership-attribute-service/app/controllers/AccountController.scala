@@ -224,7 +224,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor]
-  def cancelMembership = cancelSubscription[SubscriptionPlan.PaidMember]
+  def cancelPaidMembership = cancelSubscription[SubscriptionPlan.PaidMember]
   def cancelFreeMembership = cancelSubscription[SubscriptionPlan.FreeMember]
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
