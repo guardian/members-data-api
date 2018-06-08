@@ -9,6 +9,8 @@ import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
@@ -93,7 +95,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       cancellation <- EitherT(executeCancellation(zuoraSubscription, cancellationReason))
     } yield cancellation).run.map {
       case -\/(apiError) =>
-        logger.error(s"Failed to cancel subscription for user $maybeUserId")
+        SafeLogger.error(scrub"Failed to cancel subscription for user $maybeUserId")
         apiError
       case \/-(_) =>
         logger.info(s"Successfully cancelled subscription for user $maybeUserId")
@@ -122,7 +124,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         Ok(Json.toJson(success))
       }
       case failure: CardUpdateFailure => {
-        logger.error(s"Failed to update card for identity user: $user due to $failure")
+        SafeLogger.error(scrub"Failed to update card for identity user: $user due to $failure")
         Forbidden(Json.toJson(failure))
       }
     }).run.map {
@@ -214,7 +216,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
     } yield result).run map { _ match {
         case -\/(message) =>
-          logger.error(s"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
+          SafeLogger.error(scrub"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
           InternalServerError(message)
         case \/-(()) =>
           logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
