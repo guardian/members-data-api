@@ -3,14 +3,12 @@ package components
 import akka.actor.ActorSystem
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-
 import scalaz.std.scalaFuture._
 import com.gu.config
 import com.gu.i18n.Country
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
-import com.gu.monitoring.ServiceMetrics
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
@@ -24,7 +22,6 @@ import configuration.Config
 import loghandling.ZuoraRequestCounter
 import prodtest.FeatureToggleDataUpdatedOnSchedule
 import services._
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -47,18 +44,17 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
 
   lazy val tpConfig = TouchpointBackendConfig.byEnv(stage, conf)
   implicit lazy val _bt = tpConfig
-  lazy val metrics = new ServiceMetrics(tpConfig.zuoraRest.envName, Config.applicationName,_: String)
 
-  lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.loggingRunner(metrics("stripe")))
-  lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.loggingRunner(metrics("stripe")))
+  lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
+  lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
   lazy val allStripeServices = Seq(ukStripeService, auStripeService)
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
   lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] = InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
   lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap,
-    RequestRunners.loggingRunner(metrics("zuora-soap")),
-    RequestRunners.loggingRunner(metrics("zuora-soap"))
+    RequestRunners.futureRunner,
+    RequestRunners.futureRunner
   )
   lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
@@ -69,7 +65,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   implicit lazy val simpleClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
   lazy val zuoraRestService = new ZuoraRestService[Future]()
   lazy val catalogRestClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
-  lazy val catalogService = new CatalogService[Future](productIds, catalogRestClient, Await.result(_, 60.seconds), stage)
+  lazy val catalogService = new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage)
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog.map(_.fold[CatalogMap](error => {println(s"error: ${error.list.toList.mkString}"); Map()}, _.map))
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
