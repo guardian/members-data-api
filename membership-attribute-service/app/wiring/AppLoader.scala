@@ -57,7 +57,7 @@ class MyComponents(context: Context)
     "/user-attributes/me/mma-membership",
     "/user-attributes/me/mma-paper")
 
-  val postPaths = router.documentation.filter(triple => triple._1.contains("POST")).map(triple => triple._2)
+  val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
     new CheckCacheHeadersFilter(),

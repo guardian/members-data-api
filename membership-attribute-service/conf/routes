@@ -1,4 +1,3 @@
-# Healthcheck
 GET        /healthcheck                                     controllers.HealthCheckController.healthCheck
 
 GET        /user-attributes/me/membership                   controllers.AttributeController.membership
@@ -9,7 +8,6 @@ GET        /user-attributes/me/mma-membership               controllers.AccountC
 GET        /user-attributes/me/mma-monthlycontribution      controllers.AccountController.monthlyContributionDetails
 GET        /user-attributes/me/mma-paper                    controllers.AccountController.paperDetails
 
-# IMPORTANT: for update endpoints (e.g. POST) to correctly support OPTIONS for CORS they must be added to AppLoader.scala
 POST       /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
 POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
 POST       /user-attributes/me/paper-update-card            controllers.AccountController.paperUpdateCard
