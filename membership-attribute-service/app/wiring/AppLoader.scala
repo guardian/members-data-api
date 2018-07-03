@@ -57,13 +57,7 @@ class MyComponents(context: Context)
     "/user-attributes/me/mma-membership",
     "/user-attributes/me/mma-paper")
 
-  val mmaUpdatePaths = Seq(
-    "/user-attributes/me/membership-update-card",
-    "/user-attributes/me/digitalpack-update-card",
-    "/user-attributes/me/paper-update-card",
-    "/user-attributes/me/contribution-update-card",
-    "/user-attributes/me/cancel-regular-contribution",
-    "/user-attributes/me/contribution-update-amount")
+  val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
     new CheckCacheHeadersFilter(),
@@ -71,7 +65,7 @@ class MyComponents(context: Context)
     new AddEC2InstanceHeader(wsClient),
     new AddGuIdentityHeaders(),
     CORSFilter(corsConfig = Config.mmaCorsConfig, pathPrefixes = mmaPaths),
-    CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = mmaUpdatePaths),
+    CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = postPaths),
     CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = regularCorsPaths)
   )
 }
