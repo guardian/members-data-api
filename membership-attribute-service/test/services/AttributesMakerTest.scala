@@ -233,6 +233,53 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       attributes === expected
     }
 
+    "return Dynamo attributes if present even if no Zuora records exist, as long as marked KeepFreshForStaffAdFree" in {
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = None,
+        AdFree = Some(true),
+        KeepFreshForStaffAdFree = Some(true),
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = None,
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None,
+          MembershipNumber = None,
+          AdFree = Some(true),
+          KeepFreshForStaffAdFree = Some(true)
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, Some(dynamoAttributes))
+
+      attributes === expected
+    }
+
+    "return none if a Dynamo record exists but is NOT marked KeepFreshForStaffAdFree if no Zuora records exist" in {
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = None,
+        AdFree = Some(true),
+        KeepFreshForStaffAdFree = None,
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, Some(dynamoAttributes)) === None
+    }
+
     "return none if both Dynamo and Zuora attributes are none" in {
       AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, None) === None
     }

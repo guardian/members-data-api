@@ -341,6 +341,21 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         updateRequired must be_==(true)
       }
 
+      "return true if Dynamo record is marked KeepFreshForStaffAdFree even without a Zuora record" in {
+        val recentEnough = toDynamoTtl(twoWeeksFromReferenceDate.minusHours(14))
+        val dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = recentEnough, KeepFreshForStaffAdFree = Some(true)))
+        val updateRequired = attributesFromZuora.dynamoUpdateRequired(dynamoAttributes, None, "123", twoWeeksFromReferenceDate)
+
+        updateRequired must be_==(true)
+      }
+
+      "return true if Zuora and Dynamo agree and the timestamp is recent enough but Dynamo is marked KeepFreshForStaffAdFree" in {
+        val recentEnough = toDynamoTtl(twoWeeksFromReferenceDate.minusHours(14))
+        val updateRequired = attributesFromZuora.dynamoUpdateRequired(dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = recentEnough, KeepFreshForStaffAdFree = Some(true))), Some(asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
+
+        updateRequired must be_==(true)
+      }
+
       "return false if zuora and dynamo agree and the timestamp is recent enough" in {
         val recentEnough = toDynamoTtl(twoWeeksFromReferenceDate.minusHours(14))
         val updateRequired = attributesFromZuora.dynamoUpdateRequired(dynamoAttributes = Some(supporterDynamoAttributes.copy(TTLTimestamp = recentEnough)), Some(asZuoraAttributes(supporterDynamoAttributes)), supporterDynamoAttributes.UserId, twoWeeksFromReferenceDate)
