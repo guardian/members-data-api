@@ -27,7 +27,7 @@ case class Attributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
-  KeepFresh: Option[Boolean] = None,
+  KeepFreshForStaffAdFree: Option[Boolean] = None,
   AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -61,7 +61,7 @@ case class DynamoAttributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String],
   AdFree: Option[Boolean],
-  KeepFresh: Option[Boolean],
+  KeepFreshForStaffAdFree: Option[Boolean],
   TTLTimestamp: Long) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -80,7 +80,7 @@ object DynamoAttributes {
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
     MembershipNumber = dynamoAttributes.MembershipNumber,
     AdFree = dynamoAttributes.AdFree,
-    KeepFresh = dynamoAttributes.KeepFresh
+    KeepFreshForStaffAdFree = dynamoAttributes.KeepFreshForStaffAdFree
   )
 }
 
@@ -94,7 +94,7 @@ object Attributes {
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "membershipNumber").writeNullable[String] and
       (__ \ "adFree").writeNullable[Boolean] and
-      (__ \ "keepFresh").writeNullable[Boolean] and
+      (__ \ "keepFreshForStaffAdFree").writeNullable[Boolean] and
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
