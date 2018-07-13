@@ -190,6 +190,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         DigitalSubscriptionExpiryDate = None,
         MembershipNumber = None,
         AdFree = None,
+        KeepFresh = None,
         TTLTimestamp = referenceDateAsDynamoTimestamp
       )
 
