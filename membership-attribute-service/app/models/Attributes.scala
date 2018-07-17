@@ -61,7 +61,7 @@ case class DynamoAttributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String],
   AdFree: Option[Boolean],
-  KeepFreshForStaffAdFree: Option[Boolean],
+  KeepFreshForStaffAdFree: Option[Boolean] = None,
   TTLTimestamp: Long) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
