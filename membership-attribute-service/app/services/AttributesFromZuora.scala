@@ -107,7 +107,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     val currentExpiry: Option[DateTime] = dynamoAttributes.map { attributes => TtlConversions.secondsToDateTime(attributes.TTLTimestamp) }
     val newExpiry: DateTime = calculateExpiry(currentExpiry)
 
-    def expiryShouldChange(dynamoAttributes: Option[DynamoAttributes], currentExpiry: Option[DateTime], newExpiry: DateTime) = dynamoAttributes.isDefined && !currentExpiry.contains(newExpiry)
+    def expiryShouldChange(dynamoAttributes: Option[DynamoAttributes], currentExpiry: Option[DateTime], newExpiry: DateTime) =
+      dynamoAttributes.isDefined && (!currentExpiry.contains(newExpiry) || dynamoAttributes.exists(_.KeepFreshForStaffAdFree.getOrElse(false)))
 
     expiryShouldChange(dynamoAttributes, currentExpiry, newExpiry) || !dynamoAndZuoraAgree(dynamoAttributes, zuoraAttributes, identityId)
   }
@@ -122,6 +123,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         attributes.DigitalSubscriptionExpiryDate,
         attributes.MembershipNumber,
         attributes.AdFree,
+        attributes.KeepFreshForStaffAdFree,
         TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
       )
     }

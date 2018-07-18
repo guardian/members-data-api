@@ -117,6 +117,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
           AdFree = dynamo.AdFree,
+          KeepFreshForStaffAdFree = dynamo.KeepFreshForStaffAdFree,
           AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (Some(zuora), None) =>
@@ -128,7 +129,20 @@ class AttributesMaker extends LoggingWithLogstashFields{
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = None,
           AdFree = None,
+          KeepFreshForStaffAdFree = None,
           AlertAvailableFor = zuora.AlertAvailableFor
+        ))
+      case (None, Some(dynamo)) if dynamo.KeepFreshForStaffAdFree.getOrElse(false) =>
+        Some(Attributes(
+          UserId = dynamo.UserId,
+          Tier = None,
+          RecurringContributionPaymentPlan = None,
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None,
+          MembershipNumber = None,
+          AdFree = dynamo.AdFree,
+          KeepFreshForStaffAdFree = dynamo.KeepFreshForStaffAdFree,
+          AlertAvailableFor = None
         ))
       case (None, _) => None
     }
