@@ -9,6 +9,8 @@ import com.gu.i18n.Country
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
@@ -66,7 +68,14 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val zuoraRestService = new ZuoraRestService[Future]()
   lazy val catalogRestClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage)
-  lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog.map(_.fold[CatalogMap](error => {println(s"error: ${error.list.toList.mkString}"); Map()}, _.map))
+
+  lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
+    .map(_.fold[CatalogMap](error => {println(s"error: ${error.list.toList.mkString}"); Map()}, _.map))
+    .recover {
+      case error =>
+        SafeLogger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
+        throw error
+    }
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
