@@ -18,6 +18,8 @@ POST        /user-attributes/me/update-direct-debit/:subscriptionName           
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
 GET         /user-attributes/me/features                                controllers.AttributeController.features
 
+GET        /one-off-contributions                           controllers.AttributeController.oneOffContributions
+
 GET         /user-attributes/me/mma-digitalpack                         controllers.AccountController.digitalPackDetails
 GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
 GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails

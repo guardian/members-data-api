@@ -2,8 +2,6 @@ package controllers
 
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import configuration.Config
-import io.circe.syntax._
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
@@ -11,17 +9,12 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
-import play.api.db
-import play.api.db.Database
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import cats.data._
 import cats.implicits._
-import io.circe.Encoder
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -109,20 +102,17 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
 
 
-  def postgres(identityId: String): Future[Result] = {
-    postgresService.getContributionsData(identityId)
-      .fold(
-        err => unauthorized,
-        contributionData => Ok("Hello")
-      )
-  }
-
-
-  def isContributor = {
+  def oneOffContributions = {
     BackendFromCookieAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) => {
-          postgres(identityId)
+          postgresService.getContributionsData(identityId)
+            .fold(
+              err => Ok(err.message),
+              result => {
+                Ok(Json.toJson(result).toString)
+              }
+            )
         }
         case None => Future(unauthorized)
       }
