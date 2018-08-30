@@ -1,7 +1,9 @@
 import Dependencies._
+import sbt.CrossVersion
 
 val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
+
 
 def buildInfoSettings = Seq(
   buildInfoKeys := Seq[BuildInfoKey](

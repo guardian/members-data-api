@@ -3,6 +3,7 @@ package controllers
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import configuration.Config
+import io.circe.syntax._
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
@@ -10,13 +11,21 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.Metrics
+import play.api.db
+import play.api.db.Database
 import play.api.libs.json.Json
 import play.api.mvc._
-import services.{AttributesFromZuora, AuthenticationService, IdentityAuthService}
+import services._
+
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import cats.data._
+import cats.implicits._
+import io.circe.Encoder
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class AttributeController(attributesFromZuora: AttributesFromZuora, commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LoggingWithLogstashFields {
+class AttributeController(attributesFromZuora: AttributesFromZuora, commonActions: CommonActions, override val controllerComponents: ControllerComponents, postgresService: PostgresDatabaseService) extends BaseController with LoggingWithLogstashFields {
   import attributesFromZuora._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
@@ -98,5 +107,26 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, sendAttributesIfNotFound = true)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
+
+
+  def postgres(identityId: String): Future[Result] = {
+    postgresService.getContributionsData(identityId)
+      .fold(
+        err => unauthorized,
+        contributionData => Ok("Hello")
+      )
+  }
+
+
+  def isContributor = {
+    BackendFromCookieAction.async { implicit request =>
+      authenticationService.userId(request) match {
+        case Some(identityId) => {
+          postgres(identityId)
+        }
+        case None => Future(unauthorized)
+      }
+    }
+  }
 
 }
