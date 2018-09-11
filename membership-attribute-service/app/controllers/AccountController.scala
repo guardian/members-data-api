@@ -186,7 +186,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
-    } yield AccountDetails(contact, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
+    } yield AccountDetails(contact, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         result
