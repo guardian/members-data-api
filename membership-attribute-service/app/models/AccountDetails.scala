@@ -6,7 +6,7 @@ import json.localDateWrites
 import play.api.libs.json._
 import play.api.mvc.Results.Ok
 
-case class AccountDetails(contact: Contact, paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String])
+case class AccountDetails(contact: Contact, email: Option[String], paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String])
 
 object AccountDetails {
 
@@ -14,7 +14,7 @@ object AccountDetails {
 
     def toResult = {
 
-      val accountJsonObj = memberDetails(accountDetails.contact, accountDetails.paymentDetails) ++ toJson(accountDetails.paymentDetails, accountDetails.stripePublicKey)
+      val accountJsonObj = memberDetails(accountDetails.contact, accountDetails.paymentDetails) ++ toJson(accountDetails.paymentDetails, accountDetails.stripePublicKey, accountDetails.email)
       val accountWithAlertJsonObj = accountDetails.membershipAlertText match {
         case Some(text) => accountJsonObj ++ Json.obj("alertText" -> text)
         case None => accountJsonObj
@@ -27,7 +27,7 @@ object AccountDetails {
       Json.obj("tier" -> paymentDetails.plan.name, "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)) ++
         contact.regNumber.fold(Json.obj())({m => Json.obj("regNumber" -> m)})
 
-    private def toJson(paymentDetails: PaymentDetails, stripePublicKey: String): JsObject = {
+    private def toJson(paymentDetails: PaymentDetails, stripePublicKey: String, email: Option[String]): JsObject = {
 
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
@@ -43,7 +43,8 @@ object AccountDetails {
             Json.obj(
               "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("••••"),
               "type" -> card.cardType.getOrElse[String]("unknown"),
-              "stripePublicKeyForUpdate" -> stripePublicKey
+              "stripePublicKeyForUpdate" -> stripePublicKey,
+              "email" -> email
             )
           }
         )
