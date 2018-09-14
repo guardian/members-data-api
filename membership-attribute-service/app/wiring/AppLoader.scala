@@ -45,18 +45,6 @@ class MyComponents(context: Context)
     new AccountController(commonActions, controllerComponents)
   )
 
-  val regularCorsPaths = Seq(
-    "/user-attributes/me/membership",
-    "/user-attributes/me/features",
-    "/user-attributes/me"
-  )
-
-  val mmaPaths = Seq(
-    "/user-attributes/me/mma-digitalpack",
-    "/user-attributes/me/mma-monthlycontribution",
-    "/user-attributes/me/mma-membership",
-    "/user-attributes/me/mma-paper")
-
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
@@ -64,8 +52,7 @@ class MyComponents(context: Context)
     csrfFilter,
     new AddEC2InstanceHeader(wsClient),
     new AddGuIdentityHeaders(),
-    CORSFilter(corsConfig = Config.mmaCorsConfig, pathPrefixes = mmaPaths),
     CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = postPaths),
-    CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = regularCorsPaths)
+    CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = Seq("/user-attributes"))
   )
 }
