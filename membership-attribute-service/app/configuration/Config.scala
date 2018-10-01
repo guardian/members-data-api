@@ -43,22 +43,9 @@ object Config {
   val testTouchpointBackendStage = config.getString("touchpoint.backend.test")
   val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
 
-  val mmaCorsConfig = CORSConfig.denyAll.copy(
-    allowedOrigins = Origins.Matching( str =>
-      config.getStringList("mma.cors.allowedOrigins").contains(str)
-    )
-  )
-
-  val ftCorsConfig = CORSConfig.denyAll.copy(
-    allowedOrigins = Origins.Matching( str =>
-      config.getStringList("ft.cors.allowedOrigins").contains(str)
-    )
-  )
-
-  lazy val mmaUpdateCorsConfig = Config.mmaCorsConfig.copy(
+  lazy val mmaUpdateCorsConfig = corsConfig.copy(
     isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
-    isHttpMethodAllowed = Seq("POST","OPTIONS").contains(_),
-    supportsCredentials = true
+    isHttpMethodAllowed = Seq("POST","OPTIONS").contains(_)
   )
 
   object Logstash {
