@@ -72,6 +72,7 @@ object AccountDetails {
             "name" -> paymentDetails.plan.name,
             "amount" -> paymentDetails.plan.price.amount * 100,
             "currency" -> paymentDetails.plan.price.currency.glyph,
+            "currencyISO" -> paymentDetails.plan.price.currency.iso,
             "interval" -> paymentDetails.plan.interval.mkString
           )))
       )
