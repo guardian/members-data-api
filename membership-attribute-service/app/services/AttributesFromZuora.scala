@@ -149,7 +149,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
   ): Future[Disjunction[String, List[AccountWithSubscriptions]]] = {
 
-    def subWithAccount(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
+    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
       subscriptionsForAccountId(account.Id)(anyPlanReads).map { maybeSub =>
         maybeSub.map { subList =>
           AccountWithSubscriptions(account, subList)
@@ -158,7 +158,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     val maybeSubs: Future[Disjunction[String, List[AccountWithSubscriptions]]] = getAccountsResponse.records.traverse[Future, Disjunction[String, AccountWithSubscriptions]](accountObject => {
-      subWithAccount(accountObject)(anyPlanReads)
+      accountWithSubscriptions(accountObject)(anyPlanReads)
     }).map(_.sequenceU)
 
     maybeSubs.map {
