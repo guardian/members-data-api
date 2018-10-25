@@ -8,7 +8,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
-import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.LocalDate
 import PaymentFailureAlerter.alertAvailableFor
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,12 +21,12 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
 
   def zuoraAttributes(
-    identityId: String,
-    subsWithAccounts: List[AccountWithSubscription],
-    paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
-    forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
+                       identityId: String,
+                       subsWithAccounts: List[AccountWithSubscriptions],
+                       paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+                       forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
-    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscription)
+    val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscriptions)
 
     def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
       GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
@@ -44,11 +44,13 @@ class AttributesMaker extends LoggingWithLogstashFields{
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
 
     val sortedProductData: List[ProductData] = {
-      val accountsWithNonEmptySubs = subsWithAccounts.collect {
-        case AccountWithSubscription(account, Some(subscription)) => (account, subscription)
-      }
 
-      val groupedByProduct = accountsWithNonEmptySubs.groupBy {
+      val accountWithSub = subsWithAccounts.collect {
+        case AccountWithSubscriptions(account, subscriptions) if subscriptions.nonEmpty =>
+          subscriptions.map(sub => (account, sub))
+      }.flatten
+
+      val groupedByProduct = accountWithSub.groupBy {
         case (account, subscription) => getTopProduct(subscription)
       }
 
@@ -81,8 +83,6 @@ class AttributesMaker extends LoggingWithLogstashFields{
     val subsWhichIncludeDigitalPack = subs.filter(getAllBenefits(_).contains(Benefit.Digipack))
 
     val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
-
-    val maybeMembershipAndAccount = membershipSub flatMap { sub: Subscription[AnyPlan] => subsWithAccounts.find(_.subscription.contains(sub)) }
 
     findFirstAlert(sortedProductData) map { maybeAlert =>
       def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))

@@ -10,7 +10,7 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
-import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -48,7 +48,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", () => zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
-      subscriptions <- EitherT[Future, String, List[AccountWithSubscription]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
+      subscriptions <- EitherT[Future, String, List[AccountWithSubscriptions]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
     } yield {
       AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
@@ -146,13 +146,18 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
   def getSubscriptions(
     getAccountsResponse: GetAccountsQueryResponse,
     identityId: String,
-    subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]): Future[Disjunction[String, List[AccountWithSubscription]]] = {
+    subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
+  ): Future[Disjunction[String, List[AccountWithSubscriptions]]] = {
 
-    def subWithAccount(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscription]] = subscriptionsForAccountId(account.Id)(anyPlanReads) map { maybeSub =>
-       maybeSub map {subList => AccountWithSubscription(account, subList.headOption)}
+    def subWithAccount(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
+      subscriptionsForAccountId(account.Id)(anyPlanReads).map { maybeSub =>
+        maybeSub.map { subList =>
+          AccountWithSubscriptions(account, subList)
+        }
+      }
     }
 
-    val maybeSubs: Future[Disjunction[String, List[AccountWithSubscription]]] = getAccountsResponse.records.traverse[Future, Disjunction[String, AccountWithSubscription]](accountObject => {
+    val maybeSubs: Future[Disjunction[String, List[AccountWithSubscriptions]]] = getAccountsResponse.records.traverse[Future, Disjunction[String, AccountWithSubscriptions]](accountObject => {
       subWithAccount(accountObject)(anyPlanReads)
     }).map(_.sequenceU)
 
