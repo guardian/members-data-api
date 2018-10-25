@@ -3,7 +3,7 @@ package services
 import com.github.nscala_time.time.Implicits._
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
-import models.{Attributes, AccountWithSubscription, DynamoAttributes, ZuoraAttributes}
+import models.{Attributes, AccountWithSubscriptions, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
@@ -34,7 +34,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(digipack))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(digipack))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
     }
 
@@ -46,12 +46,12 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(sunday)), AccountWithSubscription(anotherAccountSummary, Some(sundayPlus))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(sunday)), AccountWithSubscriptions(anotherAccountSummary, List(sundayPlus))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
     }
 
     "return none when only sub is expired" in {
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(expiredMembership))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(expiredMembership))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(None).await
     }
 
@@ -63,7 +63,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(membership))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(membership))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
     }
 
@@ -76,7 +76,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       )
       )
 
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(expiredMembership)), AccountWithSubscription(accountObjectWithZeroBalance, Some(contributor))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(expiredMembership)), AccountWithSubscriptions(accountObjectWithZeroBalance, List(contributor))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
 
     }
@@ -89,7 +89,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(contributor))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(contributor))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
 
     }
@@ -102,7 +102,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(contributor)), AccountWithSubscription(accountObjectWithZeroBalance, Some(membership))),  paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(contributor)), AccountWithSubscriptions(accountObjectWithZeroBalance, List(membership))),  paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
     }
 
@@ -114,7 +114,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = Some(referenceDate)
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithZeroBalance, Some(friend))), paymentMethodResponseNoFailures, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(friend))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
     }
 
@@ -127,7 +127,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         AlertAvailableFor = Some("membership")
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(membership))), paymentMethodResponseRecentFailure, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithBalance, List(membership))), paymentMethodResponseRecentFailure, referenceDate)
       result must be_==(expected).await
     }
     "return alertAvailableFor=contribution for an active recurring contribution in payment failure" in {
@@ -139,7 +139,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         AlertAvailableFor = Some("contribution")
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithBalance, List(contributor))), paymentMethodResponseRecentFailure, referenceDate)
       result must be_==(expected).await
     }
 
@@ -152,7 +152,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         AlertAvailableFor = Some("contribution")
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(membership)), AccountWithSubscription(accountObjectWithBalance, Some(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithBalance, List(membership)), AccountWithSubscriptions(accountObjectWithBalance, List(contributor))), paymentMethodResponseRecentFailure, referenceDate)
       result must be_==(expected).await
     }
 
@@ -165,7 +165,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         AlertAvailableFor = Some("contribution")
       )
       )
-      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscription(accountObjectWithBalance, Some(sunday)), AccountWithSubscription(accountObjectWithBalance, Some(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithBalance, List(sunday)), AccountWithSubscriptions(accountObjectWithBalance, List(contributor))), paymentMethodResponseRecentFailure, referenceDate)
       result must be_==(expected).await
     }
 

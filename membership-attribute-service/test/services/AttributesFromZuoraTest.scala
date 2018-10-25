@@ -6,7 +6,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
-import models.{AccountWithSubscription, Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mock.Mockito
@@ -243,13 +243,23 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     }
 
     "getSubscriptions" should {
-      "get all subscriptions if a user has multiple" in new contributorDigitalPack {
+      "get all subscriptions if a user has multiple accounts with a single subscription" in new contributorDigitalPack {
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(dynamoContributorDigitalPackAttributes))
         val anotherAccountObject = accountObjectWithZeroBalance.copy(Id = anotherTestAccountId)
         val response = listOfAccountObjectsToGetAccountsQueryResponse(List(accountObjectWithZeroBalance, anotherAccountObject))
         val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
 
-        val expected = List(AccountWithSubscription(accountObjectWithZeroBalance, Some(contributor)), AccountWithSubscription(anotherAccountObject, Some(digipack)))
+        val expected = List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(contributor)), AccountWithSubscriptions(anotherAccountObject, List(digipack)))
+        subscriptions must be_==(\/.right(expected)).await
+      }
+
+      "get all subscriptions if a user has a single account with multiple subscriptions" in new contributorDigitalPack {
+        mockDynamoAttributesService.get(testId) returns Future.successful(Some(dynamoContributorDigitalPackAttributes))
+        val anotherAccountObject = accountObjectWithZeroBalance.copy(Id = AccountId("manySubsPerAccount"))
+        val response = listOfAccountObjectsToGetAccountsQueryResponse(List(anotherAccountObject))
+        val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
+
+        val expected = List(AccountWithSubscriptions(anotherAccountObject, List(contributor, digipack)))
         subscriptions must be_==(\/.right(expected)).await
       }
 
@@ -257,7 +267,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val response = listOfAccountObjectsToGetAccountsQueryResponse(List(accountObjectWithZeroBalance))
         val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
 
-        subscriptions must be_==(\/.right(List(AccountWithSubscription(accountObjectWithZeroBalance, None)))).await
+        subscriptions must be_==(\/.right(List(AccountWithSubscriptions(accountObjectWithZeroBalance, Nil)))).await
       }
 
       "return a left with error message if the subscription service returns a left" in new errorWhenGettingSubs {
@@ -381,7 +391,6 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
   }
 
   trait contributorDigitalPack extends Scope {
-    def accountIdToAccountObject(accountId: AccountId) = Future.successful(\/.right(accountObjectWithZeroBalance.copy(Id = accountId)))
 
     val dynamoContributorDigitalPackAttributes = DynamoAttributes(
       UserId = testId,
@@ -405,6 +414,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         accountId match {
           case AccountId("accountId") => \/.right(List(contributor))
           case AccountId("anotherTestAccountId") => \/.right(List(digipack))
+          case AccountId("manySubsPerAccount") => \/.right(List(contributor, digipack))
           case _ => \/.left(s"subscriptions not found for $testId")
         }
       }
