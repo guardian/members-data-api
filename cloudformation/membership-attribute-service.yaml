@@ -178,8 +178,6 @@ Resources:
         Ref: LaunchConfig
       MinSize:
         Ref: MinInstances
-      DesiredCapacity:
-        Ref: MinInstances
       MaxSize:
         Ref: MaxInstances
       HealthCheckType: ELB
