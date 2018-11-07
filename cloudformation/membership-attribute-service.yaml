@@ -21,11 +21,11 @@ Parameters:
     Description: Maximum number of instances. This should be (at least) double the
       desired capacity.
     Type: Number
-    Default: 6
+    Default: 12
   MinInstances:
     Description: Minimum number of instances
     Type: Number
-    Default: 3
+    Default: 6
   VpcId:
     Description: ID of the VPC onto which to launch the application
     Type: AWS::EC2::VPC::Id
