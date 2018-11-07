@@ -23,7 +23,7 @@ Parameters:
     Type: Number
     Default: 12
   MinInstances:
-    Description: "Minimum number of instances. NOTE: there is a Zuora concurrent call threshold configured in MembershipFeatureToggles-[STAGE] DynamoDB table which will need adjusting if you increase this value."
+    Description: "Minimum number of instances desired. NOTE: there is a Zuora concurrent call threshold configured in MembershipFeatureToggles-[STAGE] DynamoDB table which will need adjusting if you increase this value."
     Type: Number
     Default: 6
   VpcId:
@@ -177,6 +177,8 @@ Resources:
       LaunchConfigurationName:
         Ref: LaunchConfig
       MinSize:
+        Ref: MinInstances
+      DesiredCapacity:
         Ref: MinInstances
       MaxSize:
         Ref: MaxInstances
