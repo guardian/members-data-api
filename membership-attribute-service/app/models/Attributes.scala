@@ -12,7 +12,13 @@ import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
 import json._
 
-case class ContentAccess(member: Boolean, paidMember: Boolean, recurringContributor: Boolean, digitalPack: Boolean)
+case class ContentAccess(
+  member: Boolean,
+  paidMember: Boolean,
+  recurringContributor: Boolean,
+  digitalPack: Boolean,
+  paperSubscriber: Boolean
+)
 
 object ContentAccess {
 
@@ -25,6 +31,7 @@ case class Attributes(
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String] = None,
   AdFree: Option[Boolean] = None,
   KeepFreshForStaffAdFree: Option[Boolean] = None,
@@ -39,10 +46,17 @@ case class Attributes(
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
   lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
+  lazy val isPaperSubscriber = PaperSubscriptionExpiryDate.exists(_.isAfter(now))
 
   lazy val isAdFree = AdFree.exists(identity)
 
-  lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
+  lazy val contentAccess = ContentAccess(
+    member = isPaidTier || isFriendTier,
+    paidMember = isPaidTier,
+    recurringContributor = isContributor,
+    digitalPack = digitalSubscriberHasActivePlan,
+    paperSubscriber = isPaperSubscriber
+  )
 }
 
 case class ZuoraAttributes(
@@ -51,6 +65,7 @@ case class ZuoraAttributes(
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   AlertAvailableFor: Option[String] = None)
 
 case class DynamoAttributes(
@@ -59,6 +74,7 @@ case class DynamoAttributes(
   RecurringContributionPaymentPlan: Option[String] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String],
   AdFree: Option[Boolean],
   KeepFreshForStaffAdFree: Option[Boolean] = None,
@@ -78,6 +94,7 @@ object DynamoAttributes {
     RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
     MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
+    PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
     MembershipNumber = dynamoAttributes.MembershipNumber,
     AdFree = dynamoAttributes.AdFree,
     KeepFreshForStaffAdFree = dynamoAttributes.KeepFreshForStaffAdFree
@@ -92,6 +109,7 @@ object Attributes {
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
+      (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "membershipNumber").writeNullable[String] and
       (__ \ "adFree").writeNullable[Boolean] and
       (__ \ "keepFreshForStaffAdFree").writeNullable[Boolean] and

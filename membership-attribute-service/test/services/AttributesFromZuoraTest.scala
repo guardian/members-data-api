@@ -35,7 +35,18 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
   val oneAccountQueryResponse = GetAccountsQueryResponse(records = List(AccountObject(testAccountId, 0, Some(GBP))), size = 1)
   val twoAccountsQueryResponse = GetAccountsQueryResponse(records = List(AccountObject(testAccountId, 0, Some(GBP)), AccountObject(anotherTestAccountId, 0, Some(GBP))), size = 2)
 
-  val contributorDynamoAttributes = DynamoAttributes(UserId = testId, None, RecurringContributionPaymentPlan = Some("Monthly Contribution"), None, None, None, None, KeepFreshForStaffAdFree = None, referenceDateInSeconds)
+  val contributorDynamoAttributes = DynamoAttributes(
+    UserId = testId,
+    None,
+    RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+    None,
+    None,
+    None,
+    None,
+    None,
+    KeepFreshForStaffAdFree = None,
+    referenceDateInSeconds
+  )
   val contributorAttributes = DynamoAttributes.asAttributes(contributorDynamoAttributes)
 
   val supporterDynamoAttributes = DynamoAttributes(
