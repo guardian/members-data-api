@@ -44,7 +44,8 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         Tier = None,
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = None,
-        DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year)
+        DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year),
+        PaperSubscriptionExpiryDate = Some(referenceDate + 1.year)
       ))
       val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(sunday)), AccountWithSubscriptions(anotherAccountSummary, List(sundayPlus))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
@@ -162,6 +163,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         Tier = None,
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = None,
+        PaperSubscriptionExpiryDate = Some(referenceDate + 1.year),
         AlertAvailableFor = Some("contribution")
       )
       )

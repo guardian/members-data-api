@@ -115,16 +115,17 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
   private def updateCache(identityId: String, maybeAttributes: Option[Attributes], dynamoAttributeService: AttributeService, twoWeekExpiry: => DateTime): Future[Unit] = {
     val attributesWithTTL: Option[DynamoAttributes] = maybeAttributes map { attributes =>
-        DynamoAttributes(
-        attributes.UserId,
-        attributes.Tier,
-        attributes.RecurringContributionPaymentPlan,
-        attributes.MembershipJoinDate,
-        attributes.DigitalSubscriptionExpiryDate,
-        attributes.MembershipNumber,
-        attributes.AdFree,
-        attributes.KeepFreshForStaffAdFree,
-        TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
+      DynamoAttributes(
+        UserId = attributes.UserId,
+        Tier = attributes.Tier,
+        RecurringContributionPaymentPlan = attributes.RecurringContributionPaymentPlan,
+        MembershipJoinDate = attributes.MembershipJoinDate,
+        DigitalSubscriptionExpiryDate = attributes.DigitalSubscriptionExpiryDate,
+        PaperSubscriptionExpiryDate = attributes.PaperSubscriptionExpiryDate,
+        MembershipNumber = attributes.MembershipNumber,
+        AdFree = attributes.AdFree,
+        KeepFreshForStaffAdFree = attributes.KeepFreshForStaffAdFree,
+        TTLTimestamp = TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
       )
     }
 

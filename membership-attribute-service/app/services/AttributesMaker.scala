@@ -82,7 +82,16 @@ class AttributesMaker extends LoggingWithLogstashFields{
     val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption     // Assumes only 1 regular contribution per Identity customer
     val subsWhichIncludeDigitalPack = subs.filter(getAllBenefits(_).contains(Benefit.Digipack))
 
-    val hasAttributableProduct = membershipSub.nonEmpty || contributionSub.nonEmpty || subsWhichIncludeDigitalPack.nonEmpty
+    val paperSubscriptions = groupedSubs.filterKeys{
+      case Some(_: Product.Weekly) => false // guardian weekly extends Paper, so we need to explicitly filter that out
+      case Some(_: Product.Paper) => true
+      case _ => false
+    }.values.flatten
+
+    val hasAttributableProduct = membershipSub.nonEmpty ||
+      contributionSub.nonEmpty ||
+      subsWhichIncludeDigitalPack.nonEmpty ||
+      paperSubscriptions.nonEmpty
 
     findFirstAlert(sortedProductData) map { maybeAlert =>
       def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
@@ -94,12 +103,14 @@ class AttributesMaker extends LoggingWithLogstashFields{
         val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
         val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
         val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
+        val latestPaperExpiryDate: Option[LocalDate] = Some(paperSubscriptions.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
         ZuoraAttributes(
           UserId = identityId,
           Tier = tier,
           RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
+          PaperSubscriptionExpiryDate = latestPaperExpiryDate,
           AlertAvailableFor = maybeAlert
         )
       }
@@ -115,6 +126,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
           MembershipJoinDate = zuora.MembershipJoinDate,
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
+          PaperSubscriptionExpiryDate = zuora.PaperSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
           AdFree = dynamo.AdFree,
           KeepFreshForStaffAdFree = dynamo.KeepFreshForStaffAdFree,
@@ -127,6 +139,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
           MembershipJoinDate = zuora.MembershipJoinDate,
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
+          PaperSubscriptionExpiryDate = zuora.PaperSubscriptionExpiryDate,
           MembershipNumber = None,
           AdFree = None,
           KeepFreshForStaffAdFree = None,
