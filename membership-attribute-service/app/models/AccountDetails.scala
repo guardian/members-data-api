@@ -50,8 +50,13 @@ object AccountDetails {
         )
         case dd: GoCardless => Json.obj(
           "paymentMethod" -> "DirectDebit",
-          "account" -> Json.obj(
+          "account" -> Json.obj( // DEPRECATED
             "accountName" -> dd.accountName
+          ),
+          "mandate" -> Json.obj(
+            "accountName" -> dd.accountName,
+            "accountNumber" -> dd.accountNumber,
+            "sortCode" -> dd.sortCode
           )
         )
       }
