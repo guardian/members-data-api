@@ -13,6 +13,9 @@ POST       /user-attributes/me/digitalpack-update-card      controllers.AccountC
 POST       /user-attributes/me/paper-update-card            controllers.AccountController.paperUpdateCard
 POST       /user-attributes/me/contribution-update-card     controllers.AccountController.contributionUpdateCard
 
+POST       /user-attributes/me/contribution-update-dd       controllers.AccountController.contributionUpdateDD
+POST       /user-attributes/me/paper-update-dd              controllers.AccountController.paperUpdateDD
+
 POST       /user-attributes/me/cancel-regular-contribution  controllers.AccountController.cancelRegularContribution
 POST       /user-attributes/me/cancel-membership            controllers.AccountController.cancelMembership
 
