@@ -138,7 +138,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       _ <- EitherT(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
       freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
     } yield freshDefaultPaymentMethodOption match {
-      case Some(dd: GoCardless) if bankAccountName == dd.accountName && bankAccountNumber == dd.accountNumber && bankSortCode == dd.sortCode =>
+      case Some(dd: GoCardless)
+        if bankAccountName == dd.accountName &&
+          dd.accountNumber.length>3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
+          bankSortCode == dd.sortCode =>
         logger.info(s"Successfully updated direct debit for identity user: $user")
         Ok(Json.obj(
           "accountName" -> dd.accountName,
