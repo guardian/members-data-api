@@ -1,26 +1,26 @@
-GET        /healthcheck                                     controllers.HealthCheckController.healthCheck
+GET         /healthcheck                                                controllers.HealthCheckController.healthCheck
 
-GET        /user-attributes/me/membership                   controllers.AttributeController.membership
-GET        /user-attributes/me/features                     controllers.AttributeController.features
+GET         /user-attributes/me/membership                              controllers.AttributeController.membership
+GET         /user-attributes/me/features                                controllers.AttributeController.features
 
-GET        /user-attributes/me/mma-digitalpack              controllers.AccountController.digitalPackDetails
-GET        /user-attributes/me/mma-membership               controllers.AccountController.membershipDetails
-GET        /user-attributes/me/mma-monthlycontribution      controllers.AccountController.monthlyContributionDetails
-GET        /user-attributes/me/mma-paper                    controllers.AccountController.paperDetails
+GET         /user-attributes/me/mma-digitalpack                         controllers.AccountController.digitalPackDetails
+GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
+GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails
+GET         /user-attributes/me/mma-paper                               controllers.AccountController.paperDetails
 
-POST       /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
-POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
-POST       /user-attributes/me/paper-update-card            controllers.AccountController.paperUpdateCard
-POST       /user-attributes/me/contribution-update-card     controllers.AccountController.contributionUpdateCard
+POST        /user-attributes/me/membership-update-card                  controllers.AccountController.membershipUpdateCard
+POST        /user-attributes/me/digitalpack-update-card                 controllers.AccountController.digitalPackUpdateCard
+POST        /user-attributes/me/paper-update-card                       controllers.AccountController.paperUpdateCard
+POST        /user-attributes/me/contribution-update-card                controllers.AccountController.contributionUpdateCard
 
-POST       /user-attributes/me/contribution-update-dd       controllers.AccountController.contributionUpdateDD
-POST       /user-attributes/me/paper-update-dd              controllers.AccountController.paperUpdateDD
+POST        /user-attributes/me/contribution-update-direct-debit        controllers.AccountController.contributionUpdateDirectDebit
+POST        /user-attributes/me/paper-update-direct-debit               controllers.AccountController.paperUpdateDirectDebit
 
-POST       /user-attributes/me/cancel-regular-contribution  controllers.AccountController.cancelRegularContribution
-POST       /user-attributes/me/cancel-membership            controllers.AccountController.cancelMembership
+POST        /user-attributes/me/cancel-regular-contribution             controllers.AccountController.cancelRegularContribution
+POST        /user-attributes/me/cancel-membership                       controllers.AccountController.cancelMembership
 
-POST       /user-attributes/me/contribution-update-amount   controllers.AccountController.contributionUpdateAmount
+POST        /user-attributes/me/contribution-update-amount              controllers.AccountController.contributionUpdateAmount
 
 #The endpoint below will replace /user-attributes/me/membership in the long term
-GET        /user-attributes/me                              controllers.AttributeController.attributes
+GET         /user-attributes/me                                         controllers.AttributeController.attributes
 

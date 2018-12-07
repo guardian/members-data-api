@@ -100,7 +100,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  private def updateDD[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
+  private def updateDirectDebit[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     val updateForm = Form { tuple(
@@ -299,8 +299,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
   def contributionUpdateAmount = updateContributionAmount[SubscriptionPlan.Contributor]
 
-  def contributionUpdateDD = updateDD[SubscriptionPlan.Contributor]
-  def paperUpdateDD = updateDD[SubscriptionPlan.PaperPlan]
+  def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor]
+  def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
