@@ -100,8 +100,37 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
+  private def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String): Future[String \/ SuccessValue] =
+    failableFuture.map(\/.right).recover {
+      case exception => \/.left(s"failed to $action. Exception : $exception")
+    }
+
   private def updateDirectDebit[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
+
+    def checkDirectDebitUpdateResult(
+                                      maybeUserId: Option[String],
+                                      freshDefaultPaymentMethodOption: Option[PaymentMethod],
+                                      bankAccountName: String,
+                                      bankAccountNumber: String,
+                                      bankSortCode: String) = freshDefaultPaymentMethodOption match {
+      case Some(dd: GoCardless)
+        if bankAccountName == dd.accountName &&
+          dd.accountNumber.length>3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
+          bankSortCode == dd.sortCode =>
+        logger.info(s"Successfully updated direct debit for identity user: $maybeUserId")
+        Ok(Json.obj(
+          "accountName" -> dd.accountName,
+          "accountNumber" -> dd.accountNumber,
+          "sortCode" -> dd.sortCode
+        ))
+      case Some(_) =>
+        logger.error(s"New payment method for user $maybeUserId, does not match the posted Direct Debit details")
+        InternalServerError("")
+      case None =>
+        logger.error(s"Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details")
+        InternalServerError("")
+    }
 
     val updateForm = Form { tuple(
       "accountName" -> nonEmptyText,
@@ -137,34 +166,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       )
       _ <- EitherT(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
       freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
-    } yield freshDefaultPaymentMethodOption match {
-      case Some(dd: GoCardless)
-        if bankAccountName == dd.accountName &&
-          dd.accountNumber.length>3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
-          bankSortCode == dd.sortCode =>
-        logger.info(s"Successfully updated direct debit for identity user: $user")
-        Ok(Json.obj(
-          "accountName" -> dd.accountName,
-          "accountNumber" -> dd.accountNumber,
-          "sortCode" -> dd.sortCode
-        ))
-      case Some(_) =>
-        logger.error(s"New payment method for user $maybeUserId, does not match the posted Direct Debit details")
-        InternalServerError(s"Failed to update direct debit for user $maybeUserId")
-      case None =>
-        logger.error(s"Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details")
-        InternalServerError(s"Failed to update direct debit for user $maybeUserId")
-    }).run.map {
+    } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map {
       case -\/(message) =>
         logger.warn(s"Failed to update direct debit for user $maybeUserId, due to $message")
-        InternalServerError(s"Failed to update direct debit for user $maybeUserId")
+        InternalServerError("")
       case \/-(result) => result
     }
-  }
 
-  def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String): Future[String \/ SuccessValue] =
-    failableFuture.map(\/.right).recover {
-    case exception => \/.left(s"failed to $action. Exception : $exception")
   }
 
   private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
