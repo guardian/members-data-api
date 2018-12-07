@@ -66,6 +66,7 @@ class AttributeControllerTest extends Specification with AfterAll {
   }
   private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents()) {
     override lazy val authenticationService = fakeAuthService
+    override val executionContext = scala.concurrent.ExecutionContext.global
     override def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
     }

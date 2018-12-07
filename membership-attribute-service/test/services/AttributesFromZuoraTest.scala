@@ -14,11 +14,8 @@ import org.specs2.mutable.Specification
 import org.specs2.specification.{BeforeEach, Scope}
 import testdata.SubscriptionTestData
 import testdata.AccountObjectTestData._
-
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scalaz.\/
-
 
 class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach {
 
