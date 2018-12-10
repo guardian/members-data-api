@@ -8,7 +8,7 @@ object Dependencies {
   //libraries
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.99"
-  val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "2.1"
+  val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "2.5"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
   val playWS = PlayImport.ws
   val playCache = PlayImport.cache
@@ -18,7 +18,7 @@ object Dependencies {
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.520"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.527"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.9"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.2"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
