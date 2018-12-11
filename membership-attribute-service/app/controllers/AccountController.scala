@@ -1,40 +1,37 @@
 package controllers
 import actions._
-import services.{AuthenticationService, IdentityAuthService}
-import services.AttributesMaker._
 import services.PaymentFailureAlerter._
+import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
-import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
+import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
-import configuration.Config
 import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
-import models.{AccountDetails, ApiError}
 import models.ApiErrors._
-import org.joda.time.DateTime
-import play.api.mvc.{BaseController, ControllerComponents}
+import models.{AccountDetails, ApiError}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
-
-import scala.concurrent.{ExecutionContext, Future}
+import play.api.mvc.{BaseController, ControllerComponents}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
   import commonActions._
@@ -101,6 +98,81 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         logger.info(s"Successfully cancelled subscription for user $maybeUserId")
         Ok
     }
+  }
+
+  private def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String): Future[String \/ SuccessValue] =
+    failableFuture.map(\/.right).recover {
+      case exception => \/.left(s"failed to $action. Exception : $exception")
+    }
+
+  private def updateDirectDebit[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
+    // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
+
+    def checkDirectDebitUpdateResult(
+                                      maybeUserId: Option[String],
+                                      freshDefaultPaymentMethodOption: Option[PaymentMethod],
+                                      bankAccountName: String,
+                                      bankAccountNumber: String,
+                                      bankSortCode: String) = freshDefaultPaymentMethodOption match {
+      case Some(dd: GoCardless)
+        if bankAccountName == dd.accountName &&
+          dd.accountNumber.length>3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
+          bankSortCode == dd.sortCode =>
+        logger.info(s"Successfully updated direct debit for identity user: $maybeUserId")
+        Ok(Json.obj(
+          "accountName" -> dd.accountName,
+          "accountNumber" -> dd.accountNumber,
+          "sortCode" -> dd.sortCode
+        ))
+      case Some(_) =>
+        logger.error(s"New payment method for user $maybeUserId, does not match the posted Direct Debit details")
+        InternalServerError("")
+      case None =>
+        logger.error(s"Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details")
+        InternalServerError("")
+    }
+
+    val updateForm = Form { tuple(
+      "accountName" -> nonEmptyText,
+      "accountNumber" -> nonEmptyText,
+      "sortCode" -> nonEmptyText
+    ) }
+
+    val tp = request.touchpoint
+    val maybeUserId = authenticationService.userId
+    logger.info(s"Attempting to update direct debit for $maybeUserId")
+    (for {
+      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
+      directDebitDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no direct debit details submitted with request"))
+      (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
+      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
+      subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      account <- EitherT(annotateFailableFuture(tp.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"))
+      billToContact <- EitherT(annotateFailableFuture(tp.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"))
+      bankTransferPaymentMethod = BankTransfer(
+        accountHolderName = bankAccountName,
+        accountNumber = bankAccountNumber,
+        sortCode = bankSortCode,
+        firstName = billToContact.firstName,
+        lastName = billToContact.lastName,
+        countryCode = "GB"
+      )
+      createPaymentMethod = CreatePaymentMethod(
+        accountId = subscription.accountId,
+        paymentMethod = bankTransferPaymentMethod,
+        paymentGateway = account.paymentGateway.get, // this will need to change to use this endpoint for 'payment method' SWITCH
+        billtoContact = billToContact,
+        invoiceTemplateOverride = None
+      )
+      _ <- EitherT(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
+      freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
+    } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map {
+      case -\/(message) =>
+        logger.warn(s"Failed to update direct debit for user $maybeUserId, due to $message")
+        InternalServerError("")
+      case \/-(result) => result
+    }
+
   }
 
   private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
@@ -232,7 +304,11 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
   def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan]
   def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor]
+
   def contributionUpdateAmount = updateContributionAmount[SubscriptionPlan.Contributor]
+
+  def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor]
+  def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan]
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
