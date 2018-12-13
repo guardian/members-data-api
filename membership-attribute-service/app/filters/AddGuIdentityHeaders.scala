@@ -20,11 +20,15 @@ class AddGuIdentityHeaders (implicit val mat: Materializer, ex: ExecutionContext
 
 object AddGuIdentityHeaders {
 
+  //Identity checks for test users by first name
+  def isTestUser(displayName: Option[String]) =
+    displayName.flatMap(_.split(' ').headOption).exists(Config.testUsernames.isValid)
+
   def headersFor(request: RequestHeader, result: Result) = (for {
     user <- IdentityAuthService.playAuthService.authenticatedUserFor(request)
   } yield result.withHeaders(
     "X-Gu-Identity-Id" -> user.id,
     "X-Gu-Identity-Credentials-Type" -> user.credentials.getClass.getSimpleName,
-    "X-Gu-Membership-Test-User" -> Config.testUsernames.isValid(user.id).toString
+    "X-Gu-Membership-Test-User" -> isTestUser(user.displayName).toString
     )).getOrElse(result)
 }
