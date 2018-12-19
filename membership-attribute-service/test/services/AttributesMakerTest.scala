@@ -192,7 +192,6 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         DigitalSubscriptionExpiryDate = None,
         MembershipNumber = None,
         AdFree = None,
-        KeepFreshForStaffAdFree = None,
         TTLTimestamp = referenceDateAsDynamoTimestamp
       )
 
@@ -235,7 +234,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
       attributes === expected
     }
 
-    "return Dynamo attributes if present even if no Zuora records exist, as long as marked KeepFreshForStaffAdFree" in {
+    "return none if a Dynamo record exists but no Zuora records exist" in {
       val dynamoAttributes = DynamoAttributes(
         UserId = identityId,
         Tier = None,
@@ -244,38 +243,6 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         DigitalSubscriptionExpiryDate = None,
         MembershipNumber = None,
         AdFree = Some(true),
-        KeepFreshForStaffAdFree = Some(true),
-        TTLTimestamp = referenceDateAsDynamoTimestamp
-      )
-
-      val expected = Some(
-        Attributes(
-          UserId = identityId,
-          Tier = None,
-          RecurringContributionPaymentPlan = None,
-          MembershipJoinDate = None,
-          DigitalSubscriptionExpiryDate = None,
-          MembershipNumber = None,
-          AdFree = Some(true),
-          KeepFreshForStaffAdFree = Some(true)
-        )
-      )
-
-      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, Some(dynamoAttributes))
-
-      attributes === expected
-    }
-
-    "return none if a Dynamo record exists but is NOT marked KeepFreshForStaffAdFree if no Zuora records exist" in {
-      val dynamoAttributes = DynamoAttributes(
-        UserId = identityId,
-        Tier = None,
-        RecurringContributionPaymentPlan = None,
-        MembershipJoinDate = None,
-        DigitalSubscriptionExpiryDate = None,
-        MembershipNumber = None,
-        AdFree = Some(true),
-        KeepFreshForStaffAdFree = None,
         TTLTimestamp = referenceDateAsDynamoTimestamp
       )
 
