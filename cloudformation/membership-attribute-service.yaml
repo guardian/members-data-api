@@ -289,7 +289,7 @@ Resources:
       MetricTransformations:
       - MetricValue: "1"
         MetricNamespace: "members-data-api"
-        MetricName: "Default Payment Method set to nothing"
+        MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
   MembersDataDefaultPaymentMethodLeftEmptyAlarm:
     Type: AWS::CloudWatch::Alarm
     DependsOn:
@@ -307,7 +307,7 @@ Resources:
       - Name: Stage
         Value: !Sub ${Stage}
       EvaluationPeriods: 1
-      MetricName: "Default Payment Method set to nothing"
+      MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
       Namespace: "members-data-api"
       Period: 3600
       Statistic: Sum
