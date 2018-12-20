@@ -40,7 +40,6 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     None,
     None,
     None,
-    None,
     referenceDateInSeconds
   )
   val contributorAttributes = DynamoAttributes.asAttributes(contributorDynamoAttributes)
@@ -49,7 +48,6 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     UserId = testId,
     Tier = Some("Supporter"),
     MembershipNumber = None,
-    AdFree = None,
     RecurringContributionPaymentPlan = None,
     MembershipJoinDate = Some(referenceDate),
     DigitalSubscriptionExpiryDate = None,
@@ -91,27 +89,12 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
   "ZuoraAttributeService" should {
 
     "attributesFromZuora" should {
-      def accountIdToAccountObject(accountId: AccountId) = Future.successful(\/.right(accountObjectWithZeroBalance))
 
       "return attributes for a user who has many subscriptions" in new contributorDigitalPack {
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(dynamoContributorDigitalPackAttributes))
 
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(contributorDigitalPackAttributes)).await
-
-        there was no(mockDynamoAttributesService).delete(anyString)
-      }
-
-      "get the value of the adfree flag from the dynamo attributes" in new contributorDigitalPack {
-        val contributorDigitalPackAdfreeAttributes = dynamoContributorDigitalPackAttributes.copy(AdFree = Some(true))
-        val outdatedAttributesButWithAdFree = dynamoContributorDigitalPackAttributes.copy(DigitalSubscriptionExpiryDate = None, AdFree = Some(true))
-
-        mockDynamoAttributesService.get(testId) returns Future.successful(Some(outdatedAttributesButWithAdFree))
-        mockDynamoAttributesService.update(contributorDigitalPackAdfreeAttributes) returns Future.successful(Right(contributorDigitalPackAdfreeAttributes))
-
-        val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
-        val expected: Option[Attributes] = Some(contributorDigitalPackAttributes.copy(AdFree = Some(true)))
-        attributes must be_==("Zuora", expected).await
 
         there was no(mockDynamoAttributesService).delete(anyString)
       }
@@ -298,15 +281,8 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     }
 
     "dynamoAndZuoraAgree" should {
-      "return true if the fields obtainable from zuora match " in {
-        val fromDynamo = Some(supporterDynamoAttributes)
-        val fromZuora = Some(asZuoraAttributes(supporterDynamoAttributes))
-
-        attributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
-      }
-
-      "ignore the fields not obtainable from zuora" in {
-        val fromDynamo = Some(supporterDynamoAttributes.copy(AdFree = Some(true), TTLTimestamp = toDynamoTtl(twoWeeksFromReferenceDate)))
+      "ignore the TTL" in {
+        val fromDynamo = Some(supporterDynamoAttributes.copy(TTLTimestamp = toDynamoTtl(twoWeeksFromReferenceDate)))
         val fromZuora = Some(asZuoraAttributes(supporterDynamoAttributes))
 
         attributesFromZuora.dynamoAndZuoraAgree(fromDynamo, fromZuora, testId) must be_==(true)
@@ -387,7 +363,6 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       UserId = testId,
       Tier = None,
       MembershipNumber = None,
-      AdFree = None,
       RecurringContributionPaymentPlan = Some("Monthly Contribution"),
       MembershipJoinDate = None,
       DigitalSubscriptionExpiryDate = Some(digitalPackExpirationDate),

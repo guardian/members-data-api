@@ -33,7 +33,6 @@ case class Attributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String] = None,
-  AdFree: Option[Boolean] = None,
   AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -47,8 +46,6 @@ case class Attributes(
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPaperSubscriber = PaperSubscriptionExpiryDate.exists(_.isAfter(now))
 
-  lazy val isAdFree = AdFree.exists(identity)
-
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
@@ -56,6 +53,7 @@ case class Attributes(
     digitalPack = digitalSubscriberHasActivePlan,
     paperSubscriber = isPaperSubscriber
   )
+
 }
 
 case class ZuoraAttributes(
@@ -67,6 +65,19 @@ case class ZuoraAttributes(
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   AlertAvailableFor: Option[String] = None)
 
+object ZuoraAttributes {
+  def asAttributes(zuoraAttributes: ZuoraAttributes) = Attributes(
+    UserId = zuoraAttributes.UserId,
+    Tier = zuoraAttributes.Tier,
+    RecurringContributionPaymentPlan = zuoraAttributes.RecurringContributionPaymentPlan,
+    MembershipJoinDate = zuoraAttributes.MembershipJoinDate,
+    DigitalSubscriptionExpiryDate = zuoraAttributes.DigitalSubscriptionExpiryDate,
+    PaperSubscriptionExpiryDate = zuoraAttributes.PaperSubscriptionExpiryDate,
+    MembershipNumber = None,
+    AlertAvailableFor = zuoraAttributes.AlertAvailableFor
+  )
+}
+
 case class DynamoAttributes(
   UserId: String,
   Tier: Option[String] = None,
@@ -75,7 +86,6 @@ case class DynamoAttributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   MembershipNumber: Option[String],
-  AdFree: Option[Boolean],
   TTLTimestamp: Long) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -93,8 +103,7 @@ object DynamoAttributes {
     MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
-    MembershipNumber = dynamoAttributes.MembershipNumber,
-    AdFree = dynamoAttributes.AdFree,
+    MembershipNumber = dynamoAttributes.MembershipNumber
   )
 }
 
@@ -108,7 +117,6 @@ object Attributes {
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "membershipNumber").writeNullable[String] and
-      (__ \ "adFree").writeNullable[Boolean] and
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
@@ -143,7 +151,6 @@ object MembershipAttributes {
       UserId = attr.UserId,
       Tier = tier,
       MembershipNumber = attr.MembershipNumber,
-      AdFree = attr.AdFree,
       ContentAccess = MembershipContentAccess(
         member = attr.contentAccess.member,
         paidMember = attr.contentAccess.paidMember

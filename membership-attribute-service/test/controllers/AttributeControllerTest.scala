@@ -27,7 +27,6 @@ class AttributeControllerTest extends Specification with AfterAll {
     UserId = validUserId,
     Tier = Some("patron"),
     MembershipNumber = Some("abc"),
-    AdFree = Some(false),
     MembershipJoinDate = Some(new LocalDate(2017, 5, 13)),
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
     DigitalSubscriptionExpiryDate = Some(new LocalDate(2100, 1, 1)),
@@ -78,8 +77,7 @@ class AttributeControllerTest extends Specification with AfterAll {
     jsonBody shouldEqual
       Json.parse("""
                    | {
-                   |   "adblockMessage": true,
-                   |   "adFree": false
+                   |   "adblockMessage": true
                    | }
                  """.stripMargin)
   }
@@ -92,7 +90,6 @@ class AttributeControllerTest extends Specification with AfterAll {
                    | {
                    |   "userId": "123",
                    |   "adblockMessage": false,
-                   |   "adFree": false,
                    |   "membershipJoinDate": "2017-05-13"
                    | }
                  """.stripMargin)
@@ -107,7 +104,6 @@ class AttributeControllerTest extends Specification with AfterAll {
         |   "tier": "patron",
         |   "membershipNumber": "abc",
         |   "userId": "123",
-        |   "adFree": false,
         |   "contentAccess": {
         |     "member": true,
         |     "paidMember": true
@@ -125,7 +121,6 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   "tier": "patron",
                    |   "membershipNumber": "abc",
                    |   "userId": "123",
-                   |   "adFree": false,
                    |   "membershipJoinDate": "2017-05-13",
                    |   "recurringContributionPaymentPlan":"Monthly Contribution",
                    |   "digitalSubscriptionExpiryDate":"2100-01-01",
@@ -170,7 +165,6 @@ class AttributeControllerTest extends Specification with AfterAll {
         Json.parse("""
                      |{
                      |  "userId": "456",
-                     |  "adFree": false,
                      |  "contentAccess": {
                      |    "member": false,
                      |    "paidMember": false,

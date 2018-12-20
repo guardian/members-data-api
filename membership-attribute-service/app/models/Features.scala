@@ -12,30 +12,21 @@ object Features {
   implicit val jsWrite = Json.writes[Features]
 
   implicit def toResult(attrs: Features): Result =
-    Ok(Json.toJson(attrs)).withHeaders(
-      "X-Gu-Ad-Free" -> attrs.adFree.toString
-    )
+    Ok(Json.toJson(attrs))
 
   def fromAttributes(attributes: Attributes) = {
     Features(
       userId = Some(attributes.UserId),
-      adFree = attributes.isAdFree,
       adblockMessage = !attributes.isPaidTier,
       membershipJoinDate = attributes.MembershipJoinDate
     )
   }
 
-  val unauthenticated = Features(None, adFree = false, adblockMessage = true, None)
-
-  def notAMember(attributes: Attributes) = {
-    val adFree = attributes.AdFree.getOrElse(false)
-    unauthenticated.copy(adFree = adFree)
-  }
+  val unauthenticated = Features(None, adblockMessage = true, None)
 }
 
 case class Features(
   userId: Option[String],
-  adFree: Boolean,
   adblockMessage: Boolean,
   membershipJoinDate: Option[LocalDate]
 )
