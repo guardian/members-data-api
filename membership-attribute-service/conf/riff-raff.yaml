@@ -5,7 +5,7 @@ deployments:
     type: cloud-formation
     app: membership-attribute-service
     parameters:
-      templatePath: cloudformation/membership-attribute-service.yaml
+      templatePath: membership-attribute-service.yaml
       amiTags:
         Recipe: xenial-membership
         AmigoStage: PROD
