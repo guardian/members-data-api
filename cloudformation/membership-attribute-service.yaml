@@ -284,7 +284,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
     Properties:
-      FilterPattern: "Default payment method for user *, was set to nothing, when attempting to update Direct Debit details"
+      FilterPattern: "default-payment-method-lost"
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
       - MetricValue: "1"

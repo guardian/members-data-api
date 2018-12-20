@@ -128,7 +128,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         logger.error(s"New payment method for user $maybeUserId, does not match the posted Direct Debit details")
         InternalServerError("")
       case None =>
-        logger.error(s"Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details")
+        logger.error(s"default-payment-method-lost: Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details")
         InternalServerError("")
     }
 
@@ -168,7 +168,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
     } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map {
       case -\/(message) =>
-        logger.warn(s"Failed to update direct debit for user $maybeUserId, due to $message")
+        logger.warn(s"default-payment-method-lost: failed to update direct debit for user $maybeUserId, due to $message")
         InternalServerError("")
       case \/-(result) => result
     }
