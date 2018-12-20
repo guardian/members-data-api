@@ -303,7 +303,7 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: LogGroup
-        Value: !Sub "${LogGroupNamePrefix}-${Stage}"
+        Value: !Sub members-data-api-${Stage}
       - Name: Stage
         Value: !Sub ${Stage}
       EvaluationPeriods: 1

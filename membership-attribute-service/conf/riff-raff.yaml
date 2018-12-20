@@ -1,10 +1,11 @@
 stacks: [membership]
 regions: [eu-west-1]
 deployments:
-  ami:
-    type: ami-cloudformation-parameter
+  cloudformation:
+    type: cloud-formation
     app: membership-attribute-service
     parameters:
+      templatePath: cloudformation/membership-attribute-service.yaml
       amiTags:
         Recipe: xenial-membership
         AmigoStage: PROD
@@ -12,6 +13,6 @@ deployments:
       amiParameter: AmiId
   membership-attribute-service:
     type: autoscaling
-    dependencies: [ami]
+    dependencies: [cloudformation]
     parameters:
       bucket: gu-membership-attribute-service-dist
