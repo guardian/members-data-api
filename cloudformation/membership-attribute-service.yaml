@@ -284,10 +284,10 @@ Resources:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
     Properties:
-      FilterPattern: "default-payment-method-lost"
+      FilterPattern: "\"default-payment-method-lost\""
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
-      - MetricValue: "1"
+      - MetricValue: 1
         MetricNamespace: "members-data-api"
         MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
   MembersDataDefaultPaymentMethodLeftEmptyAlarm:
@@ -300,7 +300,6 @@ Resources:
       AlarmActions:
       - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:subscriptions_dev
       AlarmName: !Sub "Default Payment Method set to nothing : members-data-api ${Stage}"
-      ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: LogGroup
         Value: !Sub members-data-api-${Stage}
@@ -311,6 +310,7 @@ Resources:
       Namespace: "members-data-api"
       Period: 3600
       Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 1
       TreatMissingData: notBreaching
 
