@@ -52,6 +52,7 @@ val buildDebSettings = Seq(
   packageDescription := """Members Data API""",
 
   riffRaffPackageType := (packageBin in Debian).value,
+  riffRaffArtifactResources += (file("cloudformation/membership-attribute-service.yaml") -> "cloudformation/membership-attribute-service.yaml"),
 
   javaOptions in Universal ++= Seq(
     "-Dpidfile.path=/dev/null",
