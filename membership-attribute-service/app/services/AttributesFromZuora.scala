@@ -78,9 +78,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       case -\/(error) => fallbackIfZuoraFails
       case \/-(maybeZuoraAttributes) => maybeZuoraAttributes flatMap { zuoraAttributes: Option[ZuoraAttributes] =>
         attributesFromDynamo map { dynamoAttributes =>
-          val zuoraAttributesAsAttributes: Option[Attributes] = zuoraAttributes.map(ZuoraAttributes.asAttributes(_))
-          updateIfNeeded(zuoraAttributes, dynamoAttributes, zuoraAttributesAsAttributes)
-          ("Zuora", zuoraAttributesAsAttributes)
+          val combinedAttributes: Option[Attributes] = AttributesMaker.zuoraAttributesWithAddedDynamoFields(zuoraAttributes, dynamoAttributes)
+          updateIfNeeded(zuoraAttributes, dynamoAttributes, combinedAttributes)
+          ("Zuora", combinedAttributes)
         }
       }
     }

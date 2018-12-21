@@ -173,5 +173,120 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
   }
 
+  "zuoraAttributesWithAddedDynamoFields" should {
+
+    "return attributes with a membership number if there is one in dynamo" in {
+      val zuoraAttributes = ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None
+      )
+
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = Some("12345"),
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None,
+          MembershipNumber = Some("12345")
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), Some(dynamoAttributes))
+
+      attributes === expected
+    }
+
+    "return up to date Zuora attributes when they match the dynamo attributes" in {
+      val zuoraAttributes = ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None
+      )
+
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = None,
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), Some(dynamoAttributes))
+
+      attributes === expected
+    }
+
+    "still return Zuora attributes when the user is not in Dynamo" in {
+      val zuoraAttributes = ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), None)
+
+      attributes === expected
+    }
+
+    "return none if a Dynamo record exists but no Zuora records exist" in {
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = None,
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = None,
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, Some(dynamoAttributes)) === None
+    }
+
+    "return none if both Dynamo and Zuora attributes are none" in {
+      AttributesMaker.zuoraAttributesWithAddedDynamoFields(None, None) === None
+    }
+
+  }
+
 }
 
