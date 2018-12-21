@@ -280,6 +280,40 @@ Resources:
     Properties:
       LogGroupName: !Sub members-data-api-${Stage}
       RetentionInDays: 14
+  MembersDataDefaultPaymentMethodLeftEmptyMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: MembersDataApiLogGroup
+    Properties:
+      FilterPattern: "\"default-payment-method-lost\""
+      LogGroupName: !Sub members-data-api-${Stage}
+      MetricTransformations:
+      - MetricValue: 1
+        MetricNamespace: "members-data-api"
+        MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
+  MembersDataDefaultPaymentMethodLeftEmptyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - MembersDataDefaultPaymentMethodLeftEmptyMetricFilter
+    - MembersDataApiLogGroup
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:subscriptions_dev
+      AlarmName: !Sub "Default Payment Method set to nothing : members-data-api ${Stage}"
+      Dimensions:
+      - Name: LogGroup
+        Value: !Sub members-data-api-${Stage}
+      - Name: Stage
+        Value: !Sub ${Stage}
+      EvaluationPeriods: 1
+      MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
+      Namespace: "members-data-api"
+      Period: 3600
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      TreatMissingData: notBreaching
+
   ExpiredTtlAlarm:
         Type: AWS::CloudWatch::Alarm
         Condition: CreateProdMonitoring
