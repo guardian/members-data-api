@@ -74,14 +74,13 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     //return what we know from Dynamo if Zuora returns an error
     val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map DynamoAttributes.asAttributes)}
 
-    val what: Future[Disjunction[String, Future[Option[ZuoraAttributes]]]] = attributesFromZuora
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
       case \/-(maybeZuoraAttributes) => maybeZuoraAttributes flatMap { zuoraAttributes: Option[ZuoraAttributes] =>
         attributesFromDynamo map { dynamoAttributes =>
-          val combinedAttributes = zuoraAttributes.map(ZuoraAttributes.asAttributes(_))
-          updateIfNeeded(zuoraAttributes, dynamoAttributes, combinedAttributes)
-          ("Zuora", combinedAttributes)
+          val zuoraAttributesAsAttributes: Option[Attributes] = zuoraAttributes.map(ZuoraAttributes.asAttributes(_))
+          updateIfNeeded(zuoraAttributes, dynamoAttributes, zuoraAttributesAsAttributes)
+          ("Zuora", zuoraAttributesAsAttributes)
         }
       }
     }
