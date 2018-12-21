@@ -173,8 +173,43 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
   }
 
+  "zuoraAttributesWithAddedDynamoFields" should {
 
-  "attributes" should {
+    "return attributes with a membership number if there is one in dynamo" in {
+      val zuoraAttributes = ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None
+      )
+
+      val dynamoAttributes = DynamoAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        DigitalSubscriptionExpiryDate = None,
+        MembershipNumber = Some("12345"),
+        TTLTimestamp = referenceDateAsDynamoTimestamp
+      )
+
+      val expected = Some(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = None,
+          MembershipNumber = Some("12345")
+        )
+      )
+
+      val attributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(Some(zuoraAttributes), Some(dynamoAttributes))
+
+      attributes === expected
+    }
+
     "return up to date Zuora attributes when they match the dynamo attributes" in {
       val zuoraAttributes = ZuoraAttributes(
         UserId = identityId,
@@ -191,7 +226,6 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = None,
         MembershipNumber = None,
-        AdFree = None,
         TTLTimestamp = referenceDateAsDynamoTimestamp
       )
 
@@ -242,7 +276,6 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = None,
         MembershipNumber = None,
-        AdFree = Some(true),
         TTLTimestamp = referenceDateAsDynamoTimestamp
       )
 

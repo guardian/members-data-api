@@ -62,8 +62,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
     def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
-        updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry).onFailure {
-          case e: Throwable =>
+        updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry) onComplete {
+          case Success(_) => SafeLogger.debug(s"updated cache for $identityId")
+          case Failure(e) =>
             SafeLogger.error(scrub"Future failed when attempting to update cache.", e)
             log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
         }
@@ -77,7 +78,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       case -\/(error) => fallbackIfZuoraFails
       case \/-(maybeZuoraAttributes) => maybeZuoraAttributes flatMap { zuoraAttributes: Option[ZuoraAttributes] =>
         attributesFromDynamo map { dynamoAttributes =>
-          val combinedAttributes = AttributesMaker.zuoraAttributesWithAddedDynamoFields(zuoraAttributes, dynamoAttributes)
+          val combinedAttributes: Option[Attributes] = AttributesMaker.zuoraAttributesWithAddedDynamoFields(zuoraAttributes, dynamoAttributes)
           updateIfNeeded(zuoraAttributes, dynamoAttributes, combinedAttributes)
           ("Zuora", combinedAttributes)
         }
@@ -123,7 +124,6 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         DigitalSubscriptionExpiryDate = attributes.DigitalSubscriptionExpiryDate,
         PaperSubscriptionExpiryDate = attributes.PaperSubscriptionExpiryDate,
         MembershipNumber = attributes.MembershipNumber,
-        AdFree = attributes.AdFree,
         TTLTimestamp = TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
       )
     }
@@ -207,22 +207,17 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     futureResult
   }
 
+  //if Zuora attributes have changed at all, we should update the cache even if the ttl is not stale
   def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[DynamoAttributes], maybeZuoraAttributes: Option[ZuoraAttributes], identityId: String): Boolean = {
-    val dynamoAttributesForComparison: Option[ZuoraAttributes] = maybeDynamoAttributes map { dynamoAttributes =>
-      ZuoraAttributes(
-        UserId = dynamoAttributes.UserId,
-        Tier = dynamoAttributes.Tier,
-        RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
-        MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
-        DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate
-      )
-    }
 
-    val dynamoAndZuoraAgree = dynamoAttributesForComparison == maybeZuoraAttributes
+    val zuoraAttributesAsAttributes = maybeZuoraAttributes map (ZuoraAttributes.asAttributes(_))
+    val dynamoAttributesAsAttributes = maybeDynamoAttributes map (DynamoAttributes.asAttributes(_))
+
+    val dynamoAndZuoraAgree = dynamoAttributesAsAttributes == zuoraAttributesAsAttributes
 
     if (!dynamoAndZuoraAgree)
       log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-        s" Zuora attributes: $maybeZuoraAttributes, parsed as: $dynamoAttributesForComparison. Dynamo attributes: $maybeDynamoAttributes.")
+        s" Zuora attributes as attributes: $zuoraAttributesAsAttributes. Dynamo attributes as attributes: $dynamoAttributesAsAttributes.")
 
     dynamoAndZuoraAgree
   }

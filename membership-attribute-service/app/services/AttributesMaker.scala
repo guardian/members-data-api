@@ -128,7 +128,6 @@ class AttributesMaker extends LoggingWithLogstashFields{
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           PaperSubscriptionExpiryDate = zuora.PaperSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
-          AdFree = dynamo.AdFree,
           AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (Some(zuora), None) =>
@@ -140,7 +139,6 @@ class AttributesMaker extends LoggingWithLogstashFields{
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           PaperSubscriptionExpiryDate = zuora.PaperSubscriptionExpiryDate,
           MembershipNumber = None,
-          AdFree = None,
           AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (None, _) => None

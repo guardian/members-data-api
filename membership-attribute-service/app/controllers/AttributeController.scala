@@ -52,7 +52,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             attributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
@@ -68,13 +68,10 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
                 attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
                   logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
                 }
-                attrs.AdFree.foreach { _ =>
-                  logInfoWithCustomFields(s"$identityId is an ad-free reader", customFields("ad-free-reader"))
-                }
                 logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                Attributes(identityId, AdFree = Some(false))
+                Attributes(identityId)
               case _ =>
                 onNotFound
             }
@@ -97,6 +94,6 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
   def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound)
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, sendAttributesIfNotFound = true)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = Features.notAMember, onNotFound = Features.unauthenticated)
+  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
 
 }
