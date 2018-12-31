@@ -76,14 +76,15 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
-      case \/-(maybeZuoraAttributes) => maybeZuoraAttributes flatMap { zuoraAttributes: Option[ZuoraAttributes] =>
-        attributesFromDynamo map { dynamoAttributes =>
-          val combinedAttributes: Option[Attributes] = AttributesMaker.zuoraAttributesWithAddedDynamoFields(zuoraAttributes, dynamoAttributes)
-          updateIfNeeded(zuoraAttributes, dynamoAttributes, combinedAttributes)
-          ("Zuora", combinedAttributes)
+      case \/-(maybeZuoraAttributesF) => maybeZuoraAttributesF flatMap { maybeZuoraAttributes: Option[ZuoraAttributes] =>
+        val asAttributes: Option[Attributes] = maybeZuoraAttributes map { zuoraAttributes =>  ZuoraAttributes.asAttributes(zuoraAttributes)}
+        attributesFromDynamo map { maybeDynamoAttributes =>
+          updateIfNeeded(maybeZuoraAttributes, maybeDynamoAttributes, asAttributes)
         }
+        Future.successful(("Zuora", asAttributes))
       }
     }
+
     // return what we know from Dynamo if the future times out/fails
     val attributesOrFallbackToDynamo: Future[(String, Option[Attributes])] = attributesFromZuoraUnlessFallback fallbackTo fallbackIfZuoraFails
 
@@ -123,7 +124,6 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         MembershipJoinDate = attributes.MembershipJoinDate,
         DigitalSubscriptionExpiryDate = attributes.DigitalSubscriptionExpiryDate,
         PaperSubscriptionExpiryDate = attributes.PaperSubscriptionExpiryDate,
-        MembershipNumber = attributes.MembershipNumber,
         TTLTimestamp = TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
       )
     }
