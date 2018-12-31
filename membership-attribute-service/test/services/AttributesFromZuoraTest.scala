@@ -190,7 +190,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(supporterAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl)
+        eventually(there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -208,7 +208,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(supporterAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl)
+        eventually(there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -225,7 +225,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(supporterAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(expectedAttributesWithUpdatedTtl)
+        eventually(there was one(mockDynamoAttributesService).update(expectedAttributesWithUpdatedTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
