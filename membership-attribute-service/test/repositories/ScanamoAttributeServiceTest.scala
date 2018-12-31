@@ -65,7 +65,6 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
       val attributes = DynamoAttributes(
         UserId = userId,
         Tier = Some("Patron"),
-        MembershipNumber = Some("abc"),
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = Some(new LocalDate(2017, 6, 13)),
         TTLTimestamp = toDynamoTtl(testExpiryDate),
@@ -92,17 +91,17 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
   "getMany" should {
 
     val testUsers = Seq(
-      DynamoAttributes(UserId = "1234", Tier = Some("Partner"), TTLTimestamp = testTtl, MembershipNumber = None),
-      DynamoAttributes(UserId = "2345", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 12)), TTLTimestamp = testTtl, MembershipNumber = None),
-      DynamoAttributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11)), TTLTimestamp = testTtl, MembershipNumber = None),
-      DynamoAttributes(UserId = "4567", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 10)), TTLTimestamp = testTtl, MembershipNumber = None)
+      DynamoAttributes(UserId = "1234", Tier = Some("Partner"), TTLTimestamp = testTtl),
+      DynamoAttributes(UserId = "2345", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 12)), TTLTimestamp = testTtl),
+      DynamoAttributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11)), TTLTimestamp = testTtl),
+      DynamoAttributes(UserId = "4567", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 10)), TTLTimestamp = testTtl)
     )
 
     "Fetch many people by user id" in {
       Await.result(Future.sequence(testUsers.map(repo.set)), 5.seconds)
       Await.result(repo.getMany(List("1234", "3456", "abcd")), 5.seconds) mustEqual Seq(
-        DynamoAttributes(UserId = "1234", Tier = Some("Partner"), TTLTimestamp = testTtl, MembershipNumber = None),
-        DynamoAttributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11)), TTLTimestamp = testTtl, MembershipNumber = None)
+        DynamoAttributes(UserId = "1234", Tier = Some("Partner"), TTLTimestamp = testTtl),
+        DynamoAttributes(UserId = "3456", Tier = Some("Partner"), MembershipJoinDate = Some(new LocalDate(2017, 6, 11)), TTLTimestamp = testTtl)
       )
     }
   }
@@ -110,7 +109,7 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
   "update" should {
     "add the attribute if it's not already in the table" in {
 
-      val newAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = testTtl, MembershipNumber = None)
+      val newAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = testTtl)
 
       val result = for {
         _ <- repo.update(newAttributes)
@@ -122,8 +121,8 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     }
 
     "update a user who has bought a digital subscription" in {
-      val oldAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = testTtl, MembershipNumber = None)
-      val newAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl, MembershipNumber = None)
+      val oldAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = testTtl)
+      val newAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl)
 
       val result = for {
         _ <- repo.set(oldAttributes)
@@ -135,7 +134,7 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     }
 
     "leave attribute in the table if nothing has changed" in {
-      val existingAttributes = DynamoAttributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl, MembershipNumber = None)
+      val existingAttributes = DynamoAttributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl)
 
       val result = for {
         _ <- repo.set(existingAttributes)
@@ -144,20 +143,6 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
       } yield retrieved
 
       result must be_==(Some(existingAttributes)).await
-    }
-
-    "leave existing values in an attribute that cannot be determined from a zuora update alone" in {
-      val existingAttributes = DynamoAttributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().minusWeeks(5)), MembershipNumber = Some("1234"), TTLTimestamp = testTtl)
-      val updatedAttributes = DynamoAttributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl, MembershipNumber = None)
-      val attributesWithPreservedValues = existingAttributes.copy(DigitalSubscriptionExpiryDate = updatedAttributes.DigitalSubscriptionExpiryDate) //TTL is also only in dynamo, but the logic for it is in attributesFromZuora.
-
-      val result = for {
-        _ <- repo.set(existingAttributes)
-        _ <- repo.update(updatedAttributes)
-        retrieved <- repo.get("6789")
-      } yield retrieved
-
-      result must be_==(Some(attributesWithPreservedValues)).await
     }
 
   }

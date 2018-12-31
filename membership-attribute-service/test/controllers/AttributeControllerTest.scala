@@ -26,7 +26,6 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val testAttributes = Attributes(
     UserId = validUserId,
     Tier = Some("patron"),
-    MembershipNumber = Some("abc"),
     MembershipJoinDate = Some(new LocalDate(2017, 5, 13)),
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
     DigitalSubscriptionExpiryDate = Some(new LocalDate(2100, 1, 1)),
@@ -102,7 +101,6 @@ class AttributeControllerTest extends Specification with AfterAll {
       Json.parse("""
         | {
         |   "tier": "patron",
-        |   "membershipNumber": "abc",
         |   "userId": "123",
         |   "contentAccess": {
         |     "member": true,
@@ -119,7 +117,6 @@ class AttributeControllerTest extends Specification with AfterAll {
       Json.parse("""
                    | {
                    |   "tier": "patron",
-                   |   "membershipNumber": "abc",
                    |   "userId": "123",
                    |   "membershipJoinDate": "2017-05-13",
                    |   "recurringContributionPaymentPlan":"Monthly Contribution",

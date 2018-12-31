@@ -116,34 +116,6 @@ class AttributesMaker extends LoggingWithLogstashFields{
       }
     }
   }
-
-  def zuoraAttributesWithAddedDynamoFields(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes]): Option[Attributes] = {
-    (zuoraAttributes, dynamoAttributes) match {
-      case (Some(zuora), Some(dynamo)) =>
-        Some(Attributes(
-          UserId = zuora.UserId,
-          Tier = zuora.Tier,
-          RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
-          MembershipJoinDate = zuora.MembershipJoinDate,
-          DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
-          PaperSubscriptionExpiryDate = zuora.PaperSubscriptionExpiryDate,
-          MembershipNumber = dynamo.MembershipNumber,
-          AlertAvailableFor = zuora.AlertAvailableFor
-        ))
-      case (Some(zuora), None) =>
-        Some(Attributes(
-          UserId = zuora.UserId,
-          Tier = zuora.Tier,
-          RecurringContributionPaymentPlan = zuora.RecurringContributionPaymentPlan,
-          MembershipJoinDate = zuora.MembershipJoinDate,
-          DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
-          PaperSubscriptionExpiryDate = zuora.PaperSubscriptionExpiryDate,
-          MembershipNumber = None,
-          AlertAvailableFor = zuora.AlertAvailableFor
-        ))
-      case (None, _) => None
-    }
-  }
 }
 
 object AttributesMaker extends AttributesMaker

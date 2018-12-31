@@ -9,15 +9,17 @@ import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryRespon
 import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
+import org.specs2.matcher.EventuallyMatchers
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.{BeforeEach, Scope}
 import testdata.SubscriptionTestData
 import testdata.AccountObjectTestData._
+
 import scala.concurrent.Future
 import scalaz.\/
 
-class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach {
+class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach with EventuallyMatchers {
 
   val attributesFromZuora = new AttributesFromZuora()
   override def referenceDate = new LocalDate(2016, 9, 20)
@@ -34,20 +36,18 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
   val contributorDynamoAttributes = DynamoAttributes(
     UserId = testId,
-    None,
+    Tier = None,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    None,
-    None,
-    None,
-    None,
-    referenceDateInSeconds
+    MembershipJoinDate = None,
+    DigitalSubscriptionExpiryDate = None,
+    PaperSubscriptionExpiryDate = None,
+    TTLTimestamp = referenceDateInSeconds
   )
   val contributorAttributes = DynamoAttributes.asAttributes(contributorDynamoAttributes)
 
   val supporterDynamoAttributes = DynamoAttributes(
     UserId = testId,
     Tier = Some("Supporter"),
-    MembershipNumber = None,
     RecurringContributionPaymentPlan = None,
     MembershipJoinDate = Some(referenceDate),
     DigitalSubscriptionExpiryDate = None,
@@ -157,7 +157,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(contributorAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(contributorAttributesWithTtl)
+        eventually(there was one(mockDynamoAttributesService).update(contributorAttributesWithTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -172,7 +172,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
         attributes must be_==("Zuora", None).await
 
-        there was one(mockDynamoAttributesService).delete(testId)
+        eventually(there was one(mockDynamoAttributesService).delete(testId))
       }
 
       "update the attributes in dynamo if zuora is more up to date even if the ttl is old" in {
@@ -190,7 +190,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(supporterAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl)
+        eventually(there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -208,7 +208,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(supporterAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl)
+        eventually(there was one(mockDynamoAttributesService).update(expectedAttributesWithTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -225,7 +225,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributes(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(supporterAttributes)).await
 
-        there was one(mockDynamoAttributesService).update(expectedAttributesWithUpdatedTtl)
+        eventually(there was one(mockDynamoAttributesService).update(expectedAttributesWithUpdatedTtl))
         there was no(mockDynamoAttributesService).delete(anyString)
       }
 
@@ -346,6 +346,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       }
 
     }
+
   }
 
   trait contributor extends Scope {
@@ -362,7 +363,6 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     val dynamoContributorDigitalPackAttributes = DynamoAttributes(
       UserId = testId,
       Tier = None,
-      MembershipNumber = None,
       RecurringContributionPaymentPlan = Some("Monthly Contribution"),
       MembershipJoinDate = None,
       DigitalSubscriptionExpiryDate = Some(digitalPackExpirationDate),

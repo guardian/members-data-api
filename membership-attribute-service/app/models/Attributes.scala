@@ -32,7 +32,6 @@ case class Attributes(
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  MembershipNumber: Option[String] = None,
   AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -73,7 +72,6 @@ object ZuoraAttributes {
     MembershipJoinDate = zuoraAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = zuoraAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = zuoraAttributes.PaperSubscriptionExpiryDate,
-    MembershipNumber = None,
     AlertAvailableFor = zuoraAttributes.AlertAvailableFor
   )
 }
@@ -85,7 +83,6 @@ case class DynamoAttributes(
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  MembershipNumber: Option[String],
   TTLTimestamp: Long) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -102,8 +99,7 @@ object DynamoAttributes {
     RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
     MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
-    PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
-    MembershipNumber = dynamoAttributes.MembershipNumber
+    PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate
   )
 }
 
@@ -116,7 +112,6 @@ object Attributes {
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
-      (__ \ "membershipNumber").writeNullable[String] and
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
@@ -129,7 +124,6 @@ object Attributes {
 case class MembershipAttributes(
   UserId: String,
   Tier: String,
-  MembershipNumber: Option[String],
   AdFree: Option[Boolean] = None,
   ContentAccess : MembershipContentAccess
 )
@@ -139,7 +133,6 @@ object MembershipAttributes {
   implicit val jsWrite: OWrites[MembershipAttributes] = (
     (__ \ "userId").write[String] and
     (__ \ "tier").write[String] and
-    (__ \ "membershipNumber").writeNullable[String] and
     (__ \ "adFree").writeNullable[Boolean] and
     (__ \ "contentAccess").write[MembershipContentAccess](MembershipContentAccess.jsWrite)
    )(unlift(MembershipAttributes.unapply))
@@ -150,7 +143,6 @@ object MembershipAttributes {
     MembershipAttributes(
       UserId = attr.UserId,
       Tier = tier,
-      MembershipNumber = attr.MembershipNumber,
       ContentAccess = MembershipContentAccess(
         member = attr.contentAccess.member,
         paidMember = attr.contentAccess.paidMember
