@@ -3,10 +3,13 @@ GET         /healthcheck                                                controll
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
 GET         /user-attributes/me/features                                controllers.AttributeController.features
 
+# /user-attributes/me/mma-* will be phased out once manage platform starts using the 'allDetails' one
 GET         /user-attributes/me/mma-digitalpack                         controllers.AccountController.digitalPackDetails
 GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
 GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails
 GET         /user-attributes/me/mma-paper                               controllers.AccountController.paperDetails
+# this will become the dominant endpoint for getting subscription details
+GET         /user-attributes/me/mma                                     controllers.AccountController.allDetails
 
 POST        /user-attributes/me/membership-update-card                  controllers.AccountController.membershipUpdateCard
 POST        /user-attributes/me/digitalpack-update-card                 controllers.AccountController.digitalPackUpdateCard
