@@ -346,27 +346,27 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor](None)
-  def cancelMembership = cancelSubscription[SubscriptionPlan.Member](None)
+  @Deprecated def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor](None)
+  @Deprecated def cancelMembership = cancelSubscription[SubscriptionPlan.Member](None)
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
-  def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember](None)
-  def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack](None)
-  def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan](None)
-  def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor](None)
+  @Deprecated def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember](None)
+  @Deprecated def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack](None)
+  @Deprecated def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan](None)
+  @Deprecated def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor](None)
   def updateCardOnSpecificSub(subscriptionName: String) = updateCard[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
-  def contributionUpdateAmount = updateContributionAmount(None)
+  @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
 
-  def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor](None)
-  def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan](None)
+  @Deprecated def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor](None)
+  @Deprecated def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan](None)
   def updateDirectDebitOnSpecificSub(subscriptionName: String) = updateDirectDebit[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
 
-  def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
-  def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
-  def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
-  def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
+  @Deprecated def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
+  @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
+  @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
+  @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
 
 }
