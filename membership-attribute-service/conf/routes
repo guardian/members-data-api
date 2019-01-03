@@ -1,10 +1,12 @@
-GET         /healthcheck                                                controllers.HealthCheckController.healthCheck
+GET         /healthcheck                                                        controllers.HealthCheckController.healthCheck
 
-GET         /user-attributes/me                                         controllers.AttributeController.attributes
+GET         /user-attributes/me                                                 controllers.AttributeController.attributes
 
-GET         /user-attributes/me/mma                                     controllers.AccountController.allPaymentDetails
+GET         /user-attributes/me/mma                                             controllers.AccountController.allPaymentDetails
 
-POST        /user-attributes/me/cancel/:subscriptionName                controllers.AccountController.cancelSpecificSub(subscriptionName: String)
+POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSpecificSub(subscriptionName: String)
+
+POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateAmountForSpecificContribution(subscriptionName: String)
 
 
 # OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
@@ -28,4 +30,3 @@ POST        /user-attributes/me/cancel-regular-contribution             controll
 POST        /user-attributes/me/cancel-membership                       controllers.AccountController.cancelMembership
 
 POST        /user-attributes/me/contribution-update-amount              controllers.AccountController.contributionUpdateAmount
-
