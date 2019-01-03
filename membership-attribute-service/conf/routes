@@ -1,15 +1,20 @@
 GET         /healthcheck                                                controllers.HealthCheckController.healthCheck
 
+GET         /user-attributes/me                                         controllers.AttributeController.attributes
+
+GET         /user-attributes/me/mma                                     controllers.AccountController.allPaymentDetails
+
+POST        /user-attributes/me/cancel/:subscriptionName                controllers.AccountController.cancelSpecificSub(subscriptionName: String)
+
+
+# OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
 GET         /user-attributes/me/features                                controllers.AttributeController.features
 
-# /user-attributes/me/mma-* will be phased out once manage platform starts using the 'allDetails' one
 GET         /user-attributes/me/mma-digitalpack                         controllers.AccountController.digitalPackDetails
 GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
 GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails
 GET         /user-attributes/me/mma-paper                               controllers.AccountController.paperDetails
-# this will become the dominant endpoint for getting subscription details
-GET         /user-attributes/me/mma                                     controllers.AccountController.allPaymentDetails
 
 POST        /user-attributes/me/membership-update-card                  controllers.AccountController.membershipUpdateCard
 POST        /user-attributes/me/digitalpack-update-card                 controllers.AccountController.digitalPackUpdateCard
@@ -23,7 +28,4 @@ POST        /user-attributes/me/cancel-regular-contribution             controll
 POST        /user-attributes/me/cancel-membership                       controllers.AccountController.cancelMembership
 
 POST        /user-attributes/me/contribution-update-amount              controllers.AccountController.contributionUpdateAmount
-
-#The endpoint below will replace /user-attributes/me/membership in the long term
-GET         /user-attributes/me                                         controllers.AttributeController.attributes
 

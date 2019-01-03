@@ -1,5 +1,6 @@
 package controllers
 import actions._
+import com.gu.memsub
 import services.PaymentFailureAlerter._
 import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
@@ -41,7 +42,12 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   implicit val executionContext: ExecutionContext= controllerComponents.executionContext
   lazy val authenticationService: AuthenticationService = IdentityAuthService
 
-   def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
+  def subscriptionSelector[P <: SubscriptionPlan.AnyPlan](subscriptionNameOption: Option[memsub.Subscription.Name])(subscriptions: List[Subscription[P]]): Option[Subscription[P]] = subscriptionNameOption match {
+    case Some(subName) => subscriptions.find(_.name == subName)
+    case None => subscriptions.headOption
+  }
+
+  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
 
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
@@ -59,7 +65,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     def retrieveZuoraSubscription(user: String): Future[ApiError \/ Subscription[P]] = {
       val getSubscriptionData = for {
         sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"No Salesforce user: $user")))
-        zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"No current subscriptions for the Salesforce user: $sfUser"))
+        zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(subscriptionNameOption)).map (_ \/> s"No current subscriptions for the Salesforce user: $sfUser"))
       } yield zuoraSubscription
 
       getSubscriptionData.run.map {
@@ -70,6 +76,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           \/-(subscription)
       }
     }
+
 
     def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
       val cancellationSteps = for {
@@ -329,18 +336,19 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       reasonForChange = s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
       result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
     } yield result).run map { _ match {
-        case -\/(message) =>
-          SafeLogger.error(scrub"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
-          InternalServerError(message)
-        case \/-(()) =>
-          logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
-          Ok("Success")
-      }
+      case -\/(message) =>
+        SafeLogger.error(scrub"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
+        InternalServerError(message)
+      case \/-(()) =>
+        logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
+        Ok("Success")
+    }
     }
   }
 
-  def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor]
-  def cancelMembership = cancelSubscription[SubscriptionPlan.Member]
+  def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor](None)
+  def cancelMembership = cancelSubscription[SubscriptionPlan.Member](None)
+  def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
   def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
   def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
