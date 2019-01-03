@@ -6,6 +6,8 @@ GET         /user-attributes/me/mma                                             
 
 POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSpecificSub(subscriptionName: String)
 
+POST        /user-attributes/me/update-card/:subscriptionName                   controllers.AccountController.updateCardOnSpecificSub(subscriptionName: String)
+
 POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateAmountForSpecificContribution(subscriptionName: String)
 
 

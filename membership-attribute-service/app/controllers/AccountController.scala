@@ -185,7 +185,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
   }
 
-  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
+  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
@@ -197,7 +197,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       stripeDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token and public key submitted with request"))
       (stripeCardToken, stripePublicKey) = stripeDetails
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
-      subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      subscription <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")))
       stripeService <- EitherT(Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
       updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService).map(_ \/> "something was missing when attempting to update payment card in Zuora"))
     } yield updateResult match {
@@ -350,10 +350,11 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   def cancelMembership = cancelSubscription[SubscriptionPlan.Member](None)
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
-  def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember]
-  def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack]
-  def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan]
-  def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor]
+  def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember](None)
+  def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack](None)
+  def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan](None)
+  def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor](None)
+  def updateCardOnSpecificSub(subscriptionName: String) = updateCard[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
   def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
