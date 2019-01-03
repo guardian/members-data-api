@@ -32,6 +32,7 @@ import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, ListT, OptionT, \/, \/-}
+import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -274,13 +275,18 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
 
-  def allSubscriptions(contactRepo: SimpleContactRepository, subService: SubscriptionService[Future])(maybeUserId: Option[String]): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
+  def allSubscriptions(
+    contactRepo: SimpleContactRepository,
+    subService: SubscriptionService[Future]
+  )(
+    maybeUserId: Option[String]
+  ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
   } yield subscriptions
 
-  private def allPaymentDetails = BackendFromCookieAction.async { implicit request =>
+  def allPaymentDetails = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = authenticationService.userId
@@ -350,53 +356,5 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
-
-  def allDetails = allPaymentDetails
-
-}
-
-// this is helping us stack future/either/option
-object OptionEither {
-
-  type FutureEither[X] = EitherT[Future, String, X]
-
-  def apply[A](m: Future[\/[String, Option[A]]]): OptionT[FutureEither, A] =
-    OptionT[FutureEither, A](EitherT[Future, String, Option[A]](m))
-
-  def liftOption[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
-    apply(x.map(_.map[Option[A]](Some.apply)))
-
-  def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
-    apply(Future.successful(\/.right[String,Option[A]](x)))
-
-  def liftEitherOption[A](future: Future[A])(implicit ex: ExecutionContext): OptionT[FutureEither, A] = {
-    apply(future map { value: A =>
-      \/.right[String, Option[A]](Some(value))
-    })
-  }
-
-}
-
-object ListEither {
-
-  type FutureEither[X] = EitherT[Future, String, X]
-
-  def apply[A](m: Future[\/[String, List[A]]]): ListT[FutureEither, A] =
-    ListT[FutureEither, A](EitherT[Future, String, List[A]](m))
-
-  def fromOptionEither[A](value: OptionT[FutureEither, List[A]])(implicit ex: ExecutionContext): ListT[FutureEither, A] =
-    ListT[FutureEither, A](value.run.map(_.toList.flatten))
-
-  def liftList[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): ListT[FutureEither, A] =
-    apply(x.map(_.map[List[A]](a => List(a))))
-
-  def liftFutureEither[A](x: List[A]): ListT[FutureEither, A] =
-    apply(Future.successful(\/.right[String,List[A]](x)))
-
-  def liftEitherList[A](future: Future[A])(implicit ex: ExecutionContext): ListT[FutureEither, A] = {
-    apply(future map { value: A =>
-      \/.right[String, List[A]](List(value))
-    })
-  }
 
 }
