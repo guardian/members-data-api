@@ -115,7 +115,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       case exception => \/.left(s"failed to $action. Exception : $exception")
     }
 
-  private def updateDirectDebit[P <: SubscriptionPlan.AnyPlan : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
+  private def updateDirectDebit[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     def checkDirectDebitUpdateResult(
@@ -156,7 +156,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       directDebitDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no direct debit details submitted with request"))
       (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
-      subscription <- EitherT(tp.subService.current[P](sfUser).map(_.headOption).map (_ \/> s"no current subscriptions for the sfUser $sfUser"))
+      subscription <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")))
       account <- EitherT(annotateFailableFuture(tp.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"))
       billToContact <- EitherT(annotateFailableFuture(tp.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"))
       bankTransferPaymentMethod = BankTransfer(
@@ -359,8 +359,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
 
-  def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor]
-  def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan]
+  def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor](None)
+  def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan](None)
+  def updateDirectDebitOnSpecificSub(subscriptionName: String) = updateDirectDebit[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
+
 
   def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]

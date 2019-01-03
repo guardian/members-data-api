@@ -8,6 +8,8 @@ POST        /user-attributes/me/cancel/:subscriptionName                        
 
 POST        /user-attributes/me/update-card/:subscriptionName                   controllers.AccountController.updateCardOnSpecificSub(subscriptionName: String)
 
+POST        /user-attributes/me/update-direct-debit/:subscriptionName           controllers.AccountController.updateDirectDebitOnSpecificSub(subscriptionName: String)
+
 POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateAmountForSpecificContribution(subscriptionName: String)
 
 
