@@ -27,12 +27,18 @@ object AccountSummaryTestData {
     AccountSummary(
       id = accountId,
       identityId = Some(testIdentityId),
-      billToContact = BillToContact(Some("email"), Some(Country.UK)),
+      billToContact = BillToContact(email = Some("email"), country = Some(Country.UK)),
       soldToContact = SoldToContact(
         title = None,
         firstName = Some("Joe"),
         lastName = "Bloggs",
-        None, None, None, None, None, None
+        email = None,
+        address1 = None,
+        address2 = None,
+        city = None,
+        postCode = None,
+        state = None,
+        country = None
       ),
       invoices = List(Invoice(
         id = InvoiceId("someid"),
@@ -43,7 +49,8 @@ object AccountSummaryTestData {
       )),
       currency = None,
       balance = balance,
-      defaultPaymentMethod = Some(DefaultPaymentMethod(paymentMethodId))
+      defaultPaymentMethod = Some(DefaultPaymentMethod(paymentMethodId)),
+      sfContactId = SalesforceContactId("foo")
     )
 
   val accountSummaryWithBalance = accountSummaryWith(20.0, testPaymentMethodId, testAccountId)
