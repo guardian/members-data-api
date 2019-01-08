@@ -286,21 +286,26 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     contactRepo: SimpleContactRepository,
     subService: SubscriptionService[Future]
   )(
-    maybeUserId: Option[String]
+    maybeUserId: Option[String],
+    subscriptionNameOption: Option[memsub.Subscription.Name]
   ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
-  } yield subscriptions
+    filteredByOptionalSubName = subscriptionNameOption match {
+      case Some(subName) => subscriptions.find(_.name == subName).toList
+      case None => subscriptions
+    }
+  } yield filteredByOptionalSubName
 
-  def allPaymentDetails = BackendFromCookieAction.async { implicit request =>
+  def anyPaymentDetails(subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = authenticationService.userId
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
-      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId))
+      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, subscriptionNameOption))
       freeOrPaidSub = subscription.plan.charges match {
         case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
@@ -363,10 +368,11 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan](None)
   def updateDirectDebitOnSpecificSub(subscriptionName: String) = updateDirectDebit[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
-
   @Deprecated def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
+  def allPaymentDetails = anyPaymentDetails(None)
+  def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(Some(memsub.Subscription.Name(subscriptionName)))
 
 }
