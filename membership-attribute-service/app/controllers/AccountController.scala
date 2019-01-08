@@ -281,25 +281,29 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
+  sealed trait OptionalSubscriptionsFilter
+  case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
+  case class FilterByProductNameStartsWith(productNameStartsWith: String) extends OptionalSubscriptionsFilter
+  case object NoFilter extends OptionalSubscriptionsFilter
 
   def allSubscriptions(
     contactRepo: SimpleContactRepository,
     subService: SubscriptionService[Future]
   )(
     maybeUserId: Option[String],
-    filter: Option[Either[memsub.Subscription.Name, String]]
+    filter: OptionalSubscriptionsFilter
   ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
     filteredIfApplicable = filter match {
-      case Some(Left(subName)) => subscriptions.find(_.name == subName).toList
-      case Some(Right(productNameStartsWith)) => subscriptions.filter(_.plan.productName.startsWith(productNameStartsWith))
-      case None => subscriptions
+      case FilterBySubName(subscriptionName) => subscriptions.find(_.name == subscriptionName).toList
+      case FilterByProductNameStartsWith(productNameStartsWith) => subscriptions.filter(_.plan.productName.startsWith(productNameStartsWith))
+      case NoFilter => subscriptions
     }
   } yield filteredIfApplicable
 
-  def anyPaymentDetails(filter: Option[Either[memsub.Subscription.Name, String]]) = BackendFromCookieAction.async { implicit request =>
+  def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = authenticationService.userId
@@ -373,7 +377,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
-  def allPaymentDetails(productNameStartsWith: Option[String]) = anyPaymentDetails(productNameStartsWith.map(Right.apply))
-  def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(Some(Left(memsub.Subscription.Name(subscriptionName))))
+  def allPaymentDetails(productNameStartsWith: Option[String]) = anyPaymentDetails(productNameStartsWith.fold[OptionalSubscriptionsFilter](NoFilter)(FilterByProductNameStartsWith))
+  def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(FilterBySubName(memsub.Subscription.Name(subscriptionName)))
 
 }
