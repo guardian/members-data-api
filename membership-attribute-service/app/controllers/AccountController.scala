@@ -6,9 +6,11 @@ import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.services.SubscriptionService
+import com.gu.memsub.subsv2.{PaidChargeList, Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
+import com.gu.salesforce.SimpleContactRepository
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
@@ -29,7 +31,8 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+import scalaz.{-\/, EitherT, ListT, OptionT, \/, \/-}
+import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -258,13 +261,52 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
-    } yield AccountDetails(contact, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, alertText).toResult).run.run.map {
+    } yield AccountDetails(contact.regNumber, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, alertText).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-        result
+        Ok(result)
       case \/-(None) =>
         logger.info(s"identity user doesn't exist in SF: ${maybeUserId.mkString}")
         Ok(Json.obj())
+      case -\/(message) =>
+        logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
+        InternalServerError("Failed to retrieve payment details due to an internal error")
+    }
+  }
+
+
+  def allSubscriptions(
+    contactRepo: SimpleContactRepository,
+    subService: SubscriptionService[Future]
+  )(
+    maybeUserId: Option[String]
+  ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
+    user <- OptionEither.liftFutureEither(maybeUserId)
+    contact <- OptionEither(contactRepo.get(user))
+    subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
+  } yield subscriptions
+
+  def allPaymentDetails = BackendFromCookieAction.async { implicit request =>
+    implicit val tp = request.touchpoint
+    def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
+    val maybeUserId = authenticationService.userId
+
+    logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
+    (for {
+      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId))
+      freeOrPaidSub = subscription.plan.charges match {
+        case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
+        case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
+      }
+      paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${subscription.name}. Reason: $x") })
+      upToDatePaymentDetails <- ListEither.liftList(getUpToDatePaymentDetailsFromStripe(subscription.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${subscription.accountId}. Reason: $x") })
+      accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
+      stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
+      alertText <- ListEither.liftEitherList(alertText(accountSummary, subscription, getPaymentMethod))
+    } yield AccountDetails(None, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, alertText).toJson).run.run.map {
+      case \/-(subscriptionJSONs) =>
+        logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
+        Ok(Json.toJson(subscriptionJSONs))
       case -\/(message) =>
         logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
         InternalServerError("Failed to retrieve payment details due to an internal error")
@@ -314,26 +356,5 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
-}
-
-// this is helping us stack future/either/option
-object OptionEither {
-
-  type FutureEither[X] = EitherT[Future, String, X]
-
-  def apply[A](m: Future[\/[String, Option[A]]]): OptionT[FutureEither, A] =
-    OptionT[FutureEither, A](EitherT[Future, String, Option[A]](m))
-
-  def liftOption[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
-    apply(x.map(_.map[Option[A]](Some.apply)))
-
-  def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
-    apply(Future.successful(\/.right[String,Option[A]](x)))
-
-  def liftEitherOption[A](future: Future[A])(implicit ex: ExecutionContext): OptionT[FutureEither, A] = {
-    apply(future map { value: A =>
-      \/.right[String, Option[A]](Some(value))
-    })
-  }
 
 }

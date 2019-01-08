@@ -1,33 +1,18 @@
 package models
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
-import com.gu.salesforce.{Contact, _}
-import com.gu.services.model.{PaymentDetails, _}
+import com.gu.services.model.PaymentDetails
 import json.localDateWrites
-import play.api.libs.json._
-import play.api.mvc.Results.Ok
+import play.api.libs.json.{Json, _}
 
-case class AccountDetails(contact: Contact, email: Option[String], paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String])
+case class AccountDetails(regNumber: Option[String], email: Option[String], paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String])
 
 object AccountDetails {
 
   implicit class ResultLike(accountDetails: AccountDetails) {
 
-    def toResult = {
+    import accountDetails._
 
-      val accountJsonObj = memberDetails(accountDetails.contact, accountDetails.paymentDetails) ++ toJson(accountDetails.paymentDetails, accountDetails.stripePublicKey, accountDetails.email)
-      val accountWithAlertJsonObj = accountDetails.membershipAlertText match {
-        case Some(text) => accountJsonObj ++ Json.obj("alertText" -> text)
-        case None => accountJsonObj
-      }
-
-      Ok(accountWithAlertJsonObj)
-    }
-
-    private def memberDetails(contact: Contact, paymentDetails: PaymentDetails) =
-      Json.obj("tier" -> paymentDetails.plan.name, "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)) ++
-        contact.regNumber.fold(Json.obj())({m => Json.obj("regNumber" -> m)})
-
-    private def toJson(paymentDetails: PaymentDetails, stripePublicKey: String, email: Option[String]): JsObject = {
+    def toJson: JsObject = {
 
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
@@ -62,25 +47,30 @@ object AccountDetails {
       }
 
       Json.obj(
-        "joinDate" -> paymentDetails.startDate,
-        "optIn" -> !paymentDetails.pendingCancellation,
-        "subscription" -> (paymentMethod ++ Json.obj(
-          "start" -> paymentDetails.lastPaymentDate,
-          "end" -> endDate,
-          "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
-          "nextPaymentDate" -> paymentDetails.nextPaymentDate,
-          "renewalDate" -> paymentDetails.termEndDate,
-          "cancelledAt" -> (paymentDetails.pendingAmendment || paymentDetails.pendingCancellation),
-          "subscriberId" -> paymentDetails.subscriberId,
-          "trialLength" -> paymentDetails.remainingTrialLength,
-          "plan" -> Json.obj(
-            "name" -> paymentDetails.plan.name,
-            "amount" -> paymentDetails.plan.price.amount * 100,
-            "currency" -> paymentDetails.plan.price.currency.glyph,
-            "currencyISO" -> paymentDetails.plan.price.currency.iso,
-            "interval" -> paymentDetails.plan.interval.mkString
-          )))
-      )
+        "tier" -> paymentDetails.plan.name,
+        "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)
+      ) ++
+        regNumber.fold(Json.obj())({reg => Json.obj("regNumber" -> reg)}) ++
+        Json.obj(
+          "joinDate" -> paymentDetails.startDate,
+          "optIn" -> !paymentDetails.pendingCancellation,
+          "subscription" -> (paymentMethod ++ Json.obj(
+            "start" -> paymentDetails.lastPaymentDate,
+            "end" -> endDate,
+            "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
+            "nextPaymentDate" -> paymentDetails.nextPaymentDate,
+            "renewalDate" -> paymentDetails.termEndDate,
+            "cancelledAt" -> (paymentDetails.pendingAmendment || paymentDetails.pendingCancellation),
+            "subscriberId" -> paymentDetails.subscriberId,
+            "trialLength" -> paymentDetails.remainingTrialLength,
+            "plan" -> Json.obj(
+              "name" -> paymentDetails.plan.name,
+              "amount" -> paymentDetails.plan.price.amount * 100,
+              "currency" -> paymentDetails.plan.price.currency.glyph,
+              "currencyISO" -> paymentDetails.plan.price.currency.iso,
+              "interval" -> paymentDetails.plan.interval.mkString
+            )))
+        ) ++ membershipAlertText.fold(Json.obj())({text => Json.obj("alertText" -> text)})
 
     }
   }
