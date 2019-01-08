@@ -287,25 +287,26 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     subService: SubscriptionService[Future]
   )(
     maybeUserId: Option[String],
-    subscriptionNameOption: Option[memsub.Subscription.Name]
+    filter: Option[Either[memsub.Subscription.Name, String]]
   ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
-    filteredByOptionalSubName = subscriptionNameOption match {
-      case Some(subName) => subscriptions.find(_.name == subName).toList
+    filteredIfApplicable = filter match {
+      case Some(Left(subName)) => subscriptions.find(_.name == subName).toList
+      case Some(Right(productNameStartsWith)) => subscriptions.filter(_.plan.productName.startsWith(productNameStartsWith))
       case None => subscriptions
     }
-  } yield filteredByOptionalSubName
+  } yield filteredIfApplicable
 
-  def anyPaymentDetails(subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
+  def anyPaymentDetails(filter: Option[Either[memsub.Subscription.Name, String]]) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = authenticationService.userId
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
-      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, subscriptionNameOption))
+      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
       freeOrPaidSub = subscription.plan.charges match {
         case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
@@ -372,7 +373,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
-  def allPaymentDetails = anyPaymentDetails(None)
-  def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(Some(memsub.Subscription.Name(subscriptionName)))
+  def allPaymentDetails(productNameStartsWith: Option[String]) = anyPaymentDetails(productNameStartsWith.map(Right.apply))
+  def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(Some(Left(memsub.Subscription.Name(subscriptionName))))
 
 }
