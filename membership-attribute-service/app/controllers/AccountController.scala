@@ -390,7 +390,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
-  def allPaymentDetails(productType: Option[String]) = anyPaymentDetails(productType.fold[OptionalSubscriptionsFilter](NoFilter)(FilterByProductType))
+  def allPaymentDetails(productType: Option[String]) = anyPaymentDetails(productType.fold[OptionalSubscriptionsFilter](NoFilter)(FilterByProductType.apply))
   def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(FilterBySubName(memsub.Subscription.Name(subscriptionName)))
 
 }
