@@ -283,8 +283,18 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
   sealed trait OptionalSubscriptionsFilter
   case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
-  case class FilterByProductNameStartsWith(productNameStartsWith: String) extends OptionalSubscriptionsFilter
+  case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
   case object NoFilter extends OptionalSubscriptionsFilter
+
+  private def productIsInstanceOfProductType(product: Product, productType: String) = product match {
+    // this ordering prevents Weekly subs from coming back when Paper is requested (which is different from the type hierarchy where Weekly extends Paper)
+    case _: Product.Weekly => productType == "Weekly"
+    case _: Product.Paper => productType == "Paper"
+    case _: Product.Contribution => productType == "Contribution"
+    case _: Product.Membership => productType == "Membership"
+    case _: Product.ZDigipack => productType == "Digipack"
+    case _ => productType == product.name // fallback
+  }
 
   def allSubscriptions(
     contactRepo: SimpleContactRepository,
@@ -297,9 +307,12 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
     filteredIfApplicable = filter match {
-      case FilterBySubName(subscriptionName) => subscriptions.find(_.name == subscriptionName).toList
-      case FilterByProductNameStartsWith(productNameStartsWith) => subscriptions.filter(_.plan.productName.startsWith(productNameStartsWith))
-      case NoFilter => subscriptions
+      case FilterBySubName(subscriptionName) =>
+        subscriptions.find(_.name == subscriptionName).toList
+      case FilterByProductType(productType) =>
+        subscriptions.filter(subscription => productIsInstanceOfProductType(subscription.plan.product, productType))
+      case NoFilter =>
+        subscriptions
     }
   } yield filteredIfApplicable
 
@@ -377,7 +390,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
-  def allPaymentDetails(productNameStartsWith: Option[String]) = anyPaymentDetails(productNameStartsWith.fold[OptionalSubscriptionsFilter](NoFilter)(FilterByProductNameStartsWith))
+  def allPaymentDetails(productType: Option[String]) = anyPaymentDetails(productType.fold[OptionalSubscriptionsFilter](NoFilter)(FilterByProductType))
   def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(FilterBySubName(memsub.Subscription.Name(subscriptionName)))
 
 }
