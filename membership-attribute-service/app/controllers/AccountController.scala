@@ -281,26 +281,49 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
+  sealed trait OptionalSubscriptionsFilter
+  case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
+  case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
+  case object NoFilter extends OptionalSubscriptionsFilter
+
+  private def productIsInstanceOfProductType(product: Product, productType: String) = product match {
+    // this ordering prevents Weekly subs from coming back when Paper is requested (which is different from the type hierarchy where Weekly extends Paper)
+    case _: Product.Weekly => productType == "Weekly"
+    case _: Product.Paper => productType == "Paper"
+    case _: Product.Contribution => productType == "Contribution"
+    case _: Product.Membership => productType == "Membership"
+    case _: Product.ZDigipack => productType == "Digipack"
+    case _ => productType == product.name // fallback
+  }
 
   def allSubscriptions(
     contactRepo: SimpleContactRepository,
     subService: SubscriptionService[Future]
   )(
-    maybeUserId: Option[String]
+    maybeUserId: Option[String],
+    filter: OptionalSubscriptionsFilter
   ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
-  } yield subscriptions
+    filteredIfApplicable = filter match {
+      case FilterBySubName(subscriptionName) =>
+        subscriptions.find(_.name == subscriptionName).toList
+      case FilterByProductType(productType) =>
+        subscriptions.filter(subscription => productIsInstanceOfProductType(subscription.plan.product, productType))
+      case NoFilter =>
+        subscriptions
+    }
+  } yield filteredIfApplicable
 
-  def allPaymentDetails = BackendFromCookieAction.async { implicit request =>
+  def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = authenticationService.userId
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
-      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId))
+      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
       freeOrPaidSub = subscription.plan.charges match {
         case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
@@ -363,10 +386,11 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan](None)
   def updateDirectDebitOnSpecificSub(subscriptionName: String) = updateDirectDebit[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
-
   @Deprecated def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]
   @Deprecated def digitalPackDetails = paymentDetails[SubscriptionPlan.Digipack, Nothing]
   @Deprecated def paperDetails = paymentDetails[SubscriptionPlan.PaperPlan, Nothing]
+  def allPaymentDetails(productType: Option[String]) = anyPaymentDetails(productType.fold[OptionalSubscriptionsFilter](NoFilter)(FilterByProductType.apply))
+  def paymentDetailsSpecificSub(subscriptionName: String) = anyPaymentDetails(FilterBySubName(memsub.Subscription.Name(subscriptionName)))
 
 }
