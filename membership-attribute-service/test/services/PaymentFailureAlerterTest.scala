@@ -57,6 +57,16 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         result must be_==(Some(expectedActionText)).await
       }
 
+      "return a message for a digipack holder who is in payment failure" in {
+        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, digipack, paymentMethodResponseRecentFailure)
+
+        val attemptDateTime = DateTime.now().minusDays(1)
+        val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
+        val expectedActionText = s"Our attempt to take payment for your Digital Pack failed on ${attemptDateTime.toString(formatter)}. Please check that the card details shown are up to date."
+
+        result must be_==(Some(expectedActionText)).await
+      }
+
     }
 
     "alertAvailableFor" should {
@@ -95,6 +105,12 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
       "return true for a contributor with a failed payment and an invoice in the last 27 days" in {
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, contributor, paymentMethodResponseRecentFailure)
+
+        result must be_==(true).await
+      }
+
+      "return true for a digipack holder with a failed payment and an invoice in the last 27 days" in {
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, digipack, paymentMethodResponseRecentFailure)
 
         result must be_==(true).await
       }

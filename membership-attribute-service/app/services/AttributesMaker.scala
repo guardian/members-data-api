@@ -63,6 +63,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
       }.toList.sortWith(_.product.name < _.product.name)
     }
 
+    //TODO this should really return a list of all products with alerts and the banner logic etc should handle multiple
     def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {
 
       case Nil => Future.successful(None)
