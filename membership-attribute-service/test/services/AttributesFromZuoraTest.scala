@@ -41,6 +41,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     MembershipJoinDate = None,
     DigitalSubscriptionExpiryDate = None,
     PaperSubscriptionExpiryDate = None,
+    GuardianWeeklySubscriptionExpiryDate = None,
     TTLTimestamp = referenceDateInSeconds
   )
   val contributorAttributes = DynamoAttributes.asAttributes(contributorDynamoAttributes)

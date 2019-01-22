@@ -32,6 +32,9 @@ trait SubscriptionTestData {
   def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Contributor = PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
     RatePlanId("idContributor"), ProductRatePlanId("prpi"), "Monthly Contribution", "desc", "Monthly Contribution", Product.Contribution, List.empty, PaidCharge(Contributor, BillingPeriod.Month, PricingSummary(Map(GBP -> Price(5.0f, GBP))), ProductRatePlanChargeId("bar"), SubscriptionRatePlanChargeId("nar")), None, startDate, endDate
   )
+  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.WeeklyPlan = PaidSubscriptionPlan[Product.WeeklyDomestic, PaidCharge[Benefit.Weekly.type, BillingPeriod]](
+    RatePlanId("idGuardianWeeklyPlan"), ProductRatePlanId("prpi"), "Guardian Weekly", "desc", "Guardian Weekly", Product.WeeklyDomestic, List.empty, PaidCharge(Weekly, BillingPeriod.Quarter, PricingSummary(Map(GBP -> Price(37.50f, GBP))), ProductRatePlanChargeId("bar"), SubscriptionRatePlanChargeId("nar")), None, startDate, endDate
+  )
 
   def toSubscription[P <: SubscriptionPlan.AnyPlan](isCancelled: Boolean)(plans: NonEmptyList[P]): Subscription[P] = {
     Subscription(
@@ -53,6 +56,7 @@ trait SubscriptionTestData {
   }
 
   val digipack = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
+  val guardianWeekly = toSubscription(false)(NonEmptyList(guardianWeeklyPlan(referenceDate, referenceDate + 1.year)))
   val sunday = toSubscription(false)(NonEmptyList(paperPlan(referenceDate, referenceDate + 1.year)))
   val sundayPlus = toSubscription(false)(NonEmptyList(paperPlusPlan(referenceDate, referenceDate + 1.year)))
   val membership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate, referenceDate + 1.year)))

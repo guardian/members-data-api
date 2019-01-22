@@ -45,7 +45,8 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         RecurringContributionPaymentPlan = None,
         MembershipJoinDate = None,
         DigitalSubscriptionExpiryDate = Some(referenceDate + 1.year),
-        PaperSubscriptionExpiryDate = Some(referenceDate + 1.year)
+        PaperSubscriptionExpiryDate = Some(referenceDate + 1.year),
+        GuardianWeeklySubscriptionExpiryDate = None
       ))
       val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(sunday)), AccountWithSubscriptions(anotherAccountSummary, List(sundayPlus))), paymentMethodResponseNoFailures, referenceDate)
       result must be_==(expected).await
@@ -53,7 +54,7 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
 
     "return none when only sub is expired" in {
       val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(expiredMembership))), paymentMethodResponseNoFailures, referenceDate)
-      result must be_==(None).await
+      result must beNone.await
     }
 
     "return attributes when there is one membership sub" in {
@@ -164,10 +165,26 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
         RecurringContributionPaymentPlan = Some("Monthly Contribution"),
         MembershipJoinDate = None,
         PaperSubscriptionExpiryDate = Some(referenceDate + 1.year),
+        GuardianWeeklySubscriptionExpiryDate = None,
         AlertAvailableFor = Some("contribution")
       )
       )
       val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithBalance, List(sunday)), AccountWithSubscriptions(accountObjectWithBalance, List(contributor))), paymentMethodResponseRecentFailure, referenceDate)
+      result must be_==(expected).await
+    }
+
+    "still return alertAvailableFor=contribution when there is an active contribution and guardianWeekly sub, both in payment failure" in {
+      val expected = Some(ZuoraAttributes(
+        UserId = identityId,
+        Tier = None,
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        MembershipJoinDate = None,
+        PaperSubscriptionExpiryDate = None,
+        GuardianWeeklySubscriptionExpiryDate = Some(referenceDate + 1.year),
+        AlertAvailableFor = Some("contribution")
+      )
+      )
+      val result = AttributesMaker.zuoraAttributes(identityId, List(AccountWithSubscriptions(accountObjectWithBalance, List(guardianWeekly)), AccountWithSubscriptions(accountObjectWithBalance, List(contributor))), paymentMethodResponseRecentFailure, referenceDate)
       result must be_==(expected).await
     }
 

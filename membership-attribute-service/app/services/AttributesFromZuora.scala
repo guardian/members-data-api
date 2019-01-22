@@ -124,6 +124,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
         MembershipJoinDate = attributes.MembershipJoinDate,
         DigitalSubscriptionExpiryDate = attributes.DigitalSubscriptionExpiryDate,
         PaperSubscriptionExpiryDate = attributes.PaperSubscriptionExpiryDate,
+        GuardianWeeklySubscriptionExpiryDate = attributes.GuardianWeeklySubscriptionExpiryDate,
         TTLTimestamp = TtlConversions.toDynamoTtlInSeconds(twoWeekExpiry)
       )
     }
