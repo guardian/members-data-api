@@ -29,7 +29,8 @@ class AttributeControllerTest extends Specification with AfterAll {
     MembershipJoinDate = Some(new LocalDate(2017, 5, 13)),
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
     DigitalSubscriptionExpiryDate = Some(new LocalDate(2100, 1, 1)),
-    PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1))
+    PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
+    GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1))
   )
 
   private val validUserCookie = Cookie("validUser", "true")
@@ -122,12 +123,14 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   "recurringContributionPaymentPlan":"Monthly Contribution",
                    |   "digitalSubscriptionExpiryDate":"2100-01-01",
                    |   "paperSubscriptionExpiryDate":"2099-01-01",
+                   |   "guardianWeeklyExpiryDate":"2099-01-01",
                    |   "contentAccess": {
                    |     "member": true,
                    |     "paidMember": true,
                    |     "recurringContributor": true,
                    |     "digitalPack": true,
-                   |     "paperSubscriber": true
+                   |     "paperSubscriber": true,
+                   |     "guardianWeeklySubscriber": true
                    |   }
                    | }
                  """.stripMargin)
@@ -167,7 +170,8 @@ class AttributeControllerTest extends Specification with AfterAll {
                      |    "paidMember": false,
                      |    "recurringContributor": false,
                      |    "digitalPack": false,
-                     |    "paperSubscriber": false
+                     |    "paperSubscriber": false,
+                     |    "guardianWeeklySubscriber": false
                      |  }
                      |}""".stripMargin)
     }

@@ -17,7 +17,8 @@ case class ContentAccess(
   paidMember: Boolean,
   recurringContributor: Boolean,
   digitalPack: Boolean,
-  paperSubscriber: Boolean
+  paperSubscriber: Boolean,
+  guardianWeeklySubscriber: Boolean
 )
 
 object ContentAccess {
@@ -32,6 +33,7 @@ case class Attributes(
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
+  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
   AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -44,13 +46,15 @@ case class Attributes(
   lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPaperSubscriber = PaperSubscriptionExpiryDate.exists(_.isAfter(now))
+  lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
     recurringContributor = isContributor,
     digitalPack = digitalSubscriberHasActivePlan,
-    paperSubscriber = isPaperSubscriber
+    paperSubscriber = isPaperSubscriber,
+    guardianWeeklySubscriber = isGuardianWeeklySubscriber
   )
 
 }
@@ -62,6 +66,7 @@ case class ZuoraAttributes(
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
+  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
   AlertAvailableFor: Option[String] = None)
 
 object ZuoraAttributes {
@@ -72,6 +77,7 @@ object ZuoraAttributes {
     MembershipJoinDate = zuoraAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = zuoraAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = zuoraAttributes.PaperSubscriptionExpiryDate,
+    GuardianWeeklySubscriptionExpiryDate = zuoraAttributes.GuardianWeeklySubscriptionExpiryDate,
     AlertAvailableFor = zuoraAttributes.AlertAvailableFor
   )
 }
@@ -83,6 +89,7 @@ case class DynamoAttributes(
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
+  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
   TTLTimestamp: Long) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -99,7 +106,8 @@ object DynamoAttributes {
     RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
     MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
-    PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate
+    PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
+    GuardianWeeklySubscriptionExpiryDate = dynamoAttributes.GuardianWeeklySubscriptionExpiryDate
   )
 }
 
@@ -112,6 +120,7 @@ object Attributes {
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
+      (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)

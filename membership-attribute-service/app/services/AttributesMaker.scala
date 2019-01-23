@@ -8,9 +8,10 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
-import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
+import models.{AccountWithSubscriptions, ZuoraAttributes}
 import org.joda.time.LocalDate
 import PaymentFailureAlerter.alertAvailableFor
+
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
@@ -89,10 +90,16 @@ class AttributesMaker extends LoggingWithLogstashFields{
       case _ => false
     }.values.flatten
 
+    val guardianWeeklySubscriptions = groupedSubs.filterKeys{
+      case Some(_: Product.Weekly) => true // guardian weekly extends Paper, so we need to explicitly filter that out
+      case _ => false
+    }.values.flatten
+
     val hasAttributableProduct = membershipSub.nonEmpty ||
       contributionSub.nonEmpty ||
       subsWhichIncludeDigitalPack.nonEmpty ||
-      paperSubscriptions.nonEmpty
+      paperSubscriptions.nonEmpty ||
+      guardianWeeklySubscriptions.nonEmpty
 
     findFirstAlert(sortedProductData) map { maybeAlert =>
       def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
@@ -105,6 +112,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
         val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
         val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
         val latestPaperExpiryDate: Option[LocalDate] = Some(paperSubscriptions.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
+        val latestGuardianWeeklyExpiryDate: Option[LocalDate] = Some(guardianWeeklySubscriptions.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
         ZuoraAttributes(
           UserId = identityId,
           Tier = tier,
@@ -112,6 +120,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
           PaperSubscriptionExpiryDate = latestPaperExpiryDate,
+          GuardianWeeklySubscriptionExpiryDate = latestGuardianWeeklyExpiryDate,
           AlertAvailableFor = maybeAlert
         )
       }
