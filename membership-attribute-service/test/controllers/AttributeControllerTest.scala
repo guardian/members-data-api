@@ -124,6 +124,7 @@ class AttributeControllerTest extends Specification with AfterAll {
                    |   "digitalSubscriptionExpiryDate":"2100-01-01",
                    |   "paperSubscriptionExpiryDate":"2099-01-01",
                    |   "guardianWeeklyExpiryDate":"2099-01-01",
+                   |   "showSupportMessaging": false,
                    |   "contentAccess": {
                    |     "member": true,
                    |     "paidMember": true,
@@ -165,6 +166,7 @@ class AttributeControllerTest extends Specification with AfterAll {
         Json.parse("""
                      |{
                      |  "userId": "456",
+                     |  "showSupportMessaging": true,
                      |  "contentAccess": {
                      |    "member": false,
                      |    "paidMember": false,

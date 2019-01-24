@@ -116,7 +116,7 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
         retrieved <- repo.get("6789")
       } yield retrieved
 
-      result must be_==(Some(newAttributes)).await
+      result must beSome(newAttributes).await
 
     }
 

@@ -57,6 +57,10 @@ case class Attributes(
     guardianWeeklySubscriber = isGuardianWeeklySubscriber
   )
 
+  // show support messaging (in app & on dotcom) if they do NOT have any active products
+  // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
+  lazy val showSupportMessaging = !(isPaidTier || isContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
+
 }
 
 case class ZuoraAttributes(
@@ -124,6 +128,7 @@ object Attributes {
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
+    .addField("showSupportMessaging", _.showSupportMessaging)
     .addField("contentAccess", _.contentAccess)
 
   implicit def toResult(attrs: Attributes): Result =
