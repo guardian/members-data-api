@@ -286,14 +286,17 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
   case object NoFilter extends OptionalSubscriptionsFilter
 
-  private def productIsInstanceOfProductType(product: Product, productType: String) = product match {
-    // this ordering prevents Weekly subs from coming back when Paper is requested (which is different from the type hierarchy where Weekly extends Paper)
-    case _: Product.Weekly => productType == "Weekly"
-    case _: Product.Paper => productType == "Paper"
-    case _: Product.Contribution => productType == "Contribution"
-    case _: Product.Membership => productType == "Membership"
-    case _: Product.ZDigipack => productType == "Digipack"
-    case _ => productType == product.name // fallback
+  private def productIsInstanceOfProductType(product: Product, requestedProductType: String) = {
+    val requestedProductTypeIsContentSubscription: Boolean = requestedProductType == "ContentSubscription"
+    product match {
+      // this ordering prevents Weekly subs from coming back when Paper is requested (which is different from the type hierarchy where Weekly extends Paper)
+      case _: Product.Weekly => requestedProductType == "Weekly" || requestedProductTypeIsContentSubscription
+      case _: Product.Paper => requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
+      case _: Product.Contribution => requestedProductType == "Contribution"
+      case _: Product.Membership => requestedProductType == "Membership"
+      case _: Product.ZDigipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription
+      case _ => requestedProductType == product.name // fallback
+    }
   }
 
   def allSubscriptions(
