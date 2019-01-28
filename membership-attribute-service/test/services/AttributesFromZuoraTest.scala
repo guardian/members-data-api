@@ -52,7 +52,8 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     RecurringContributionPaymentPlan = None,
     MembershipJoinDate = Some(referenceDate),
     DigitalSubscriptionExpiryDate = None,
-    TTLTimestamp = referenceDateInSeconds)
+    TTLTimestamp = referenceDateInSeconds
+  )
 
   def asZuoraAttributes(dynamoAttributes: DynamoAttributes): ZuoraAttributes = ZuoraAttributes(
     UserId = dynamoAttributes.UserId,

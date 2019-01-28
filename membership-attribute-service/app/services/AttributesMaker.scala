@@ -95,7 +95,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
       case _ => false
     }.values.flatten
 
-    val hasAttributableProduct = membershipSub.nonEmpty ||
+    val hasAttributableProduct: Boolean = membershipSub.nonEmpty ||
       contributionSub.nonEmpty ||
       subsWhichIncludeDigitalPack.nonEmpty ||
       paperSubscriptions.nonEmpty ||
