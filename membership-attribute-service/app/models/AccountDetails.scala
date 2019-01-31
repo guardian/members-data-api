@@ -4,7 +4,7 @@ import com.gu.services.model.PaymentDetails
 import json.localDateWrites
 import play.api.libs.json.{Json, _}
 
-case class AccountDetails(regNumber: Option[String], email: Option[String], paymentDetails: PaymentDetails, stripePublicKey: String, membershipAlertText: Option[String])
+case class AccountDetails(regNumber: Option[String], email: Option[String], paymentDetails: PaymentDetails, stripePublicKey: String, isAutoRenew: Boolean, membershipAlertText: Option[String])
 
 object AccountDetails {
 
@@ -64,6 +64,7 @@ object AccountDetails {
             "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
+            "autoRenew" -> isAutoRenew,
             "plan" -> Json.obj(
               "name" -> paymentDetails.plan.name,
               "amount" -> paymentDetails.plan.price.amount * 100,
