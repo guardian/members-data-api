@@ -32,7 +32,7 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, EitherT, ListT, OptionT, \/, \/-}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -252,6 +252,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
+  @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
@@ -268,7 +269,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
-    } yield AccountDetails(contact.regNumber, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, alertText).toJson).run.run.map {
+      isAutoRenew = sub.autoRenew
+    } yield AccountDetails(contact.regNumber, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, isAutoRenew, alertText).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         Ok(result)
@@ -336,7 +338,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- ListEither.liftEitherList(alertText(accountSummary, subscription, getPaymentMethod))
-    } yield AccountDetails(None, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, alertText).toJson).run.run.map {
+      isAutoRenew = subscription.autoRenew
+    } yield AccountDetails(None, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, isAutoRenew, alertText).toJson).run.run.map {
       case \/-(subscriptionJSONs) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         Ok(Json.toJson(subscriptionJSONs))
