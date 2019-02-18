@@ -3,10 +3,12 @@ package services
 import java.util.Locale
 
 import com.gu.memsub.Product
+import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.monitoring.SafeLogger
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime
@@ -125,4 +127,28 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
 
     alertAvailable.getOrElse(Future.successful(false))
   }
+
+  def mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices: List[Invoice]): List[Invoice] = {
+    implicit def localDateOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter _)
+    val nonZeroInvoicesOlderThanOneMonth = recentInvoices.filter(invoice => invoice.invoiceDate.isBefore(DateTime.now().minusMonths(1)) && invoice.amount > 0)
+    nonZeroInvoicesOlderThanOneMonth.sortBy(_.invoiceDate).take(2)
+  }
+
+  def accountHasMissedRecentPayments(accountId: AccountId, isPaidSub: Boolean, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
+    val paidInvoiceNumbers = recentPayments.filter(_.status == "Processed").flatMap(_.paidInvoices).map(_.invoiceNumber)
+    val unpaidPayableInvoiceOlderThanOneMonth = mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices) match {
+      case Nil => false
+      case invoices => !invoices.forall(invoice => paidInvoiceNumbers.contains(invoice.invoiceNumber))
+    }
+    val result = isPaidSub && unpaidPayableInvoiceOlderThanOneMonth
+    SafeLogger.info(s"${accountId.get} | accountHasMissedRecentPayments: ${result}")
+    result
+  }
+
+  def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice]): Boolean = {
+    val result = !recentInvoices.exists(invoice => invoice.balance > 0 && invoice.invoiceDate.isBefore(DateTime.now.minusMonths(1)))
+    SafeLogger.info(s"${accountId.get} | safeToAllowPaymentUpdate: ${result}")
+    result
+  }
+
 }
