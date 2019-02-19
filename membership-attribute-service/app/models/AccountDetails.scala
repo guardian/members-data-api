@@ -75,10 +75,11 @@ object AccountDetails {
           "optIn" -> !paymentDetails.pendingCancellation,
           "subscription" -> (paymentMethod ++ Json.obj(
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
-            "start" -> paymentDetails.lastPaymentDate,
+            "start" -> paymentDetails.customerAcceptanceDate,
             "end" -> endDate,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
+            "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "renewalDate" -> paymentDetails.termEndDate,
             "cancelledAt" -> (paymentDetails.pendingAmendment || paymentDetails.pendingCancellation),
             "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints
