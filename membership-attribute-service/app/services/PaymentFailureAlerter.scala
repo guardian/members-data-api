@@ -128,13 +128,14 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     alertAvailable.getOrElse(Future.successful(false))
   }
 
+  // Ignore unpaid invoices which are less than a month old, because these should be automatically dealt with by the payment retry process
   def mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices: List[Invoice]): List[Invoice] = {
     implicit def localDateOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter _)
     val nonZeroInvoicesOlderThanOneMonth = recentInvoices.filter(invoice => invoice.invoiceDate.isBefore(DateTime.now().minusMonths(1)) && invoice.amount > 0)
     nonZeroInvoicesOlderThanOneMonth.sortBy(_.invoiceDate).take(2)
   }
 
-  def accountHasMissedRecentPayments(accountId: AccountId, isPaidSub: Boolean, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
+  def accountHasMissedPayments(accountId: AccountId, isPaidSub: Boolean, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
     val paidInvoiceNumbers = recentPayments.filter(_.status == "Processed").flatMap(_.paidInvoices).map(_.invoiceNumber)
     val unpaidPayableInvoiceOlderThanOneMonth = mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices) match {
       case Nil => false
