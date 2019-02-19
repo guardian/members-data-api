@@ -4,7 +4,16 @@ import com.gu.services.model.PaymentDetails
 import json.localDateWrites
 import play.api.libs.json.{Json, _}
 
-case class AccountDetails(regNumber: Option[String], email: Option[String], paymentDetails: PaymentDetails, stripePublicKey: String, isAutoRenew: Boolean, membershipAlertText: Option[String])
+case class AccountDetails(
+  regNumber: Option[String],
+  email: Option[String],
+  paymentDetails: PaymentDetails,
+  stripePublicKey: String,
+  accountHasMissedRecentPayments: Boolean,
+  safeToUpdatePaymentMethod: Boolean,
+  isAutoRenew: Boolean,
+  membershipAlertText: Option[String]
+)
 
 object AccountDetails {
 
@@ -17,12 +26,12 @@ object AccountDetails {
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
 
-      val paymentMethod = paymentDetails.paymentMethod.fold(Json.obj()) {
-        case payPal: PayPalMethod => Json.obj(
+      val paymentMethod = paymentDetails.paymentMethod match {
+        case Some(payPal: PayPalMethod) => Json.obj(
           "paymentMethod" -> "PayPal",
           "payPalEmail" -> payPal.email
         )
-        case card: PaymentCard => Json.obj(
+        case Some(card: PaymentCard) => Json.obj(
           "paymentMethod" -> "Card",
           "card" -> {
             Json.obj(
@@ -33,7 +42,7 @@ object AccountDetails {
             )
           }
         )
-        case dd: GoCardless => Json.obj(
+        case Some(dd: GoCardless) => Json.obj(
           "paymentMethod" -> "DirectDebit",
           "account" -> Json.obj( // DEPRECATED
             "accountName" -> dd.accountName
@@ -44,6 +53,16 @@ object AccountDetails {
             "sortCode" -> dd.sortCode
           )
         )
+        case _ if accountHasMissedRecentPayments && safeToUpdatePaymentMethod => Json.obj(
+          "paymentMethod" -> "ResetRequired",
+          "stripePublicKeyForCardAddition" -> stripePublicKey
+        )
+        case _ => Json.obj()
+      }
+
+      val alertText = membershipAlertText match {
+        case Some(text) => Json.obj("alertText" -> text)
+        case None => Json.obj()
       }
 
       Json.obj(
@@ -55,6 +74,7 @@ object AccountDetails {
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
           "subscription" -> (paymentMethod ++ Json.obj(
+            "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
             "start" -> paymentDetails.customerAcceptanceDate,
             "end" -> endDate,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
@@ -73,7 +93,7 @@ object AccountDetails {
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "interval" -> paymentDetails.plan.interval.mkString
             )))
-        ) ++ membershipAlertText.fold(Json.obj())({text => Json.obj("alertText" -> text)})
+        ) ++ alertText
 
     }
   }

@@ -270,7 +270,16 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
       isAutoRenew = sub.autoRenew
-    } yield AccountDetails(contact.regNumber, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, isAutoRenew, alertText).toJson).run.run.map {
+    } yield AccountDetails(
+      contact.regNumber,
+      accountSummary.billToContact.email,
+      upToDatePaymentDetails,
+      stripeService.publicKey,
+      accountHasMissedRecentPayments = false,
+      safeToUpdatePaymentMethod = true,
+      isAutoRenew = isAutoRenew,
+      alertText
+    ).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         Ok(result)
@@ -339,7 +348,16 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- ListEither.liftEitherList(alertText(accountSummary, subscription, getPaymentMethod))
       isAutoRenew = subscription.autoRenew
-    } yield AccountDetails(None, accountSummary.billToContact.email, upToDatePaymentDetails, stripeService.publicKey, isAutoRenew, alertText).toJson).run.run.map {
+    } yield AccountDetails(
+      regNumber = None,
+      email = accountSummary.billToContact.email,
+      paymentDetails = upToDatePaymentDetails,
+      stripePublicKey = stripeService.publicKey,
+      accountHasMissedRecentPayments = freeOrPaidSub.isRight && accountHasMissedPayments(subscription.accountId, accountSummary.invoices, accountSummary.payments),
+      safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(subscription.accountId, accountSummary.invoices),
+      isAutoRenew = isAutoRenew,
+      membershipAlertText = alertText
+    ).toJson).run.run.map {
       case \/-(subscriptionJSONs) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
         Ok(Json.toJson(subscriptionJSONs))

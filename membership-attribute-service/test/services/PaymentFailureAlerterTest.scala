@@ -2,6 +2,7 @@ package services
 
 import java.util.Locale
 
+import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraRestService.{Invoice, InvoiceId, PaymentMethodId, PaymentMethodResponse}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
@@ -9,7 +10,7 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import testdata.AccountObjectTestData._
 import testdata.AccountSummaryTestData.{accountSummaryWithBalance, accountSummaryWithZeroBalance}
-import testdata.SubscriptionTestData
+import testdata.{InvoiceAndPaymentTestData, SubscriptionTestData}
 
 import scala.concurrent.Future
 import scalaz.\/
@@ -132,8 +133,10 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       "return None if there's one invoice and it has no balance" in {
         val freshNoBalanceInvoice = Invoice(
           InvoiceId("someId"),
+          "INV123",
           DateTime.now().minusDays(14),
           DateTime.now().minusDays(7),
+          amount = 12.34,
           balance = 0,
           status = "Posted"
         )
@@ -148,8 +151,10 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
         val freshInvoiceWithABalance = Invoice(
           InvoiceId("someId"),
+          "INV123",
           invoiceDate,
           DateTime.now().minusDays(7),
+          amount = 12.34,
           balance = 12.34,
           status = "Posted"
         )
@@ -164,16 +169,20 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
         val latestInvoiceWithABalance = Invoice(
           InvoiceId("someId"),
+          "INV123",
           invoiceDateLatest,
           DateTime.now().minusDays(7),
+          amount = 12.34,
           balance = 12.34,
           status = "Posted"
         )
 
         val oldInvoiceWithABalance = Invoice(
           InvoiceId("someId2"),
+          "INV123",
           invoiceDateOlder,
           DateTime.now().minusDays(14),
+          amount = 12.34,
           balance = 12.34,
           status = "Posted"
         )
@@ -181,45 +190,149 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
         lastUnpaidInvoiceDate === Some(invoiceDateLatest)
       }
+
+      "return the latest unpaid invoice date if there is a more recent paid invoice too" in {
+        val invoiceDateLatest = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+        val invoiceDateOlder = DateTime.now().minusDays(21).withTimeAtStartOfDay()
+
+        val latestInvoiceWithNoBalance = Invoice(
+          InvoiceId("someId"),
+          "INV123",
+          invoiceDateLatest,
+          DateTime.now().minusDays(7),
+          amount = 11.99,
+          balance = 0,
+          status = "Posted"
+        )
+
+        val oldInvoiceWithABalance = Invoice(
+          InvoiceId("someId2"),
+          "INV123",
+          invoiceDateOlder,
+          DateTime.now().minusDays(14),
+          amount = 12.34,
+          balance = 12.34,
+          status = "Posted"
+        )
+        val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(latestInvoiceWithNoBalance, oldInvoiceWithABalance))
+
+        lastUnpaidInvoiceDate === Some(invoiceDateOlder)
+      }
+
+      "ignore an invoice that isn't posted" in {
+        val invoiceDate = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+
+        val freshDraftInvoiceWithABalance = Invoice(
+          InvoiceId("someId"),
+          "INV123",
+          invoiceDate,
+          DateTime.now().minusDays(7),
+          amount = 12.34,
+          balance = 12.34,
+          status = "Draft"
+        )
+        val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshDraftInvoiceWithABalance))
+
+        lastUnpaidInvoiceDate === None
+      }
     }
 
-    "return the latest unpaid invoice date if there is a more recent paid invoice too" in {
-      val invoiceDateLatest = DateTime.now().minusDays(14).withTimeAtStartOfDay()
-      val invoiceDateOlder = DateTime.now().minusDays(21).withTimeAtStartOfDay()
+    "mostRecentPayableInvoicesOlderThanOneMonth" should {
 
-      val latestInvoiceWithNoBalance = Invoice(
-        InvoiceId("someId"),
-        invoiceDateLatest,
-        DateTime.now().minusDays(7),
-        balance = 0,
-        status = "Posted"
-      )
+      import InvoiceAndPaymentTestData._
 
-      val oldInvoiceWithABalance = Invoice(
-        InvoiceId("someId2"),
-        invoiceDateOlder,
-        DateTime.now().minusDays(14),
-        balance = 12.34,
-        status = "Posted"
-      )
-      val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(latestInvoiceWithNoBalance, oldInvoiceWithABalance))
+      "return an empty list if the user's invoices all have amount = 0" in {
+        val result = PaymentFailureAlerter.mostRecentPayableInvoicesOlderThanOneMonth(
+          List(
+            oldFreeInvoice,
+            oldFreeInvoice.copy(invoiceDate = moreThanTwoMonthsAgo, dueDate = moreThanTwoMonthsAgo),
+            oldFreeInvoice.copy(invoiceDate = moreThanThreeMonthsAgo, dueDate = moreThanThreeMonthsAgo)
+          )
+        )
+        result === Nil
+      }
 
-      lastUnpaidInvoiceDate === Some(invoiceDateOlder)
+      "return an empty list if the user only has a new invoice" in {
+        val result = PaymentFailureAlerter.mostRecentPayableInvoicesOlderThanOneMonth(List(recentUnpaidInvoice))
+        result === Nil
+      }
+
+      "return the most recent two invoices older than one month if they are present" in {
+
+        val twoMonthOldInvoice = oldUnpaidInvoice.copy(invoiceDate = moreThanTwoMonthsAgo, dueDate = moreThanTwoMonthsAgo)
+        val threeMonthOldInvoice = oldUnpaidInvoice.copy(invoiceDate = moreThanThreeMonthsAgo, dueDate = moreThanThreeMonthsAgo)
+
+        val result = PaymentFailureAlerter.mostRecentPayableInvoicesOlderThanOneMonth(
+          List(
+            oldUnpaidInvoice,
+            twoMonthOldInvoice,
+            threeMonthOldInvoice
+          )
+        )
+        result === List(oldUnpaidInvoice, twoMonthOldInvoice)
+      }
+
     }
 
-    "ignore an invoice that isn't posted" in {
-      val invoiceDate = DateTime.now().minusDays(14).withTimeAtStartOfDay()
+    "accountHasMissedPayments" should {
 
-      val freshDraftInvoiceWithABalance = Invoice(
-        InvoiceId("someId"),
-        invoiceDate,
-        DateTime.now().minusDays(7),
-        balance = 12.34,
-        status = "Draft"
-      )
-      val lastUnpaidInvoiceDate = PaymentFailureAlerter.latestUnpaidInvoiceDate(invoices = List(freshDraftInvoiceWithABalance))
+      import InvoiceAndPaymentTestData._
 
-      lastUnpaidInvoiceDate === None
+      val accountId = AccountId("id123")
+
+      "return false if the user has 0 amount invoices and no payments (i.e. sub which should be paid but has 100% discount)" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(oldFreeInvoice), List()) === false
+      }
+
+      "return false if the user has no payments or invoices for a paid sub (e.g. brand new sub)" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(), List()) === false
+      }
+
+      "return false if the user has a single paid invoice" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(paidInvoice), List(paymentForPaidInvoice)) === false
+      }
+
+      "return false if the user has a recent unpaid invoice (where invoice is unpaid due to no payment attempts)" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(recentUnpaidInvoice), List()) === false
+      }
+
+      "return false if the user has a recent unpaid invoice (where invoice is unpaid due to payment failures)" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(recentUnpaidInvoice), List(failedPaymentForRecentUnpaidInvoice)) === false
+      }
+
+      "return true if the user has never paid an invoice, despite having a single invoice which is more than 30 days old" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(oldUnpaidInvoice), List()) === true
+      }
+
+      "return true if the user has never paid an invoice, despite having two old invoices" in {
+        val result = PaymentFailureAlerter.accountHasMissedPayments(
+          accountId,
+          List(oldUnpaidInvoice, oldUnpaidInvoice.copy(invoiceDate = moreThanTwoMonthsAgo, dueDate = moreThanTwoMonthsAgo)),
+          List()
+        )
+        result === true
+      }
+
+      "return true if the user hasn't paid a recent invoice, even if they have paid in the past" in {
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(oldUnpaidInvoice, paidInvoice), List(paymentForPaidInvoice)) === true
+      }
+
     }
+
+  "safeToAllowPaymentUpdate" should {
+
+    import InvoiceAndPaymentTestData._
+
+    val accountId = AccountId("id123")
+
+    "return false if the user has an outstanding balance from an invoice older than 31 days" in {
+      PaymentFailureAlerter.safeToAllowPaymentUpdate(accountId, List(oldUnpaidInvoice)) === false
+    }
+
+    "return true if the user has failed to pay for an invoice within the last month (normal payment failure scenario)" in {
+      PaymentFailureAlerter.safeToAllowPaymentUpdate(accountId, List(recentUnpaidInvoice)) === true
+    }
+  }
+
   }
 }
