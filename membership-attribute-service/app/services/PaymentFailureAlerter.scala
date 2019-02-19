@@ -135,15 +135,14 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     nonZeroInvoicesOlderThanOneMonth.sortBy(_.invoiceDate).take(2)
   }
 
-  def accountHasMissedPayments(accountId: AccountId, isPaidSub: Boolean, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
+  def accountHasMissedPayments(accountId: AccountId, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
     val paidInvoiceNumbers = recentPayments.filter(_.status == "Processed").flatMap(_.paidInvoices).map(_.invoiceNumber)
     val unpaidPayableInvoiceOlderThanOneMonth = mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices) match {
       case Nil => false
       case invoices => !invoices.forall(invoice => paidInvoiceNumbers.contains(invoice.invoiceNumber))
     }
-    val result = isPaidSub && unpaidPayableInvoiceOlderThanOneMonth
-    SafeLogger.info(s"${accountId.get} | accountHasMissedRecentPayments: ${result}")
-    result
+    SafeLogger.info(s"${accountId.get} | accountHasMissedPayments: ${unpaidPayableInvoiceOlderThanOneMonth}")
+    unpaidPayableInvoiceOlderThanOneMonth
   }
 
   def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice]): Boolean = {

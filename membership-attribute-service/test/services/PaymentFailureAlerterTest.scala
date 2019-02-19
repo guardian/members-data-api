@@ -280,38 +280,33 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
       val accountId = AccountId("id123")
 
-      "return false if the user has a free sub" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = false, List(), List()) === false
-      }
-
       "return false if the user has 0 amount invoices and no payments (i.e. sub which should be paid but has 100% discount)" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(oldFreeInvoice), List()) === false
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(oldFreeInvoice), List()) === false
       }
 
       "return false if the user has no payments or invoices for a paid sub (e.g. brand new sub)" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(), List()) === false
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(), List()) === false
       }
 
       "return false if the user has a single paid invoice" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(paidInvoice), List(paymentForPaidInvoice)) === false
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(paidInvoice), List(paymentForPaidInvoice)) === false
       }
 
       "return false if the user has a recent unpaid invoice (where invoice is unpaid due to no payment attempts)" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(recentUnpaidInvoice), List()) === false
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(recentUnpaidInvoice), List()) === false
       }
 
       "return false if the user has a recent unpaid invoice (where invoice is unpaid due to payment failures)" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(recentUnpaidInvoice), List(failedPaymentForRecentUnpaidInvoice)) === false
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(recentUnpaidInvoice), List(failedPaymentForRecentUnpaidInvoice)) === false
       }
 
       "return true if the user has never paid an invoice, despite having a single invoice which is more than 30 days old" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(oldUnpaidInvoice), List()) === true
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(oldUnpaidInvoice), List()) === true
       }
 
       "return true if the user has never paid an invoice, despite having two old invoices" in {
         val result = PaymentFailureAlerter.accountHasMissedPayments(
           accountId,
-          isPaidSub = true,
           List(oldUnpaidInvoice, oldUnpaidInvoice.copy(invoiceDate = moreThanTwoMonthsAgo, dueDate = moreThanTwoMonthsAgo)),
           List()
         )
@@ -319,7 +314,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       }
 
       "return true if the user hasn't paid a recent invoice, even if they have paid in the past" in {
-        PaymentFailureAlerter.accountHasMissedPayments(accountId, isPaidSub = true, List(oldUnpaidInvoice, paidInvoice), List(paymentForPaidInvoice)) === true
+        PaymentFailureAlerter.accountHasMissedPayments(accountId, List(oldUnpaidInvoice, paidInvoice), List(paymentForPaidInvoice)) === true
       }
 
     }

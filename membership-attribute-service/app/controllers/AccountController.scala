@@ -353,7 +353,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       email = accountSummary.billToContact.email,
       paymentDetails = upToDatePaymentDetails,
       stripePublicKey = stripeService.publicKey,
-      accountHasMissedRecentPayments = accountHasMissedPayments(subscription.accountId, freeOrPaidSub.isRight, accountSummary.invoices, accountSummary.payments),
+      accountHasMissedRecentPayments = if (freeOrPaidSub.isRight) accountHasMissedPayments(subscription.accountId, accountSummary.invoices, accountSummary.payments) else false,
       safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(subscription.accountId, accountSummary.invoices),
       isAutoRenew = isAutoRenew,
       membershipAlertText = alertText
