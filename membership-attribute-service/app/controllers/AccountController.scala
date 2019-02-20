@@ -182,7 +182,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     } yield AccountDetails(
       regNumber = contact.regNumber,
       email = accountSummary.billToContact.email,
-      plans = sub.plans,
+      subscription = sub,
       paymentDetails = upToDatePaymentDetails,
       stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments = false,
@@ -256,7 +256,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     } yield AccountDetails(
       regNumber = None,
       email = accountSummary.billToContact.email,
-      plans = subscription.plans,
+      subscription = subscription,
       paymentDetails = upToDatePaymentDetails,
       stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments = freeOrPaidSub.isRight && accountHasMissedPayments(subscription.accountId, accountSummary.invoices, accountSummary.payments),

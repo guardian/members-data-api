@@ -1,5 +1,5 @@
 package models
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
 import com.gu.services.model.PaymentDetails
 import json.localDateWrites
@@ -9,7 +9,7 @@ import org.joda.time.LocalDate.now
 case class AccountDetails(
   regNumber: Option[String],
   email: Option[String],
-  plans : CovariantNonEmptyList[SubscriptionPlan.AnyPlan],
+  subscription : Subscription[SubscriptionPlan.AnyPlan],
   paymentDetails: PaymentDetails,
   stripePublicKey: String,
   accountHasMissedRecentPayments: Boolean,
@@ -63,12 +63,18 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
+      def planIsCurrent(plan: SubscriptionPlan.AnyPlan) = (plan.start == now || plan.start.isBefore(now)) && (plan match {
+        case paidPlan: SubscriptionPlan.Paid => paidPlan.end.isAfter(now)
+        case _ => true
+      })
+
       def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
         "productRatePlanId" -> plan.productRatePlanId.get, // consider exposing hash of this to avoid exposing internal IDs
         "productName" -> plan.productName,
         "name" -> plan.name,
         "start" -> plan.start,
-        "startsBeforeXDaysFromToday" -> plan.start.isBefore(now.plusDays(30))
+        // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
+        "startsBeforeXDaysFromToday" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
       ) ++ (plan match {
         case paidPlan: SubscriptionPlan.Paid => Json.obj(
           "end" -> paidPlan.end,
@@ -109,8 +115,8 @@ object AccountDetails {
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "interval" -> paymentDetails.plan.interval.mkString
             ),
-            "currentPlans" -> plans.list.filter(p => p.start == now || p.start.isBefore(now)).sortBy(_.start.toDate).map(jsonifyPlan),
-            "futurePlans" -> plans.list.filter(_.start.isAfter(now)).sortBy(_.start.toDate).map(jsonifyPlan)
+            "currentPlans" -> subscription.plans.list.filter(planIsCurrent).sortBy(_.start.toDate).map(jsonifyPlan),
+            "futurePlans" -> subscription.plans.list.filter(_.start.isAfter(now)).sortBy(_.start.toDate).map(jsonifyPlan)
           )),
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
