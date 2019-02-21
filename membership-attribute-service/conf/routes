@@ -7,12 +7,10 @@ GET         /user-attributes/me/mma/:subscriptionName                           
 
 POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSpecificSub(subscriptionName: String)
 
-POST        /user-attributes/me/update-card/:subscriptionName                   controllers.AccountController.updateCardOnSpecificSub(subscriptionName: String)
-
-POST        /user-attributes/me/update-direct-debit/:subscriptionName           controllers.AccountController.updateDirectDebitOnSpecificSub(subscriptionName: String)
-
 POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateAmountForSpecificContribution(subscriptionName: String)
 
+POST        /user-attributes/me/update-card/:subscriptionName                   controllers.PaymentUpdateController.updateCard(subscriptionName: String)
+POST        /user-attributes/me/update-direct-debit/:subscriptionName           controllers.PaymentUpdateController.updateDirectDebit(subscriptionName: String)
 
 # OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
@@ -22,14 +20,6 @@ GET         /user-attributes/me/mma-digitalpack                         controll
 GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
 GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails
 GET         /user-attributes/me/mma-paper                               controllers.AccountController.paperDetails
-
-POST        /user-attributes/me/membership-update-card                  controllers.AccountController.membershipUpdateCard
-POST        /user-attributes/me/digitalpack-update-card                 controllers.AccountController.digitalPackUpdateCard
-POST        /user-attributes/me/paper-update-card                       controllers.AccountController.paperUpdateCard
-POST        /user-attributes/me/contribution-update-card                controllers.AccountController.contributionUpdateCard
-
-POST        /user-attributes/me/contribution-update-direct-debit        controllers.AccountController.contributionUpdateDirectDebit
-POST        /user-attributes/me/paper-update-direct-debit               controllers.AccountController.paperUpdateDirectDebit
 
 POST        /user-attributes/me/cancel-regular-contribution             controllers.AccountController.cancelRegularContribution
 POST        /user-attributes/me/cancel-membership                       controllers.AccountController.cancelMembership
