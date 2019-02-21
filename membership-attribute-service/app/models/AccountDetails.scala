@@ -74,7 +74,7 @@ object AccountDetails {
         "name" -> plan.name,
         "start" -> plan.start,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
-        "startsBeforeXDaysFromToday" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
+        "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
       ) ++ (plan match {
         case paidPlan: SubscriptionPlan.Paid => Json.obj(
           "end" -> paidPlan.end,
