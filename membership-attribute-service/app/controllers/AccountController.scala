@@ -1,4 +1,5 @@
 package controllers
+
 import actions._
 import com.gu.memsub
 import services.PaymentFailureAlerter._
@@ -16,10 +17,8 @@ import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
-import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
-import json.PaymentCardUpdateResultWriters._
 import models.AccountDetails._
 import models.ApiErrors._
 import models.{AccountDetails, ApiError}
@@ -34,18 +33,35 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import utils.{ListEither, OptionEither}
-
 import scala.concurrent.{ExecutionContext, Future}
 
-class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
-  import commonActions._
-  implicit val executionContext: ExecutionContext= controllerComponents.executionContext
-  lazy val authenticationService: AuthenticationService = IdentityAuthService
+object AccountHelpers {
 
-  def subscriptionSelector[P <: SubscriptionPlan.AnyPlan](subscriptionNameOption: Option[memsub.Subscription.Name], messageSuffix: String)(subscriptions: List[Subscription[P]]): String \/ Subscription[P] = subscriptionNameOption match {
+  sealed trait OptionalSubscriptionsFilter
+  case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
+  case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
+  case object NoFilter extends OptionalSubscriptionsFilter
+
+  def subscriptionSelector[P <: SubscriptionPlan.AnyPlan](
+    subscriptionNameOption: Option[memsub.Subscription.Name],
+    messageSuffix: String
+  )(subscriptions: List[Subscription[P]]): String \/ Subscription[P] = subscriptionNameOption match {
     case Some(subName) => subscriptions.find(_.name == subName) \/> s"$subName was not a subscription for $messageSuffix"
     case None => subscriptions.headOption \/> s"No current subscriptions for $messageSuffix"
   }
+
+  def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String)(implicit executionContext: ExecutionContext): Future[String \/ SuccessValue] =
+    failableFuture.map(\/.right).recover {
+      case exception => \/.left(s"failed to $action. Exception : $exception")
+    }
+
+}
+
+class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
+  import commonActions._
+  import AccountHelpers._
+  implicit val executionContext: ExecutionContext = controllerComponents.executionContext
+  lazy val authenticationService: AuthenticationService = IdentityAuthService
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
 
@@ -107,113 +123,6 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       case \/-(_) =>
         logger.info(s"Successfully cancelled subscription for user $maybeUserId")
         Ok
-    }
-  }
-
-  private def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String): Future[String \/ SuccessValue] =
-    failableFuture.map(\/.right).recover {
-      case exception => \/.left(s"failed to $action. Exception : $exception")
-    }
-
-  private def updateDirectDebit[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
-    // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
-
-    def checkDirectDebitUpdateResult(
-                                      maybeUserId: Option[String],
-                                      freshDefaultPaymentMethodOption: Option[PaymentMethod],
-                                      bankAccountName: String,
-                                      bankAccountNumber: String,
-                                      bankSortCode: String) = freshDefaultPaymentMethodOption match {
-      case Some(dd: GoCardless)
-        if bankAccountName == dd.accountName &&
-          dd.accountNumber.length>3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
-          bankSortCode == dd.sortCode =>
-        logger.info(s"Successfully updated direct debit for identity user: $maybeUserId")
-        Ok(Json.obj(
-          "accountName" -> dd.accountName,
-          "accountNumber" -> dd.accountNumber,
-          "sortCode" -> dd.sortCode
-        ))
-      case Some(_) =>
-        logger.error(s"New payment method for user $maybeUserId, does not match the posted Direct Debit details")
-        InternalServerError("")
-      case None =>
-        logger.error(s"default-payment-method-lost: Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details")
-        InternalServerError("")
-    }
-
-    val updateForm = Form { tuple(
-      "accountName" -> nonEmptyText,
-      "accountNumber" -> nonEmptyText,
-      "sortCode" -> nonEmptyText
-    ) }
-
-    val tp = request.touchpoint
-    val maybeUserId = authenticationService.userId
-    logger.info(s"Attempting to update direct debit for $maybeUserId")
-    (for {
-      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      directDebitDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no direct debit details submitted with request"))
-      (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
-      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
-      subscription <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")))
-      account <- EitherT(annotateFailableFuture(tp.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"))
-      billToContact <- EitherT(annotateFailableFuture(tp.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"))
-      bankTransferPaymentMethod = BankTransfer(
-        accountHolderName = bankAccountName,
-        accountNumber = bankAccountNumber,
-        sortCode = bankSortCode,
-        firstName = billToContact.firstName,
-        lastName = billToContact.lastName,
-        countryCode = "GB"
-      )
-      createPaymentMethod = CreatePaymentMethod(
-        accountId = subscription.accountId,
-        paymentMethod = bankTransferPaymentMethod,
-        paymentGateway = account.paymentGateway.get, // this will need to change to use this endpoint for 'payment method' SWITCH
-        billtoContact = billToContact,
-        invoiceTemplateOverride = None
-      )
-      _ <- EitherT(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
-      freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
-    } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map {
-      case -\/(message) =>
-        logger.warn(s"default-payment-method-lost: failed to update direct debit for user $maybeUserId, due to $message")
-        InternalServerError("")
-      case \/-(result) => result
-    }
-
-  }
-
-  private def updateCard[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
-    // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
-
-    val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
-    val tp = request.touchpoint
-    val maybeUserId = authenticationService.userId
-    logger.info(s"Attempting to update card for $maybeUserId")
-    (for {
-      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      stripeDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token and public key submitted with request"))
-      (stripeCardToken, stripePublicKey) = stripeDetails
-      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
-      subscription <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")))
-      stripeService <- EitherT(Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
-      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService).map(_ \/> "something was missing when attempting to update payment card in Zuora"))
-    } yield updateResult match {
-      case success: CardUpdateSuccess => {
-        logger.info(s"Successfully updated card for identity user: $user")
-        Ok(Json.toJson(success))
-      }
-      case failure: CardUpdateFailure => {
-        SafeLogger.error(scrub"Failed to update card for identity user: $user due to $failure")
-        Forbidden(Json.toJson(failure))
-      }
-    }).run.map {
-      case -\/(message) =>
-        logger.warn(s"Failed to update card for user $maybeUserId, due to $message")
-        InternalServerError(s"Failed to update card for user $maybeUserId")
-      case \/-(result) => result
     }
   }
 
@@ -291,11 +200,6 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         InternalServerError("Failed to retrieve payment details due to an internal error")
     }
   }
-
-  sealed trait OptionalSubscriptionsFilter
-  case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
-  case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
-  case object NoFilter extends OptionalSubscriptionsFilter
 
   private def productIsInstanceOfProductType(product: Product, requestedProductType: String) = {
     val requestedProductTypeIsContentSubscription: Boolean = requestedProductType == "ContentSubscription"
@@ -397,18 +301,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated def cancelMembership = cancelSubscription[SubscriptionPlan.Member](None)
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
-  @Deprecated def membershipUpdateCard = updateCard[SubscriptionPlan.PaidMember](None)
-  @Deprecated def digitalPackUpdateCard = updateCard[SubscriptionPlan.Digipack](None)
-  @Deprecated def paperUpdateCard = updateCard[SubscriptionPlan.PaperPlan](None)
-  @Deprecated def contributionUpdateCard = updateCard[SubscriptionPlan.Contributor](None)
-  def updateCardOnSpecificSub(subscriptionName: String) = updateCard[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
-
   @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
-
-  @Deprecated def contributionUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.Contributor](None)
-  @Deprecated def paperUpdateDirectDebit = updateDirectDebit[SubscriptionPlan.PaperPlan](None)
-  def updateDirectDebitOnSpecificSub(subscriptionName: String) = updateDirectDebit[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
   @Deprecated def membershipDetails = paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]
   @Deprecated def monthlyContributionDetails = paymentDetails[SubscriptionPlan.Contributor, Nothing]

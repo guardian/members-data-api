@@ -42,7 +42,8 @@ class MyComponents(context: Context)
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(attributesFromZuora, commonActions, controllerComponents),
-    new AccountController(commonActions, controllerComponents)
+    new AccountController(commonActions, controllerComponents),
+    new PaymentUpdateController(commonActions, controllerComponents)
   )
 
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
