@@ -69,8 +69,6 @@ object AccountDetails {
       })
 
       def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
-        "productRatePlanId" -> plan.productRatePlanId.get, // consider exposing hash of this to avoid exposing internal IDs
-        "productName" -> plan.productName,
         "name" -> plan.name,
         "start" -> plan.start,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
