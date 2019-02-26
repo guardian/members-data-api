@@ -1,6 +1,6 @@
 package models
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
 import json.localDateWrites
 import play.api.libs.json.{Json, _}
@@ -68,8 +68,14 @@ object AccountDetails {
         case _ => true
       })
 
+      def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
+        case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
+        case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Pack"))
+        case _ => None
+      }
+
       def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
-        "name" -> plan.name,
+        "name" -> externalisePlanName(plan),
         "start" -> plan.start,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
         "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
