@@ -1,18 +1,21 @@
 package models
-import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard}
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
 import json.localDateWrites
 import play.api.libs.json.{Json, _}
+import org.joda.time.LocalDate.now
 
 case class AccountDetails(
   regNumber: Option[String],
   email: Option[String],
+  subscription : Subscription[SubscriptionPlan.AnyPlan],
   paymentDetails: PaymentDetails,
   stripePublicKey: String,
   accountHasMissedRecentPayments: Boolean,
   safeToUpdatePaymentMethod: Boolean,
   isAutoRenew: Boolean,
-  membershipAlertText: Option[String]
+  alertText: Option[String]
 )
 
 object AccountDetails {
@@ -60,16 +63,39 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      val alertText = membershipAlertText match {
-        case Some(text) => Json.obj("alertText" -> text)
-        case None => Json.obj()
+      def planIsCurrent(plan: SubscriptionPlan.AnyPlan) = (plan.start == now || plan.start.isBefore(now)) && (plan match {
+        case paidPlan: SubscriptionPlan.Paid => paidPlan.end.isAfter(now)
+        case _ => true
+      })
+
+      def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
+        case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
+        case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Pack"))
+        case _ => None
       }
+
+      def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
+        "name" -> externalisePlanName(plan),
+        "start" -> plan.start,
+        // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
+        "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
+      ) ++ (plan match {
+        case paidPlan: SubscriptionPlan.Paid => Json.obj(
+          "end" -> paidPlan.end,
+          "chargedThrough" -> paidPlan.chargedThrough,
+          "amount" -> paidPlan.charges.price.prices.head.amount * 100,
+          "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
+          "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
+          "interval" -> paidPlan.charges.billingPeriod.noun
+        )
+        case _ => Json.obj()
+      })
 
       Json.obj(
         "tier" -> paymentDetails.plan.name,
         "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)
       ) ++
-        regNumber.fold(Json.obj())({reg => Json.obj("regNumber" -> reg)}) ++
+        regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
         Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
@@ -82,18 +108,21 @@ object AccountDetails {
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "renewalDate" -> paymentDetails.termEndDate,
             "cancelledAt" -> (paymentDetails.pendingAmendment || paymentDetails.pendingCancellation),
-            "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints
+            "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
             "autoRenew" -> isAutoRenew,
-            "plan" -> Json.obj(
+            "plan" -> Json.obj( // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
               "name" -> paymentDetails.plan.name,
               "amount" -> paymentDetails.plan.price.amount * 100,
               "currency" -> paymentDetails.plan.price.currency.glyph,
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "interval" -> paymentDetails.plan.interval.mkString
-            )))
-        ) ++ alertText
+            ),
+            "currentPlans" -> subscription.plans.list.filter(planIsCurrent).sortBy(_.start.toDate).map(jsonifyPlan),
+            "futurePlans" -> subscription.plans.list.filter(_.start.isAfter(now)).sortBy(_.start.toDate).map(jsonifyPlan)
+          )),
+        ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
     }
   }

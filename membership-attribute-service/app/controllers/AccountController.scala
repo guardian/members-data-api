@@ -180,14 +180,15 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
       isAutoRenew = sub.autoRenew
     } yield AccountDetails(
-      contact.regNumber,
-      accountSummary.billToContact.email,
-      upToDatePaymentDetails,
-      stripeService.publicKey,
+      regNumber = contact.regNumber,
+      email = accountSummary.billToContact.email,
+      subscription = sub,
+      paymentDetails = upToDatePaymentDetails,
+      stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments = false,
       safeToUpdatePaymentMethod = true,
       isAutoRenew = isAutoRenew,
-      alertText
+      alertText = alertText
     ).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
@@ -255,12 +256,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     } yield AccountDetails(
       regNumber = None,
       email = accountSummary.billToContact.email,
+      subscription = subscription,
       paymentDetails = upToDatePaymentDetails,
       stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments = freeOrPaidSub.isRight && accountHasMissedPayments(subscription.accountId, accountSummary.invoices, accountSummary.payments),
       safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(subscription.accountId, accountSummary.invoices),
       isAutoRenew = isAutoRenew,
-      membershipAlertText = alertText
+      alertText = alertText
     ).toJson).run.run.map {
       case \/-(subscriptionJSONs) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
