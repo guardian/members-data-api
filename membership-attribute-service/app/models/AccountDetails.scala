@@ -2,6 +2,7 @@ package models
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
+import com.typesafe.scalalogging.LazyLogging
 import json.localDateWrites
 import play.api.libs.json.{Json, _}
 import org.joda.time.LocalDate.now
@@ -20,7 +21,7 @@ case class AccountDetails(
 
 object AccountDetails {
 
-  implicit class ResultLike(accountDetails: AccountDetails) {
+  implicit class ResultLike(accountDetails: AccountDetails) extends LazyLogging {
 
     import accountDetails._
 
@@ -91,6 +92,12 @@ object AccountDetails {
         case _ => Json.obj()
       })
 
+      val sortedPlans = subscription.plans.list.sortBy(_.start.toDate)
+      val currentPlans = sortedPlans.filter(planIsCurrent)
+      val futurePlans = sortedPlans.filter(_.start.isAfter(now))
+
+      if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
+
       Json.obj(
         "tier" -> paymentDetails.plan.name,
         "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)
@@ -119,8 +126,8 @@ object AccountDetails {
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "interval" -> paymentDetails.plan.interval.mkString
             ),
-            "currentPlans" -> subscription.plans.list.filter(planIsCurrent).sortBy(_.start.toDate).map(jsonifyPlan),
-            "futurePlans" -> subscription.plans.list.filter(_.start.isAfter(now)).sortBy(_.start.toDate).map(jsonifyPlan)
+            "currentPlans" -> currentPlans.map(jsonifyPlan),
+            "futurePlans" -> futurePlans.map(jsonifyPlan)
           )),
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
