@@ -15,7 +15,7 @@ trait SubscriptionTestData {
   def referenceDate: LocalDate
 
   val friendPlan = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Friend.type]](
-    RatePlanId("idFriend"), ProductRatePlanId("prpi"), "Friend", "desc", "Friend", Product.Membership,FreeCharge(Friend, Set(GBP)), referenceDate
+    RatePlanId("idFriend"), ProductRatePlanId("prpi"), "Friend", "desc", "Friend", Product.Membership,FreeCharge(Friend, Set(GBP)), referenceDate, referenceDate + 1.year
   )
   def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Supporter = PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]](
     RatePlanId("idSupporter"), ProductRatePlanId("prpi"), "Supporter", "desc", "Supporter", Product.Membership, List.empty, PaidCharge(Supporter, BillingPeriod.Year, PricingSummary(Map(GBP -> Price(49.0f, GBP))), ProductRatePlanChargeId("bar"), SubscriptionRatePlanChargeId("nar")), None, startDate, endDate

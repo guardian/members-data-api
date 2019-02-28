@@ -1,5 +1,5 @@
 package models
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{PaidSubscriptionPlan, Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
@@ -64,10 +64,6 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      def planIsCurrent(plan: SubscriptionPlan.AnyPlan) = (plan.start == now || plan.start.isBefore(now)) && (plan match {
-        case paidPlan: SubscriptionPlan.Paid => paidPlan.end.isAfter(now)
-        case _ => true
-      })
 
       def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
         case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
@@ -78,11 +74,11 @@ object AccountDetails {
       def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
         "name" -> externalisePlanName(plan),
         "start" -> plan.start,
+        "end" -> plan.end,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
         "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
       ) ++ (plan match {
-        case paidPlan: SubscriptionPlan.Paid => Json.obj(
-          "end" -> paidPlan.end,
+        case paidPlan: PaidSubscriptionPlan[_, _] => Json.obj(
           "chargedThrough" -> paidPlan.chargedThrough,
           "amount" -> paidPlan.charges.price.prices.head.amount * 100,
           "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
@@ -93,8 +89,8 @@ object AccountDetails {
       })
 
       val sortedPlans = subscription.plans.list.sortBy(_.start.toDate)
-      val currentPlans = sortedPlans.filter(planIsCurrent)
-      val futurePlans = sortedPlans.filter(_.start.isAfter(now))
+      val currentPlans = sortedPlans.filter(plan => plan.start.isBefore(now.plusDays(1)) && plan.end.isAfter(now))
+      val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 
       if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
