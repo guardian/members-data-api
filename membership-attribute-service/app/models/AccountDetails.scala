@@ -89,7 +89,7 @@ object AccountDetails {
       })
 
       val sortedPlans = subscription.plans.list.sortBy(_.start.toDate)
-      val currentPlans = sortedPlans.filter(plan => plan.start.isBefore(now.plusDays(1)) && plan.end.isAfter(now))
+      val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 
       if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
