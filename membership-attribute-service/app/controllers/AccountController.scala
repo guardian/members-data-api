@@ -215,7 +215,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  def allSubscriptions(
+  def allCurrentSubscriptions(
     contactRepo: SimpleContactRepository,
     subService: SubscriptionService[Future]
   )(
@@ -242,7 +242,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
-      subscription <- ListEither.fromOptionEither(allSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
+      subscription <- ListEither.fromOptionEither(allCurrentSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
       freeOrPaidSub = subscription.plan.charges match {
         case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
