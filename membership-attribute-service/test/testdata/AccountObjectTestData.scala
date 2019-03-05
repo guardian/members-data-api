@@ -3,7 +3,7 @@ package testdata
 import com.gu.i18n.Country
 import com.gu.i18n.Currency.GBP
 import com.gu.zuora.api.StripeUKMembershipGateway
-import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.Subscription.{AccountId, AccountNumber}
 import com.gu.zuora.rest.ZuoraRestService._
 import org.joda.time.DateTime
 
@@ -27,6 +27,7 @@ object AccountSummaryTestData {
     AccountSummary(
       id = accountId,
       identityId = Some(testIdentityId),
+      accountNumber = AccountNumber("accountNumber"),
       billToContact = BillToContact(email = Some("email"), country = Some(Country.UK)),
       soldToContact = SoldToContact(
         title = None,
