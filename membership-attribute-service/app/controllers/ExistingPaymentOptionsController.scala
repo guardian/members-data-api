@@ -8,16 +8,17 @@ import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.SimpleContactRepository
 import com.typesafe.scalalogging.LazyLogging
-import models.ExistingPaymentOptions
+import models.ExistingPaymentOption
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
-import play.api.libs.json.Json
+import play.api.libs.json.{JsNull, Json}
 import play.api.mvc.{BaseController, ControllerComponents}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
+import scalaz.syntax.monadPlus._
 import scalaz.{-\/, OptionT, \/, \/-}
 import services.{AuthenticationService, IdentityAuthService}
 import utils.{ListEither, OptionEither}
@@ -42,7 +43,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     subscriptions <- OptionEither.liftEitherOption(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
   } yield subscriptions.groupBy(_.accountId).toList
 
-  def existingPaymentOptions = BackendFromCookieAction.async { implicit request =>
+  def existingPaymentOptions(currencyFilter: Option[String]) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
@@ -52,11 +53,16 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     (for {
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
-      paymentMethod <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
-    } yield (accountId, paymentMethod, subscriptions)).run.run.map {
-      case \/-(result) =>
+      accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(accountId).recover { case x => \/.left(s"error receiving account summary for with account id $accountId. Reason: $x") })
+      paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
+      if (currencyFilter match {
+        case Some(reqCurrencyISO) => accountSummary.currency.map(_.iso).contains(reqCurrencyISO)
+        case None => true
+      })
+    } yield ExistingPaymentOption(accountSummary, paymentMethodOption, subscriptions).toJson).run.run.map {
+      case \/-(jsonList) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
-        Ok(Json.toJson(ExistingPaymentOptions(result).toJson))
+        Ok(Json.toJson(jsonList))
       case -\/(message) =>
         logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
         InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
