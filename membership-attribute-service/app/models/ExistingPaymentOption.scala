@@ -1,12 +1,14 @@
 package models
 
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PaymentCard, PaymentMethod}
+import com.gu.memsub.{GoCardless, PaymentCard, PaymentMethod, Product}
 import com.gu.zuora.rest.ZuoraRestService.AccountSummary
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
+import org.joda.time.LocalDate.now
 
 case class ExistingPaymentOption(
+  freshlySignedIn: Boolean,
   accountSummary: AccountSummary,
   paymentMethodOption: Option[PaymentMethod],
   subscriptions: List[Subscription[SubscriptionPlan.AnyPlan]]
@@ -18,13 +20,14 @@ object ExistingPaymentOption {
 
     import existingPaymentOption._
 
-    def toJson = Json.obj(
-      "billingAccountId" -> accountSummary.id.get,
-      "currencyISO" -> accountSummary.currency.map(_.iso),
-      "subscriptions" -> subscriptions.map(subscription => Json.obj(
-        "subscriptionId" -> subscription.name.get
-      ))
-    ) ++ (paymentMethodOption match {
+    private def getSubscriptionFriendlyName(plan: SubscriptionPlan.AnyPlan): String = plan.product match {
+      case _: Product.Weekly => "Guardian Weekly"
+      case _: Product.Membership => plan.productName + " Membership"
+      case _: Product.Contribution => plan.name
+      case _ => plan.productName // Newspaper & Digipack
+    }
+
+    private val paymentPart = paymentMethodOption match {
       case Some(card: PaymentCard) => Json.obj(
         "card" -> card.paymentCardDetails.map(_.lastFourDigits)
       )
@@ -32,6 +35,22 @@ object ExistingPaymentOption {
         "mandate" -> dd.accountNumber
       )
       case _ => Json.obj()
-    })
+    }
+
+    private val sensitiveDetailIfApplicable = if (freshlySignedIn) {
+      Json.obj(
+        "billingAccountId" -> accountSummary.id.get,
+        "subscriptions" -> subscriptions.map(subscription => Json.obj(
+          "isCancelled" -> subscription.isCancelled,
+          "isActive" -> (!subscription.isCancelled && subscription.termEndDate.isAfter(now)),
+          "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName)
+        ))) ++ paymentPart
+    } else {
+      Json.obj()
+    }
+
+    def toJson = Json.obj(
+      "currencyISO" -> accountSummary.currency.map(_.iso),
+    ) ++ sensitiveDetailIfApplicable
   }
 }
