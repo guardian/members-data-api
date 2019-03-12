@@ -1,6 +1,7 @@
 package controllers
 
 import actions._
+import com.gu.memsub.{GoCardless, PaymentCard}
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -43,7 +44,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     subscriptions <- OptionEither.liftEitherOption(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
   } yield subscriptions.groupBy(_.accountId).toList
 
-  def existingPaymentOptions(currencyFilter: Option[String]) = BackendFromCookieAction.async { implicit request =>
+  def existingPaymentOptions(cardEnabled: Boolean, directDebitEnabled: Boolean, currencyFilter: String) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
@@ -51,15 +52,18 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
 
     logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
     (for {
+      isFreshlySignedIn <- ListEither.liftList(tp.idapiService.RedirectAdvice.redirectUrl(request.headers.get("Cookie").getOrElse("")).map(urlOption => \/-(urlOption.isEmpty)).recover { case x => \/.left(s"error getting idapi redirect for identity user $maybeUserId Reason: $x") })
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
       accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(accountId).recover { case x => \/.left(s"error receiving account summary for with account id $accountId. Reason: $x") })
-      if (currencyFilter match {
-        case Some(reqCurrencyISO) => accountSummary.currency.map(_.iso).contains(reqCurrencyISO)
-        case None => true
-      })
+      if accountSummary.currency.map(_.iso).contains(currencyFilter)
       paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
-    } yield ExistingPaymentOption(true, accountSummary, paymentMethodOption, subscriptions).toJson).run.run.map {
+      if (paymentMethodOption match {
+        case Some(_: PaymentCard) => cardEnabled
+        case Some(_: GoCardless) => directDebitEnabled
+        case _ => false
+      })
+    } yield ExistingPaymentOption(isFreshlySignedIn, accountSummary, paymentMethodOption, subscriptions).toJson).run.run.map {
       case \/-(jsonList) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
         Ok(Json.toJson(jsonList))

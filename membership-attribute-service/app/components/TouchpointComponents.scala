@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import scalaz.std.scalaFuture._
 import com.gu.config
 import com.gu.i18n.Country
+import com.gu.identity.IdapiService
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
@@ -24,6 +25,7 @@ import configuration.Config
 import loghandling.ZuoraRequestCounter
 import prodtest.FeatureToggleDataUpdatedOnSchedule
 import services._
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -80,5 +82,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
   lazy val featureToggleData = new FeatureToggleDataUpdatedOnSchedule(featureToggleService, stage)
+
+  lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
 
 }
