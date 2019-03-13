@@ -299,8 +299,6 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  @Deprecated def cancelRegularContribution = cancelSubscription[SubscriptionPlan.Contributor](None)
-  @Deprecated def cancelMembership = cancelSubscription[SubscriptionPlan.Member](None)
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
 
   @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
