@@ -21,7 +21,4 @@ GET         /user-attributes/me/mma-membership                          controll
 GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails
 GET         /user-attributes/me/mma-paper                               controllers.AccountController.paperDetails
 
-POST        /user-attributes/me/cancel-regular-contribution             controllers.AccountController.cancelRegularContribution
-POST        /user-attributes/me/cancel-membership                       controllers.AccountController.cancelMembership
-
 POST        /user-attributes/me/contribution-update-amount              controllers.AccountController.contributionUpdateAmount
