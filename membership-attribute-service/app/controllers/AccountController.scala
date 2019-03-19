@@ -247,7 +247,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
       }
-      paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${subscription.name}. Reason: $x") })
+      paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some("")).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${subscription.name}. Reason: $x") })
       upToDatePaymentDetails <- ListEither.liftList(getUpToDatePaymentDetailsFromStripe(subscription.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${subscription.accountId}. Reason: $x") })
       accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
