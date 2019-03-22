@@ -2,14 +2,14 @@ package models
 
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PaymentCard, PaymentMethod, Product}
-import com.gu.zuora.rest.ZuoraRestService.AccountSummary
+import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
 import org.joda.time.LocalDate.now
 
 case class ExistingPaymentOption(
   freshlySignedIn: Boolean,
-  accountSummary: AccountSummary,
+  objectAccount: ObjectAccount,
   paymentMethodOption: Option[PaymentMethod],
   subscriptions: List[Subscription[SubscriptionPlan.AnyPlan]]
 )
@@ -39,7 +39,7 @@ object ExistingPaymentOption {
 
     private val sensitiveDetailIfApplicable = if (freshlySignedIn) {
       Json.obj(
-        "billingAccountId" -> accountSummary.id.get,
+        "billingAccountId" -> objectAccount.id.get,
         "subscriptions" -> subscriptions.map(subscription => Json.obj(
           "isCancelled" -> subscription.isCancelled,
           "isActive" -> (!subscription.isCancelled && subscription.termEndDate.isAfter(now)),
@@ -50,7 +50,7 @@ object ExistingPaymentOption {
     }
 
     def toJson = Json.obj(
-      "currencyISO" -> accountSummary.currency.map(_.iso),
+      "currencyISO" -> objectAccount.currency.map(_.iso),
     ) ++ sensitiveDetailIfApplicable
   }
 }

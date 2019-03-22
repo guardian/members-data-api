@@ -70,6 +70,9 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     def paymentMethodHasNoFailures (paymentMethodOption: Option[PaymentMethod]) =
       !paymentMethodOption.flatMap(_.numConsecutiveFailures).exists(_ > 0)
 
+    def paymentMethodIsActive (paymentMethodOption: Option[PaymentMethod]) =
+      !paymentMethodOption.flatMap(_.paymentMethodStatus).contains("Closed")
+
     logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
     (for {
       isFreshlySignedIn <- ListEither.liftList(tp.idapiService.RedirectAdvice.redirectUrl(request.headers.get("Cookie").getOrElse("")).map(urlOption => \/-(urlOption.isEmpty)).recover { case x => \/.left(s"error getting idapi redirect for identity user $maybeUserId Reason: $x") })
@@ -82,7 +85,8 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable)).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
       if paymentMethodMatchingFilters(paymentMethodOption) &&
          paymentMethodStillValid(paymentMethodOption) &&
-         paymentMethodHasNoFailures(paymentMethodOption)
+         paymentMethodHasNoFailures(paymentMethodOption) &&
+         paymentMethodIsActive(paymentMethodOption)
     } yield ExistingPaymentOption(isFreshlySignedIn, objectAccount, paymentMethodOption, subscriptions).toJson).run.run.map {
       case \/-(jsonList) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
