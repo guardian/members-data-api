@@ -75,14 +75,15 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       isFreshlySignedIn <- ListEither.liftList(tp.idapiService.RedirectAdvice.redirectUrl(request.headers.get("Cookie").getOrElse("")).map(urlOption => \/-(urlOption.isEmpty)).recover { case x => \/.left(s"error getting idapi redirect for identity user $maybeUserId Reason: $x") })
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
-      accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(accountId).recover { case x => \/.left(s"error receiving account summary for with account id $accountId. Reason: $x") })
-      if accountSummary.currency.map(_.iso).contains(currencyFilter) &&
-         accountSummary.defaultPaymentMethod.isDefined
+      objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).recover { case x => \/.left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
+      if objectAccount.currency.map(_.iso).contains(currencyFilter) &&
+         objectAccount.defaultPaymentMethodId.isDefined &&
+         !objectAccount.autoPay.contains(false)
       paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable)).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
       if paymentMethodMatchingFilters(paymentMethodOption) &&
          paymentMethodStillValid(paymentMethodOption) &&
          paymentMethodHasNoFailures(paymentMethodOption)
-    } yield ExistingPaymentOption(isFreshlySignedIn, accountSummary, paymentMethodOption, subscriptions).toJson).run.run.map {
+    } yield ExistingPaymentOption(isFreshlySignedIn, objectAccount, paymentMethodOption, subscriptions).toJson).run.run.map {
       case \/-(jsonList) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
         Ok(Json.toJson(jsonList))
