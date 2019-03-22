@@ -93,10 +93,15 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     }
 
+    def disableAutoPayIfApplicable(zuoraSubscription: Subscription[P]) = for {
+      accountSummary <- EitherT(tp.zuoraRestService.getAccount(zuoraSubscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${zuoraSubscription.name} with account id ${zuoraSubscription.accountId}. Reason: $x") })
+      hasUnsettledInvoices = accountSummary.invoices.exists(_.balance > 0)
+      result <- if(hasUnsettledInvoices) EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message") else EitherT(Future.successful(\/.right[String, Unit](())))
+    } yield result
 
     def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
       val cancellationSteps = for {
-        _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
+        _ <- disableAutoPayIfApplicable(zuoraSubscription)
         _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
         cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error while cancelling subscription: $message")
       } yield cancelResult
