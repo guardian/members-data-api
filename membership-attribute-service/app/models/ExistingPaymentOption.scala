@@ -41,6 +41,7 @@ object ExistingPaymentOption {
       Json.obj(
         "billingAccountId" -> objectAccount.id.get,
         "subscriptions" -> subscriptions.map(subscription => Json.obj(
+          "billingAccountId" -> subscription.accountId.get, // this could be different to the top level one due to consolidation
           "isCancelled" -> subscription.isCancelled,
           "isActive" -> (!subscription.isCancelled && !subscription.termEndDate.isBefore(now)),
           "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName)

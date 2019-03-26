@@ -1,7 +1,7 @@
 package controllers
 
 import actions._
-import com.gu.memsub.{GoCardless, PaymentCard, PaymentCardDetails, PaymentMethod}
+import com.gu.memsub._
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -21,7 +21,8 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.syntax.monadPlus._
 import scalaz.{-\/, OptionT, \/, \/-}
-import services.{AuthenticationService, IdentityAuthService}
+import _root_.services.{AuthenticationService, IdentityAuthService}
+import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -43,6 +44,29 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
   } yield subscriptions.groupBy(_.accountId).toList
+
+  def consolidatePaymentMethod(existingPaymentOptions: List[ExistingPaymentOption]): Iterable[ExistingPaymentOption] = {
+
+    def extractConsolidationPart(existingPaymentOption: ExistingPaymentOption): Option[String] = existingPaymentOption.paymentMethodOption match {
+      case Some(card: PaymentCard) => card.paymentCardDetails.map(_.lastFourDigits)
+      case Some(dd: GoCardless) => Some(dd.accountNumber)
+      case Some(payPal: PayPalMethod) => Some(payPal.email)
+      case _ => None
+    }
+
+    def mapConsolidatedBackToSingle(consolidated: List[ExistingPaymentOption]): ExistingPaymentOption = {
+      val theChosenOne = consolidated.head //TODO in future perhaps use custom fields on PaymentMethod to see which is safe to clone
+      ExistingPaymentOption(
+        freshlySignedIn = theChosenOne.freshlySignedIn,
+        objectAccount = theChosenOne.objectAccount,
+        paymentMethodOption = theChosenOne.paymentMethodOption,
+        subscriptions = consolidated.flatMap(_.subscriptions)
+      )
+    }
+
+    existingPaymentOptions.groupBy(extractConsolidationPart).filterKeys(_.isDefined).values.map(mapConsolidatedBackToSingle)
+  }
+
 
   def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails) =
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
@@ -79,10 +103,10 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       if paymentMethodStillValid(paymentMethodOption) &&
          paymentMethodHasNoFailures(paymentMethodOption) &&
          paymentMethodIsActive(paymentMethodOption)
-    } yield ExistingPaymentOption(isFreshlySignedIn, objectAccount, paymentMethodOption, subscriptions).toJson).run.run.map {
-      case \/-(jsonList) =>
+    } yield ExistingPaymentOption(isFreshlySignedIn, objectAccount, paymentMethodOption, subscriptions)).run.run.map {
+      case \/-(existingPaymentOptions) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
-        Ok(Json.toJson(jsonList))
+        Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions).map(_.toJson)))
       case -\/(message) =>
         logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
         InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
