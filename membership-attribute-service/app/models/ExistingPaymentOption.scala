@@ -1,7 +1,7 @@
 package models
 
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PaymentCard, PaymentMethod, Product}
+import com.gu.memsub._
 import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
@@ -27,7 +27,7 @@ object ExistingPaymentOption {
       case _ => plan.productName // Newspaper & Digipack
     }
 
-    private val paymentPart = paymentMethodOption match {
+    private val sensitivePaymentPart = paymentMethodOption match {
       case Some(card: PaymentCard) => Json.obj(
         "card" -> card.paymentCardDetails.map(_.lastFourDigits)
       )
@@ -44,13 +44,18 @@ object ExistingPaymentOption {
           "isCancelled" -> subscription.isCancelled,
           "isActive" -> (!subscription.isCancelled && subscription.termEndDate.isAfter(now)),
           "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName)
-        ))) ++ paymentPart
+        ))) ++ sensitivePaymentPart
     } else {
       Json.obj()
     }
 
     def toJson = Json.obj(
-      "currencyISO" -> objectAccount.currency.map(_.iso),
+      "paymentType" ->  (paymentMethodOption match {
+        case Some(_: PaymentCard) => "Card"
+        case Some(_: GoCardless) => "DirectDebit"
+        case Some(_: PayPalMethod) => "PayPal"
+        case _ => null
+      })
     ) ++ sensitiveDetailIfApplicable
   }
 }
