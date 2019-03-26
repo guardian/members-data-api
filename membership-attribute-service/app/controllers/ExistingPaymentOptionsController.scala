@@ -47,19 +47,13 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
   def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails) =
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
-  def existingPaymentOptions(cardEnabled: Boolean, directDebitEnabled: Boolean, currencyFilter: String) = BackendFromCookieAction.async { implicit request =>
+  def existingPaymentOptions(currencyFilter: String) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
     val eligibilityDate = now.minusMonths(3)
 
     val defaultMandateIdIfApplicable = "CLEARED"
-
-    def paymentMethodMatchingFilters(paymentMethodOption: Option[PaymentMethod]) = paymentMethodOption match {
-      case Some(_: PaymentCard) => cardEnabled
-      case Some(_: GoCardless) => directDebitEnabled
-      case _ => false
-    }
 
     def paymentMethodStillValid(paymentMethodOption: Option[PaymentMethod]) = paymentMethodOption match {
       case Some(card: PaymentCard) => card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
@@ -83,8 +77,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
          objectAccount.defaultPaymentMethodId.isDefined &&
          !objectAccount.autoPay.contains(false)
       paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable)).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
-      if paymentMethodMatchingFilters(paymentMethodOption) &&
-         paymentMethodStillValid(paymentMethodOption) &&
+      if paymentMethodStillValid(paymentMethodOption) &&
          paymentMethodHasNoFailures(paymentMethodOption) &&
          paymentMethodIsActive(paymentMethodOption)
     } yield ExistingPaymentOption(isFreshlySignedIn, objectAccount, paymentMethodOption, subscriptions).toJson).run.run.map {
