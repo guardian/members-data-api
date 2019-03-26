@@ -8,10 +8,14 @@ Parameters:
   InstanceType:
     Description: EC2 instance type
     Type: String
-    Default: t3.small
+    Default: t2.small
     AllowedValues:
+    - t2.micro
     - t2.small
-    - t3.small
+    - t2.medium
+    - m3.medium
+    - m3.large
+    - m3.xlarge
     ConstraintDescription: must be a valid EC2 instance type.
   VpcId:
     Description: ID of the VPC onto which to launch the application
