@@ -42,7 +42,7 @@ object ExistingPaymentOption {
         "billingAccountId" -> objectAccount.id.get,
         "subscriptions" -> subscriptions.map(subscription => Json.obj(
           "isCancelled" -> subscription.isCancelled,
-          "isActive" -> (!subscription.isCancelled && subscription.termEndDate.isAfter(now)),
+          "isActive" -> (!subscription.isCancelled && !subscription.termEndDate.isBefore(now)),
           "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName)
         ))) ++ sensitivePaymentPart
     } else {
