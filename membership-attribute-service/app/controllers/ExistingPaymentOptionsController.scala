@@ -74,8 +74,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       (accountId, subscriptions) = groupedSubsList
       objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).recover { case x => \/.left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
       if objectAccount.currency.map(_.iso).contains(currencyFilter) &&
-         objectAccount.defaultPaymentMethodId.isDefined &&
-         !objectAccount.autoPay.contains(false)
+         objectAccount.defaultPaymentMethodId.isDefined
       paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable)).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
       if paymentMethodStillValid(paymentMethodOption) &&
          paymentMethodHasNoFailures(paymentMethodOption) &&
