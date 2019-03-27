@@ -22,6 +22,7 @@ import scalaz.syntax.traverse._
 import scalaz.syntax.monadPlus._
 import scalaz.{-\/, OptionT, \/, \/-}
 import _root_.services.{AuthenticationService, IdentityAuthService}
+import com.gu.i18n.Currency
 import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import utils.{ListEither, OptionEither}
 
@@ -71,7 +72,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
   def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails) =
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
-  def existingPaymentOptions(currencyFilter: String) = BackendFromCookieAction.async { implicit request =>
+  def existingPaymentOptions(currencyFilter: Option[String]) = BackendFromCookieAction.async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
 
@@ -85,11 +86,18 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       case _ => false
     }
 
-    def paymentMethodHasNoFailures (paymentMethodOption: Option[PaymentMethod]) =
+    def paymentMethodHasNoFailures(paymentMethodOption: Option[PaymentMethod]) =
       !paymentMethodOption.flatMap(_.numConsecutiveFailures).exists(_ > 0)
 
-    def paymentMethodIsActive (paymentMethodOption: Option[PaymentMethod]) =
+    def paymentMethodIsActive(paymentMethodOption: Option[PaymentMethod]) =
       !paymentMethodOption.flatMap(_.paymentMethodStatus).contains("Closed")
+
+    def currencyMatchesFilter(accountCurrency: Option[Currency]) =
+      (accountCurrency.map(_.iso), currencyFilter) match {
+        case (Some(accountCurrencyISO), Some(currencyFilterValue)) => accountCurrencyISO == currencyFilterValue
+        case (None, Some(_)) => false // if the account has no currency but there is filter the account is not eligible
+        case _ => true
+      }
 
     logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
     (for {
@@ -97,7 +105,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
       objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).recover { case x => \/.left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
-      if objectAccount.currency.map(_.iso).contains(currencyFilter) &&
+      if currencyMatchesFilter(objectAccount.currency) &&
          objectAccount.defaultPaymentMethodId.isDefined
       paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable)).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
       if paymentMethodStillValid(paymentMethodOption) &&
