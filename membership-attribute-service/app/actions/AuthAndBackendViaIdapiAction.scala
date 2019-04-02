@@ -30,7 +30,9 @@ class AuthAndBackendViaIdapiAction(
 
       howToHandleRecencyOfSignedIn match {
         case Return401IfNotSignedInRecently if redirectAdvice.signInStatus != SignedInRecently =>
-          Left(Results.Unauthorized) //TODO add Location header containing returnUrl
+          Left(Results.Unauthorized.withHeaders(
+            ("X-GU-IDAPI-Redirect", redirectAdvice.redirect.map(_.url).getOrElse(""))
+          ))
         case _ =>
           Right(new AuthAndBackendRequest[A](redirectAdvice, backendConf, request))
       }

@@ -12,7 +12,7 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
 import play.api.mvc.{BaseController, ControllerComponents}
-import services.{AuthenticationService, IdentityAuthService}
+
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, EitherT, \/-}
 import scalaz.std.scalaFuture._
@@ -22,13 +22,14 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
   import commonActions._
   import AccountHelpers._
   implicit val executionContext: ExecutionContext= controllerComponents.executionContext
-  lazy val authenticationService: AuthenticationService = IdentityAuthService
 
-  def updateCard(subscriptionName: String) = BackendFromCookieAction.async { implicit request =>
+  val IDAPI_SCOPE = "payment-flow"
+
+  def updateCard(subscriptionName: String) = AuthAndBackendViaIdapiAction(IDAPI_SCOPE).async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
     val tp = request.touchpoint
-    val maybeUserId = authenticationService.userId
+    val maybeUserId = request.redirectAdvice.userId
     SafeLogger.info(s"Attempting to update card for $maybeUserId")
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
@@ -55,7 +56,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     }
   }
 
-  def updateDirectDebit(subscriptionName: String) = BackendFromCookieAction.async { implicit request =>
+  def updateDirectDebit(subscriptionName: String) = AuthAndBackendViaIdapiAction(IDAPI_SCOPE).async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     def checkDirectDebitUpdateResult(
@@ -90,7 +91,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     ) }
 
     val tp = request.touchpoint
-    val maybeUserId = authenticationService.userId
+    val maybeUserId = request.redirectAdvice.userId
     SafeLogger.info(s"Attempting to update direct debit for $maybeUserId")
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))

@@ -73,7 +73,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
   def existingPaymentOptions(currencyFilter: Option[String]) = AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = request.redirectAdvice.userId
-    val isFreshlySignedIn = request.redirectAdvice.status == SignedInRecently
+    val isFreshlySignedIn = request.redirectAdvice.signInStatus == SignedInRecently
 
     val eligibilityDate = now.minusMonths(3)
 
