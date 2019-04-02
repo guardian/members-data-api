@@ -21,9 +21,8 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.syntax.monadPlus._
 import scalaz.{-\/, OptionT, \/, \/-}
-import _root_.services.{AuthenticationService, IdentityAuthService}
 import com.gu.i18n.Currency
-import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
+import com.gu.identity.SignedInRecently
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,7 +30,6 @@ import scala.concurrent.{ExecutionContext, Future}
 class ExistingPaymentOptionsController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
-  lazy val authenticationService: AuthenticationService = IdentityAuthService
 
   def allSubscriptionsSince(
     date: LocalDate
@@ -72,9 +70,10 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
   def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails) =
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
-  def existingPaymentOptions(currencyFilter: Option[String]) = BackendFromCookieAction.async { implicit request =>
+  def existingPaymentOptions(currencyFilter: Option[String]) = AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
     implicit val tp = request.touchpoint
-    val maybeUserId = authenticationService.userId
+    val maybeUserId = request.redirectAdvice.userId
+    val isFreshlySignedIn = request.redirectAdvice.status == SignedInRecently
 
     val eligibilityDate = now.minusMonths(3)
 
@@ -101,7 +100,6 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
 
     logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
     (for {
-      isFreshlySignedIn <- ListEither.liftList(tp.idapiService.RedirectAdvice.getRedirectAdvice(request.headers.get("Cookie").getOrElse("")).map(advice => \/-(advice.redirect.isEmpty)).recover { case x => \/.left(s"error getting idapi redirect for identity user $maybeUserId Reason: $x") })
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
       objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).recover { case x => \/.left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
