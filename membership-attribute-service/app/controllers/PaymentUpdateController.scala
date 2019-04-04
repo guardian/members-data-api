@@ -23,9 +23,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
   import AccountHelpers._
   implicit val executionContext: ExecutionContext= controllerComponents.executionContext
 
-  val IDAPI_SCOPE = "payment-flow"
-
-  def updateCard(subscriptionName: String) = AuthAndBackendViaIdapiAction(IDAPI_SCOPE).async { implicit request =>
+  def updateCard(subscriptionName: String) = AuthAndBackendViaIdapiAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
     val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
     val tp = request.touchpoint
@@ -56,7 +54,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     }
   }
 
-  def updateDirectDebit(subscriptionName: String) = AuthAndBackendViaIdapiAction(IDAPI_SCOPE).async { implicit request =>
+  def updateDirectDebit(subscriptionName: String) = AuthAndBackendViaIdapiAction.async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
     def checkDirectDebitUpdateResult(

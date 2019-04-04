@@ -1,6 +1,6 @@
 package actions
 
-import com.gu.identity.SignedInRecently
+import com.gu.identity.{IdapiService, SignedInRecently}
 import components.TouchpointBackends
 import filters.AddGuIdentityHeaders
 import play.api.mvc.{ActionRefiner, Request, Result, Results}
@@ -9,8 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class AuthAndBackendViaIdapiAction(
   touchpointBackends: TouchpointBackends,
-  howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
-  scope: Option[String]
+  howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn
 )(
   implicit ex: ExecutionContext
 ) extends ActionRefiner[Request, AuthAndBackendRequest] {
@@ -18,8 +17,8 @@ class AuthAndBackendViaIdapiAction(
   override val executionContext = ex
   override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] =
     touchpointBackends.normal.idapiService.RedirectAdvice.getRedirectAdvice(
-      request.headers.get("Cookie").getOrElse(""),
-      scope
+      request.headers.get(IdapiService.HeaderNameCookie).getOrElse(""),
+      request.headers.get(IdapiService.HeaderNameIdapiForwardedScope)
     ).map(redirectAdvice => {
 
       val backendConf = if (AddGuIdentityHeaders.isTestUser(redirectAdvice.userId)) {

@@ -16,10 +16,10 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 
   val NoCacheAction = resultModifier(noCache)
   val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends)
-  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, scope: Option[String] = None) =
-    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, scope)
-  def AuthAndBackendViaIdapiAction(scope: String): ActionBuilder[AuthAndBackendRequest, AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, Some(scope))
+  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
+    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn)
+  def AuthAndBackendViaIdapiAction: ActionBuilder[AuthAndBackendRequest, AnyContent] =
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser
