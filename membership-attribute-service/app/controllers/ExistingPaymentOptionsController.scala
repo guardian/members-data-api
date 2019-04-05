@@ -81,7 +81,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     val defaultMandateIdIfApplicable = "CLEARED"
 
     def paymentMethodStillValid(paymentMethodOption: Option[PaymentMethod]) = paymentMethodOption match {
-      case Some(card: PaymentCard) => card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
+      case Some(card: PaymentCard) => card.isReferenceTransaction && card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
       case Some(dd: GoCardless) => dd.mandateId != defaultMandateIdIfApplicable //i.e. mandateId a real reference and hasn't been cleared in Zuora because of mandate failure
       case _ => false
     }
