@@ -81,7 +81,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     val defaultMandateIdIfApplicable = "CLEARED"
 
     def paymentMethodStillValid(paymentMethodOption: Option[PaymentMethod]) = paymentMethodOption match {
-      case Some(card: PaymentCard) => card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
+      case Some(card: PaymentCard) => card.isReferenceTransaction && card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
       case Some(dd: GoCardless) => dd.mandateId != defaultMandateIdIfApplicable //i.e. mandateId a real reference and hasn't been cleared in Zuora because of mandate failure
       case _ => false
     }
@@ -101,7 +101,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
 
     logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
     (for {
-      isFreshlySignedIn <- ListEither.liftList(tp.idapiService.RedirectAdvice.redirectUrl(request.headers.get("Cookie").getOrElse("")).map(urlOption => \/-(urlOption.isEmpty)).recover { case x => \/.left(s"error getting idapi redirect for identity user $maybeUserId Reason: $x") })
+      isFreshlySignedIn <- ListEither.liftList(tp.idapiService.RedirectAdvice.getRedirectAdvice(request.headers.get("Cookie").getOrElse("")).map(advice => \/-(advice.redirect.isEmpty)).recover { case x => \/.left(s"error getting idapi redirect for identity user $maybeUserId Reason: $x") })
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
       objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).recover { case x => \/.left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
