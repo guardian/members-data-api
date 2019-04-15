@@ -110,7 +110,7 @@ object AccountDetails {
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "renewalDate" -> paymentDetails.termEndDate,
-            "cancelledAt" -> (paymentDetails.pendingAmendment || paymentDetails.pendingCancellation),
+            "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
