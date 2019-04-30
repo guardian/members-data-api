@@ -13,7 +13,6 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import cats.implicits._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,6 +34,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
         dynamoAttributeService = dynamoService,
+        postgresService = postgresService,
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)
       )
     } else {
@@ -54,7 +54,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             attributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
@@ -103,12 +103,14 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
 
   def oneOffContributions = {
+    import scalaz.std.scalaFuture._
+
     BackendFromCookieAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) => {
-          postgresService.getContributionsData(identityId)
+          postgresService.getAllContributions(identityId)
             .fold(
-              err => Ok(err.message),
+              err => Ok(err),
               result => {
                 Ok(Json.toJson(result).toString)
               }

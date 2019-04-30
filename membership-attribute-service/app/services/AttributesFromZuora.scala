@@ -28,6 +28,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
+     postgresService: PostgresDatabaseService,
      forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
 
     def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
@@ -49,8 +50,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", () => zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       subscriptions <- EitherT[Future, String, List[AccountWithSubscriptions]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
+      oneOffs <- postgresService.getLatestContribution(identityId)
     } yield {
-      AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
+      AttributesMaker.zuoraAttributes(identityId, subscriptions, oneOffs, paymentMethodForPaymentMethodId, forDate)
     }
 
     val attributesFromZuora = zuoraAttributesDisjunction.run.map { attributesDisjunction: Disjunction[String, Future[Option[ZuoraAttributes]]] =>

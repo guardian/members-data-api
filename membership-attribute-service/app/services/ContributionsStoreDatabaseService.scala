@@ -1,60 +1,63 @@
 package services
 
 import anorm._
-import cats.data.EitherT
-import cats.syntax.applicativeError._
-import cats.instances.future._
 import com.typesafe.scalalogging.StrictLogging
 import models.ContributionData
 import play.api.db.Database
+import services.DatabaseService.DatabaseGetResult
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
+import scalaz.{EitherT, \/}
 
 
 trait DatabaseService {
+  def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]]
 
-  // If an insert is unsuccessful then an error should be logged, however,
-  // the return type is not modelled as an EitherT,
-  // since the result of the insert has no dependencies.
-  // See e.g. backend.StripeBackend for more context.
-  def getContributionsData(identityId: String): EitherT[Future, DatabaseService.Error, List[ContributionData]]
+  def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]]
 }
 
 object DatabaseService {
-  case class Error(message: String, err: Option[Throwable]) extends Exception {
-    override def getMessage: String = err.fold(message)(error => s"$message - ${error.getMessage}")
-  }
+  type DatabaseGetResult[R] = EitherT[Future, String, R]
 }
 
 class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext)
   extends DatabaseService with StrictLogging {
 
-
-  private def executeQuery(statement: SimpleSql[Row]): EitherT[Future, DatabaseService.Error, List[ContributionData]] =
+  private def executeQuery[R](statement: SimpleSql[Row], parser: ResultSetParser[R]): DatabaseGetResult[R] = EitherT {
     Future(database.withConnection { implicit conn =>
-      val allRowsParser: ResultSetParser[List[ContributionData]] = ContributionData.contributionRowParser.*
-      statement.as(allRowsParser)
+      statement.as(parser)
     })
-      .attemptT
-      .leftMap(
-        err => {
-          val msg = s"Error querying contributions store"
-          logger.error(s"$msg. Error: $err")
-          DatabaseService.Error(msg, Some(err))
-        }
-      )
+      .map(\/.right)
+      .recover { case NonFatal(err) =>
+        val msg = s"Error querying contributions store"
+        logger.error(s"$msg. Error: $err")
+        \/.left(msg)
+      }
+  }
 
-
-
-  override def getContributionsData(identityId: String): EitherT[Future, DatabaseService.Error, List[ContributionData]] = {
-
+  override def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] = {
     val statement = SQL"""
       SELECT received_timestamp, currency, amount, status
       FROM contributions
       WHERE identity_id = $identityId
     """
-    executeQuery(statement)
+    val allRowsParser: ResultSetParser[List[ContributionData]] = ContributionData.contributionRowParser.*
 
+    executeQuery(statement, allRowsParser)
+  }
+
+  override def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]] = {
+    val statement = SQL"""
+      SELECT received_timestamp, currency, amount, status
+      FROM contributions
+      WHERE identity_id = $identityId
+      ORDER BY received_timestamp desc
+      LIMIT 1
+    """
+    val latestRowParser: ResultSetParser[Option[ContributionData]] = ContributionData.contributionRowParser.singleOpt
+
+    executeQuery(statement, latestRowParser)
   }
 }
 

@@ -49,10 +49,12 @@ class MyComponents(context: Context)
     new ErrorHandler(environment, configuration, sourceMapper, Some(router))
   val attributesFromZuora = new AttributesFromZuora()
 
-  val db = dbApi.database("default")
- // implicit val jdbcExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("contexts.jdbc-context")
+  val dbService = {
+    val db = dbApi.database("default")
+    val jdbcExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("contexts.jdbc-context")
 
-  val dbService = PostgresDatabaseService.fromDatabase(db)
+    PostgresDatabaseService.fromDatabase(db)(jdbcExecutionContext)
+  }
 
   lazy val router: Routes = new Routes(
     httpErrorHandler,

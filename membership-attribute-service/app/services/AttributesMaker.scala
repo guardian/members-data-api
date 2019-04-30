@@ -8,7 +8,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
-import models.{AccountWithSubscriptions, ZuoraAttributes}
+import models.{AccountWithSubscriptions, ContributionData, ZuoraAttributes}
 import org.joda.time.LocalDate
 import PaymentFailureAlerter.alertAvailableFor
 
@@ -24,6 +24,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
   def zuoraAttributes(
                        identityId: String,
                        subsWithAccounts: List[AccountWithSubscriptions],
+                       latestOneOff: Option[ContributionData],
                        paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
                        forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
@@ -117,6 +118,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           UserId = identityId,
           Tier = tier,
           RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
+          //OneOffContributionDate = latestOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli)),
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
           PaperSubscriptionExpiryDate = latestPaperExpiryDate,
