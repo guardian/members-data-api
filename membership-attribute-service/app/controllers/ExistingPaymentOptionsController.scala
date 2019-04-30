@@ -73,7 +73,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
   def existingPaymentOptions(currencyFilter: Option[String]) = AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
     implicit val tp = request.touchpoint
     val maybeUserId = request.redirectAdvice.userId
-    val isFreshlySignedIn = request.redirectAdvice.signInStatus == SignedInRecently
+    val isSignedInRecently = request.redirectAdvice.signInStatus == SignedInRecently
 
     val eligibilityDate = now.minusMonths(3)
 
@@ -109,7 +109,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       if paymentMethodStillValid(paymentMethodOption) &&
          paymentMethodHasNoFailures(paymentMethodOption) &&
          paymentMethodIsActive(paymentMethodOption)
-    } yield ExistingPaymentOption(isFreshlySignedIn, objectAccount, paymentMethodOption, subscriptions)).run.run.map {
+    } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map {
       case \/-(existingPaymentOptions) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
         Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions).map(_.toJson)))

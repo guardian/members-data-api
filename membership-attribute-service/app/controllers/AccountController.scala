@@ -235,7 +235,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   } yield filteredIfApplicable
 
-  def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = AuthAndBackendViaIdapiAction.async { implicit request =>
+  def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = request.redirectAdvice.userId
