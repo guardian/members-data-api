@@ -50,9 +50,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", () => zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       subscriptions <- EitherT[Future, String, List[AccountWithSubscriptions]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
-      oneOffs <- postgresService.getLatestContribution(identityId)
+      lastestOneOff <- postgresService.getLatestContribution(identityId)
     } yield {
-      AttributesMaker.zuoraAttributes(identityId, subscriptions, oneOffs, paymentMethodForPaymentMethodId, forDate)
+      AttributesMaker.zuoraAttributes(identityId, subscriptions, lastestOneOff, paymentMethodForPaymentMethodId, forDate)
     }
 
     val attributesFromZuora = zuoraAttributesDisjunction.run.map { attributesDisjunction: Disjunction[String, Future[Option[ZuoraAttributes]]] =>

@@ -118,7 +118,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           UserId = identityId,
           Tier = tier,
           RecurringContributionPaymentPlan = recurringContributionPaymentPlan,
-          //OneOffContributionDate = latestOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli)),
+          OneOffContributionDate = latestOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli)),
           MembershipJoinDate = membershipJoinDate,
           DigitalSubscriptionExpiryDate = latestDigitalPackExpiryDate,
           PaperSubscriptionExpiryDate = latestPaperExpiryDate,
