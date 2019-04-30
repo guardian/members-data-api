@@ -42,8 +42,9 @@ case class Attributes(
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
+  lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
   //TODO - only use OneOffContributionDate for verified users
-  lazy val isContributor = RecurringContributionPaymentPlan.isDefined || OneOffContributionDate.isDefined
+  lazy val isOneOffContributor = OneOffContributionDate.isDefined
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
   lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
@@ -53,7 +54,7 @@ case class Attributes(
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
-    recurringContributor = isContributor,
+    recurringContributor = isRecurringContributor,
     digitalPack = digitalSubscriberHasActivePlan,
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber
@@ -61,7 +62,8 @@ case class Attributes(
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
   // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
-  lazy val showSupportMessaging = !(isPaidTier || isContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
+  lazy val showSupportMessaging =
+    !(isPaidTier || isRecurringContributor || isOneOffContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
 
 }
 
