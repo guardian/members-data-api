@@ -8,7 +8,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
-import models.{AccountWithSubscriptions, ContributionData, ZuoraAttributes}
+import models.{AccountWithSubscriptions, ZuoraAttributes}
 import org.joda.time.LocalDate
 import PaymentFailureAlerter.alertAvailableFor
 

@@ -24,8 +24,6 @@ object Dependencies {
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.9"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.2"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
-  val enumeratum = "com.beachape" %% "enumeratum" % "1.5.12"
-  val enumeratumCirce = "com.beachape" %% "enumeratum-circe" % "1.5.12"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.0"
 
 
@@ -34,6 +32,6 @@ object Dependencies {
 
   val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityCookie, identityPlayAuth, identityTestUsers,
     playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
-    specs2, kinesis, logstash, enumeratum, enumeratumCirce, anorm)
+    specs2, kinesis, logstash, anorm)
 
 }
