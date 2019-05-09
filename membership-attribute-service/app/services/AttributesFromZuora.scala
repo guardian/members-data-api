@@ -10,7 +10,7 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
-import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
+import models._
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,7 +28,6 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
-     postgresService: PostgresDatabaseService,
      forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
 
     def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
@@ -50,9 +49,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     val zuoraAttributesDisjunction: DisjunctionT[Future, String, Future[Option[ZuoraAttributes]]] = for {
       accounts <- EitherT[Future, String, GetAccountsQueryResponse](withTimer(s"ZuoraAccountIdsFromIdentityId", () => zuoraAccountsQuery(identityId, identityIdToAccountIds), identityId))
       subscriptions <- EitherT[Future, String, List[AccountWithSubscriptions]](getResultIf(accounts.size > 0, "ZuoraGetSubscriptions", () => getSubscriptions(accounts, identityId, subscriptionsForAccountId), Nil, identityId))
-      lastestOneOff <- postgresService.getLatestContribution(identityId)
     } yield {
-      AttributesMaker.zuoraAttributes(identityId, subscriptions, lastestOneOff, paymentMethodForPaymentMethodId, forDate)
+      AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
     }
 
     val attributesFromZuora = zuoraAttributesDisjunction.run.map { attributesDisjunction: Disjunction[String, Future[Option[ZuoraAttributes]]] =>
@@ -74,17 +72,17 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     //return what we know from Dynamo if Zuora returns an error
-    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map DynamoAttributes.asAttributes)}
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))}
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
-      case \/-(maybeZuoraAttributesF) => maybeZuoraAttributesF flatMap { maybeZuoraAttributes: Option[ZuoraAttributes] =>
-        val asAttributes: Option[Attributes] = maybeZuoraAttributes map { zuoraAttributes =>  ZuoraAttributes.asAttributes(zuoraAttributes)}
-        attributesFromDynamo map { maybeDynamoAttributes =>
-          updateIfNeeded(maybeZuoraAttributes, maybeDynamoAttributes, asAttributes)
+      case \/-(maybeZuoraAttributesF) => maybeZuoraAttributesF map { maybeZuoraAttributes: Option[ZuoraAttributes] =>
+          val asAttributes: Option[Attributes] = maybeZuoraAttributes map { zuoraAttributes => ZuoraAttributes.asAttributes(zuoraAttributes) }
+          attributesFromDynamo map { maybeDynamoAttributes =>
+            updateIfNeeded(maybeZuoraAttributes, maybeDynamoAttributes, asAttributes)
+          }
+          ("Zuora", asAttributes)
         }
-        Future.successful(("Zuora", asAttributes))
-      }
     }
 
     // return what we know from Dynamo if the future times out/fails

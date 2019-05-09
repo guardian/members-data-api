@@ -4,43 +4,41 @@ import anorm._
 import com.typesafe.scalalogging.StrictLogging
 import models.ContributionData
 import play.api.db.Database
-import services.DatabaseService.DatabaseGetResult
+import services.OneOffContributionDatabaseService.DatabaseGetResult
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scalaz.{EitherT, \/}
+import scalaz.\/
 
 
-trait DatabaseService {
+trait OneOffContributionDatabaseService {
   def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]]
 
   def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]]
 }
 
-object DatabaseService {
-  type DatabaseGetResult[R] = EitherT[Future, String, R]
+object OneOffContributionDatabaseService {
+  type DatabaseGetResult[R] = Future[\/[String, R]]
 }
 
 class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext)
-  extends DatabaseService with StrictLogging {
+  extends OneOffContributionDatabaseService with StrictLogging {
 
-  private def executeQuery[R](statement: SimpleSql[Row], parser: ResultSetParser[R]): DatabaseGetResult[R] = EitherT {
+  private def executeQuery[R](statement: SimpleSql[Row], parser: ResultSetParser[R]): DatabaseGetResult[R] =
     Future(database.withConnection { implicit conn =>
       statement.as(parser)
     })
       .map(\/.right)
       .recover { case NonFatal(err) =>
-        val msg = s"Error querying contributions store"
-        logger.error(s"$msg. Error: $err")
-        \/.left(msg)
+        \/.left(s"Error querying contributions store. Error: $err")
       }
-  }
 
   override def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] = {
     val statement = SQL"""
       SELECT received_timestamp, currency, amount, status
       FROM contributions
       WHERE identity_id = $identityId
+      AND status = 'Paid'
     """
     val allRowsParser: ResultSetParser[List[ContributionData]] = ContributionData.contributionRowParser.*
 
@@ -52,6 +50,7 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
       SELECT received_timestamp, currency, amount, status
       FROM contributions
       WHERE identity_id = $identityId
+      AND status = 'Paid'
       ORDER BY received_timestamp desc
       LIMIT 1
     """

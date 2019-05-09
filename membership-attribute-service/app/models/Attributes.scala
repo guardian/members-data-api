@@ -43,7 +43,6 @@ case class Attributes(
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
-  //TODO - only use OneOffContributionDate for verified users
   lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(6)))
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
   lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
@@ -71,7 +70,6 @@ case class ZuoraAttributes(
   UserId: String,
   Tier: Option[String] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
-  OneOffContributionDate: Option[LocalDate] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
@@ -79,11 +77,11 @@ case class ZuoraAttributes(
   AlertAvailableFor: Option[String] = None)
 
 object ZuoraAttributes {
-  def asAttributes(zuoraAttributes: ZuoraAttributes) = Attributes(
+  def asAttributes(zuoraAttributes: ZuoraAttributes, oneOffContributionDate: Option[LocalDate] = None) = Attributes(
     UserId = zuoraAttributes.UserId,
     Tier = zuoraAttributes.Tier,
     RecurringContributionPaymentPlan = zuoraAttributes.RecurringContributionPaymentPlan,
-    OneOffContributionDate = zuoraAttributes.OneOffContributionDate,
+    OneOffContributionDate = oneOffContributionDate,
     MembershipJoinDate = zuoraAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = zuoraAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = zuoraAttributes.PaperSubscriptionExpiryDate,
@@ -96,7 +94,6 @@ case class DynamoAttributes(
   UserId: String,
   Tier: Option[String] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
-  OneOffContributionDate: Option[LocalDate] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
@@ -111,11 +108,11 @@ case class DynamoAttributes(
 }
 
 object DynamoAttributes {
-  def asAttributes(dynamoAttributes: DynamoAttributes): Attributes = Attributes(
+  def asAttributes(dynamoAttributes: DynamoAttributes, oneOffContributionDate: Option[LocalDate] = None): Attributes = Attributes(
     UserId = dynamoAttributes.UserId,
     Tier = dynamoAttributes.Tier,
     RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
-    OneOffContributionDate = dynamoAttributes.OneOffContributionDate,
+    OneOffContributionDate = oneOffContributionDate,
     MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
@@ -129,7 +126,7 @@ object Attributes {
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-      (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
+      (__ \ "oneOffContributionDate").writeNullable[LocalDate].contramap[Option[LocalDate]](_ => None) and  //omit
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and

@@ -1,11 +1,11 @@
 package controllers
 
-import actions.{BackendRequest, CommonActions}
+import actions.{AuthAndBackendRequest, BackendRequest, CommonActions}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.Attributes
+import models.{Attributes, ContributionData}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
@@ -13,7 +13,10 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test._
 import play.api.test.Helpers._
-import services.{AttributesFromZuora, AuthenticationService}
+import scalaz.\/
+import services.OneOffContributionDatabaseService.DatabaseGetResult
+import services.{AttributesFromZuora, AuthenticationService, OneOffContributionDatabaseService}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -63,10 +66,19 @@ class AttributeControllerTest extends Specification with AfterAll {
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
       override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
   }
-  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents()) {
+
+  object FakePostgresService extends OneOffContributionDatabaseService {
+    def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] =
+      Future.successful(\/.right(Nil))
+
+    def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]] =
+      Future.successful(\/.right(None))
+  }
+
+  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService) {
     override lazy val authenticationService = fakeAuthService
     override val executionContext = scala.concurrent.ExecutionContext.global
-    override def pickAttributes(identityId: String)(implicit request: BackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
+    override def pickAttributes(identityId: String)(implicit request: AuthAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
     }
   }
