@@ -14,11 +14,11 @@ POST        /user-attributes/me/contribution-update-amount/:subscriptionName    
 POST        /user-attributes/me/update-card/:subscriptionName                   controllers.PaymentUpdateController.updateCard(subscriptionName: String)
 POST        /user-attributes/me/update-direct-debit/:subscriptionName           controllers.PaymentUpdateController.updateDirectDebit(subscriptionName: String)
 
+GET         /user-attributes/me/one-off-contributions                           controllers.AttributeController.oneOffContributions
+
 # OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
 GET         /user-attributes/me/features                                controllers.AttributeController.features
-
-GET        /one-off-contributions                           controllers.AttributeController.oneOffContributions
 
 GET         /user-attributes/me/mma-digitalpack                         controllers.AccountController.digitalPackDetails
 GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
