@@ -50,7 +50,7 @@ class MyComponents(context: Context)
   val attributesFromZuora = new AttributesFromZuora()
 
   val dbService = {
-    val db = dbApi.database("default")
+    val db = dbApi.database("oneOffStore")
     val jdbcExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("contexts.jdbc-context")
 
     PostgresDatabaseService.fromDatabase(db)(jdbcExecutionContext)
