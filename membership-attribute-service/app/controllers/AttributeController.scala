@@ -122,7 +122,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
 
   def oneOffContributions = {
-    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
       if (request.redirectAdvice.emailValidated.contains(true)) {
         authenticationService.userId(request) match {
           case Some(identityId) =>
