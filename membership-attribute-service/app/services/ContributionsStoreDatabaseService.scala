@@ -38,7 +38,6 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
       SELECT received_timestamp, currency, amount, status
       FROM contributions
       WHERE identity_id = $identityId
-      AND status = 'Paid'
     """
     val allRowsParser: ResultSetParser[List[ContributionData]] = ContributionData.contributionRowParser.*
 
