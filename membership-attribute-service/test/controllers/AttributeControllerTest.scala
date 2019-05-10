@@ -1,12 +1,14 @@
 package controllers
 
-import actions.{AuthAndBackendRequest, BackendRequest, CommonActions}
+import actions.{AuthAndBackendRequest, BackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.{Attributes, ContributionData}
 import org.joda.time.LocalDate
+import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
 import play.api.libs.json.Json
@@ -20,7 +22,7 @@ import services.{AttributesFromZuora, AuthenticationService, OneOffContributionD
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class AttributeControllerTest extends Specification with AfterAll {
+class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
   implicit val as: ActorSystem = ActorSystem("test")
 
@@ -59,12 +61,25 @@ class AttributeControllerTest extends Specification with AfterAll {
     }
   }
 
+  private object FakeAuthAndBackendViaIdapiAction extends ActionRefiner[Request, AuthAndBackendRequest] {
+    override val executionContext = scala.concurrent.ExecutionContext.global
+    override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
+
+      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
+
+      val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently,None,None,None,None)
+
+      Future(Right(new AuthAndBackendRequest[A](redirectAdviceResponse, components, request)))
+    }
+  }
+
   private val actorSystem = ActorSystem()
   private val touchpointBackends = new TouchpointBackends(actorSystem)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
-      override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
+    override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
+    override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }
 
   object FakePostgresService extends OneOffContributionDatabaseService {
