@@ -17,10 +17,12 @@ Parameters:
     Description: ID of the VPC onto which to launch the application
     Type: AWS::EC2::VPC::Id
     Default: vpc-e6e00183
-  VpcSubnets:
-    Description: Subnets to use in VPC
-    Type: CommaDelimitedList
-    Default: subnet-cb91ae8d,subnet-a7b74ac2,subnet-179e8063
+  PrivateVpcSubnets:
+    Description: Private subnets to use for EC2 instances
+    Type: List<AWS::EC2::Subnet::Id>
+  PublicVpcSubnets:
+    Description: Public subnets to use for the ELB
+    Type: List<AWS::EC2::Subnet::Id>
   AmiId:
     Description: Custom AMI to use for instances
     Type: String
@@ -157,14 +159,12 @@ Resources:
         Interval: '10'
         Timeout: '5'
       Subnets:
-        Ref: VpcSubnets
+        Ref: PublicVpcSubnets
       SecurityGroups:
       - Ref: LoadBalancerSecurityGroup
   AutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AvailabilityZones:
-        Fn::GetAZs: ''
       LaunchConfigurationName:
         Ref: LaunchConfig
       MinSize: !FindInMap [ StageVariables, !Ref Stage, MinInstances ]
@@ -195,7 +195,7 @@ Resources:
         Value: membership-attribute-service
         PropagateAtLaunch: 'true'
       VPCZoneIdentifier:
-        Ref: VpcSubnets
+        Ref: PrivateVpcSubnets
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
