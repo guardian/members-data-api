@@ -66,7 +66,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
           for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- pickAttributes(identityId)
-            latestOneOffDate <- getLatestOneOffContributionDate(identityId)
+            latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId)
             combinedAttributes: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
           } yield {
 
