@@ -30,6 +30,7 @@ case class Attributes(
   UserId: String,
   Tier: Option[String] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
+  OneOffContributionDate: Option[LocalDate] = None,
   MembershipJoinDate: Option[LocalDate] = None,
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
@@ -41,7 +42,8 @@ case class Attributes(
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
-  lazy val isContributor = RecurringContributionPaymentPlan.isDefined
+  lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
+  lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(6)))
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
   lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
@@ -51,7 +53,7 @@ case class Attributes(
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
-    recurringContributor = isContributor,
+    recurringContributor = isRecurringContributor,
     digitalPack = digitalSubscriberHasActivePlan,
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber
@@ -59,7 +61,8 @@ case class Attributes(
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
   // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
-  lazy val showSupportMessaging = !(isPaidTier || isContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
+  lazy val showSupportMessaging =
+    !(isPaidTier || isRecurringContributor || isRecentOneOffContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
 
 }
 
@@ -74,10 +77,11 @@ case class ZuoraAttributes(
   AlertAvailableFor: Option[String] = None)
 
 object ZuoraAttributes {
-  def asAttributes(zuoraAttributes: ZuoraAttributes) = Attributes(
+  def asAttributes(zuoraAttributes: ZuoraAttributes, oneOffContributionDate: Option[LocalDate] = None) = Attributes(
     UserId = zuoraAttributes.UserId,
     Tier = zuoraAttributes.Tier,
     RecurringContributionPaymentPlan = zuoraAttributes.RecurringContributionPaymentPlan,
+    OneOffContributionDate = oneOffContributionDate,
     MembershipJoinDate = zuoraAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = zuoraAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = zuoraAttributes.PaperSubscriptionExpiryDate,
@@ -104,10 +108,11 @@ case class DynamoAttributes(
 }
 
 object DynamoAttributes {
-  def asAttributes(dynamoAttributes: DynamoAttributes): Attributes = Attributes(
+  def asAttributes(dynamoAttributes: DynamoAttributes, oneOffContributionDate: Option[LocalDate] = None): Attributes = Attributes(
     UserId = dynamoAttributes.UserId,
     Tier = dynamoAttributes.Tier,
     RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
+    OneOffContributionDate = oneOffContributionDate,
     MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
     DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
     PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
@@ -121,6 +126,7 @@ object Attributes {
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
+      (__ \ "oneOffContributionDate").writeNullable[LocalDate].contramap[Option[LocalDate]](_ => None) and  //omit
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and

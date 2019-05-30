@@ -10,7 +10,7 @@ import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogField
 import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
-import models.{AccountWithSubscriptions, Attributes, DynamoAttributes, ZuoraAttributes}
+import models._
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -72,17 +72,17 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     //return what we know from Dynamo if Zuora returns an error
-    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes map DynamoAttributes.asAttributes)}
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))}
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora flatMap {
       case -\/(error) => fallbackIfZuoraFails
-      case \/-(maybeZuoraAttributesF) => maybeZuoraAttributesF flatMap { maybeZuoraAttributes: Option[ZuoraAttributes] =>
-        val asAttributes: Option[Attributes] = maybeZuoraAttributes map { zuoraAttributes =>  ZuoraAttributes.asAttributes(zuoraAttributes)}
-        attributesFromDynamo map { maybeDynamoAttributes =>
-          updateIfNeeded(maybeZuoraAttributes, maybeDynamoAttributes, asAttributes)
+      case \/-(maybeZuoraAttributesF) => maybeZuoraAttributesF map { maybeZuoraAttributes: Option[ZuoraAttributes] =>
+          val asAttributes: Option[Attributes] = maybeZuoraAttributes map { zuoraAttributes => ZuoraAttributes.asAttributes(zuoraAttributes) }
+          attributesFromDynamo map { maybeDynamoAttributes =>
+            updateIfNeeded(maybeZuoraAttributes, maybeDynamoAttributes, asAttributes)
+          }
+          ("Zuora", asAttributes)
         }
-        Future.successful(("Zuora", asAttributes))
-      }
     }
 
     // return what we know from Dynamo if the future times out/fails

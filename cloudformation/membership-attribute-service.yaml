@@ -29,6 +29,9 @@ Parameters:
   ELBSSLCertificate:
     Description: ELB SSL Certificate ARN
     Type: String
+  SecurityGroupForPostgres:
+    Description: Security group for querying the postgres database
+    Type: String
 Mappings:
   StageVariables:
     PROD:
@@ -203,6 +206,7 @@ Resources:
         Ref: AmiId
       SecurityGroups:
       - Ref: InstanceSecurityGroup
+      - Ref: SecurityGroupForPostgres
       InstanceType:
         Ref: InstanceType
       AssociatePublicIpAddress: 'True'

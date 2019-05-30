@@ -10,6 +10,8 @@ object Dependencies {
   val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.99"
   val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "2.5"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
+  val postgres =  "org.postgresql" % "postgresql" % "42.2.1"
+  val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playCache = PlayImport.cache
   val playFilters = PlayImport.filters
@@ -18,15 +20,18 @@ object Dependencies {
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.547"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.548"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.9"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.2"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
+  val anorm = "org.playframework.anorm" %% "anorm" % "2.6.0"
+
+
 
   //projects
 
-  val apiDependencies = Seq(sentryLogback, identityCookie, identityPlayAuth, identityTestUsers,
+  val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityCookie, identityPlayAuth, identityTestUsers,
     playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
-    specs2, kinesis, logstash)
+    specs2, kinesis, logstash, anorm)
 
 }
