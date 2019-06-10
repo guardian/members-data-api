@@ -17,6 +17,10 @@ Download the config (you may need to `brew install awscli` to get the command.
 
 Get Janus credentials for membership.
 
+Create an ssh tunnel to the CODE one-off contributions database:
+1. Clone https://github.com/guardian/contributions-platform
+2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE`
+
 To start the service run ./start-api.sh
 
 The service will be running on 9400 and use the SupporterAttributesFallback-DEV DynamoDB table.
