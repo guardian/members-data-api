@@ -21,7 +21,7 @@ class AuthAndBackendViaIdapiAction(
       request.headers.get(IdapiService.HeaderNameIdapiForwardedScope)
     ).map(redirectAdvice => {
 
-      val backendConf = if (AddGuIdentityHeaders.isTestUser(redirectAdvice.userId)) {
+      val backendConf = if (AddGuIdentityHeaders.isTestUser(redirectAdvice.displayName)) {
         touchpointBackends.test
       } else {
         touchpointBackends.normal
