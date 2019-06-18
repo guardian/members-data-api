@@ -19,7 +19,7 @@ Get Janus credentials for membership.
 
 Create an ssh tunnel to the CODE one-off contributions database:
 1. Clone https://github.com/guardian/contributions-platform
-2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE`
+2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
 
 To start the service run ./start-api.sh
 
