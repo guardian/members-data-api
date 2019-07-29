@@ -277,7 +277,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
-    DeprecatedRequestLogger.logDeprecatedRequest(request)
+    if(subscriptionNameOption.isEmpty){
+      DeprecatedRequestLogger.logDeprecatedRequest(request)
+    }
+
     val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
