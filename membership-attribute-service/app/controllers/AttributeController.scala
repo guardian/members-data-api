@@ -3,7 +3,7 @@ package controllers
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
+import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -60,7 +60,11 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
-    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
+    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request: AuthAndBackendRequest[AnyContent] =>
+      if(endpointDescription == "membership" || endpointDescription == "features") {
+        DeprecatedRequestLogger.logDeprecatedRequest(request)
+      }
+
       authenticationService.userId(request) match {
         case Some(identityId) =>
           for {

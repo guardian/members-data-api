@@ -19,6 +19,7 @@ import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
+import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
 import models.{AccountDetails, ApiError}
@@ -163,6 +164,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
+    DeprecatedRequestLogger.logDeprecatedRequest(request)
+
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = authenticationService.userId
@@ -274,6 +277,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
+    if(subscriptionNameOption.isEmpty){
+      DeprecatedRequestLogger.logDeprecatedRequest(request)
+    }
+
     val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
     val maybeUserId = authenticationService.userId
