@@ -78,7 +78,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
-    override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
+    override val AuthAndBackendViaAuthLibAction = NoCacheAction andThen FakeWithBackendAction
     override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }
 

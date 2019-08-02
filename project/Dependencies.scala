@@ -7,8 +7,7 @@ object Dependencies {
   val awsClientVersion = "1.11.286"
   //libraries
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityCookie = "com.gu.identity" %% "identity-cookie" % "3.99"
-  val identityPlayAuth = "com.gu.identity" %% "identity-play-auth" % "2.5"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.184-M7"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
   val postgres =  "org.postgresql" % "postgresql" % "42.2.1"
   val jdbc = PlayImport.jdbc
@@ -30,7 +29,7 @@ object Dependencies {
 
   //projects
 
-  val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityCookie, identityPlayAuth, identityTestUsers,
+  val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityAuth, identityTestUsers,
     playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
     specs2, kinesis, logstash, anorm)
 
