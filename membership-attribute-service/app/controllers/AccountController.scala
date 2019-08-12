@@ -34,6 +34,7 @@ import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import utils.{ListEither, OptionEither}
 import scala.concurrent.{ExecutionContext, Future}
+import loghandling.DeprecatedRequestLogger
 
 object AccountHelpers {
 
@@ -163,6 +164,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    DeprecatedRequestLogger.logDeprecatedRequest(request)
+
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
     val maybeUserId = request.redirectAdvice.userId
@@ -274,6 +277,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = AuthAndBackendViaAuthLibAction.async { implicit request =>
+    if(subscriptionNameOption.isEmpty){
+      DeprecatedRequestLogger.logDeprecatedRequest(request)
+    }
+
     val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
     val maybeUserId = request.user.map(_.id)
