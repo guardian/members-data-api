@@ -9,8 +9,8 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait HowToHandleRecencyOfSignedIn
-case object Return401IfNotSignedInRecently extends HowToHandleRecencyOfSignedIn //checked the table, signed in in last hour
-case object ContinueRegardlessOfSignInRecency extends HowToHandleRecencyOfSignedIn // checked the table the cookie is valid
+case object Return401IfNotSignedInRecently extends HowToHandleRecencyOfSignedIn
+case object ContinueRegardlessOfSignInRecency extends HowToHandleRecencyOfSignedIn
 
 class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent])(implicit ex: ExecutionContext, mat:Materializer) {
   def noCache(result: Result): Result = NoCache(result)

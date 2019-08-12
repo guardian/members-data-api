@@ -62,14 +62,14 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
 
-      val userHasValidated = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
 
       request.user.map(_.id) match {
         case Some(identityId) =>
           for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- pickAttributes(identityId)
-            latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId, userHasValidated)
+            latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId, userHasValidatedEmail)
             combinedAttributes: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
           } yield {
 
@@ -125,10 +125,12 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
 
   def oneOffContributions = {
-    //TODO convert to viaAuthLib action
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
-      if (request.redirectAdvice.emailValidated.contains(true)) {
-        request.redirectAdvice.userId match {
+    AuthAndBackendViaAuthLibAction.async { implicit request =>
+
+      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+
+      if (userHasValidatedEmail) {
+        request.user.map(_.id) match {
           case Some(identityId) =>
             oneOffContributionDatabaseService.getAllContributions(identityId).map {
               case -\/(err) => Ok(err)

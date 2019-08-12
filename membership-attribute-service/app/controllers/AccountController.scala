@@ -3,7 +3,6 @@ package controllers
 import actions._
 import com.gu.memsub
 import services.PaymentFailureAlerter._
-import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
@@ -64,10 +63,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaAuthLibAction.async { implicit request =>
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
-    val maybeUserId = request.redirectAdvice.userId
+    val maybeUserId = request.user.map(_.id)
 
     def handleInputBody(cancelForm: Form[String]): Future[ApiError \/ String] = Future.successful {
       cancelForm.bindFromRequest().value.map { cancellationReason =>
@@ -163,12 +162,12 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaAuthLibAction.async { implicit request =>
     DeprecatedRequestLogger.logDeprecatedRequest(request)
 
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
-    val maybeUserId = request.redirectAdvice.userId
+    val maybeUserId = request.user.map(_.id)
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
