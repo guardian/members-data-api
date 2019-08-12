@@ -15,7 +15,7 @@ object Dependencies {
   val playCache = PlayImport.cache
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
-  val scanamo = "com.gu" %% "scanamo" % "0.9.5"
+  val scanamo = "com.gu" %% "scanamo" % "1.0.0-M8"
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
@@ -24,9 +24,7 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.2"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.0"
-
-
-
+  
   //projects
 
   val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityAuth, identityTestUsers,
