@@ -18,6 +18,7 @@ import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
+import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
 import models.{AccountDetails, ApiError}
@@ -33,7 +34,6 @@ import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import utils.{ListEither, OptionEither}
 import scala.concurrent.{ExecutionContext, Future}
-import loghandling.DeprecatedRequestLogger
 
 object AccountHelpers {
 
