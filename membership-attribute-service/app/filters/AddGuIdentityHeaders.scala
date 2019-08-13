@@ -25,16 +25,12 @@ object AddGuIdentityHeaders {
     displayName.flatMap(_.split(' ').headOption).exists(Config.testUsernames.isValid)
 
   def headersFor(request: RequestHeader, result: Result, identityAuthService: IdentityAuthService)(implicit ec: ExecutionContext): Future[Result] = {
-    for {
-      maybeUser: Option[User] <- identityAuthService.user(request)
-    } yield {
-        maybeUser match {
-          case Some(user) => result.withHeaders(
-            "X-Gu-Identity-Id" -> user.id,
-            "X-Gu-Membership-Test-User" -> isTestUser(user.publicFields.displayName).toString
-          )
-          case None => result
-      }
+    identityAuthService.user(request) map {
+      case Some(user) => result.withHeaders(
+        "X-Gu-Identity-Id" -> user.id,
+        "X-Gu-Membership-Test-User" -> isTestUser(user.publicFields.displayName).toString
+      )
+      case None => result
     }
   }
 }
