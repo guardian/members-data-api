@@ -84,5 +84,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val featureToggleData = new FeatureToggleDataUpdatedOnSchedule(featureToggleService, stage)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
+  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi)
 
 }

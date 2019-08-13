@@ -22,10 +22,9 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   import attributesFromZuora._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
-  lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
 
-  def pickAttributes(identityId: String) (implicit request: AuthAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+  def pickAttributes(identityId: String) (implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
     val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
     val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
@@ -44,9 +43,10 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
     }
   }
 
-  def getLatestOneOffContributionDate(identityId: String)(implicit request: AuthAndBackendRequest[AnyContent], executionContext: ExecutionContext): Future[Option[LocalDate]] = {
+  def getLatestOneOffContributionDate(identityId: String, userHasValidated: Boolean)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
-    if (request.redirectAdvice.emailValidated.contains(true)) {
+
+    if (userHasValidated) {
       oneOffContributionDatabaseService.getLatestContribution(identityId) map {
         case -\/(databaseError) =>
           //Failed to get one-off data, but this should not block the zuora request
@@ -60,17 +60,20 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
-    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request: AuthAndBackendRequest[AnyContent] =>
+    AuthAndBackendViaAuthLibAction.async { implicit request =>
+
       if(endpointDescription == "membership" || endpointDescription == "features") {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
-      authenticationService.userId(request) match {
+      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+
+      request.user.map(_.id) match {
         case Some(identityId) =>
           for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- pickAttributes(identityId)
-            latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId)
+            latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId, userHasValidatedEmail)
             combinedAttributes: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
           } yield {
 
@@ -126,9 +129,12 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
 
   def oneOffContributions = {
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
-      if (request.redirectAdvice.emailValidated.contains(true)) {
-        authenticationService.userId(request) match {
+    AuthAndBackendViaAuthLibAction.async { implicit request =>
+
+      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+
+      if (userHasValidatedEmail) {
+        request.user.map(_.id) match {
           case Some(identityId) =>
             oneOffContributionDatabaseService.getAllContributions(identityId).map {
               case -\/(err) => Ok(err)
