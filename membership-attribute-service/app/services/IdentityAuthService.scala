@@ -1,38 +1,24 @@
 package services
 
 import _root_.play.api.mvc.RequestHeader
-import com.gu.identity.{IdapiConfig, play}
-import org.http4s.Uri
-import cats.implicits._
-import com.gu.identity.model.User
-import com.gu.identity.play.IdentityPlayAuthService
-import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
-import scala.concurrent.{ExecutionContext, Future}
+import com.gu.identity.play
+import com.gu.identity.play.{AccessCredentials, AuthenticatedIdUser}
+import configuration.Config
 
-class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext) extends AuthenticationService {
+object IdentityAuthService extends AuthenticationService {
+  val playAuthService = new play.AuthenticationService {
+    override val identityKeys = Config.idKeys
 
-  val idApiUrl = Uri.unsafeFromString(apiConfig.url)
-
-  val identityPlayAuthService = IdentityPlayAuthService.unsafeInit(idApiUrl, apiConfig.token, Some("membership"))
-
-  def user(implicit requestHeader: RequestHeader): Future[Option[User]] = {
-    getUser(requestHeader)
-      .map(user => Option(user))
-      .handleError { err =>
-        if(err.isInstanceOf[UserCredentialsMissingError])
-          SafeLogger.info(s"unable to authorize user - $err")
-        else
-          SafeLogger.error(scrub"unable to authorize user - $err", err)
-
-        None
-      }
+    override lazy val authenticatedIdUserProvider =
+      AuthenticatedIdUser.provider(
+        AccessCredentials.Cookies.authProvider(identityKeys),
+        AccessCredentials.Token.authProvider(identityKeys,"membership")
+      )
   }
 
-  private def getUser(requestHeader: RequestHeader): Future[User] =
-    identityPlayAuthService.getUserFromRequest(requestHeader)
-      .map { case (_, user) => user }
-      .unsafeToFuture()
+  override def userId(implicit request: RequestHeader): Option[String] =
+    playAuthService.authenticatedUserFor(request).map(_.user.id)
 
+  override def username(implicit request: RequestHeader): Option[String] =
+    playAuthService.authenticatedUserFor(request).flatMap(_.user.displayName)
 }

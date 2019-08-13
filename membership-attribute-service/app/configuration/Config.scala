@@ -6,10 +6,12 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.sqs.AmazonSQSAsyncClientBuilder
 import io.sentry.dsn.Dsn
 import com.gu.aws.CredentialsProvider
+import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import play.api.Configuration
 import play.filters.cors.CORSConfig
+import play.filters.cors.CORSConfig.Origins
 
 import scala.util.Try
 
@@ -20,6 +22,7 @@ object Config {
 
   val stage = config.getString("stage")
 
+  val idKeys = if (config.getBoolean("identity.production.keys")) new ProductionKeys else new PreProductionKeys
   val useFixtures = config.getBoolean("use-fixtures")
   lazy val sentryDsn = Try(config.getString("sentry.dsn")).toOption
 

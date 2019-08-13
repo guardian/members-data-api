@@ -12,7 +12,6 @@ import play.api.routing.Router
 import play.core.SourceMapper
 import models.ApiErrors.{badRequest, internalError, notFound}
 import play.api.libs.json.Json
-import services.IdentityAuthService
 
 import scala.concurrent._
 
@@ -20,8 +19,7 @@ class ErrorHandler(
                     env: Environment,
                     config: Configuration,
                     sourceMapper: Option[SourceMapper],
-                    router: => Option[Router],
-                    identityAuthService: IdentityAuthService
+                    router: => Option[Router]
                   )(implicit executionContext: ExecutionContext) extends DefaultHttpErrorHandler(env, config, sourceMapper, router) with LazyLogging{
 
   override def onClientError(request: RequestHeader, statusCode: Int, message: String = ""): Future[Result] = {
@@ -37,8 +35,8 @@ class ErrorHandler(
   }
 
   override protected def onProdServerError(request: RequestHeader, ex: UsefulException): Future[Result] = {
-    SafeLogger.error(scrub"Error handling request request: $request", ex)
-    AddGuIdentityHeaders.headersFor(request, internalError, identityAuthService)
+       SafeLogger.error(scrub"Error handling request request: $request", ex)
+       Future { AddGuIdentityHeaders.headersFor(request, internalError) }
   }
   override protected def onBadRequest(request: RequestHeader, message: String): Future[Result] = {
     logServerError(request, new PlayException("Bad request", message))

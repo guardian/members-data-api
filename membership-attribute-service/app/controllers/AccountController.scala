@@ -3,6 +3,7 @@ package controllers
 import actions._
 import com.gu.memsub
 import services.PaymentFailureAlerter._
+import services.{AuthenticationService, IdentityAuthService}
 import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
@@ -61,12 +62,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   import commonActions._
   import AccountHelpers._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
+  lazy val authenticationService: AuthenticationService = IdentityAuthService
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
+
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
-    val maybeUserId = request.user.map(_.id)
+    val maybeUserId = authenticationService.userId
 
     def handleInputBody(cancelForm: Form[String]): Future[ApiError \/ String] = Future.successful {
       cancelForm.bindFromRequest().value.map { cancellationReason =>
@@ -161,13 +163,12 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   @Deprecated
-  private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+  private def paymentDetails[P <: SubscriptionPlan.Paid : SubPlanReads, F <: SubscriptionPlan.Free : SubPlanReads] = BackendFromCookieAction.async { implicit request =>
     DeprecatedRequestLogger.logDeprecatedRequest(request)
 
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
-    val maybeUserId = request.user.map(_.id)
+    val maybeUserId = authenticationService.userId
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
@@ -275,14 +276,14 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = AuthAndBackendViaAuthLibAction.async { implicit request =>
+  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = BackendFromCookieAction.async { implicit request =>
     if(subscriptionNameOption.isEmpty){
       DeprecatedRequestLogger.logDeprecatedRequest(request)
     }
 
     val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
     val tp = request.touchpoint
-    val maybeUserId = request.user.map(_.id)
+    val maybeUserId = authenticationService.userId
     logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
     (for {
       newPrice <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
