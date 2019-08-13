@@ -4,7 +4,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.model.{DeleteItemResult, PutItemResult}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import com.gu.scanamo.{DynamoFormat, ScanamoAsync, Table}
+import com.gu.scanamo._
 import com.gu.scanamo.error.{DynamoReadError, MissingProperty}
 import com.gu.scanamo.syntax.{set => scanamoSet, _}
 import com.gu.scanamo.update.UpdateExpression
@@ -45,7 +45,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)(implic
         .right.toOption
     }).map(_.toList)
 
-  override def set(attributes: DynamoAttributes): Future[Option[Either[DynamoReadError, DynamoAttributes]]] = run(scanamo.put(attributes))
+  override def set(attributes: DynamoAttributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
   override def update(attributes: DynamoAttributes): Future[Either[DynamoReadError, DynamoAttributes]] = {
 

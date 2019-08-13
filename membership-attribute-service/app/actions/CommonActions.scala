@@ -1,7 +1,6 @@
 package actions
 import akka.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
-import com.gu.identity.model.User
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import play.api.mvc._
@@ -16,7 +15,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  val AuthAndBackendViaAuthLibAction = NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends)
+  val BackendFromCookieAction = NoCacheAction andThen new WithBackendFromCookieAction(touchpointBackends)
   def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
     NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn)
 
@@ -28,13 +27,6 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 }
 
 class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
-
-class AuthenticatedUserAndBackendRequest[A](
-  val user: Option[User],
-  val touchpoint: TouchpointComponents,
-  request: Request[A]
-) extends WrappedRequest[A](request)
-
 class AuthAndBackendRequest[A](
   val redirectAdvice: RedirectAdviceResponse,
   val touchpoint: TouchpointComponents,
