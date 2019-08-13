@@ -3,7 +3,7 @@ package controllers
 import actions._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
+import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -61,6 +61,10 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
+
+      if(endpointDescription == "membership" || endpointDescription == "features") {
+        DeprecatedRequestLogger.logDeprecatedRequest(request)
+      }
 
       val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
 
