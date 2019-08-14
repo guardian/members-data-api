@@ -22,7 +22,7 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
       .map(user => Option(user))
       .handleError { err =>
         if(err.isInstanceOf[UserCredentialsMissingError])
-          SafeLogger.error(scrub"unable to authorize user - $err", err)
+          SafeLogger.error(scrub"invalid request as no token provided - unable to authorize user - $err", err)
         else
           SafeLogger.warn(s"valid request but expired token so user must log in again - $err")
 
