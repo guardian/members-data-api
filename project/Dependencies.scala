@@ -7,7 +7,7 @@ object Dependencies {
   val awsClientVersion = "1.11.286"
   //libraries
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.184-M7"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.184" 
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
   val postgres =  "org.postgresql" % "postgresql" % "42.2.1"
   val jdbc = PlayImport.jdbc
@@ -15,7 +15,7 @@ object Dependencies {
   val playCache = PlayImport.cache
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
-  val scanamo = "com.gu" %% "scanamo" % "1.0.0-M8"
+  val scanamo = "com.gu" %% "scanamo" % "1.0.0-M8"                                                                                                                                                                                                                                                        
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
