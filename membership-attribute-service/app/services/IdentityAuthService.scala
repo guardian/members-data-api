@@ -24,7 +24,7 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
         if(err.isInstanceOf[UserCredentialsMissingError])
           SafeLogger.error(scrub"unable to authorize user - $err", err)
         else
-          SafeLogger.warn(s"unable to authorize user - $err")
+          SafeLogger.warn(s"valid request but expired token so user must log in again - $err")
 
         None
       }
