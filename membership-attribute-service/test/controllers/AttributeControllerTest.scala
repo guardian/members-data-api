@@ -1,8 +1,9 @@
 package controllers
 
-import actions.{AuthAndBackendRequest, BackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
+import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import com.gu.identity.model.User
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
@@ -27,7 +28,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   implicit val as: ActorSystem = ActorSystem("test")
 
   private val validUserId = "123"
-  private val invalidUserId = "456"
+  private val userWithoutAttributesUserId = "456"
   private val testAttributes = Attributes(
     UserId = validUserId,
     Tier = Some("patron"),
@@ -39,25 +40,35 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   )
 
   private val validUserCookie = Cookie("validUser", "true")
-  private val invalidUserCookie = Cookie("invalidUser", "true")
+  private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
+  private val validUser = User(
+    primaryEmailAddress = "test@gu.com",
+    id = validUserId,
+  )
+
+  private val userWithoutAttributes = User(
+    primaryEmailAddress = "notcached@gu.com",
+    id = userWithoutAttributesUserId
+  )
 
   private val fakeAuthService = new AuthenticationService {
-    override def username(implicit request: RequestHeader) = ???
-    override def userId(implicit request: RequestHeader) = request.cookies.headOption match {
-      case Some(c) if c == validUserCookie => Some(validUserId)
-      case Some(c) if c == invalidUserCookie => Some(invalidUserId)
-      case _ => None
-    }
+    override def user(implicit request: RequestHeader) =
+      request.cookies.headOption match {
+        case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
+        case Some(c) if c == userWithoutAttributesCookie => Future.successful(Some(userWithoutAttributes))
+        case _ => Future.successful(None)
+      }
   }
 
-  // Succeeds for the valid user id
-  private object FakeWithBackendAction extends ActionRefiner[Request, BackendRequest] {
+  private object FakeAuthAndBackendViaAuthLibAction extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
     override val executionContext = scala.concurrent.ExecutionContext.global
-    override protected def refine[A](request: Request[A]): Future[Either[Result, BackendRequest[A]]] = {
+    override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      Future(Right(new BackendRequest[A](components, request)))
+      fakeAuthService.user(request) map { user: Option[User] =>
+        Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
+      }
     }
   }
 
@@ -78,7 +89,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
-    override val BackendFromCookieAction = NoCacheAction andThen FakeWithBackendAction
+    override val AuthAndBackendViaAuthLibAction = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
     override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }
 
@@ -91,9 +102,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService) {
-    override lazy val authenticationService = fakeAuthService
     override val executionContext = scala.concurrent.ExecutionContext.global
-    override def pickAttributes(identityId: String)(implicit request: AuthAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
+    override def pickAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
     }
   }
@@ -177,14 +187,14 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     }
 
     "return not found for unknown users in membership" in {
-      val req = FakeRequest().withCookies(invalidUserCookie)
+      val req = FakeRequest().withCookies(userWithoutAttributesCookie)
       val result = controller.membership(req)
 
       status(result) shouldEqual NOT_FOUND
     }
 
     "return all false attributes for unknown users" in {
-      val req = FakeRequest().withCookies(invalidUserCookie)
+      val req = FakeRequest().withCookies(userWithoutAttributesCookie)
       val result = controller.attributes(req)
 
       status(result) shouldEqual OK
@@ -206,7 +216,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     }
 
     "retrieve default features for unknown users" in {
-      val req = FakeRequest().withCookies(invalidUserCookie)
+      val req = FakeRequest().withCookies(userWithoutAttributesCookie)
       val result = controller.features(req)
 
       verifyDefaultFeaturesResult(result)
