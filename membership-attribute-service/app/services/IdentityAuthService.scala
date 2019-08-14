@@ -22,9 +22,9 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
       .map(user => Option(user))
       .handleError { err =>
         if(err.isInstanceOf[UserCredentialsMissingError])
-          SafeLogger.info(s"unable to authorize user - $err")
-        else
           SafeLogger.error(scrub"unable to authorize user - $err", err)
+        else
+          SafeLogger.warn(s"unable to authorize user - $err")
 
         None
       }
