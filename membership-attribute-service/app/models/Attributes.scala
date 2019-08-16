@@ -126,7 +126,7 @@ object Attributes {
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-      (__ \ "oneOffContributionDate").writeNullable[LocalDate].contramap[Option[LocalDate]](_ => None) and  //omit
+      (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
