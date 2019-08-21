@@ -22,8 +22,8 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
       .map(user => Option(user))
       .handleError { err =>
         if(err.isInstanceOf[UserCredentialsMissingError])
-          SafeLogger.warn(s"invalid request as no token or cookie provided - unable to authorize user - $err." +
-            s"Request attempted: ${requestHeader.method} ${requestHeader.path} with headers ${requestHeader.headers}", err)
+          SafeLogger.warn(s"invalid request as no token or cookie provided - unable to authorize user. \n" +
+            s"Request attempted: ${requestHeader.method} ${requestHeader.path} with headers:\n ${requestHeader.headers.toMap.mkString("\n")}", err)
         else
           SafeLogger.warn(s"valid request but expired token or cookie so user must log in again - $err")
 
