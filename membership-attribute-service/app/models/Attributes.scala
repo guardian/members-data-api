@@ -43,7 +43,7 @@ case class Attributes(
   lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
-  lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(6)))
+  lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(3)))
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
   lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
