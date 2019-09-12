@@ -66,7 +66,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     existingPaymentOptions.groupBy(extractConsolidationPart).filterKeys(_.isDefined).values.map(mapConsolidatedBackToSingle)
   }
 
-
+  // TODO should probably fetch upToDate details from Stripe to determine this (rather than relying on Zuora) - see getUpToDatePaymentDetailsFromStripe in AccountController
   def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails) =
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 

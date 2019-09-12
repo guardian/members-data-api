@@ -25,18 +25,20 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
 
   def updateCard(subscriptionName: String) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
     // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
-    val updateForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> text) }
+    val legacyForm = Form { tuple("stripeToken" -> nonEmptyText, "publicKey" -> nonEmptyText) }.bindFromRequest().value
+    val updateForm = Form { tuple("stripePaymentMethodID" -> nonEmptyText, "stripePublicKey" -> nonEmptyText) }.bindFromRequest().value
     val tp = request.touchpoint
+    val setPaymentCardFunction = if (updateForm.isDefined) tp.paymentService.setPaymentCardWithStripePaymentMethod _ else tp.paymentService.setPaymentCardWithStripeToken _
     val maybeUserId = request.redirectAdvice.userId
     SafeLogger.info(s"Attempting to update card for $maybeUserId")
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      stripeDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no card token and public key submitted with request"))
-      (stripeCardToken, stripePublicKey) = stripeDetails
+      stripeDetails <- EitherT(Future.successful(updateForm.orElse(legacyForm) \/> "no 'stripePaymentMethodID' and 'stripePublicKey' submitted with request"))
+      (stripeCardIdentifier, stripePublicKey) = stripeDetails
       sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
       subscription <- EitherT(tp.subService.current[SubscriptionPlan.AnyPlan](sfUser).map(subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")))
       stripeService <- EitherT(Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
-      updateResult <- EitherT(tp.paymentService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken, stripeService).map(_ \/> "something was missing when attempting to update payment card in Zuora"))
+      updateResult <- EitherT(setPaymentCardFunction(subscription.accountId, stripeCardIdentifier, stripeService).map(_ \/> "something was missing when attempting to update payment card in Zuora"))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
         SafeLogger.info(s"Successfully updated card for identity user: $user")
