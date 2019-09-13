@@ -163,7 +163,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         email = user.primaryEmailAddress
         userHasValidatedEmail <- user.statusFields.userEmailValidated
         emailDomain <- Try(email.split("@")(1)).toOption
-        userHasGuardianEmail = List("guardian.co.uk, theguardian.com").contains(emailDomain)
+        userHasGuardianEmail = List("guardian.co.uk", "theguardian.com").contains(emailDomain)
       } yield {
         userHasValidatedEmail && userHasGuardianEmail
       }).getOrElse(false)
