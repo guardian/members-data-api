@@ -13,10 +13,12 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 import cats.implicits._
+import com.gu.identity.model.User
 import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 class AttributeController(attributesFromZuora: AttributesFromZuora, commonActions: CommonActions, override val controllerComponents: ControllerComponents, oneOffContributionDatabaseService: OneOffContributionDatabaseService) extends BaseController with LoggingWithLogstashFields {
   import attributesFromZuora._
@@ -74,7 +76,8 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- pickAttributes(identityId)
             latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId, userHasValidatedEmail)
-            combinedAttributes: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
+            zuoraAttribWithContrib: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
+            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttribWithContrib)
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
@@ -144,6 +147,31 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         }
       } else Future(unauthorized)
     }
+  }
+
+  /**
+   * Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
+   */
+  private def maybeAllowAccessToDigipackForGuardianEmployees(
+    maybeUser: Option[User],
+    maybeAttributes: Option[Attributes]
+  ): Option[Attributes] = {
+
+    val allowDigipackAccess =
+      (for {
+        user <- maybeUser
+        email = user.primaryEmailAddress
+        userHasValidatedEmail <- user.statusFields.userEmailValidated
+        emailDomain <- Try(email.split("@")(1)).toOption
+        userHasGuardianEmail = List("guardian.co.uk, theguardian.com").contains(emailDomain)
+      } yield {
+        userHasValidatedEmail && userHasGuardianEmail
+      }).getOrElse(false)
+
+    if (allowDigipackAccess)
+      maybeAttributes.map(_.copy(DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusYears(99))))
+    else
+      maybeAttributes
   }
 
 }
