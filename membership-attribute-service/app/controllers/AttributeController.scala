@@ -77,7 +77,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- pickAttributes(identityId)
             latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId, userHasValidatedEmail)
             zuoraAttribWithContrib: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
-            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttribWithContrib)
+            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttribWithContrib, identityId)
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
@@ -154,10 +154,11 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
    */
   private def maybeAllowAccessToDigipackForGuardianEmployees(
     maybeUser: Option[User],
-    maybeAttributes: Option[Attributes]
+    maybeAttributes: Option[Attributes],
+    identityId: String,
   ): Option[Attributes] = {
 
-    val allowDigipackAccess =
+    val allowDigiPackAccessToStaff =
       (for {
         user <- maybeUser
         email = user.primaryEmailAddress
@@ -168,10 +169,13 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         userHasValidatedEmail && userHasGuardianEmail
       }).getOrElse(false)
 
-    if (allowDigipackAccess)
-      maybeAttributes.map(_.copy(DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusYears(99))))
+    // if maybeAttributes == None, there is nothing in Zuora so we have to hack it
+    lazy val mockedZuoraAttribs = Some(Attributes(identityId))
+    if (allowDigiPackAccessToStaff)
+      (maybeAttributes orElse mockedZuoraAttribs).map(_.copy(DigitalSubscriptionExpiryDate = Some(LocalDate.now.plusYears(99))))
     else
       maybeAttributes
+
   }
 
 }
