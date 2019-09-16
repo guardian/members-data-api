@@ -172,7 +172,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
     // if maybeAttributes == None, there is nothing in Zuora so we have to hack it
     lazy val mockedZuoraAttribs = Some(Attributes(identityId))
     if (allowDigiPackAccessToStaff)
-      (maybeAttributes orElse mockedZuoraAttribs).map(_.copy(DigitalSubscriptionExpiryDate = Some(LocalDate.now.plusYears(99))))
+      (maybeAttributes orElse mockedZuoraAttribs).map(_.copy(DigitalSubscriptionExpiryDate = Some(new LocalDate( 2099, 1 , 1 ))))
     else
       maybeAttributes
 
