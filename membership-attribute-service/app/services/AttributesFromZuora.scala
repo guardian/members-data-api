@@ -62,8 +62,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
     def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
+        log.info(s"Attempting to update cache for $identityId ...")
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry) onComplete {
-          case Success(_) => SafeLogger.debug(s"updated cache for $identityId")
+          case Success(_) =>
+            log.info(s"updated cache for $identityId")
           case Failure(e) =>
             SafeLogger.error(scrub"Future failed when attempting to update cache.", e)
             log.warn(s"Future failed when attempting to update cache. Attributes from Zuora: $attributes")
@@ -219,6 +221,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     if (!dynamoAndZuoraAgree)
       log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
         s" Zuora attributes as attributes: $zuoraAttributesAsAttributes. Dynamo attributes as attributes: $dynamoAttributesAsAttributes.")
+    else if (zuoraAttributesAsAttributes.isEmpty) {
+      log.info(s"There are no Zuora attributes for $identityId")
+    }
 
     dynamoAndZuoraAgree
   }
