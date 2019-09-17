@@ -3,7 +3,7 @@ package controllers
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.gu.identity.model.User
+import com.gu.identity.model.{StatusFields, User}
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
@@ -51,11 +51,36 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     id = userWithoutAttributesUserId
   )
 
+  private val guardianEmployeeUser = User(
+    primaryEmailAddress = "foo@guardian.co.uk",
+    id = "1234321",
+    statusFields = StatusFields(userEmailValidated = Some(true))
+  )
+  private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
+
+  private val guardianEmployeeUserTheguardian = User(
+    primaryEmailAddress = "foo@theguardian.com",
+    id = "123theguardiancom",
+    statusFields = StatusFields(userEmailValidated = Some(true))
+  )
+  private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
+
+
+  private val validEmployeeUser = User(
+    primaryEmailAddress = "bar@theguardian.com",
+    id = "userWithRealProducts",
+    statusFields = StatusFields(userEmailValidated = Some(true))
+  )
+  private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
+
   private val fakeAuthService = new AuthenticationService {
     override def user(implicit request: RequestHeader) =
       request.cookies.headOption match {
         case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
         case Some(c) if c == userWithoutAttributesCookie => Future.successful(Some(userWithoutAttributes))
+        case Some(c) if c == guardianEmployeeCookie => Future.successful(Some(guardianEmployeeUser))
+        case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Some(guardianEmployeeUserTheguardian))
+        case Some(c) if c == validEmployeeUserCookie => Future.successful(Some(validEmployeeUser))
         case _ => Future.successful(None)
       }
   }
@@ -104,7 +129,10 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService) {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override def pickAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
-      if (identityId == validUserId ) ("Zuora", Some(testAttributes)) else ("Zuora", None)
+      if (identityId == validUserId || identityId == validEmployeeUser.id)
+        ("Zuora", Some(testAttributes))
+      else
+        ("Zuora", None)
     }
   }
 
@@ -241,6 +269,29 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val result: Future[Result] = controller.attributes(req)
 
       verifySuccessfullAttributesResult(result)
+    }
+
+    val digipackAllowEmployeeAccessDateHack = Some(new LocalDate(2999, 1, 1))
+    "allow DigiPack access via hack to guardian employees with validated guardian.co.uk email" in {
+      val req = FakeRequest().withCookies(guardianEmployeeCookie)
+      val defaultAttribsWithDigipackOverride =
+        Attributes(guardianEmployeeUser.id)
+          .copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack)
+      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(defaultAttribsWithDigipackOverride)
+    }
+
+    "allow DigiPack access via hack to guardian employees with validated theguardian.com email" in {
+      val req = FakeRequest().withCookies(guardianEmployeeCookieTheguardian)
+      val defaultAttribsWithDigipackOverride =
+        Attributes(guardianEmployeeUserTheguardian.id)
+          .copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack)
+      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(defaultAttribsWithDigipackOverride)
+    }
+
+    "allow DigiPack access via hack to guardian employees with affecting other products" in {
+      val req = FakeRequest().withCookies(validEmployeeUserCookie)
+      contentAsJson(controller.attributes(req)) shouldEqual
+        Json.toJson(testAttributes.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
     }
 
   }
