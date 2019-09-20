@@ -271,8 +271,9 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       verifySuccessfullAttributesResult(result)
     }
 
+    // FIXME: Enable these by removing pending once business is happy
     val digipackAllowEmployeeAccessDateHack = Some(new LocalDate(2999, 1, 1))
-    "allow DigiPack access via hack to guardian employees with validated guardian.co.uk email" in {
+    "allow DigiPack access via hack to guardian employees with validated guardian.co.uk email" in pending {
       val req = FakeRequest().withCookies(guardianEmployeeCookie)
       val defaultAttribsWithDigipackOverride =
         Attributes(guardianEmployeeUser.id)
@@ -280,7 +281,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(defaultAttribsWithDigipackOverride)
     }
 
-    "allow DigiPack access via hack to guardian employees with validated theguardian.com email" in {
+    "allow DigiPack access via hack to guardian employees with validated theguardian.com email" in pending {
       val req = FakeRequest().withCookies(guardianEmployeeCookieTheguardian)
       val defaultAttribsWithDigipackOverride =
         Attributes(guardianEmployeeUserTheguardian.id)
@@ -288,7 +289,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(defaultAttribsWithDigipackOverride)
     }
 
-    "allow DigiPack access via hack to guardian employees with affecting other products" in {
+    "allow DigiPack access via hack to guardian employees with affecting other products" in pending {
       val req = FakeRequest().withCookies(validEmployeeUserCookie)
       contentAsJson(controller.attributes(req)) shouldEqual
         Json.toJson(testAttributes.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
