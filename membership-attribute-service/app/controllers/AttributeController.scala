@@ -45,10 +45,12 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
     }
   }
 
-  def getLatestOneOffContributionDate(identityId: String, userHasValidated: Boolean)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
+  def getLatestOneOffContributionDate(identityId: String, user: Option[User])(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
 
-    if (userHasValidated) {
+    val userHasValidatedEmail = user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+
+    if (userHasValidatedEmail) {
       oneOffContributionDatabaseService.getLatestContribution(identityId) map {
         case -\/(databaseError) =>
           //Failed to get one-off data, but this should not block the zuora request
@@ -61,6 +63,10 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
     else Future.successful(None)
   }
 
+  def enrichZuoraAttributes(zuoraAttributes: Option[Attributes], latestOneOffDate: Option[LocalDate]): Option[Attributes] = {
+    zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
+  }
+
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
 
@@ -68,15 +74,16 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
-      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
-
       request.user.map(_.id) match {
         case Some(identityId) =>
+          // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
+          val futureAttributes = pickAttributes(identityId)
+          val futureOneOffContribution = getLatestOneOffContributionDate(identityId, request.user)
           for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
-            (fromWhere: String, zuoraAttributes: Option[Attributes]) <- pickAttributes(identityId)
-            latestOneOffDate: Option[LocalDate] <- getLatestOneOffContributionDate(identityId, userHasValidatedEmail)
-            combinedAttributes: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
+            (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
+            latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
+            enrichedZuoraAttributes: Option[Attributes] = enrichZuoraAttributes(zuoraAttributes, latestOneOffDate)
 
             //FIXME: Temporarily disabled pending decision by The Business
 //            zuoraAttribWithContrib: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
@@ -85,7 +92,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
 
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
-            combinedAttributes match {
+            enrichedZuoraAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
