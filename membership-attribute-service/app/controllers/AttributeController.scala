@@ -52,10 +52,9 @@ class AttributeController(
     }
   }
 
-  def getLatestOneOffContributionDate(identityId: String, user: Option[User])(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
+  def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
-
-    val userHasValidatedEmail = user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+    val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
 
     if (userHasValidatedEmail) {
       oneOffContributionDatabaseService.getLatestContribution(identityId) map {
@@ -97,12 +96,12 @@ class AttributeController(
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
-      request.user.map(_.id) match {
-        case Some(identityId) =>
+      request.user match {
+        case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureAttributes = pickAttributes(identityId)
-          val futureOneOffContribution = getLatestOneOffContributionDate(identityId, request.user)
-          val futureMobileSubscriptionStatus = getLatestMobileSubscription(identityId)
+          val futureAttributes = pickAttributes(user.id)
+          val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
+          val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
           for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
@@ -113,35 +112,35 @@ class AttributeController(
 
             //FIXME: Temporarily disabled pending decision by The Business
 //            zuoraAttribWithContrib: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
-//            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttribWithContrib, identityId)
+//            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttribWithContrib, user.id)
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             enrichedZuoraAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
-                logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
+                logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
                   "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
                 )
               case Some(attrs) =>
                 attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"$identityId is a digital subscriber expiring $date", customFields("digital-subscriber"))
+                  logInfoWithCustomFields(s"${user.id} is a digital subscriber expiring $date", customFields("digital-subscriber"))
                 }
                 attrs.PaperSubscriptionExpiryDate.foreach {date =>
-                  logInfoWithCustomFields(s"$identityId is a paper subscriber expiring $date", customFields("paper-subscriber"))
+                  logInfoWithCustomFields(s"${user.id} is a paper subscriber expiring $date", customFields("paper-subscriber"))
                 }
                 attrs.GuardianWeeklySubscriptionExpiryDate.foreach {date =>
-                  logInfoWithCustomFields(s"$identityId is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
+                  logInfoWithCustomFields(s"${user.id} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
                 }
                 attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                  logInfoWithCustomFields(s"$identityId is a regular $paymentPlan contributor", customFields("contributor"))
+                  logInfoWithCustomFields(s"${user.id} is a regular $paymentPlan contributor", customFields("contributor"))
                 }
-                logInfoWithCustomFields(s"$identityId supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+                logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                Attributes(identityId, OneOffContributionDate = latestOneOffDate)
+                Attributes(user.id, OneOffContributionDate = latestOneOffDate)
               case _ =>
                 onNotFound
             }
