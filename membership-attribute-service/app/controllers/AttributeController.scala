@@ -18,9 +18,16 @@ import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
-class AttributeController(attributesFromZuora: AttributesFromZuora, commonActions: CommonActions, override val controllerComponents: ControllerComponents, oneOffContributionDatabaseService: OneOffContributionDatabaseService) extends BaseController with LoggingWithLogstashFields {
+class AttributeController(
+  attributesFromZuora: AttributesFromZuora,
+  commonActions: CommonActions,
+  override val controllerComponents: ControllerComponents,
+  oneOffContributionDatabaseService: OneOffContributionDatabaseService,
+  mobileSubscriptionService: MobileSubscriptionService
+) extends BaseController with LoggingWithLogstashFields {
   import attributesFromZuora._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
@@ -63,8 +70,24 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
     else Future.successful(None)
   }
 
-  def enrichZuoraAttributes(zuoraAttributes: Option[Attributes], latestOneOffDate: Option[LocalDate]): Option[Attributes] = {
-    zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
+  def getLatestMobileSubscription(identityId: String)(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
+    mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
+      case Failure(NonFatal(error)) =>
+        log.warn("Exception while fetching mobile subscription, assuming none", error)
+        Success(None)
+      case Success(-\/(error)) =>
+        log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
+        Success(None)
+      case Success(\/-(status)) => Success(status)
+    }
+  }
+
+  def enrichZuoraAttributes(zuoraAttributes: Option[Attributes], latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Option[Attributes] = {
+    val mobileExpiryDate = mobileSubscriptionStatus.map(_.endDate.toLocalDate)
+    zuoraAttributes.map(_.copy(
+      OneOffContributionDate = latestOneOffDate,
+      MobileSubscriptionExpiryDate = mobileExpiryDate
+    ))
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
@@ -79,11 +102,14 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
           val futureAttributes = pickAttributes(identityId)
           val futureOneOffContribution = getLatestOneOffContributionDate(identityId, request.user)
+          val futureMobileSubscriptionStatus = getLatestMobileSubscription(identityId)
+
           for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
-            enrichedZuoraAttributes: Option[Attributes] = enrichZuoraAttributes(zuoraAttributes, latestOneOffDate)
+            latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
+            enrichedZuoraAttributes: Option[Attributes] = enrichZuoraAttributes(zuoraAttributes, latestOneOffDate, latestMobileSubscription)
 
             //FIXME: Temporarily disabled pending decision by The Business
 //            zuoraAttribWithContrib: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
@@ -93,7 +119,7 @@ class AttributeController(attributesFromZuora: AttributesFromZuora, commonAction
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             enrichedZuoraAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"$identityId is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,

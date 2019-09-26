@@ -17,7 +17,7 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.CORSFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.{AttributesFromZuora, PostgresDatabaseService}
+import services.{AttributesFromZuora, MobileSubscriptionServiceImpl, PostgresDatabaseService}
 
 import scala.concurrent.ExecutionContext
 
@@ -56,10 +56,12 @@ class MyComponents(context: Context)
     PostgresDatabaseService.fromDatabase(db)(jdbcExecutionContext)
   }
 
+  val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient)
+
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
-    new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService),
+    new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService, mobileSubscriptionService),
     new ExistingPaymentOptionsController(commonActions, controllerComponents),
     new AccountController(commonActions, controllerComponents),
     new PaymentUpdateController(commonActions, controllerComponents)

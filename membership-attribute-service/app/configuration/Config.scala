@@ -52,4 +52,9 @@ object Config {
     val enabled = Try{config.getBoolean("logstash.enabled")}.toOption.contains(true)
   }
 
+  object Mobile {
+    val subscriptionURL = config.getConfig("mobile.subscription.base")
+    val subscriptionApiKey = config.getConfig("mobile.subscription.apiKey")
+  }
+
 }

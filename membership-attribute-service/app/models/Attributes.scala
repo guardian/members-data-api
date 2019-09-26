@@ -35,6 +35,7 @@ case class Attributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
+  MobileSubscriptionExpiryDate: Option[LocalDate] = None,
   AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -131,6 +132,7 @@ object Attributes {
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
+      (__ \ "mobileSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
