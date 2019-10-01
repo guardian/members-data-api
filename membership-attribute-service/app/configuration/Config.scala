@@ -53,7 +53,6 @@ object Config {
   }
 
   object Mobile {
-    val subscriptionURL = config.getConfig("mobile.subscription.base")
     val subscriptionApiKey = config.getConfig("mobile.subscription.apiKey")
   }
 
