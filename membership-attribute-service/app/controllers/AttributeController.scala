@@ -81,12 +81,12 @@ class AttributeController(
     }
   }
 
-  def enrichZuoraAttributes(zuoraAttributes: Option[Attributes], latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Option[Attributes] = {
+  def enrichZuoraAttributes(zuoraAttributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
-    zuoraAttributes.map(_.copy(
+    zuoraAttributes.copy(
       OneOffContributionDate = latestOneOffDate,
       LiveAppSubscriptionExpiryDate = mobileExpiryDate
-    ))
+    )
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
@@ -108,7 +108,7 @@ class AttributeController(
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
-            enrichedZuoraAttributes: Option[Attributes] = enrichZuoraAttributes(zuoraAttributes, latestOneOffDate, latestMobileSubscription)
+            enrichedZuoraAttributes: Option[Attributes] = zuoraAttributes.map(enrichZuoraAttributes(_, latestOneOffDate, latestMobileSubscription))
 
             //FIXME: Temporarily disabled pending decision by The Business
 //            zuoraAttribWithContrib: Option[Attributes] = zuoraAttributes.map(_.copy(OneOffContributionDate = latestOneOffDate))
@@ -140,7 +140,7 @@ class AttributeController(
                 logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                Attributes(user.id, OneOffContributionDate = latestOneOffDate)
+                enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
               case _ =>
                 onNotFound
             }
