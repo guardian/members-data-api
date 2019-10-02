@@ -29,7 +29,7 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
 
     response.map { resp =>
       if (resp.status != 200) {
-        \/.left(s"Unable to fetch the mobile subscription status for $identityId")
+        \/.left(s"Unable to fetch the mobile subscription status for $identityId, got HTTP ${resp.status} ${resp.statusText}")
       } else {
         val parsedSubs = (resp.json \ "subscriptions")
           .validate[List[MobileSubscriptionStatus]]
