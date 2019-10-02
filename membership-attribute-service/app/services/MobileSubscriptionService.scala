@@ -37,8 +37,8 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
         parsedSubs match {
           case JsError(errors) => -\/(s"Unable to parse mobile subscription response: $errors")
           case JsSuccess(subs, _) =>
-            val mostRecentValidSub = subs.filter(_.valid).sortBy(_.endDate).lastOption
-            val mostRecentInvalidSub = subs.filterNot(_.valid).sortBy(_.endDate).lastOption
+            val mostRecentValidSub = subs.filter(_.valid).sortBy(_.to).lastOption
+            val mostRecentInvalidSub = subs.filterNot(_.valid).sortBy(_.to).lastOption
             \/-(mostRecentValidSub.orElse(mostRecentInvalidSub))
         }
       }

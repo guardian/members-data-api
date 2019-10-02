@@ -7,7 +7,7 @@ import scala.util.Try
 
 case class MobileSubscriptionStatus(
   valid: Boolean,
-  endDate: DateTime
+  to: DateTime
 )
 
 object MobileSubscriptionStatus {

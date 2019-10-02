@@ -82,7 +82,7 @@ class AttributeController(
   }
 
   def enrichZuoraAttributes(zuoraAttributes: Option[Attributes], latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Option[Attributes] = {
-    val mobileExpiryDate = mobileSubscriptionStatus.map(_.endDate.toLocalDate)
+    val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
     zuoraAttributes.map(_.copy(
       OneOffContributionDate = latestOneOffDate,
       LiveAppSubscriptionExpiryDate = mobileExpiryDate
