@@ -40,9 +40,7 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
           case JsSuccess(subs, _) =>
             val mostRecentValidSub = subs.filter(_.valid).sortBy(_.to).lastOption
             val mostRecentInvalidSub = subs.filterNot(_.valid).sortBy(_.to).lastOption
-            val subStatus = mostRecentValidSub.orElse(mostRecentInvalidSub)
-            log.info(s"Found subscription for user $identityId: $subStatus")
-            \/-(subStatus)
+            \/-(mostRecentValidSub.orElse(mostRecentInvalidSub))
         }
       }
     }
