@@ -1,12 +1,11 @@
 #!/bin/bash
+# Setup Nginx proxies for local development with valid SSL
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NGINX_HOME=$(nginx -V 2>&1 | grep 'configure arguments:' | sed 's#.*conf-path=\([^ ]*\)/nginx\.conf.*#\1#g')
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-printf "\nUsing NGINX_HOME=$NGINX_HOME\n\n"
-printf "Note that you need to have already completed the Identity Platform setup:\n"
-printf "https://github.com/guardian/identity-platform#setup-nginx-for-local-development\n\n"
+SITE_CONF=${SCRIPT_DIR}/members-data-api.conf
 
-sudo ln -fs $DIR/members-data-api.conf $NGINX_HOME/sites-enabled/members-data-api.conf
+dev-nginx setup-cert members-data-api.thegulocal.com
 
-printf "\n\nNow restart Nginx!\n\n"
+dev-nginx link-config ${SITE_CONF}
+dev-nginx restart-nginx
