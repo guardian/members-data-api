@@ -283,6 +283,16 @@ Resources:
       - MetricValue: 1
         MetricNamespace: "members-data-api"
         MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
+  MembersDataHttpQueuesFullMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: MembersDataApiLogGroup
+    Properties:
+      FilterPattern: "\"Max wait queue limit of 256 reached, not scheduling.\""
+      LogGroupName: !Sub members-data-api-${Stage}
+      MetricTransformations:
+        - MetricValue: 1
+          MetricNamespace: "members-data-api"
+          MetricName: !Sub "${Stage} - Http Client Queue full"
   MembersDataDefaultPaymentMethodLeftEmptyAlarm:
     Type: AWS::CloudWatch::Alarm
     DependsOn:
@@ -306,7 +316,29 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 1
       TreatMissingData: notBreaching
-
+  MembersDataHttpQueuesFullAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+      - MembersDataHttpQueuesFullMetricFilter
+      - MembersDataApiLogGroup
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
+      AlarmName: !Sub "Http Client Queue is full : members-data-api ${Stage}"
+      Dimensions:
+        - Name: LogGroup
+          Value: !Sub members-data-api-${Stage}
+        - Name: Stage
+          Value: !Sub ${Stage}
+      EvaluationPeriods: 1
+      MetricName: !Sub "${Stage} - Http Client Queue is full"
+      Namespace: "members-data-api"
+      Period: 3600
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 20
+      TreatMissingData: notBreaching
   ExpiredTtlAlarm:
         Type: AWS::CloudWatch::Alarm
         Condition: CreateProdMonitoring
