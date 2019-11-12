@@ -35,6 +35,7 @@ case class Attributes(
   DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
   PaperSubscriptionExpiryDate: Option[LocalDate] = None,
   GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
+  LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
   AlertAvailableFor: Option[String] = None) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -49,6 +50,7 @@ case class Attributes(
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPaperSubscriber = PaperSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
+  lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
@@ -61,8 +63,15 @@ case class Attributes(
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
   // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
-  lazy val showSupportMessaging =
-    !(isPaidTier || isRecurringContributor || isRecentOneOffContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
+  lazy val showSupportMessaging = !(
+    isPaidTier
+      || isRecurringContributor
+      || isRecentOneOffContributor
+      || digitalSubscriberHasActivePlan
+      || isPaperSubscriber
+      || isGuardianWeeklySubscriber
+      || isPremiumLiveAppSubscriber
+    )
 
 }
 
@@ -131,6 +140,7 @@ object Attributes {
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
+      (__ \ "liveAppSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "alertAvailableFor").writeNullable[String]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)

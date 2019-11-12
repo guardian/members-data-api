@@ -7,7 +7,7 @@ import com.gu.identity.model.{StatusFields, User}
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{Attributes, ContributionData}
+import models.{Attributes, ContributionData, MobileSubscriptionStatus}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -18,7 +18,7 @@ import play.api.test._
 import play.api.test.Helpers._
 import scalaz.\/
 import services.OneOffContributionDatabaseService.DatabaseGetResult
-import services.{AttributesFromZuora, AuthenticationService, OneOffContributionDatabaseService}
+import services.{AttributesFromZuora, AuthenticationService, MobileSubscriptionService, OneOffContributionDatabaseService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -126,7 +126,12 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       Future.successful(\/.right(None))
   }
 
-  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService) {
+  object FakeMobileSubscriptionService extends MobileSubscriptionService {
+    override def getSubscriptionStatusForUser(identityId: String): Future[String \/ Option[MobileSubscriptionStatus]] =
+      Future.successful(\/.right(None))
+  }
+
+  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService, FakeMobileSubscriptionService) {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override def pickAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId || identityId == validEmployeeUser.id)
