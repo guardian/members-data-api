@@ -50,6 +50,7 @@ case class Attributes(
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPaperSubscriber = PaperSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
+  lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
@@ -62,8 +63,15 @@ case class Attributes(
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
   // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
-  lazy val showSupportMessaging =
-    !(isPaidTier || isRecurringContributor || isRecentOneOffContributor || digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianWeeklySubscriber)
+  lazy val showSupportMessaging = !(
+    isPaidTier
+      || isRecurringContributor
+      || isRecentOneOffContributor
+      || digitalSubscriberHasActivePlan
+      || isPaperSubscriber
+      || isGuardianWeeklySubscriber
+      || isPremiumLiveAppSubscriber
+    )
 
 }
 

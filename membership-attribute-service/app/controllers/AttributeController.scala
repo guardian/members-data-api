@@ -85,7 +85,8 @@ class AttributeController(
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
     zuoraAttributes.copy(
       OneOffContributionDate = latestOneOffDate,
-      LiveAppSubscriptionExpiryDate = mobileExpiryDate
+      LiveAppSubscriptionExpiryDate = mobileExpiryDate,
+
     )
   }
 
