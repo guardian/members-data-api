@@ -67,7 +67,7 @@ object AccountDetails {
 
       def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
         case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
-        case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Pack"))
+        case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Subscription"))
         case _ => None
       }
 
