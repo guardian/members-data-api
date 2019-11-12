@@ -109,13 +109,13 @@ class AttributeController(
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
-            enrichedZuoraAttributes: Option[Attributes] = zuoraAttributes.map(enrichZuoraAttributes(_, latestOneOffDate, latestMobileSubscription))
-            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, enrichedZuoraAttributes, user.id)
+            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttributes, user.id)
+            enrichedZuoraAttributes: Option[Attributes] = combinedAttributes.map(enrichZuoraAttributes(_, latestOneOffDate, latestMobileSubscription))
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
-            combinedAttributes match {
+            enrichedZuoraAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
