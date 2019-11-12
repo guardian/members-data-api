@@ -72,9 +72,11 @@ class AttributeController(
   def getLatestMobileSubscription(identityId: String)(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(NonFatal(error)) =>
+        metrics.put(s"mobile-subscription-fetch-exception", 1)
         log.warn("Exception while fetching mobile subscription, assuming none", error)
         Success(None)
       case Success(-\/(error)) =>
+        metrics.put(s"mobile-subscription-fetch-error-non-http-200", 1)
         log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
         Success(None)
       case Success(\/-(status)) => Success(status)
