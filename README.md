@@ -1,31 +1,48 @@
-# Membership Attribute Service
+# Members' Data API
 
-The membership attribute service provides an API for managing and retrieving supporter attributes associated with a user. It runs on https://members-data-api.theguardian.com/
+The members' data API is a Play app that manages and retrieves supporter attributes associated with a user.  
+It runs on https://members-data-api.theguardian.com/.
 
 ## Setting it up locally
 
-Run `./setup.sh` in `nginx/`.
+1. You will need to have [dev-nginx](https://github.com/guardian/dev-nginx) installed.
 
-Add the following line to the hosts file:
+1. Follow the [nginx steps for identity-platform](https://github.com/guardian/identity-platform/blob/master/nginx/README.md#setup-nginx-with-ssl-for-dev).
 
-`127.0.0.1   members-data-api.thegulocal.com`
+1. Follow the [identity-frontend configuration steps](https://github.com/guardian/identity-frontend#configuration).
 
-Download the config (you may need to `brew install awscli` to get the command.
+1. Then run `./setup.sh` in `nginx/`.
+
+1. Add the following entries to your hosts file:  
+```
+127.0.0.1   profile.thegulocal.com
+127.0.0.1   members-data-api.thegulocal.com
+```
+
+1. Get Janus credentials for membership.
+
+1. Download the config  
+(you may need to `brew install awscli` to get the command.)  
 `aws s3 cp s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf /etc/gu/ --profile membership`
 
 ## Running Locally
 
-Get Janus credentials for membership.
+1. Get Janus credentials for membership.
 
-Create an ssh tunnel to the CODE one-off contributions database:
-1. Clone https://github.com/guardian/contributions-platform
-2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
+1. Create an ssh tunnel to the CODE one-off contributions database:
+    1. Clone https://github.com/guardian/contributions-platform
+    2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
 
-To start the service run ./start-api.sh
+1. Ensure an `nginx` service is running locally.
 
+1. To start the Members' data API service run `./start-api.sh`.  
 The service will be running on 9400 and use the SupporterAttributesFallback-DEV DynamoDB table.
 
-go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership
+1. go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership.  
+If you get a 401 response, it probably means your Identity credentials have expired.  
+Renew them by:
+    1. Start up a local Identity service by running script `start-frontend.sh` in the `identity-frontend` repo.
+    1. Go to https://profile.thegulocal.com/signin.
 
 ## Running tests
 
