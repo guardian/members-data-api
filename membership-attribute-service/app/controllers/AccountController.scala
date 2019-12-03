@@ -21,7 +21,7 @@ import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
-import models.{AccountDetails, ApiError}
+import models.{AccountDetails, ApiError, ContactAndSubscription, DeliveryAddress}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
@@ -33,6 +33,7 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import utils.{ListEither, OptionEither}
+
 import scala.concurrent.{ExecutionContext, Future}
 
 object AccountHelpers {
@@ -58,8 +59,8 @@ object AccountHelpers {
 }
 
 class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
-  import commonActions._
   import AccountHelpers._
+  import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) =
@@ -184,6 +185,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     } yield AccountDetails(
       regNumber = contact.regNumber,
       email = accountSummary.billToContact.email,
+      deliveryAddress = None,
       subscription = sub,
       paymentDetails = upToDatePaymentDetails,
       stripePublicKey = stripeService.publicKey,
@@ -222,21 +224,34 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     contactRepo: SimpleContactRepository,
     subService: SubscriptionService[Future]
   )(
-    maybeUserId: Option[String],
-    filter: OptionalSubscriptionsFilter
-  ): OptionT[OptionEither.FutureEither, List[Subscription[SubscriptionPlan.AnyPlan]]] = for {
-    user <- OptionEither.liftFutureEither(maybeUserId)
-    contact <- OptionEither(contactRepo.get(user))
-    subscriptions <- OptionEither.liftEitherOption(subService.current[SubscriptionPlan.AnyPlan](contact)) // TODO are we happy with an empty list in case of error ?!?!
-    filteredIfApplicable = filter match {
-      case FilterBySubName(subscriptionName) =>
-        subscriptions.find(_.name == subscriptionName).toList
-      case FilterByProductType(productType) =>
-        subscriptions.filter(subscription => productIsInstanceOfProductType(subscription.plan.product, productType))
-      case NoFilter =>
-        subscriptions
-    }
-  } yield filteredIfApplicable
+      maybeUserId: Option[String],
+      filter: OptionalSubscriptionsFilter
+  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = for {
+      user <- OptionEither.liftFutureEither(maybeUserId)
+      contact <- OptionEither(contactRepo.get(user))
+      subscriptions <-
+        OptionEither.liftEitherOption(
+          subService.current[SubscriptionPlan.AnyPlan](contact) map {
+            _ map { subscription =>
+              ContactAndSubscription(contact, subscription)
+            }
+          }
+        ) // TODO are we happy with an empty list in case of error ?!?!
+      filteredIfApplicable = filter match {
+        case FilterBySubName(subscriptionName) =>
+          subscriptions.find(_.subscription.name == subscriptionName).toList
+        case FilterByProductType(productType) =>
+          subscriptions.filter(
+            subscription =>
+              productIsInstanceOfProductType(
+                subscription.subscription.plan.product,
+                productType
+              )
+          )
+        case NoFilter =>
+          subscriptions
+      }
+    } yield filteredIfApplicable
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
     implicit val tp = request.touchpoint
@@ -245,25 +260,28 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
-      subscription <- ListEither.fromOptionEither(allCurrentSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
-      freeOrPaidSub = subscription.plan.charges match {
-        case _: PaidChargeList => \/.right(subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
-        case _ => \/.left(subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
+      contactAndSubscription <- ListEither.fromOptionEither(allCurrentSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
+      freeOrPaidSub = contactAndSubscription.subscription.plan.charges match {
+        case _: PaidChargeList => \/.right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
+        case _ => \/.left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
       }
-      paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some("")).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${subscription.name}. Reason: $x") })
-      upToDatePaymentDetails <- ListEither.liftList(getUpToDatePaymentDetailsFromStripe(subscription.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${subscription.accountId}. Reason: $x") })
-      accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${subscription.name} with account id ${subscription.accountId}. Reason: $x") })
+      paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some("")).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.name}. Reason: $x") })
+      upToDatePaymentDetails <- ListEither.liftList(getUpToDatePaymentDetailsFromStripe(contactAndSubscription.subscription.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${contactAndSubscription.subscription.accountId}. Reason: $x") })
+      accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} with account id ${contactAndSubscription.subscription.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
-      alertText <- ListEither.liftEitherList(alertText(accountSummary, subscription, getPaymentMethod))
-      isAutoRenew = subscription.autoRenew
+      alertText <- ListEither.liftEitherList(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
+      isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield AccountDetails(
       regNumber = None,
       email = accountSummary.billToContact.email,
-      subscription = subscription,
+      deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
+      subscription = contactAndSubscription.subscription,
       paymentDetails = upToDatePaymentDetails,
       stripePublicKey = stripeService.publicKey,
-      accountHasMissedRecentPayments = freeOrPaidSub.isRight && accountHasMissedPayments(subscription.accountId, accountSummary.invoices, accountSummary.payments),
-      safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(subscription.accountId, accountSummary.invoices),
+      accountHasMissedRecentPayments =
+        freeOrPaidSub.isRight &&
+        accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
+      safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
       isAutoRenew = isAutoRenew,
       alertText = alertText
     ).toJson).run.run.map {

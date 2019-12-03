@@ -10,6 +10,7 @@ import org.joda.time.LocalDate.now
 case class AccountDetails(
   regNumber: Option[String],
   email: Option[String],
+  deliveryAddress: Option[DeliveryAddress],
   subscription : Subscription[SubscriptionPlan.AnyPlan],
   paymentDetails: PaymentDetails,
   stripePublicKey: String,
@@ -103,6 +104,7 @@ object AccountDetails {
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
           "subscription" -> (paymentMethod ++ Json.obj(
+            "deliveryAddress" -> accountDetails.deliveryAddress,
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
             "start" -> paymentDetails.customerAcceptanceDate,
             "end" -> endDate,
