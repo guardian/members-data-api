@@ -183,6 +183,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
       isAutoRenew = sub.autoRenew
     } yield AccountDetails(
+      contactId = contact.salesforceContactId,
       regNumber = contact.regNumber,
       email = accountSummary.billToContact.email,
       deliveryAddress = None,
@@ -272,6 +273,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       alertText <- ListEither.liftEitherList(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield AccountDetails(
+      contactId = contactAndSubscription.contact.salesforceContactId,
       regNumber = None,
       email = accountSummary.billToContact.email,
       deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
