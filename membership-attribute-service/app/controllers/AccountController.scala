@@ -229,7 +229,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = for {
       user <- OptionEither.liftFutureEither(maybeUserId)
       contact <- OptionEither(contactRepo.get(user))
-      subscriptions <-
+      contactAndSubscriptions <-
         OptionEither.liftEitherOption(
           subService.current[SubscriptionPlan.AnyPlan](contact) map {
             _ map { subscription =>
@@ -239,17 +239,17 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         ) // TODO are we happy with an empty list in case of error ?!?!
       filteredIfApplicable = filter match {
         case FilterBySubName(subscriptionName) =>
-          subscriptions.find(_.subscription.name == subscriptionName).toList
+          contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
         case FilterByProductType(productType) =>
-          subscriptions.filter(
-            subscription =>
+          contactAndSubscriptions.filter(
+            contactAndSubscription =>
               productIsInstanceOfProductType(
-                subscription.subscription.plan.product,
+                contactAndSubscription.subscription.plan.product,
                 productType
               )
           )
         case NoFilter =>
-          subscriptions
+          contactAndSubscriptions
       }
     } yield filteredIfApplicable
 
