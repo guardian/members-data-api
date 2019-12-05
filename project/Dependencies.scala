@@ -12,7 +12,6 @@ object Dependencies {
   val postgres =  "org.postgresql" % "postgresql" % "42.2.1"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
-  val playCache = PlayImport.cache
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
   val scanamo = "com.gu" %% "scanamo" % "1.0.0-M8"
@@ -28,7 +27,7 @@ object Dependencies {
   //projects
 
   val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityAuth, identityTestUsers,
-    playWS, playCache, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
+    playWS, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
     specs2, kinesis, logstash, anorm)
 
 }
