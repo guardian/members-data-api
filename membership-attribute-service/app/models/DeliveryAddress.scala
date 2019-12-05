@@ -1,7 +1,7 @@
 package models
 
 import com.gu.salesforce.Contact
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{Format, Json}
 
 case class DeliveryAddress(
     addressLine1: Option[String],
@@ -13,7 +13,7 @@ case class DeliveryAddress(
 )
 
 object DeliveryAddress {
-  implicit val writes: Writes[DeliveryAddress] = Json.writes[DeliveryAddress]
+  implicit val format: Format[DeliveryAddress] = Json.format[DeliveryAddress]
 
   def fromContact(contact: Contact): DeliveryAddress = {
     val addressLines = splitAddressLines(contact.mailingStreet)
@@ -32,5 +32,13 @@ object DeliveryAddress {
       val n = line.lastIndexOf(',')
       if (n == -1) (line, "")
       else (line.take(n).trim, line.drop(n + 1).trim)
+    }
+
+  def mergeAddressLines(address: DeliveryAddress): Option[String] =
+    (address.addressLine1, address.addressLine2) match {
+      case (Some(line1), Some(line2)) => Some(s"${line1.trim},${line2.trim}")
+      case (Some(line1), None)        => Some(line1.trim)
+      case (None, Some(line2))        => Some(line2.trim)
+      case (None, None)               => None
     }
 }
