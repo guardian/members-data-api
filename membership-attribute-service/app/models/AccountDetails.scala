@@ -1,5 +1,9 @@
 package models
-import com.gu.memsub.subsv2.{PaidSubscriptionPlan, Subscription, SubscriptionPlan}
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
+
+import com.gu.memsub.subsv2.{PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
@@ -85,7 +89,18 @@ object AccountDetails {
           "amount" -> paidPlan.charges.price.prices.head.amount * 100,
           "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
           "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
-          "interval" -> paidPlan.charges.billingPeriod.noun
+          "interval" -> paidPlan.charges.billingPeriod.noun,
+        )
+        case _ => Json.obj()
+      }) ++ (plan.charges match {
+        case paperCharges: PaperCharges => Json.obj("daysOfWeek" ->
+            paperCharges.dayPrices
+            .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
+            .keys.toList
+            .map(_.dayOfTheWeekIndex)
+            .sorted
+            .map(DayOfWeek.of)
+            .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH))
         )
         case _ => Json.obj()
       })
