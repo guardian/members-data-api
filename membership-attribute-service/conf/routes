@@ -16,6 +16,9 @@ POST        /user-attributes/me/update-direct-debit/:subscriptionName           
 
 GET         /user-attributes/me/one-off-contributions                           controllers.AttributeController.oneOffContributions
 
+PUT         /user-attributes/me/delivery-address/:contactId                     controllers.ContactController.updateDeliveryAddress(contactId: String)
+
+
 # OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
 GET         /user-attributes/me/features                                controllers.AttributeController.features

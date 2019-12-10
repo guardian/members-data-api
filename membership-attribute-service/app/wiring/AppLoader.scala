@@ -64,7 +64,8 @@ class MyComponents(context: Context)
     new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService, mobileSubscriptionService),
     new ExistingPaymentOptionsController(commonActions, controllerComponents),
     new AccountController(commonActions, controllerComponents),
-    new PaymentUpdateController(commonActions, controllerComponents)
+    new PaymentUpdateController(commonActions, controllerComponents),
+    new ContactController(commonActions, controllerComponents)
   )
 
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
