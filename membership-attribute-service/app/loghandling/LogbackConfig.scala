@@ -10,6 +10,7 @@ import play.api.{Logger => PlayLogger}
 
 object LogbackConfig {
 
+  private lazy val logger = PlayLogger(getClass)
   lazy val loggingContext = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
 
   case class KinesisAppenderConfig(stream: String,
@@ -66,13 +67,13 @@ object LogbackConfig {
             lb.addAppender(appender)
             lb.info("Kinesis logging - Configured Logback")
           case _ =>
-            PlayLogger.info("Kinesis logging failed - not running using logback")
+            logger.info("Kinesis logging failed - not running using logback")
         }
       } catch {
-        case ex: Throwable => PlayLogger.info(s"Kinesis logging failed with exception: $ex")
+        case ex: Throwable => logger.info(s"Kinesis logging failed with exception: $ex")
       }
     } else {
-      PlayLogger.info("Kinesis logging not enabled by default (e.g. DEV mode)")
+      logger.info("Kinesis logging not enabled by default (e.g. DEV mode)")
     }
   }
 

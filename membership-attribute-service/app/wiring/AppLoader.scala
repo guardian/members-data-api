@@ -46,7 +46,13 @@ class MyComponents(context: Context)
   val touchPointBackends = new TouchpointBackends(actorSystem)
   val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
   override lazy val httpErrorHandler: ErrorHandler =
-    new ErrorHandler(environment, configuration, sourceMapper, Some(router), touchPointBackends.normal.identityAuthService)
+    new ErrorHandler(
+      environment,
+      configuration,
+      devContext.map(_.sourceMapper),
+      Some(router),
+      touchPointBackends.normal.identityAuthService
+    )
   val attributesFromZuora = new AttributesFromZuora()
 
   val dbService = {
