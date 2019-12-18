@@ -142,7 +142,8 @@ object AccountDetails {
               "interval" -> paymentDetails.plan.interval.mkString
             ),
             "currentPlans" -> currentPlans.map(jsonifyPlan),
-            "futurePlans" -> futurePlans.map(jsonifyPlan)
+            "futurePlans" -> futurePlans.map(jsonifyPlan),
+            "readerType" -> accountDetails.subscription.readerType.value
           )),
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
