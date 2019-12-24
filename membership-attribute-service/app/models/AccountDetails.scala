@@ -8,6 +8,7 @@ import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
 import json.localDateWrites
+import org.joda.time.LocalDate
 import play.api.libs.json.{Json, _}
 import org.joda.time.LocalDate.now
 
@@ -109,6 +110,8 @@ object AccountDetails {
       val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 
+      val startDate: LocalDate = sortedPlans.headOption.map(_.start).getOrElse(paymentDetails.customerAcceptanceDate)
+
       if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
       Json.obj(
@@ -123,7 +126,7 @@ object AccountDetails {
             "contactId" -> accountDetails.contactId,
             "deliveryAddress" -> accountDetails.deliveryAddress,
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
-            "start" -> paymentDetails.customerAcceptanceDate,
+            "start" -> startDate,
             "end" -> endDate,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
