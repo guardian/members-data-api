@@ -32,7 +32,11 @@ Parameters:
   SecurityGroupForPostgres:
     Description: Security group for querying the postgres database
     Type: String
+
 Mappings:
+  Constants:
+    MetricFilters:
+      MetricNamespace: "members-data-api"
   StageVariables:
     PROD:
       MaxInstances: 12 # This should be (at least) double the desired capacity.
@@ -46,6 +50,8 @@ Mappings:
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/PROD/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/PROD/*
+      MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName: "PROD - Default Payment Method set to nothing" # can't use !Sub for Stage inside a mapping definition, sigh
+      MembersDataHttpQueuesFullMetricFilterName: "PROD - Http Client Queue full"
 
     CODE:
       MaxInstances: 2
@@ -59,6 +65,8 @@ Mappings:
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/CODE/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/CODE/*
+      MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName: "CODE - Default Payment Method set to nothing"
+      MembersDataHttpQueuesFullMetricFilterName: "CODE - Http Client Queue full"
 
 Conditions:
   CreateProdMonitoring: !Equals [ !Ref Stage, PROD ]
@@ -268,11 +276,13 @@ Resources:
         FromPort: '443'
         ToPort: '443'
         CidrIp: 0.0.0.0/0
+
   MembersDataApiLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
       LogGroupName: !Sub members-data-api-${Stage}
       RetentionInDays: 14
+
   MembersDataDefaultPaymentMethodLeftEmptyMetricFilter:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
@@ -281,18 +291,8 @@ Resources:
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
       - MetricValue: 1
-        MetricNamespace: "members-data-api"
-        MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
-  MembersDataHttpQueuesFullMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    DependsOn: MembersDataApiLogGroup
-    Properties:
-      FilterPattern: "\"Max wait queue limit of 256 reached, not scheduling.\""
-      LogGroupName: !Sub members-data-api-${Stage}
-      MetricTransformations:
-        - MetricValue: 1
-          MetricNamespace: "members-data-api"
-          MetricName: !Sub "${Stage} - Http Client Queue full"
+        MetricNamespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+        MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName ]
   MembersDataDefaultPaymentMethodLeftEmptyAlarm:
     Type: AWS::CloudWatch::Alarm
     DependsOn:
@@ -301,7 +301,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:subscriptions_dev
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
       AlarmName: !Sub "Default Payment Method set to nothing : members-data-api ${Stage}"
       Dimensions:
       - Name: LogGroup
@@ -309,13 +309,24 @@ Resources:
       - Name: Stage
         Value: !Sub ${Stage}
       EvaluationPeriods: 1
-      MetricName: !Sub "${Stage} - Default Payment Method set to nothing"
-      Namespace: "members-data-api"
+      Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+      MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName ]
       Period: 3600
       Statistic: Sum
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 1
       TreatMissingData: notBreaching
+
+  MembersDataHttpQueuesFullMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: MembersDataApiLogGroup
+    Properties:
+      FilterPattern: "\"Max wait queue limit of 256 reached, not scheduling.\""
+      LogGroupName: !Sub members-data-api-${Stage}
+      MetricTransformations:
+        - MetricValue: 1
+          MetricNamespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataHttpQueuesFullMetricFilterName ]
   MembersDataHttpQueuesFullAlarm:
     Type: AWS::CloudWatch::Alarm
     DependsOn:
@@ -332,19 +343,20 @@ Resources:
         - Name: Stage
           Value: !Sub ${Stage}
       EvaluationPeriods: 1
-      MetricName: !Sub "${Stage} - Http Client Queue is full"
-      Namespace: "members-data-api"
+      Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+      MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataHttpQueuesFullMetricFilterName ]
       Period: 3600
       Statistic: Sum
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 20
       TreatMissingData: notBreaching
+
   ExpiredTtlAlarm:
         Type: AWS::CloudWatch::Alarm
         Condition: CreateProdMonitoring
         Properties:
           AlarmActions:
-          - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:subscriptions_dev
+          - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
           AlarmName: !Sub Item with expired TTL found in MembershipAttributes-${Stage} Table
           ComparisonOperator: GreaterThanOrEqualToThreshold
           Dimensions:
@@ -354,7 +366,7 @@ Resources:
               Value: !Sub ${Stage}
           EvaluationPeriods: 1
           MetricName: Old Dynamo Item
-          Namespace: members-data-api
+          Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           Period: 60
           Statistic: Sum
           Threshold: 1
