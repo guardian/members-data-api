@@ -370,6 +370,47 @@ Resources:
           Period: 60
           Statistic: Sum
           Threshold: 1
+
+  4XXRatioAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmName: !Sub ${Stage} members-data-api 4XX Ratio has exceeded 20%
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
+      TreatMissingData: notBreaching
+      EvaluationPeriods: '1'
+      Threshold: 20
+      ComparisonOperator: GreaterThanThreshold
+      Metrics:
+        - Id: ratio4XX
+          Expression: ( http4XX / httpTotalRequests) * 100
+          Label: "4XX Ratio"
+        - Id: http4XX
+          MetricStat:
+            Metric:
+              Namespace: AWS/ELB
+              MetricName: HTTPCode_Backend_4XX
+              Dimensions:
+                - Name: LoadBalancerName
+                  Value: !Ref LoadBalancer
+            Period: 300
+            Stat: Sum
+            Unit: Count
+          ReturnData: false
+        - Id: httpTotalRequests
+          MetricStat:
+            Metric:
+              Namespace: AWS/ELB
+              MetricName: RequestCount
+              Dimensions:
+                  - Name: LoadBalancerName
+                    Value: !Ref LoadBalancer
+            Period: 300
+            Stat: Sum
+            Unit: Count
+          ReturnData: false
+
 Outputs:
   LoadBalancerUrl:
     Value:
