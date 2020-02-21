@@ -35,6 +35,9 @@ Parameters:
 
 Mappings:
   Constants:
+    Alarm:
+      Process: Follow the process in https://docs.google.com/document/d/1_3El3cly9d7u_jPgTcRjLxmdG2e919zCLvmcFCLOYAk/edit
+      Urgent: URGENT 9-5 -
     MetricFilters:
       MetricNamespace: "members-data-api"
   StageVariables:
@@ -302,7 +305,16 @@ Resources:
     Properties:
       AlarmActions:
       - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
-      AlarmName: !Sub "Default Payment Method set to nothing : members-data-api ${Stage}"
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ Constants, Alarm, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - 'Default Payment Method set to nothing'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - a user has been left with no Default Payment method, so we can't take payment from them indefinitely"
+          - !FindInMap [ Constants, Alarm, Process ]
       Dimensions:
       - Name: LogGroup
         Value: !Sub members-data-api-${Stage}
@@ -336,7 +348,16 @@ Resources:
     Properties:
       AlarmActions:
         - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
-      AlarmName: !Sub "Http Client Queue is full : members-data-api ${Stage}"
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ Constants, Alarm, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - 'Http Client Queue is full'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - basically app is not responding (no longer serving traffic)"
+          - !FindInMap [ Constants, Alarm, Process ]
       Dimensions:
         - Name: LogGroup
           Value: !Sub members-data-api-${Stage}
@@ -357,7 +378,15 @@ Resources:
         Properties:
           AlarmActions:
           - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
-          AlarmName: !Sub Item with expired TTL found in MembershipAttributes-${Stage} Table
+          AlarmName: !Join
+            - ' '
+            - - !Ref 'Stage'
+              - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+              - 'Item with expired TTL found in Dynamo Table'
+          AlarmDescription: !Join
+            - ' '
+            - - "Impact - write-behind/fallback cache is not working properly"
+              - !FindInMap [ Constants, Alarm, Process ]
           ComparisonOperator: GreaterThanOrEqualToThreshold
           Dimensions:
             - Name: Services
@@ -375,7 +404,16 @@ Resources:
     Type: 'AWS::CloudWatch::Alarm'
     Condition: CreateProdMonitoring
     Properties:
-      AlarmName: !Sub ${Stage} members-data-api 4XX Ratio has exceeded 20%
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ Constants, Alarm, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - '4XX Ratio has exceeded 20%'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - we're serving 4XX for significant proportion of requests - indicative of an issue interacting with identity"
+          - !FindInMap [ Constants, Alarm, Process ]
       AlarmActions:
         - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
       TreatMissingData: notBreaching
@@ -417,7 +455,16 @@ Resources:
     Properties:
       AlarmActions:
         - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
-      AlarmName: !Sub No healthy instances for members-data-api in ${Stage}
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ Constants, Alarm, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - 'No healthy instances'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - members-data-api is DOWN"
+          - !FindInMap [ Constants, Alarm, Process ]
       MetricName: HealthyHostCount
       Namespace: AWS/ELB
       Dimensions:
@@ -437,7 +484,16 @@ Resources:
     Properties:
       AlarmActions:
         - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
-      AlarmName: !Sub High 5XX rate for members-data-api in ${Stage}
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ Constants, Alarm, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - 'High 5XX rate'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - we're serving errors to too many people, often a Zuora issue, but could be very serious"
+          - !FindInMap [ Constants, Alarm, Process ]
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 10
       EvaluationPeriods: 1
