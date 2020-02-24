@@ -411,6 +411,68 @@ Resources:
             Unit: Count
           ReturnData: false
 
+  NoHealthyInstancesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
+      AlarmName: !Sub No healthy instances for members-data-api in ${Stage}
+      MetricName: HealthyHostCount
+      Namespace: AWS/ELB
+      Dimensions:
+          - Name: LoadBalancerName
+            Value: !Ref LoadBalancer
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Threshold: 0.5
+      Period: 60
+      EvaluationPeriods: 10
+      Statistic: Average
+    DependsOn:
+      - LoadBalancer
+
+  High5XXRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
+      AlarmName: !Sub High 5XX rate for members-data-api in ${Stage}
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 10
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: total5XX
+          Expression: backend5XX + elb5XX
+          Label: "Count of Backend AND ELB 5XX"
+        - Id: backend5XX
+          MetricStat:
+            Metric:
+              Namespace: AWS/ELB
+              MetricName: HTTPCode_Backend_5XX
+              Dimensions:
+                - Name: LoadBalancerName
+                  Value: !Ref LoadBalancer
+            Period: 300
+            Stat: Sum
+            Unit: Count
+          ReturnData: false
+        - Id: elb5XX
+          MetricStat:
+            Metric:
+              Namespace: AWS/ELB
+              MetricName: HTTPCode_ELB_5XX
+              Dimensions:
+                - Name: LoadBalancerName
+                  Value: !Ref LoadBalancer
+            Period: 300 # ELB sample rate appears to not work with a Period of 60 (i.e. 1min)
+            Stat: Sum
+            Unit: Count
+          ReturnData: false
+    DependsOn:
+      - LoadBalancer
+
 Outputs:
   LoadBalancerUrl:
     Value:
