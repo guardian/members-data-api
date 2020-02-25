@@ -9,7 +9,8 @@ case class DeliveryAddress(
     town: Option[String],
     region: Option[String],
     postcode: Option[String],
-    country: Option[String]
+    country: Option[String],
+    addressChangeInformation: Option[String]
 )
 
 object DeliveryAddress {
@@ -23,7 +24,8 @@ object DeliveryAddress {
       town = contact.mailingCity,
       region = contact.mailingState,
       postcode = contact.mailingPostcode,
-      country = contact.mailingCountry
+      country = contact.mailingCountry,
+      addressChangeInformation = None
     )
   }
 
