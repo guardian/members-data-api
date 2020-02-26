@@ -15,7 +15,7 @@ class AuthAndBackendViaAuthLibAction(touchpointBackends: TouchpointBackends)(imp
     // The test config and the normal config are the same for IDAPI.
     touchpointBackends.normal.identityAuthService.user(request) map { user: Option[User] =>
 
-      val backendConf: TouchpointComponents = if (AddGuIdentityHeaders.isTestUser(user.flatMap(_.publicFields.displayName))) {
+      val backendConf: TouchpointComponents = if (AddGuIdentityHeaders.isTestUser(user.flatMap(_.publicFields.username))) {
         touchpointBackends.test
       } else {
         touchpointBackends.normal

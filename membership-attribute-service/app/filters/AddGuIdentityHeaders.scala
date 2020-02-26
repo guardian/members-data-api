@@ -20,15 +20,15 @@ class AddGuIdentityHeaders(identityAuthService: IdentityAuthService) (implicit v
 }
 object AddGuIdentityHeaders {
 
-  //Identity checks for test users by first name
-  def isTestUser(displayName: Option[String]) =
-    displayName.flatMap(_.split(' ').headOption).exists(Config.testUsernames.isValid)
+  //Identity checks for test users by username
+  def isTestUser(username: Option[String]) =
+    username.exists(Config.testUsernames.isValid)
 
   def headersFor(request: RequestHeader, result: Result, identityAuthService: IdentityAuthService)(implicit ec: ExecutionContext): Future[Result] = {
     identityAuthService.user(request) map {
       case Some(user) => result.withHeaders(
         "X-Gu-Identity-Id" -> user.id,
-        "X-Gu-Membership-Test-User" -> isTestUser(user.publicFields.displayName).toString
+        "X-Gu-Membership-Test-User" -> isTestUser(user.publicFields.username).toString
       )
       case None => result
     }
