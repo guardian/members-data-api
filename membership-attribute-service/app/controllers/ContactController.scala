@@ -81,7 +81,8 @@ class ContactController(
         contactField("MailingCity", address.town) ++
         contactField("MailingState", address.region) ++
         contactField("MailingPostalCode", address.postcode) ++
-        contactField("MailingCountry", address.country)
+        contactField("MailingCountry", address.country) ++
+        contactField("Address_Change_Information_Last_Quoted__c", address.addressChangeInformation)
     }
     contactRepo.salesforce.Contact.update(SFContactId(contactId), contactFields)
   }
