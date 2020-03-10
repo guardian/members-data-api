@@ -34,6 +34,15 @@ object AccountDetails {
 
     def toJson: JsObject = {
 
+      val product = accountDetails.subscription.plan.product
+      val mmaCategory = product match {
+        case _: Product.Paper => "subscriptions"
+        case _: Product.ZDigipack => "subscriptions"
+        case _: Product.Contribution => "contributions"
+        case _: Product.Membership => "membership"
+        case _ => product.name // fallback
+      }
+
       val endDate = paymentDetails.chargedThroughDate
         .getOrElse(paymentDetails.termEndDate)
 
@@ -115,6 +124,7 @@ object AccountDetails {
       if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
       Json.obj(
+        "mmaCategory" -> mmaCategory,
         "tier" -> paymentDetails.plan.name,
         "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)
       ) ++
