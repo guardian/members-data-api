@@ -56,7 +56,7 @@ case class Attributes(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
     recurringContributor = isRecurringContributor,
-    digitalPack = digitalSubscriberHasActivePlan,
+    digitalPack = digitalSubscriberHasActivePlan || isPaperSubscriber,
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber
   )
