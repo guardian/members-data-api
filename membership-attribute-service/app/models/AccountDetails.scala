@@ -56,6 +56,10 @@ object AccountDetails {
           "card" -> {
             Json.obj(
               "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("••••"),
+              "expiry" -> card.paymentCardDetails.map(cardDetails => Json.obj(
+                  "month" -> cardDetails.expiryMonth,
+                "year" -> cardDetails.expiryYear
+              )),
               "type" -> card.cardType.getOrElse[String]("unknown"),
               "stripePublicKeyForUpdate" -> stripePublicKey,
               "email" -> email
