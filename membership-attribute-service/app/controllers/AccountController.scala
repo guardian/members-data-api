@@ -8,7 +8,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
-import com.gu.memsub.subsv2.{PaidChargeList, Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{FreeSubscriptionPlan, PaidChargeList, PaidSubscriptionPlan, Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.salesforce.SimpleContactRepository
@@ -98,7 +98,11 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       val cancellationSteps = for {
         _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
         _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
-        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name)).leftMap(message => s"Error while cancelling subscription: $message")
+        subHasBeenInvoiced = zuoraSubscription.plans.list.exists{
+          case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan.chargedThrough.isDefined
+          case _ => false
+        }
+        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name, isEffectiveToday = !subHasBeenInvoiced)).leftMap(message => s"Error while cancelling subscription: $message")
       } yield cancelResult
 
       cancellationSteps.run.map {
