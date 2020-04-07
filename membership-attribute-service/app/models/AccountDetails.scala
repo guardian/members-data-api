@@ -43,8 +43,7 @@ object AccountDetails {
         case _ => product.name // fallback
       }
 
-      val endDate = paymentDetails.chargedThroughDate
-        .getOrElse(paymentDetails.termEndDate)
+      val endDate = paymentDetails.chargedThroughDate.getOrElse(paymentDetails.termEndDate)
 
       val paymentMethod = paymentDetails.paymentMethod match {
         case Some(payPal: PayPalMethod) => Json.obj(
@@ -145,6 +144,7 @@ object AccountDetails {
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
+            "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
             "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
