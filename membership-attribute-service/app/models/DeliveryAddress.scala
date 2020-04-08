@@ -10,7 +10,8 @@ case class DeliveryAddress(
     region: Option[String],
     postcode: Option[String],
     country: Option[String],
-    addressChangeInformation: Option[String]
+    addressChangeInformation: Option[String],
+    instructions: Option[String]
 )
 
 object DeliveryAddress {
@@ -25,7 +26,8 @@ object DeliveryAddress {
       region = contact.mailingState,
       postcode = contact.mailingPostcode,
       country = contact.mailingCountry,
-      addressChangeInformation = None
+      addressChangeInformation = None,
+      instructions = contact.deliveryInstructions
     )
   }
 
