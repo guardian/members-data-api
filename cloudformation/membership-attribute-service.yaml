@@ -417,7 +417,7 @@ Resources:
       AlarmActions:
         - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
       TreatMissingData: notBreaching
-      EvaluationPeriods: '1'
+      EvaluationPeriods: '3'
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       Metrics:
@@ -432,7 +432,7 @@ Resources:
               Dimensions:
                 - Name: LoadBalancerName
                   Value: !Ref LoadBalancer
-            Period: 300
+            Period: 60
             Stat: Sum
             Unit: Count
           ReturnData: false
@@ -444,7 +444,7 @@ Resources:
               Dimensions:
                   - Name: LoadBalancerName
                     Value: !Ref LoadBalancer
-            Period: 300
+            Period: 60
             Stat: Sum
             Unit: Count
           ReturnData: false
