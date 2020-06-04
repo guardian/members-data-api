@@ -9,6 +9,7 @@ object Dependencies {
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.195"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
+  val postgres =  "org.postgresql" % "postgresql" % "42.2.1"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
@@ -25,7 +26,7 @@ object Dependencies {
 
   //projects
 
-  val apiDependencies = Seq(jdbc, sentryLogback, identityAuth, identityTestUsers,
+  val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityAuth, identityTestUsers,
     playWS, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
     specs2, kinesis, logstash, anorm)
 
