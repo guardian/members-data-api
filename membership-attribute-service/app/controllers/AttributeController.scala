@@ -39,6 +39,7 @@ class AttributeController(
     val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
 
     if (ZuoraRequestCounter.get < concurrentCallThreshold) {
+      metrics.put(s"zuora-hit", 1)
       getAttributes(
         identityId = identityId,
         identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
@@ -47,6 +48,7 @@ class AttributeController(
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)
       )
     } else {
+      metrics.put(s"cache-hit", 1)
       val attributes: Future[Option[Attributes]] = dynamoService.get(identityId).map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
       attributes.map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
     }
