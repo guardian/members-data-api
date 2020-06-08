@@ -56,19 +56,19 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
   lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] = InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
-  lazy val soapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap,
-    RequestRunners.futureRunner,
-    RequestRunners.futureRunner
-  )
   lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
   lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
   lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
-  lazy val zuoraService = new ZuoraSoapService(soapClient)
-  implicit lazy val simpleClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.futureRunner))
-  lazy val zuoraRestService = new ZuoraRestService[Future]()
-  lazy val catalogRestClient: SimpleClient[Future] = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+
+  private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner)
+  lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient)
+
+  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(60.seconds)))
+  lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
+
+  lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage)
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
@@ -79,7 +79,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
         throw error
     }
 
-  lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, simpleClient, zuoraService.getAccountIds)
+  lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
   lazy val featureToggleData = new FeatureToggleDataUpdatedOnSchedule(featureToggleService, stage)
 
