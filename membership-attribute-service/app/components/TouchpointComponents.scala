@@ -62,10 +62,10 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
   lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
 
-  private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner)
+  private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
+  private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner, zuoraMetrics)
   lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient)
 
-  private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
   private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)), zuoraMetrics)
   lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
 
