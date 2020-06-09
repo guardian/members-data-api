@@ -10,7 +10,7 @@ import com.gu.identity.IdapiService
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
-import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.monitoring.SafeLogger._
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
@@ -65,7 +65,8 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner)
   lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient)
 
-  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)))
+  private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
+  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)), zuoraMetrics)
   lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
 
   lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))

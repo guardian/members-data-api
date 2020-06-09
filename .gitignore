@@ -8,6 +8,7 @@
 *.sublime-workspace
 .scala_dependencies
 .worksheet
+.sc
 
 dev
 dist
