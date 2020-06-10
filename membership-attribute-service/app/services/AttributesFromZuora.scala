@@ -8,8 +8,7 @@ import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
-import loghandling.LoggingField.LogField
-import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
+import loghandling.LoggingWithLogstashFields
 import models._
 import org.joda.time.{DateTime, LocalDate}
 
@@ -18,13 +17,13 @@ import scala.util.{Failure, Success}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, Disjunction, DisjunctionT, EitherT, \/, \/-}
+import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
 
   def getAttributes(
      identityId: String,
-     identityIdToAccountIds: String => Future[String \/ GetAccountsQueryResponse],
+     identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
@@ -38,11 +37,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     val attributesFromZuora: EitherT[Future, String, Option[ZuoraAttributes]] = (for {
-      accounts        <- EitherT(zuoraAccountsQuery(identityId, identityIdToAccountIds))
-      subscriptions   <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, identityId, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
+      accounts        <- EitherT(identityIdToAccounts(identityId))
+      subscriptions   <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
       maybeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
     } yield maybeAttributes).leftMap { errorMsg =>
-      SafeLogger.error(scrub"Tried to get Attributes for $identityId but failed with $errorMsg")
+      SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $errorMsg")
       errorMsg
     }
 
@@ -60,7 +59,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     //return what we know from Dynamo if Zuora returns an error
-    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))}
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] =
+      attributesFromDynamo.map { maybeDynamoAttributes =>
+        log.warn("Falling back on cache because failure to retrieve attributes from Zuora...") // FIXME: Remove after checking fallback works in PROD
+        ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))
+      }
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora.run.flatMap {
       case -\/(error) => fallbackIfZuoraFails
@@ -130,49 +133,18 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
 
   def getSubscriptions(
     getAccountsResponse: GetAccountsQueryResponse,
-    identityId: String,
     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
   ): Future[Disjunction[String, List[AccountWithSubscriptions]]] = {
 
-    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
-      subscriptionsForAccountId(account.Id)(anyPlanReads).map { maybeSub =>
-        maybeSub.map { subList =>
-          AccountWithSubscriptions(account, subList)
-        }
-      }
-    }
+    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] =
+      EitherT(subscriptionsForAccountId(account.Id)(anyPlanReads))
+        .map(AccountWithSubscriptions(account, _))
+        .run
 
-    val maybeSubs: Future[Disjunction[String, List[AccountWithSubscriptions]]] = getAccountsResponse.records.traverse[Future, Disjunction[String, AccountWithSubscriptions]](accountObject => {
-      accountWithSubscriptions(accountObject)(anyPlanReads)
-    }).map(_.sequenceU)
-
-    maybeSubs.map {
-      _.leftMap { errorMsg =>
-        log.warn(s"We tried getting subscription for a user with identityId $identityId, but then $errorMsg")
-        s"We called Zuora to get subscriptions for a user with identityId $identityId but the call failed because $errorMsg"
-      } map { subs =>
-        log.info(s"We got subs for identityId $identityId from Zuora and there were ${subs.length}")
-        subs
-      }
-    }
-  }
-
-  private def getAccountSummaries(
-    accountIds: List[AccountId],
-    identityId: String,
-    accountSummaryForAccountId: AccountId => Future[Disjunction[String, AccountSummary]]): Future[Disjunction[String, List[AccountSummary]]] = {
-
-    val maybeAccountSummaries = accountIds.traverse[Future, Disjunction[String, AccountSummary]](id => {
-      accountSummaryForAccountId(id)
-    }).map(_.sequenceU)
-
-
-    maybeAccountSummaries.map {
-      _.leftMap { errorMsg =>
-        log.warn(s"We tried getting account summaries for a user with identityId $identityId, but then $errorMsg")
-        s"We called Zuora to get account summaries for a user with identityId $identityId but the call failed because $errorMsg"
-      }
-    }
+    getAccountsResponse
+      .records
+      .traverse(accountWithSubscriptions(_)(anyPlanReads))
+      .map(_.sequenceU)
   }
 
   //if Zuora attributes have changed at all, we should update the cache even if the ttl is not stale
@@ -194,16 +166,5 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
   }
 
   def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] =  response.records.map(_.Id)
-
-  private def zuoraAccountsQuery(
-    identityId: String,
-    identityIdToAccountIds: String => Future[String \/ GetAccountsQueryResponse]
-  ): Future[Disjunction[String, GetAccountsQueryResponse]] =
-    identityIdToAccountIds(identityId).map {
-      _.leftMap { error =>
-        log.warn(s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId. with error: $error")
-        s"Calling ZuoraAccountIdsFromIdentityId failed for identityId $identityId."
-    }
-  }
 }
 
