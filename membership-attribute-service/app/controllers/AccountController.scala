@@ -217,6 +217,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       // this ordering prevents Weekly subs from coming back when Paper is requested (which is different from the type hierarchy where Weekly extends Paper)
       case _: Product.Weekly => requestedProductType == "Weekly" || requestedProductTypeIsContentSubscription
       case _: Product.Voucher => requestedProductType == "Voucher" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
+      case _: Product.DigitalVoucher => requestedProductType == "DigitalVoucher" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
       case _: Product.Delivery => requestedProductType == "HomeDelivery" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
       case _: Product.Contribution => requestedProductType == "Contribution"
       case _: Product.Membership => requestedProductType == "Membership"
