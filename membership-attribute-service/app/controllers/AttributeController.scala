@@ -42,7 +42,7 @@ class AttributeController(
       metrics.put(s"zuora-hit", 1)
       getAttributes(
         identityId = identityId,
-        identityIdToAccountIds = request.touchpoint.zuoraRestService.getAccounts,
+        identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
         dynamoAttributeService = dynamoService,
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)

@@ -238,7 +238,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(dynamoContributorDigitalPackAttributes))
         val anotherAccountObject = accountObjectWithZeroBalance.copy(Id = anotherTestAccountId)
         val response = listOfAccountObjectsToGetAccountsQueryResponse(List(accountObjectWithZeroBalance, anotherAccountObject))
-        val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
+        val subscriptions = attributesFromZuora.getSubscriptions(response, subscriptionFromAccountId)
 
         val expected = List(AccountWithSubscriptions(accountObjectWithZeroBalance, List(contributor)), AccountWithSubscriptions(anotherAccountObject, List(digipack)))
         subscriptions must be_==(\/.right(expected)).await
@@ -248,7 +248,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         mockDynamoAttributesService.get(testId) returns Future.successful(Some(dynamoContributorDigitalPackAttributes))
         val anotherAccountObject = accountObjectWithZeroBalance.copy(Id = AccountId("manySubsPerAccount"))
         val response = listOfAccountObjectsToGetAccountsQueryResponse(List(anotherAccountObject))
-        val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
+        val subscriptions = attributesFromZuora.getSubscriptions(response, subscriptionFromAccountId)
 
         val expected = List(AccountWithSubscriptions(anotherAccountObject, List(contributor, digipack)))
         subscriptions must be_==(\/.right(expected)).await
@@ -256,16 +256,16 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
       "get an empty list of subscriptions for a user who doesn't have any " in new accountButNoSubscriptions {
         val response = listOfAccountObjectsToGetAccountsQueryResponse(List(accountObjectWithZeroBalance))
-        val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
+        val subscriptions = attributesFromZuora.getSubscriptions(response, subscriptionFromAccountId)
 
         subscriptions must be_==(\/.right(List(AccountWithSubscriptions(accountObjectWithZeroBalance, Nil)))).await
       }
 
       "return a left with error message if the subscription service returns a left" in new errorWhenGettingSubs {
         val response = listOfAccountObjectsToGetAccountsQueryResponse(List(accountObjectWithZeroBalance))
-        val subscriptions = attributesFromZuora.getSubscriptions(response, testId, subscriptionFromAccountId)
+        val subscriptions = attributesFromZuora.getSubscriptions(response, subscriptionFromAccountId)
 
-        subscriptions must be_==(\/.left(s"We called Zuora to get subscriptions for a user with identityId $testId but the call failed because $testErrorMessage")).await
+        subscriptions must be_==(\/.left(testErrorMessage)).await
       }
     }
 
