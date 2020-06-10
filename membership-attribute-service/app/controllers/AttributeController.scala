@@ -49,8 +49,10 @@ class AttributeController(
       )
     } else {
       metrics.put(s"cache-hit", 1)
-      val attributes: Future[Option[Attributes]] = dynamoService.get(identityId).map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
-      attributes.map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
+      dynamoService
+        .get(identityId)
+        .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
+        .map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
     }
   }
 
