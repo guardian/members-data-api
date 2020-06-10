@@ -59,14 +59,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
     }
 
     //return what we know from Dynamo if Zuora returns an error
-    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] =
-      attributesFromDynamo.map { maybeDynamoAttributes =>
-        log.warn("Falling back on cache because failure to retrieve attributes from Zuora...") // FIXME: Remove after checking fallback works in PROD
-        ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))
-      }
+    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))}
 
     val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora.run.flatMap {
-      case -\/(error) => fallbackIfZuoraFails
+      case -\/(error) =>
+        log.warn(s"Falling back on cache because failure to retrieve attributes from Zuora: $error") // FIXME: Remove after checking fallback works in PROD
+        fallbackIfZuoraFails
       case \/-(maybeZuoraAttributes) =>
         val maybeAttributes = maybeZuoraAttributes.map(ZuoraAttributes.asAttributes(_))
         attributesFromDynamo.foreach(updateIfNeeded(maybeZuoraAttributes, _, maybeAttributes))
