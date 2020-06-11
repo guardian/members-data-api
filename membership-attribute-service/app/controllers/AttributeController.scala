@@ -40,7 +40,7 @@ class AttributeController(
 
     if (ZuoraRequestCounter.get < concurrentCallThreshold) {
       metrics.put(s"zuora-hit", 1)
-      getAttributes(
+      getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
         identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
