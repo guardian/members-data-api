@@ -21,13 +21,6 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
     getUser(requestHeader)
       .map(user => Option(user))
       .handleError { err =>
-        if(err.isInstanceOf[UserCredentialsMissingError])
-          //IdentityPlayAuthService throws an error if there is no SC_GU_U cookie or crypto auth token
-          //frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
-          SafeLogger.info(s"unable to authorize user - no token or cookie provided")
-        else
-          SafeLogger.warn(s"valid request but expired token or cookie so user must log in again - $err")
-
         None
       }
   }
