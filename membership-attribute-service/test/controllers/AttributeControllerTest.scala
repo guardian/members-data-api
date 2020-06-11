@@ -133,7 +133,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
   private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService, FakeMobileSubscriptionService) {
     override val executionContext = scala.concurrent.ExecutionContext.global
-    override def pickAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
+    override def getAttributesWithConcurrencyLimitHandling(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId || identityId == validEmployeeUser.id)
         ("Zuora", Some(testAttributes))
       else
