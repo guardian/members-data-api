@@ -40,8 +40,8 @@ class AttributeController(
    * 1. Count Zuora concurrent requests
    * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table
    * 1. If the count is greater than limit, then hit cache
-   * 1. If the count is less than limit, then hit Zuora if Zuora is healthy
-   * 1. If the count is less than limit, then hit cache if Zuora is unhealthy
+   * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
+   * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
    */
   def getAttributesWithConcurrencyLimitHandling(identityId: String) (implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
