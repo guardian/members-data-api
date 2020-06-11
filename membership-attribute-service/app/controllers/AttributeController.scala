@@ -33,14 +33,24 @@ class AttributeController(
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = Metrics("AttributesController")
 
-  def pickAttributes(identityId: String) (implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+  /**
+   * Zuora enforces 40 concurrent requests limit, without providing caching mechanisms.
+   * So the following custom workaround logic is attempted:
+   *
+   * 1. Count Zuora concurrent requests
+   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table
+   * 1. If the count is greater than limit, then hit cache
+   * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
+   * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
+   */
+  def getAttributesWithConcurrencyLimitHandling(identityId: String) (implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
     val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
     val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
 
     if (ZuoraRequestCounter.get < concurrentCallThreshold) {
       metrics.put(s"zuora-hit", 1)
-      getAttributes(
+      getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
         identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
@@ -106,7 +116,7 @@ class AttributeController(
       request.user match {
         case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureAttributes = pickAttributes(user.id)
+          val futureAttributes = getAttributesWithConcurrencyLimitHandling(user.id)
           val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 

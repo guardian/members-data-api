@@ -7,45 +7,29 @@ import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingWithLogstashFields
 import models._
 import org.joda.time.{DateTime, LocalDate}
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
+import scalaz.{Disjunction, EitherT, \/}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
-
-  def getAttributes(
+  def getAttributesFromZuoraWithCacheFallback(
      identityId: String,
      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
-     forDate: LocalDate = LocalDate.now()): Future[(String, Option[Attributes])] = {
+     forDate: LocalDate = LocalDate.now()
+  ): Future[(String, Option[Attributes])] = {
 
-    def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
-
-    val attributesFromDynamo: Future[Option[DynamoAttributes]] = dynamoAttributeService.get(identityId) map { attributes =>
-      dynamoAttributeService.ttlAgeCheck(attributes, identityId, forDate)
-      attributes
-    }
-
-    val attributesFromZuora: EitherT[Future, String, Option[ZuoraAttributes]] = (for {
-      accounts        <- EitherT(identityIdToAccounts(identityId))
-      subscriptions   <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
-      maybeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-    } yield maybeAttributes).leftMap { errorMsg =>
-      SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $errorMsg")
-      errorMsg
-    }
-
-    def updateIfNeeded(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
+    def maybeUpdateCache(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
+      def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         log.info(s"Attempting to update cache for $identityId ...")
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry) onComplete {
@@ -58,22 +42,26 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       }
     }
 
-    //return what we know from Dynamo if Zuora returns an error
-    val fallbackIfZuoraFails: Future[(String, Option[Attributes])] = attributesFromDynamo map { maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_)))}
+    val attributesFromDynamo = // eagerly prepare cache
+      dynamoAttributeService
+        .get(identityId)
+        .andThen {
+          case Success(attrib) => dynamoAttributeService.ttlAgeCheck(attrib, identityId, forDate)
+          case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
+        }
 
-    val attributesFromZuoraUnlessFallback: Future[(String, Option[Attributes])] = attributesFromZuora.run.flatMap {
-      case -\/(error) =>
-        log.warn(s"Falling back on cache because failure to retrieve attributes from Zuora: $error") // FIXME: Remove after checking fallback works in PROD
-        fallbackIfZuoraFails
-      case \/-(maybeZuoraAttributes) =>
-        val maybeAttributes = maybeZuoraAttributes.map(ZuoraAttributes.asAttributes(_))
-        attributesFromDynamo.foreach(updateIfNeeded(maybeZuoraAttributes, _, maybeAttributes))
-        Future.successful("Zuora", maybeAttributes)
-    }
-
-    // return what we know from Dynamo if the future times out/fails
-    attributesFromZuoraUnlessFallback fallbackTo fallbackIfZuoraFails
-
+    (for { // try zuora first and fallback to cache
+      accounts         <- EitherT(identityIdToAccounts(identityId))
+      subscriptions    <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
+      maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+    } yield { // Zuora takes precedence
+      val maybeAttributes = maybeZAttributes.map(ZuoraAttributes.asAttributes(_))
+      attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
+      Future.successful("Zuora", maybeAttributes)
+    }).leftMap { zuoraError => // fallback to Dynamo if Zuora fails
+      SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $zuoraError so falling back on cache.")
+      attributesFromDynamo.map(maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))))
+    }.merge.flatten // both branches return same type so can be merged
   }
 
   def dynamoUpdateRequired(dynamoAttributes: Option[DynamoAttributes], zuoraAttributes: Option[ZuoraAttributes], identityId: String, twoWeekExpiry: => DateTime): Boolean = {
