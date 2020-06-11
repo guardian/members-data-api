@@ -50,6 +50,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
           case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
+    lazy val fallbackToCache = (zuoraError: String) => {
+      SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $zuoraError so falling back on cache.")
+      attributesFromDynamo.map(maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))))
+    }
+
     (for { // try zuora first and fallback to cache
       accounts         <- EitherT(identityIdToAccounts(identityId))
       subscriptions    <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
@@ -58,10 +63,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
       val maybeAttributes = maybeZAttributes.map(ZuoraAttributes.asAttributes(_))
       attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
       Future.successful("Zuora", maybeAttributes)
-    }).leftMap { zuoraError => // fallback to Dynamo if Zuora fails
-      SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $zuoraError so falling back on cache.")
-      attributesFromDynamo.map(maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))))
-    }.merge.flatten // both branches return same type so can be merged
+    }) // fallback to cache if Zuora networking error or un-parsable response
+      .leftMap(fallbackToCache) // handles un-parsable response etc.
+      .merge // both branches return the same type so we can merge
+      .flatten
+      .recoverWith { case e => fallbackToCache(e.toString) } // handles timeouts etc.
   }
 
   def dynamoUpdateRequired(dynamoAttributes: Option[DynamoAttributes], zuoraAttributes: Option[ZuoraAttributes], identityId: String, twoWeekExpiry: => DateTime): Boolean = {
