@@ -1,5 +1,7 @@
 package services
 
+import java.net.SocketTimeoutException
+
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult
 import com.gu.i18n.Currency.GBP
 import com.gu.memsub.Subscription.AccountId
@@ -145,6 +147,17 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
           attributes must be_==("Dynamo", expected).await
         }
 
+      }
+
+      "return a response from the cache if there is networking outage calling Zuora" in {
+        List(Some(contributorDynamoAttributes), None) map { attributesFromCache =>
+          def identityIdToAccountIds(identityId: String) = Future.failed(new SocketTimeoutException("boom"))
+          def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.failed(new SocketTimeoutException("boom"))
+          mockDynamoAttributesService.get(testId) returns Future.successful(attributesFromCache)
+          val expectedAttr = attributesFromCache flatMap { attr => Some(DynamoAttributes.asAttributes(attr)) }
+          val actualAttr = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
+          actualAttr must be_==("Dynamo", expectedAttr).await
+        }
       }
 
       "still return attributes if there aren't any stored in Dynamo" in {
