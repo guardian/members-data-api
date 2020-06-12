@@ -120,7 +120,7 @@ class AttributeController(
           val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
-          for {
+          ((for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
@@ -154,11 +154,19 @@ class AttributeController(
                 logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
+                enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription) // FIXME: This seem like ti should be returning Result not Attributes
               case _ =>
                 onNotFound
             }
-          }
+          }): Future[Result]) /* FIXME: This type annotation should not be necessary. It probably means there is bug above */
+            .recover { case e =>
+              // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
+              // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
+              val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Supporter Experience team: $e"
+              metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
+              log.error(errMsg, e)
+              InternalServerError(errMsg)
+            }
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
