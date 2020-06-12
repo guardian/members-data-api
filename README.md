@@ -3,6 +3,52 @@
 The members' data API is a Play app that manages and retrieves supporter attributes associated with a user.  
 It runs on https://members-data-api.theguardian.com/.
 
+
+## How do we handle Zuora 40 concurrent requests limit?
+
+When users visit dotcom a check is made for entitlements. For example, should ads be displayed. This results in high
+load on members-data-api which we need to manage. In particular Zuora does not provide a caching mechanism whilst
+at the same time having 40 concurrent requests limit. Note this limit applies globally across our systems, and Zuora
+does not provide segregation by a particular client. Hence, the onus is on us to manage the limit.
+
+There are few ways we try to manage the load 
+1. dotcom cookies that expire after 24 hours
+1. mem-data-api DynamoDB table with particular TTL
+1. mechanism to control number of concurrent Zuora requests each mem-data-api instance can make (currently there are 6)
+
+With current load management we hit Zuora around 1000 per minute.
+
+### Dotcom cookies caching
+
+TODO: Tom to explain. Maybe list the names of cookies with example of their content
+
+### DynamoDB table
+
+1. Count Zuora concurrent requests (per instance)
+1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table
+1. If the count is greater than limit, then hit cache
+1. If the count is less than limit and Zuora is healthy, then hit Zuora
+1. If the count is less than limit and Zuora is unhealthy, then hit cache
+
+### Limiting concurrent requests
+
+There is a simple if-else logic applied per instance
+
+```
+if (current concurrent requests < limit from AttributesFromZuoraLookup )
+  hit zuora
+else
+  hit cache
+```
+
+Effect of different values for `ConcurrentZuoraCallThreshold`
+- 1 results in about 50/50 split between Zuora and cache
+- 2 results in about 80/20
+- 7 results in likely limit hits because (6 instances) x (7 concurrent reqests) = 42
+
+**WARNING: Remember to reduce `ConcurrentZuoraCallThreshold` if instances need to scale, say in expectation of 
+drastic increase of load due to breaking news.** 
+
 ## Setting it up locally
 
 1. You will need to have [dev-nginx](https://github.com/guardian/dev-nginx) installed.
