@@ -13,7 +13,6 @@ import monitoring.Metrics
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-import cats.implicits._
 import com.gu.identity.model.User
 import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
@@ -22,6 +21,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
+/**
+ *  What benefits is the user entitled to?
+ */
 class AttributeController(
   attributesFromZuora: AttributesFromZuora,
   commonActions: CommonActions,
@@ -67,7 +69,7 @@ class AttributeController(
     }
   }
 
-  def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
+  private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
     val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
 
@@ -84,7 +86,7 @@ class AttributeController(
     else Future.successful(None)
   }
 
-  def getLatestMobileSubscription(identityId: String)(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
+  private def getLatestMobileSubscription(identityId: String)(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(NonFatal(error)) =>
         metrics.put(s"mobile-subscription-fetch-exception", 1)
@@ -98,7 +100,7 @@ class AttributeController(
     }
   }
 
-  def enrichZuoraAttributes(zuoraAttributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
+  private def enrichZuoraAttributes(zuoraAttributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
     zuoraAttributes.copy(
       OneOffContributionDate = latestOneOffDate,
@@ -121,7 +123,7 @@ class AttributeController(
           val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
-          ((for {
+          (for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
@@ -155,12 +157,12 @@ class AttributeController(
                 logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription) // FIXME: This seem like ti should be returning Result not Attributes
+                val attr = enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
+                Ok(Json.toJson(attr))
               case _ =>
                 onNotFound
             }
-          }): Future[Result]) /* FIXME: This type annotation should not be necessary. It probably means there is bug above */
-            .recover { case e =>
+          }).recover { case e =>
               // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
               // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
               val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Supporter Experience team: $e"
@@ -175,8 +177,7 @@ class AttributeController(
       }
   }
 
-  val notFound = ApiError("Not found", "Could not find user in the database", 404)
-  val notAMember = ApiError("Not found", "User was found but they are not a member", 404)
+  private val notFound = ApiError("Not found", "Could not find user in the database", 404)
 
   private def membershipAttributesFromAttributes(attributes: Attributes): Result = {
      MembershipAttributes.fromAttributes(attributes)
@@ -184,10 +185,25 @@ class AttributeController(
        .getOrElse(notFound)
   }
 
-  def membership = lookup("membership", onSuccessMember = membershipAttributesFromAttributes, onSuccessSupporter = _ => notAMember, onNotFound = notFound)
-  def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessSupporter = identity[Attributes], onNotFound = notFound, sendAttributesIfNotFound = true)
-  def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessSupporter = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
-
+  def membership = lookup(
+    endpointDescription = "membership",
+    onSuccessMember = membershipAttributesFromAttributes,
+    onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
+    onNotFound = notFound
+  )
+  def attributes = lookup(
+    endpointDescription = "attributes",
+    onSuccessMember = attrs => Ok(Json.toJson(attrs)),
+    onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
+    onNotFound = notFound,
+    sendAttributesIfNotFound = true
+  )
+  def features = lookup(
+    endpointDescription = "features",
+    onSuccessMember = Features.fromAttributes,
+    onSuccessSupporter = _ => Features.unauthenticated,
+    onNotFound = Features.unauthenticated
+  )
 
   def oneOffContributions = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
