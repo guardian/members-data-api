@@ -18,9 +18,25 @@ There are few ways we try to manage the load
 
 With current load management we hit Zuora around 1000 per minute.
 
-### Dotcom cookies caching
+### Dotcom
+theguardian.com website is the biggest single consumer of `members-data-api`, specifically the `/user-attributes/me` endpoint, which it uses to determine both ad-free (becuase user has digital subscription) and if we should hide 'support messaging/asks' (banner, epic, header/footer support buttons etc).
 
-TODO: Tom to explain. Maybe list the names of cookies with example of their content
+It would be unnecessary to hit `members-data-api` on every single page view, so instead it uses cookies to regulate how often calls are made. **The `gu_user_features_expiry` contains a timestamp for the 'earliest' point it would be allowed to call `members-data-api` again, and is updated whenever it does call `members-data-api` to _'now + 24hours'_.**
+
+Various things from the `/user-attributes/me` response are stored in cookies, to be used on each render...
+- `GU_AF1` the 'ad-free' cookie which is set to a timestamp for _'now + 48hours'_ if the `contentAccess.digitalPack` = `true`
+- `gu_hide_support_messaging` is set to `true` if `showSupportMessaging` = `false` in the response
+- `gu_action_required_for` is set to the value of `alertAvailableFor` in the response, and is used to control the display of the 'payment failure' banner
+- `gu_paying_member` = `contentAccess.paidMember` in the response
+- `gu_digital_subscriber` = `contentAccess.digitalPack` in the response
+- `gu_recurring_contributor` = `contentAccess.recurringContributor` in the response
+- `gu_one_off_contribution_date` = `oneOffContributionDate` in the response
+
+##### Useful Links 
+- DCR [dotcom-rendering/blob/master/src/web/lib/contributions.tsx](https://github.com/guardian/dotcom-rendering/blob/master/src/web/lib/contributions.tsx)
+- Dotcom
+  - [frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js](https://github.com/guardian/frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js)
+  - [frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js](https://github.com/guardian/frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js)
 
 ### DynamoDB table
 
