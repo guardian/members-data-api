@@ -17,11 +17,13 @@ import org.specs2.mutable.Specification
 import org.specs2.specification.{BeforeEach, Scope}
 import testdata.SubscriptionTestData
 import testdata.AccountObjectTestData._
-
+import akka.actor.ActorSystem
+import scala.concurrent.duration._
 import scala.concurrent.Future
 import scalaz.\/
 
 class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach with EventuallyMatchers {
+  implicit val as: ActorSystem = ActorSystem("test")
 
   val attributesFromZuora = new AttributesFromZuora()
   override def referenceDate = new LocalDate(2016, 9, 20)
@@ -156,7 +158,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
           mockDynamoAttributesService.get(testId) returns Future.successful(attributesFromCache)
           val expectedAttr = attributesFromCache flatMap { attr => Some(DynamoAttributes.asAttributes(attr)) }
           val actualAttr = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId,  paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
-          actualAttr must be_==("Dynamo", expectedAttr).await
+          actualAttr must be_==("Dynamo", expectedAttr).awaitFor(2.second) // waiting for few seconds because there is retry logic on networking failures
         }
       }
 

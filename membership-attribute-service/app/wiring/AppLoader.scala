@@ -53,6 +53,7 @@ class MyComponents(context: Context)
       Some(router),
       touchPointBackends.normal.identityAuthService
     )
+  implicit val system: ActorSystem = actorSystem
   val attributesFromZuora = new AttributesFromZuora()
 
   val dbService = {
