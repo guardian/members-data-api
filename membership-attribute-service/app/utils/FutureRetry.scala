@@ -1,16 +1,16 @@
 package utils
 
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import akka.pattern.after
+import akka.actor.Scheduler
+
 /**
  * retry implementation from Scala Future contributor
  * https://gist.github.com/viktorklang/9414163
  */
 object FutureRetry {
-  import scala.concurrent.duration._
-  import scala.concurrent.ExecutionContext
-  import scala.concurrent.Future
-  import akka.pattern.after
-  import akka.actor.Scheduler
-
   /**
    * Given an operation that produces a T, returns a Future containing the result of T, unless an exception is thrown,
    * in which case the operation will be retried after _delay_ time, if there are more possible retries, which is configured through
@@ -20,5 +20,5 @@ object FutureRetry {
     op recoverWith { case _ if retries > 0 => after(delay, s)(retry(op, delay, retries - 1)) }
 
   def retry[T](op: => Future[T])(implicit ec: ExecutionContext, s: Scheduler): Future[T] =
-    retry(op, delay = 200.milliseconds, retries = 1)
+    retry(op, delay = 200.milliseconds, retries = 2)
 }
