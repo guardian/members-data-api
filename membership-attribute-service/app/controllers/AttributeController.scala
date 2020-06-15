@@ -1,6 +1,7 @@
 package controllers
 
 import actions._
+import akka.actor.ActorSystem
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields, ZuoraRequestCounter}
@@ -27,7 +28,7 @@ class AttributeController(
   override val controllerComponents: ControllerComponents,
   oneOffContributionDatabaseService: OneOffContributionDatabaseService,
   mobileSubscriptionService: MobileSubscriptionService
-) extends BaseController with LoggingWithLogstashFields {
+)(implicit system: ActorSystem) extends BaseController with LoggingWithLogstashFields {
   import attributesFromZuora._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext

@@ -17,15 +17,17 @@ import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
+import akka.actor.{ActorSystem, Scheduler}
+import utils.FutureRetry._
 
-class AttributesFromZuora(implicit val executionContext: ExecutionContext) extends LoggingWithLogstashFields {
+class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
   def getAttributesFromZuoraWithCacheFallback(
      identityId: String,
      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
-     forDate: LocalDate = LocalDate.now()
+     forDate: LocalDate = LocalDate.now(),
   ): Future[(String, Option[Attributes])] = {
 
     def maybeUpdateCache(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
@@ -50,24 +52,30 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext) exten
           case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
+    lazy val getAttrFromZuora =
+      for {
+        accounts <- EitherT(identityIdToAccounts(identityId))
+        subscriptions <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
+        maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+      } yield {
+        val maybeAttributes = maybeZAttributes.map(ZuoraAttributes.asAttributes(_))
+        attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
+        Future.successful("Zuora", maybeAttributes)
+      }
+
     lazy val fallbackToCache = (zuoraError: String) => {
       SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $zuoraError so falling back on cache.")
       attributesFromDynamo.map(maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))))
     }
 
-    (for { // try zuora first and fallback to cache
-      accounts         <- EitherT(identityIdToAccounts(identityId))
-      subscriptions    <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
-      maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-    } yield { // Zuora takes precedence
-      val maybeAttributes = maybeZAttributes.map(ZuoraAttributes.asAttributes(_))
-      attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
-      Future.successful("Zuora", maybeAttributes)
-    }) // fallback to cache if Zuora networking error or un-parsable response
-      .leftMap(fallbackToCache) // handles un-parsable response etc.
-      .merge // both branches return the same type so we can merge
+    implicit val scheduler: Scheduler = system.scheduler
+
+    // try zuora first and fallback to cache
+    EitherT(retry(getAttrFromZuora.run))                     // Zuora takes precedence
+      .leftMap(fallbackToCache)                              // handles Zuora un-parsable response etc.
+      .merge
       .flatten
-      .recoverWith { case e => fallbackToCache(e.toString) } // handles timeouts etc.
+      .recoverWith { case e => fallbackToCache(e.toString) } // handles Zuora timeouts etc.
   }
 
   def dynamoUpdateRequired(dynamoAttributes: Option[DynamoAttributes], zuoraAttributes: Option[ZuoraAttributes], identityId: String, twoWeekExpiry: => DateTime): Boolean = {
