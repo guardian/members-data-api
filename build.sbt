@@ -82,3 +82,4 @@ val api = app("membership-attribute-service")
   )
 
 val root = project.in(file(".")).aggregate(api)
+

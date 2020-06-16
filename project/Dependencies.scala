@@ -4,7 +4,7 @@ import play.sbt.PlayImport
 object Dependencies {
 
   //versions
-  val awsClientVersion = "1.11.286"
+  val awsVersion = "1.11.420"
   //libraries
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.195"
@@ -15,9 +15,9 @@ object Dependencies {
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
   val scanamo = "com.gu" %% "scanamo" % "1.0.0-M8"
-  val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
-  val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
-  val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
+  val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsVersion
+  val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsVersion
+  val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.572"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.9"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.2"
@@ -28,6 +28,14 @@ object Dependencies {
 
   val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityAuth, identityTestUsers,
     playWS, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
-    specs2, kinesis, logstash, anorm)
+    specs2, kinesis, logstash, anorm,
+    "com.amazonaws" % "aws-java-sdk-s3" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-ec2" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-cloudformation" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-ssm" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-acm" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-route53" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-autoscaling" % awsVersion
+  )
 
 }

@@ -49,9 +49,9 @@ class AttributeController(
   def getAttributesWithConcurrencyLimitHandling(identityId: String) (implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
     val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
-    val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+    val concurrentCallThresholdPerInstance = featureToggleData.ConcurrentZuoraCallThreshold
 
-    if (ZuoraRequestCounter.get < concurrentCallThreshold) {
+    if (ZuoraRequestCounter.get < concurrentCallThresholdPerInstance) {
       metrics.put(s"zuora-hit", 1)
       getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
