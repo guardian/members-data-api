@@ -41,8 +41,8 @@ class AttributeController(
    * So the following custom workaround logic is attempted:
    *
    * 1. Count Zuora concurrent requests
-   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table
-   * 1. If the count is greater than limit, then hit cache
+   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
+   * 1. Calculate concurrency limit per instance
    * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
    * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
    */

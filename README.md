@@ -41,7 +41,8 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
 ### DynamoDB table
 
 1. Count Zuora concurrent requests (per instance)
-1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table
+1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
+1. Calculate concurrency limit per instance
 1. If the count is greater than limit, then hit cache
 1. If the count is less than limit and Zuora is healthy, then hit Zuora
 1. If the count is less than limit and Zuora is unhealthy, then hit cache
@@ -51,16 +52,16 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
 There is a simple if-else logic applied per instance
 
 ```
-if (current concurrent requests < limit from AttributesFromZuoraLookup )
+if (current concurrent requests < calculate limit per instance)
   hit zuora
 else
   hit cache
 ```
 
 Effect of different values for `ConcurrentZuoraCallThreshold`
-- 1 results in about 50/50 split between Zuora and cache
-- 2 results in about 80/20
-- 7 results in likely limit hits because (6 instances) x (7 concurrent reqests) = 42
+- 6 total across 6 instances results in about 50/50 split between Zuora and cache
+- 12 total across 6 instances results in about 80/20
+- 0 results in 100% cache
 
 **WARNING: Remember to reduce `ConcurrentZuoraCallThreshold` if instances need to scale, say in expectation of 
 drastic increase of load due to breaking news.** 
