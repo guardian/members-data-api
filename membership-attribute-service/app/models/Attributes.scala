@@ -146,9 +146,6 @@ object Attributes {
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
     .addField("contentAccess", _.contentAccess)
-
-  implicit def toResult(attrs: Attributes): Result =
-    Ok(Json.toJson(attrs))
 }
 
 case class MembershipAttributes(
