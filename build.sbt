@@ -1,18 +1,18 @@
 import Dependencies._
+import scala.sys.process._
 
 val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
+
+def commitId(): String =
+  try { "git rev-parse HEAD".!!.trim } catch { case _: Exception => "unknown" }
 
 def buildInfoSettings = Seq(
   buildInfoKeys := Seq[BuildInfoKey](
     name,
     BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
     BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse(try {
-      "git rev-parse HEAD".!!.trim
-    } catch {
-      case e: Exception => "unknown"
-    }))
+    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse(commitId()))
   ),
   buildInfoPackage := "app",
   buildInfoOptions += BuildInfoOption.ToMap
@@ -21,7 +21,7 @@ def buildInfoSettings = Seq(
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.12.10",
+  scalaVersion := "2.12.11",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
