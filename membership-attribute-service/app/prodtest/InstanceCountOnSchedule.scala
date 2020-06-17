@@ -26,13 +26,21 @@ class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, syst
       .asScala
       .toList
       .filter(_.getAutoScalingGroupName.startsWith(s"Memb-Attributes-$stage"))
-      .map(_.getInstances.asScala.size)
-      .headOption
-      .getOrElse(throw new RuntimeException("There should exist at least one auto scaling group. Fix ASAP!"))
+      .flatMap(_.getInstances.asScala)
+      .filter(_.getHealthStatus == "Healthy")
+      .filter(_.getLifecycleState == "InService")
+      .size
 
   private val _getInstanceCountTask =
     ScheduledTask[Int]("AutoScalingGroupInstanceCount", initValue = defaultInstanceCount, 0.seconds, 30.seconds) {
-      Future(getCurrentNumberOfInstances(stage)).recover { case e =>
+      Future(getCurrentNumberOfInstances(stage))
+        .map { count =>
+          if (count < 1) {
+            logger.error(s"There should be at least one healthy in-service instance. Failing to default value $defaultInstanceCount")
+            defaultInstanceCount
+          } else count
+        }
+        .recover { case e =>
           logger.error(s"Failed to determine AWS instance count. Failing to default value $defaultInstanceCount", e)
           defaultInstanceCount
         }

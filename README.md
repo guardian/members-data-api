@@ -59,8 +59,8 @@ else
 ```
 
 Effect of different values for `ConcurrentZuoraCallThreshold`
-- 6 total across 6 instances results in about 50/50 split between Zuora and cache
-- 12 total across 6 instances results in about 80/20
+- 6 total across 6 instances (i.e. limit of 1 per instance) results in about 50/50 split between Zuora and cache
+- 12 total across 6 instances (i.e. limit of 2 per instance) results in about 80/20
 - 0 results in 100% cache
 
 **WARNING: Remember to reduce `ConcurrentZuoraCallThreshold` if instances need to scale, say in expectation of 
