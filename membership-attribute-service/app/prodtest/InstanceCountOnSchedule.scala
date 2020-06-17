@@ -48,5 +48,5 @@ class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, syst
 
   _getInstanceCountTask.start()
 
-  def getInstanceCounTask: ScheduledTask[Int] = _getInstanceCountTask
+  def getInstanceCountTask: ScheduledTask[Int] = _getInstanceCountTask
 }

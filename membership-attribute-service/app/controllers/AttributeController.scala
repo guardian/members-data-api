@@ -70,13 +70,20 @@ class AttributeController(
   private def calculateZuoraConcurrencyLimitPerInstance(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Int = {
     val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
     val totalConcurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
-    val awsInstanceCount = request.touchpoint.instanceCountOnSchedule.getInstanceCounTask.get()
+    val awsInstanceCount = request.touchpoint.instanceCountOnSchedule.getInstanceCountTask.get()
 
-    if (totalConcurrentCallThreshold <= 0) {
+    val cappedTotalConcurrentCallThreshold =
+      if (totalConcurrentCallThreshold > 40) {
+        log.error("Total Zuora concurrent requests limit set too high. Capping it to 40...")
+        40
+      }
+      else totalConcurrentCallThreshold
+
+    if (cappedTotalConcurrentCallThreshold <= 0) {
       log.warn("All requests will be served from cache because totalConcurrentCallThreshold = 0")
       0
-    } else if (totalConcurrentCallThreshold < awsInstanceCount) 1
-    else totalConcurrentCallThreshold / awsInstanceCount
+    } else if (cappedTotalConcurrentCallThreshold < awsInstanceCount) 1
+    else cappedTotalConcurrentCallThreshold / awsInstanceCount
   }
 
   private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
