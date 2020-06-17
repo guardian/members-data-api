@@ -3,9 +3,8 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  //versions
   val awsClientVersion = "1.11.286"
-  //libraries
+
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.195"
   val identityTestUsers =  "com.gu" %% "identity-test-users" % "0.7"
@@ -28,6 +27,8 @@ object Dependencies {
 
   val apiDependencies = Seq(jdbc, postgres, sentryLogback, identityAuth, identityTestUsers,
     playWS, playFilters, scanamo, awsDynamo, awsSQS, awsCloudWatch, scalaz, membershipCommon,
-    specs2, kinesis, logstash, anorm)
+    specs2, kinesis, logstash, anorm,
+    "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion
+  )
 
 }

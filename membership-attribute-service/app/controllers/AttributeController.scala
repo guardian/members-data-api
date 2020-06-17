@@ -41,17 +41,15 @@ class AttributeController(
    * So the following custom workaround logic is attempted:
    *
    * 1. Count Zuora concurrent requests
-   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table
-   * 1. If the count is greater than limit, then hit cache
+   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
+   * 1. Calculate concurrency limit per instance
    * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
    * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
    */
-  def getAttributesWithConcurrencyLimitHandling(identityId: String) (implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+  def getAttributesWithConcurrencyLimitHandling(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
-    val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
-    val concurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
 
-    if (ZuoraRequestCounter.get < concurrentCallThreshold) {
+    if (ZuoraRequestCounter.get < calculateZuoraConcurrencyLimitPerInstance) {
       metrics.put(s"zuora-hit", 1)
       getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
@@ -67,6 +65,25 @@ class AttributeController(
         .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
         .map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
     }
+  }
+
+  private def calculateZuoraConcurrencyLimitPerInstance(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Int = {
+    val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
+    val totalConcurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+    val awsInstanceCount = request.touchpoint.instanceCountOnSchedule.getInstanceCountTask.get()
+
+    val cappedTotalConcurrentCallThreshold =
+      if (totalConcurrentCallThreshold > 40) {
+        log.error("Total Zuora concurrent requests limit set too high. Capping it to 40...")
+        40
+      }
+      else totalConcurrentCallThreshold
+
+    if (cappedTotalConcurrentCallThreshold <= 0) {
+      log.warn("All requests will be served from cache because totalConcurrentCallThreshold = 0")
+      0
+    } else if (cappedTotalConcurrentCallThreshold < awsInstanceCount) 1
+    else cappedTotalConcurrentCallThreshold / awsInstanceCount
   }
 
   private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
