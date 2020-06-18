@@ -23,7 +23,7 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.ZuoraSoapService
 import configuration.Config
 import loghandling.ZuoraRequestCounter
-import prodtest.{FeatureToggleDataUpdatedOnSchedule, InstanceCountOnSchedule}
+import prodtest.{TotalZuoraConcurrentLimitOnSchedule, InstanceCountOnSchedule}
 import services._
 
 import scala.concurrent.duration._
@@ -82,7 +82,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
-  lazy val featureToggleData = new FeatureToggleDataUpdatedOnSchedule(featureToggleService, stage)
+  lazy val totalZuoraConcurrentLimitOnSchedule = new TotalZuoraConcurrentLimitOnSchedule(featureToggleService)
   lazy val instanceCountOnSchedule = new InstanceCountOnSchedule(stage)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
