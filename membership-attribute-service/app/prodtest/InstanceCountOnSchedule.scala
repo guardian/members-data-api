@@ -31,7 +31,7 @@ class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, syst
       .filter(_.getLifecycleState == "InService")
       .size
 
-  private val _getInstanceCountTask =
+  val getInstanceCountTask: ScheduledTask[Int] =
     ScheduledTask[Int]("AutoScalingGroupInstanceCount", initValue = defaultInstanceCount, 0.seconds, 30.seconds) {
       Future(getCurrentNumberOfInstances(stage))
         .map { count =>
@@ -46,7 +46,6 @@ class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, syst
         }
     }
 
-  _getInstanceCountTask.start()
+  getInstanceCountTask.start()
 
-  def getInstanceCountTask: ScheduledTask[Int] = _getInstanceCountTask
 }

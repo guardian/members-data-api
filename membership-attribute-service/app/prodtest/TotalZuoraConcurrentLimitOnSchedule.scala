@@ -10,21 +10,18 @@ import scala.concurrent.duration.DurationInt
 class TotalZuoraConcurrentLimitOnSchedule(
   featureToggleService: FeatureToggleService
 )(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
-  private val defaultTotalZouraConcurrencyLimit = 6
+  private val defaultTotalZuoraConcurrencyLimit = 6
 
-  private val _getTotalZuoraConcurrentLimitTask: ScheduledTask[Int] = {
-    ScheduledTask[Int]("AttributesFromZuoraLookup", defaultTotalZouraConcurrencyLimit, 0.seconds, 30.seconds) {
+  val getTotalZuoraConcurrentLimitTask: ScheduledTask[Int] =
+    ScheduledTask[Int]("AttributesFromZuoraLookup", defaultTotalZuoraConcurrencyLimit, 0.seconds, 30.seconds) {
       featureToggleService.get("AttributesFromZuoraLookup") map {
         case Right(feature) =>
-          feature.ConcurrentZuoraCallThreshold.getOrElse(defaultTotalZouraConcurrencyLimit)
+          feature.ConcurrentZuoraCallThreshold.getOrElse(defaultTotalZuoraConcurrencyLimit)
         case Left(e) =>
-          logger.error(s"Failed to fetch ConcurrentZuoraCallThreshold from DynamoDB. Failing to default value $defaultTotalZouraConcurrencyLimit", e)
-          defaultTotalZouraConcurrencyLimit
+          logger.error(s"Failed to fetch ConcurrentZuoraCallThreshold from DynamoDB. Failing to default value $defaultTotalZuoraConcurrencyLimit", e)
+          defaultTotalZuoraConcurrencyLimit
       }
     }
-  }
 
-  _getTotalZuoraConcurrentLimitTask.start()
-
-  def getTotalZuoraConcurrentLimitTask: ScheduledTask[Int] = _getTotalZuoraConcurrentLimitTask
+  getTotalZuoraConcurrentLimitTask.start()
 }
