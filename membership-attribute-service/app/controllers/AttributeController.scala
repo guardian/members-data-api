@@ -69,8 +69,7 @@ class AttributeController(
   }
 
   private def calculateZuoraConcurrencyLimitPerInstance(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Int = {
-    val featureToggleData = request.touchpoint.featureToggleData.getZuoraLookupFeatureDataTask.get()
-    val totalConcurrentCallThreshold = featureToggleData.ConcurrentZuoraCallThreshold
+    val totalConcurrentCallThreshold = request.touchpoint.totalZuoraConcurrentLimitOnSchedule.getTotalZuoraConcurrentLimitTask.get()
     val awsInstanceCount = request.touchpoint.instanceCountOnSchedule.getInstanceCountTask.get()
 
     val cappedTotalConcurrentCallThreshold =
