@@ -3,6 +3,7 @@ import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
 
+import com.gu.i18n.Country
 import com.gu.memsub.subsv2.{PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
@@ -19,6 +20,7 @@ case class AccountDetails(
   deliveryAddress: Option[DeliveryAddress],
   subscription : Subscription[SubscriptionPlan.AnyPlan],
   paymentDetails: PaymentDetails,
+  billingCountry: Option[Country],
   stripePublicKey: String,
   accountHasMissedRecentPayments: Boolean,
   safeToUpdatePaymentMethod: Boolean,
@@ -35,8 +37,9 @@ object AccountDetails {
     def toJson: JsObject = {
 
       val product = accountDetails.subscription.plan.product
+
       val mmaCategory = product match {
-        case _: Product.Paper => "subscriptions"
+        case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
         case _: Product.ZDigipack => "subscriptions"
         case _: Product.Contribution => "contributions"
         case _: Product.Membership => "membership"
@@ -126,10 +129,17 @@ object AccountDetails {
 
       if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
+      val selfServiceCancellation = SelfServiceCancellation(product, billingCountry)
+
       Json.obj(
         "mmaCategory" -> mmaCategory,
         "tier" -> paymentDetails.plan.name,
-        "isPaidTier" -> (paymentDetails.plan.price.amount > 0f)
+        "isPaidTier" -> (paymentDetails.plan.price.amount > 0f),
+        "selfServiceCancellation" -> Json.obj(
+          "isAllowed" -> selfServiceCancellation.isAllowed,
+          "shouldDisplayEmail" -> selfServiceCancellation.shouldDisplayEmail,
+          "phoneRegionsToDisplay" -> selfServiceCancellation.phoneRegionsToDisplay
+        )
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
         Json.obj(
