@@ -4,7 +4,7 @@ import actions._
 import akka.actor.ActorSystem
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields, ZuoraRequestCounter}
+import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -14,6 +14,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 import com.gu.identity.model.User
+import limit.ZuoraRequestCounter
 import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
 
@@ -50,7 +51,7 @@ class AttributeController(
   def getAttributesWithConcurrencyLimitHandling(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
 
-    if (ZuoraRequestCounter.get < calculateZuoraConcurrencyLimitPerInstance) {
+    if (ZuoraRequestCounter.isZuoraConcurrentRequestLimitNotReached) {
       metrics.put(s"zuora-hit", 1)
       getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
@@ -66,24 +67,6 @@ class AttributeController(
         .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
         .map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
     }
-  }
-
-  private def calculateZuoraConcurrencyLimitPerInstance(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Int = {
-    val totalConcurrentCallThreshold = request.touchpoint.totalZuoraConcurrentLimitOnSchedule.getTotalZuoraConcurrentLimitTask.get()
-    val awsInstanceCount = request.touchpoint.instanceCountOnSchedule.getInstanceCountTask.get()
-
-    val cappedTotalConcurrentCallThreshold =
-      if (totalConcurrentCallThreshold > 40) {
-        log.error("Total Zuora concurrent requests limit set too high. Capping it to 40...")
-        40
-      }
-      else totalConcurrentCallThreshold
-
-    if (cappedTotalConcurrentCallThreshold <= 0) {
-      log.warn("All requests will be served from cache because totalConcurrentCallThreshold = 0")
-      0
-    } else if (cappedTotalConcurrentCallThreshold < awsInstanceCount) 1
-    else cappedTotalConcurrentCallThreshold / awsInstanceCount
   }
 
   private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {

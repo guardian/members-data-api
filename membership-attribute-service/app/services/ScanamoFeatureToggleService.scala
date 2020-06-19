@@ -9,7 +9,10 @@ import models.FeatureToggle
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ScanamoFeatureToggleService(client: AmazonDynamoDBAsync, table: String)(implicit executionContext: ExecutionContext) extends FeatureToggleService with LazyLogging {
+class ScanamoFeatureToggleService(
+  client: AmazonDynamoDBAsync,
+  table: String
+)(implicit executionContext: ExecutionContext) extends HealthCheckableService with LazyLogging {
 
   def checkHealth: Boolean = client.describeTable(table).getTable.getTableStatus == "ACTIVE"
 

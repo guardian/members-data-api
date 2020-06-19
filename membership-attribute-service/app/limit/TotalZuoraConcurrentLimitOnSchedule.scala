@@ -1,14 +1,15 @@
-package prodtest
+package limit
 
 import akka.actor.ActorSystem
 import com.gu.memsub.util.ScheduledTask
 import com.typesafe.scalalogging.LazyLogging
-import services.FeatureToggleService
+import services.ScanamoFeatureToggleService
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 
 class TotalZuoraConcurrentLimitOnSchedule(
-  featureToggleService: FeatureToggleService
+  featureToggleService: ScanamoFeatureToggleService
 )(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
   private val defaultTotalZuoraConcurrencyLimit = 6
 
