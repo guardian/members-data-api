@@ -20,43 +20,42 @@ object SelfServiceCancellation {
   private val ausPhone = "AUS"
   private val allPhones = List(ukRowPhone, usaPhone, ausPhone)
 
-  def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = {
+  def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = (product, billingCountry) match {
 
-    if(product.isInstanceOf[Product.Membership] || product.isInstanceOf[Product.Contribution]){
+    case (Product.Membership | Product.Contribution, _) =>
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = allPhones
       )
-    }
-    else if (billingCountry.contains(Country.UK)) {
+
+    case (_, Some(Country.UK)) =>
       SelfServiceCancellation(
         isAllowed = false,
         shouldDisplayEmail = false,
         phoneRegionsToDisplay = List(ukRowPhone)
       )
-    }
-    else if (billingCountry.contains(Country.US) || billingCountry.contains(Country.Canada)) {
+
+    case (_, Some(Country.US) | Some(Country.Canada)) =>
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = List(usaPhone)
       )
-    }
-    else if (billingCountry.contains(Country.Australia) || billingCountry.contains(Country.NewZealand)) {
+
+    case (_, Some(Country.Australia) | Some(Country.NewZealand)) =>
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = allPhones
       )
-    }
-    else { // ROW
+
+    case _ => // ROW
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = allPhones
       )
-    }
 
   }
 }
