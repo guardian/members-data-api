@@ -43,7 +43,7 @@ Mappings:
   StageVariables:
     PROD:
       MaxInstances: 12 # This should be (at least) double the desired capacity.
-      MinInstances: 6 # NOTE: there is a Zuora concurrent call threshold configured in MembershipFeatureToggles-[STAGE] DynamoDB table which will need adjusting if you increase this value.
+      MinInstances: 6
       NotificationAlarmPeriod: 1200
       InstanceName: PROD:membership-attribute-service
       DynamoDBTable: "Memb-Attributes-Tables-PROD-SupporterAttributesFallback"
