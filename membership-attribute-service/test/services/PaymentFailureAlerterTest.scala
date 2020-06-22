@@ -43,7 +43,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
-        val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}. Please check that the card details shown are up to date."
+        val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}."
 
         result must be_==(Some(expectedActionText)).await
       }
@@ -53,7 +53,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
-        val expectedActionText = s"Our attempt to take payment for your contribution failed on ${attemptDateTime.toString(formatter)}. Please check that the card details shown are up to date."
+        val expectedActionText = s"Our attempt to take payment for your contribution failed on ${attemptDateTime.toString(formatter)}."
 
         result must be_==(Some(expectedActionText)).await
       }
@@ -63,7 +63,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
-        val expectedActionText = s"Our attempt to take payment for your Digital Pack failed on ${attemptDateTime.toString(formatter)}. Please check that the card details shown are up to date."
+        val expectedActionText = s"Our attempt to take payment for your Digital Pack failed on ${attemptDateTime.toString(formatter)}."
 
         result must be_==(Some(expectedActionText)).await
       }
