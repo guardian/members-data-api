@@ -193,6 +193,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       deliveryAddress = None,
       subscription = sub,
       paymentDetails = upToDatePaymentDetails,
+      billingCountry = accountSummary.billToContact.country,
       stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments = false,
       safeToUpdatePaymentMethod = true,
@@ -284,6 +285,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
       subscription = contactAndSubscription.subscription,
       paymentDetails = upToDatePaymentDetails,
+      billingCountry = accountSummary.billToContact.country,
       stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments =
         freeOrPaidSub.isRight &&
