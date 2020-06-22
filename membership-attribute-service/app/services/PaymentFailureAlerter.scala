@@ -78,8 +78,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
           val fields = customFields(accountSummary.identityId, latestDate.toString(formatter), productName)
           logInfoWithCustomFields(s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}", fields)
 
-          //TODO remove the "Please check that the card details shown are up to date." part of the below string once manage-frontend is the only consumer of this.
-          s"Our attempt to take payment for your $productDescription failed on ${latestDate.toString(formatter)}. Please check that the card details shown are up to date."
+          s"Our attempt to take payment for your $productDescription failed on ${latestDate.toString(formatter)}."
         }
       }
     }
