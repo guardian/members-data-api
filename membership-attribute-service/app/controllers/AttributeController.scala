@@ -52,7 +52,6 @@ class AttributeController(
     val dynamoService = request.touchpoint.attrService
 
     if (ZuoraRequestCounter.isZuoraConcurrentRequestLimitNotReached) {
-      metrics.put(s"zuora-hit", 1)
       getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
         identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
@@ -61,7 +60,6 @@ class AttributeController(
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)
       )
     } else {
-      metrics.put(s"cache-hit", 1)
       dynamoService
         .get(identityId)
         .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)

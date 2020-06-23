@@ -65,7 +65,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner, zuoraMetrics)
   lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient)
 
-  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)), zuoraMetrics)
+  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)))
   lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
 
   lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
