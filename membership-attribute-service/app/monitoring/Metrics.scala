@@ -22,14 +22,13 @@ final class ExpensiveMetrics(
   val service: String
 )(implicit system: ActorSystem, ec: ExecutionContext) extends CloudWatch with LazyLogging {
   logger.info("expensive - created instance")
+  import scala.collection.JavaConverters._
+  private val chm = new ConcurrentHashMap[String, Int]().asScala
 
   val stage = Config.stage
   val application = Config.applicationName
 
-  system.scheduler.schedule(0.seconds, 55.seconds)(publishAllMetrics())
-
-  import scala.collection.JavaConverters._
-  private val chm = new ConcurrentHashMap[String, Int]().asScala
+  system.scheduler.schedule(5.seconds, 60.seconds)(publishAllMetrics())
 
   def countRequest(key: String): Unit = {
     chm.get(key) match {
@@ -71,4 +70,5 @@ final class ExpensiveMetrics(
   private def putStatisticsSetCount(name: String, count: Int) = {
     put(name, count)
   }
+
 }
