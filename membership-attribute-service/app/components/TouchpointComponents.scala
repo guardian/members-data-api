@@ -22,8 +22,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.ZuoraSoapService
 import configuration.Config
-import loghandling.ZuoraRequestCounter
-import prodtest.{TotalZuoraConcurrentLimitOnSchedule, InstanceCountOnSchedule}
+import limit.{InstanceCountOnSchedule, TotalZuoraConcurrentLimitOnSchedule, ZuoraRequestCounter}
 import services._
 
 import scala.concurrent.duration._
@@ -60,7 +59,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
   lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
-  lazy val featureToggleService: FeatureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
+  lazy val featureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
 
   private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
   private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner, zuoraMetrics)

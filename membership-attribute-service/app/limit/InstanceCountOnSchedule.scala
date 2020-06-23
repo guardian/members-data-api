@@ -1,13 +1,14 @@
-package prodtest
+package limit
 
 import akka.actor.ActorSystem
-import com.gu.memsub.util.ScheduledTask
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.DurationInt
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClientBuilder
 import com.gu.aws.CredentialsProvider
+import com.gu.memsub.util.ScheduledTask
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContext, Future}
 
 class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
   private val defaultInstanceCount = 6
