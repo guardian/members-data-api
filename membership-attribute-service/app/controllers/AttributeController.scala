@@ -9,7 +9,7 @@ import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
-import monitoring.Metrics
+import monitoring.{ExpensiveMetrics, Metrics}
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
@@ -36,6 +36,7 @@ class AttributeController(
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = Metrics("AttributesController")
+  lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
 
   /**
    * Zuora enforces 40 concurrent requests limit, without providing caching mechanisms.
@@ -52,6 +53,7 @@ class AttributeController(
     val dynamoService = request.touchpoint.attrService
 
     if (ZuoraRequestCounter.isZuoraConcurrentRequestLimitNotReached) {
+      expensiveMetrics.countRequest(s"zuora-hit")
       getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
         identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
@@ -60,6 +62,7 @@ class AttributeController(
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)
       )
     } else {
+      expensiveMetrics.countRequest(s"cache-hit")
       dynamoService
         .get(identityId)
         .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
