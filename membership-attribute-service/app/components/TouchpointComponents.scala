@@ -63,7 +63,9 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
 
   private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
   private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner, zuoraMetrics)
-  lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient)
+  lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
+    override def checkHealth: Boolean = zuoraSoapClient.isReady
+  }
 
   private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)))
   lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
