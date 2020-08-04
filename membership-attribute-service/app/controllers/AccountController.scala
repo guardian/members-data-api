@@ -198,7 +198,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountHasMissedRecentPayments = false,
       safeToUpdatePaymentMethod = true,
       isAutoRenew = isAutoRenew,
-      alertText = alertText
+      alertText = alertText,
+      accountId = accountSummary.id.get
     ).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
@@ -292,7 +293,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
       safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
       isAutoRenew = isAutoRenew,
-      alertText = alertText
+      alertText = alertText,
+      accountId = accountSummary.id.get
     ).toJson).run.run.map {
       case \/-(subscriptionJSONs) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")

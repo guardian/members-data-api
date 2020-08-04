@@ -25,7 +25,8 @@ case class AccountDetails(
   accountHasMissedRecentPayments: Boolean,
   safeToUpdatePaymentMethod: Boolean,
   isAutoRenew: Boolean,
-  alertText: Option[String]
+  alertText: Option[String],
+  accountId: String
 )
 
 object AccountDetails {
@@ -170,7 +171,8 @@ object AccountDetails {
             ),
             "currentPlans" -> currentPlans.map(jsonifyPlan),
             "futurePlans" -> futurePlans.map(jsonifyPlan),
-            "readerType" -> accountDetails.subscription.readerType.value
+            "readerType" -> accountDetails.subscription.readerType.value,
+            "accountId" -> accountDetails.accountId
           )),
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
