@@ -78,22 +78,25 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     }
 
-    def retrieveZuoraSubscription(user: String): Future[ApiError \/ Subscription[P]] = {
-      val getSubscriptionData = for {
-        sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"No Salesforce user: $user")))
-        validationSub <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfUser")))
-        zuoraCurrentSub <- OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).toRight("notFound")
-        _ <- EitherT(Future.successful(if (validationSub.name == zuoraCurrentSub.name) \/-(zuoraCurrentSub) else -\/("Sub does not belong to Salesforce user")))
-      } yield zuoraCurrentSub
-
-      getSubscriptionData.run.map {
-        case -\/(message) =>
-          logger.warn(s"Failed to retrieve subscription information for user $maybeUserId, due to: $message")
-          -\/(notFound)
-        case \/-(subscription) =>
-          \/-(subscription)
-      }
+    def validateUserOwnsTheSubscription(
+      identityId: String,
+      zuoraSub: Subscription[P]
+    ): EitherT[Future, String, Subscription[P]] = {
+      for {
+        sfUser <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId")))
+        sfSub <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfUser")))
+        zuoraSub <- EitherT(Future.successful(if (sfSub.name == zuoraSub.name) \/-(zuoraSub) else -\/(s"${sfSub.name} does not belong to $identityId")))
+      } yield zuoraSub
     }
+
+    def retrieveZuoraSubscription(identityId: String): Future[ApiError \/ Subscription[P]] =
+      (for {
+        zuoraCurrentSub <- OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).toRight("notFound")
+        validatedCurrentSub <- validateUserOwnsTheSubscription(identityId, zuoraCurrentSub)
+      } yield validatedCurrentSub).leftMap { error =>
+          logger.warn(s"Failed to retrieve subscription for user $identityId due to: $error")
+          notFound
+      }.run
 
     def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
       (for {
@@ -104,8 +107,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           case _ => None
         }.headOption
         cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name, zuoraSubscription.termEndDate, maybeChargedThroughDate)).leftMap(message => s"Error while cancelling subscription: $message")
-      } yield cancelResult).leftMap { message =>
-        logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $message")
+      } yield cancelResult).leftMap { error =>
+        logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $error")
         notFound
       }.run
     }
