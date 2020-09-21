@@ -63,7 +63,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionNameOption: Option[memsub.Subscription.Name]) =
+  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) =
     AuthAndBackendViaAuthLibAction.async { implicit request =>
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
@@ -78,24 +78,28 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     }
 
-    def retrieveZuoraSubscription(user: String): Future[ApiError \/ Subscription[P]] = {
-      val getSubscriptionData = for {
-        sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"No Salesforce user: $user")))
-        zuoraSubscription <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(subscriptionNameOption, s"Salesforce user $sfUser")))
-      } yield zuoraSubscription
-
-      getSubscriptionData.run.map {
-        case -\/(message) =>
-          logger.warn(s"Failed to retrieve subscription information for user $maybeUserId, due to: $message")
-          -\/(notFound)
-        case \/-(subscription) =>
-          \/-(subscription)
-      }
+    def validateUserOwnsTheSubscription(
+      identityId: String,
+      zuoraSub: Subscription[P]
+    ): EitherT[Future, String, Subscription[P]] = {
+      for {
+        sfUser <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId")))
+        sfSub <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfUser")))
+        zuoraSub <- EitherT(Future.successful(if (sfSub.name == zuoraSub.name) \/-(zuoraSub) else -\/(s"${sfSub.name} does not belong to $identityId")))
+      } yield zuoraSub
     }
 
+    def retrieveZuoraSubscription(identityId: String): Future[ApiError \/ Subscription[P]] =
+      (for {
+        zuoraCurrentSub <- OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).toRight("notFound")
+        validatedCurrentSub <- validateUserOwnsTheSubscription(identityId, zuoraCurrentSub)
+      } yield validatedCurrentSub).leftMap { error =>
+          logger.warn(s"Failed to retrieve subscription for user $identityId due to: $error")
+          notFound
+      }.run
 
     def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
-      val cancellationSteps = for {
+      (for {
         _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
         _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
         maybeChargedThroughDate = zuoraSubscription.plans.list.flatMap{
@@ -103,14 +107,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           case _ => None
         }.headOption
         cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name, zuoraSubscription.termEndDate, maybeChargedThroughDate)).leftMap(message => s"Error while cancelling subscription: $message")
-      } yield cancelResult
-
-      cancellationSteps.run.map {
-        case -\/(message) =>
-          logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $message")
-          -\/(notFound)
-        case \/-(()) => \/-(())
-      }
+      } yield cancelResult).leftMap { error =>
+        logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $error")
+        notFound
+      }.run
     }
 
     logger.info(s"Attempting to cancel contribution for $maybeUserId")
@@ -335,7 +335,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](Some(memsub.Subscription.Name(subscriptionName)))
+  def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
 
   @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
