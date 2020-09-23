@@ -22,6 +22,7 @@ import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
 import models.{AccountDetails, ApiError, ContactAndSubscription, DeliveryAddress}
+import org.joda.time.{LocalDate, LocalTime}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
@@ -63,8 +64,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
     val maybeUserId = request.user.map(_.id)
@@ -89,24 +89,63 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       } yield zuoraSub
     }
 
-    def retrieveZuoraSubscription(identityId: String): Future[ApiError \/ Subscription[P]] =
-      (for {
-        zuoraCurrentSub <- OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).toRight("notFound")
-        validatedCurrentSub <- validateUserOwnsTheSubscription(identityId, zuoraCurrentSub)
-      } yield validatedCurrentSub).leftMap { error =>
-          logger.warn(s"Failed to retrieve subscription for user $identityId due to: $error")
-          notFound
-      }.run
+    /**
+     * Note this method only makes sense if subscription was fetched with charge-detail=current-segment
+     *
+     * There are multiple scenarios
+     *   - period between acquisition date and fulfilment date => None which indicates cancel now
+     *     - usually contractEffectiveDate to customerAcceptanceDate, except in the case of Guardian Weekly+6for6
+     *       where customerAcceptanceDate indicates start of GW proper invoiced period instead of start of 6for6
+     *       invoiced period despite GW+6for6 being just a regular Subscription with multiple products.
+     *     - free trial or user choose start date of first issue in the future
+     *   - Subscription within invoiced period proper => Some(endOfLastInvoicePeriod)
+     *   - non-paid product => None which indicates cancel now
+     *   - edge case of being on the first day of invoice period however bill run has not yet happened => ERROR
+     *   - Today is after end of last invoice date and bill run has already completed => ERROR
+     *  fetched with /v1/subscription/{key}?charge-detail=current-segment
+     * @return None indicates cancel now, Some indicates cancel at end of last invoiced period
+     */
+    def calculateEffectiveCancellationDate(identityId: String): EitherT[Future, String, (Subscription[P], Option[LocalDate])] =
+      EitherT(OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).fold(
+        zuoraSubscriptionWithCurrentSegment => {
+          val paidPlans =
+            zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
 
-    def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
+          paidPlans match {
+            case paidPlan1 :: paidPlan2 :: _ =>
+              \/.left[String, (Subscription[P], Option[LocalDate])]("Failed to determine specific single active paid rate plan charge")
+
+            case paidPlan :: Nil => // single rate plan charge identified
+              paidPlan.chargedThrough match {
+                case Some(endOfLastInvoicePeriod) =>
+                  val billRunHasAlreadyHappened = LocalTime.now().isAfter(LocalTime.parse("12:00"))
+                  val endOfLastInvoiceDateIsBeforeToday = endOfLastInvoicePeriod.isBefore(LocalDate.now())
+                  if (endOfLastInvoiceDateIsBeforeToday && billRunHasAlreadyHappened)
+                    \/.left("chargedThroughDate exists but seems out-of-date because bill run should have moved chargedThroughDate to next invoice period. Investigate ASAP!")
+                  else
+                    \/.right(zuoraSubscriptionWithCurrentSegment -> Some(endOfLastInvoicePeriod))
+                case None =>
+                  if (paidPlan.start.equals(LocalDate.now())) // if effectiveStartDate exists but not chargedThroughDate
+                    \/.left(s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
+                  else
+                    \/.right(zuoraSubscriptionWithCurrentSegment -> Option.empty[LocalDate]) // we are within period between acquisition date and fulfilment date so cancel now
+              }
+
+            case Nil => \/.right(zuoraSubscriptionWithCurrentSegment -> Option.empty[LocalDate]) // free product so cancel now
+          }
+        },
+        none = \/.left(s"Failed to find current active Subscription for $identityId in Zuora"))
+      )
+
+    def executeCancellation(
+      zuoraSubscription: Subscription[P],
+      reason: String,
+      cancellationEffectiveDate: Option[LocalDate]
+    ): Future[ApiError \/ Unit] = {
       (for {
         _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
         _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
-        maybeChargedThroughDate = zuoraSubscription.plans.list.flatMap{
-          case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan.chargedThrough
-          case _ => None
-        }.headOption
-        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name, zuoraSubscription.termEndDate, maybeChargedThroughDate)).leftMap(message => s"Error while cancelling subscription: $message")
+        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name, zuoraSubscription.termEndDate, cancellationEffectiveDate)).leftMap(message => s"Error while cancelling subscription: $message")
       } yield cancelResult).leftMap { error =>
         logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $error")
         notFound
@@ -118,8 +157,10 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> unauthorized))
       cancellationReason <- EitherT(handleInputBody(cancelForm))
-      zuoraSubscription <- EitherT(retrieveZuoraSubscription(user))
-      cancellation <- EitherT(executeCancellation(zuoraSubscription, cancellationReason))
+      cancellationPair <- calculateEffectiveCancellationDate(user).leftMap(error => ApiError("Failed to cancel subscription", error, 500))
+      (zuoraSubscription, effectiveCancellationDate) = cancellationPair // FIXME: Why it does not work directly?
+      validatedZuoraSub <- validateUserOwnsTheSubscription(user, zuoraSubscription).leftMap(error => ApiError("Failed to cancel subscription", error, 403))
+      cancellation <- EitherT(executeCancellation(validatedZuoraSub, cancellationReason, effectiveCancellationDate))
     } yield cancellation).run.map {
       case -\/(apiError) =>
         SafeLogger.error(scrub"Failed to cancel subscription for user $maybeUserId")
