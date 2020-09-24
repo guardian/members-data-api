@@ -67,7 +67,6 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   case class CancellationEffectiveDate(
     subscriptionName: memsub.Subscription.Name,
     cancellationEffectiveDate: Option[LocalDate],
-    endOfTermDate: LocalDate = LocalDate.parse("2999-12-12"),
   )
 
   /**
@@ -86,7 +85,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
    *  fetched with /v1/subscription/{key}?charge-detail=current-segment
    * @return None indicates cancel now, Some indicates cancel at end of last invoiced period
    */
-  def calculateEffectiveCancellationDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](
+  private def calculateEffectiveCancellationDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](
     identityId: String,
     subscriptionName: memsub.Subscription.Name,
     tp: TouchpointComponents
@@ -95,6 +94,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       zuoraSubscriptionWithCurrentSegment => {
         val paidPlans =
           zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
+        val now = LocalTime.now()
+        val billRunHasAlreadyHappened = now.isAfter(LocalTime.parse("12:00"))
 
         paidPlans match {
           case paidPlan1 :: paidPlan2 :: _ =>
@@ -103,14 +104,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           case paidPlan :: Nil => // single rate plan charge identified
             paidPlan.chargedThrough match {
               case Some(endOfLastInvoicePeriod) =>
-                val billRunHasAlreadyHappened = LocalTime.now().isAfter(LocalTime.parse("12:00"))
                 val endOfLastInvoiceDateIsBeforeToday = endOfLastInvoicePeriod.isBefore(LocalDate.now())
                 if (endOfLastInvoiceDateIsBeforeToday && billRunHasAlreadyHappened)
                   \/.left("chargedThroughDate exists but seems out-of-date because bill run should have moved chargedThroughDate to next invoice period. Investigate ASAP!")
                 else
                   \/.right(CancellationEffectiveDate(subscriptionName,Some(endOfLastInvoicePeriod)))
               case None =>
-                if (paidPlan.start.equals(LocalDate.now())) // if effectiveStartDate exists but not chargedThroughDate
+                if (paidPlan.start.equals(LocalDate.now()) && billRunHasAlreadyHappened) // if effectiveStartDate exists but not chargedThroughDate
                   \/.left(s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
                 else
                   \/.left(s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")
@@ -119,7 +119,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           case Nil => \/.right(CancellationEffectiveDate(subscriptionName, Option.empty[LocalDate])) // free product so cancel now
         }
       },
-      none = \/.right(CancellationEffectiveDate(subscriptionName, Option.empty[LocalDate])))) // we are within period between acquisition date and fulfilment date so cancel now (lead time / free trial)
+      none = \/.right(CancellationEffectiveDate(subscriptionName, Option.empty[LocalDate]))) // we are within period between acquisition date and fulfilment date so cancel now (lead time / free trial)
+    )
   }
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
@@ -136,26 +137,16 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     }
 
-    def validateUserOwnsTheSubscription(
-      identityId: String,
-      zuoraSubName: memsub.Subscription.Name
-    ): EitherT[Future, String, memsub.Subscription.AccountId] = {
-      for {
-        sfUser <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId")))
-        sfSub <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfUser")))
-        accountId <- EitherT(Future.successful(if (sfSub.name == zuoraSubName) \/-(sfSub.accountId) else -\/(s"${sfSub.name} does not belong to $identityId")))
-      } yield accountId
-    }
-
     def executeCancellation(
       cancellationEffectiveDate: CancellationEffectiveDate,
       reason: String,
-      accountId: memsub.Subscription.AccountId
+      accountId: memsub.Subscription.AccountId,
+      endOfTermDate: LocalDate
     ): Future[ApiError \/ Unit] = {
       (for {
         _ <- EitherT(tp.zuoraRestService.disableAutoPay(accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
         _ <- EitherT(tp.zuoraRestService.updateCancellationReason(cancellationEffectiveDate.subscriptionName, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
-        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(cancellationEffectiveDate.subscriptionName, cancellationEffectiveDate.endOfTermDate, cancellationEffectiveDate.cancellationEffectiveDate)).leftMap(message => s"Error while cancelling subscription: $message")
+        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(cancellationEffectiveDate.subscriptionName, endOfTermDate, cancellationEffectiveDate.cancellationEffectiveDate)).leftMap(message => s"Error while cancelling subscription: $message")
       } yield cancelResult).leftMap { error =>
         logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $error")
         notFound
@@ -164,12 +155,16 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
     logger.info(s"Attempting to cancel contribution for $maybeUserId")
 
+    def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
+
     (for {
-      user <- EitherT(Future.successful(maybeUserId \/> unauthorized))
+      identityId <- EitherT(Future.successful(maybeUserId \/> unauthorized))
       cancellationReason <- EitherT(handleInputBody(cancelForm))
-      cancellationEffectiveDate <- calculateEffectiveCancellationDate[P](user, subscriptionName, tp).leftMap(error => ApiError("Failed to cancel subscription", error, 500))
-      accountId <- validateUserOwnsTheSubscription(user, cancellationEffectiveDate.subscriptionName).leftMap(error => ApiError("Failed to cancel subscription", error, 403))
-      cancellation <- EitherT(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId))
+      sfContact <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId"))).leftMap(CancelError(_, 404))
+      sfSub <- EitherT(tp.subService.current[P](sfContact).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact"))).leftMap(CancelError(_, 404))
+      accountId <- EitherT(Future.successful(if (sfSub.name == subscriptionName) \/-(sfSub.accountId) else -\/(s"$subscriptionName does not belong to $identityId"))).leftMap(CancelError(_, 503))
+      cancellationEffectiveDate <- calculateEffectiveCancellationDate[P](identityId, subscriptionName, tp).leftMap(CancelError(_, 500))
+      cancellation <- EitherT(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, sfSub.termEndDate))
     } yield cancellation).run.map {
       case -\/(apiError) =>
         SafeLogger.error(scrub"Failed to cancel subscription for user $maybeUserId because $apiError")
@@ -180,15 +175,9 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  def decideCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
+  private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
     val tp = request.touchpoint
     val maybeUserId = request.user.map(_.id)
-
-    case class CancellationEffectiveDate(
-      subscriptionName: memsub.Subscription.Name,
-      cancellationEffectiveDate: Option[LocalDate],
-      endOfTermDate: LocalDate = LocalDate.parse("2999-12-12"),
-    )
 
     (for {
       user <- EitherT(Future.successful(maybeUserId \/> unauthorized))
@@ -197,7 +186,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       case -\/(apiError) =>
         SafeLogger.error(scrub"Failed to determine effectiveCancellationDate for $maybeUserId and $subscriptionName because $apiError")
         apiError
-      case \/-(cancellationEffectiveDate) => Ok(cancellationEffectiveDate.getOrElse(LocalDate.now()).toString)
+      case \/-(cancellationEffectiveDate) => Ok(cancellationEffectiveDate.getOrElse("now").toString)
     }
   }
 
@@ -407,7 +396,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
-  def decideCancellationEffectiveDate(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+  def decideCancellationEffectiveDate(subscriptionName: String) = getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
 
   @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
