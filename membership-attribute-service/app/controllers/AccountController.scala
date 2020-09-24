@@ -70,20 +70,23 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   )
 
   /**
-   * Note this method only makes sense if subscription was fetched with charge-detail=current-segment
+   * fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
    *
    * There are multiple scenarios
    *   - period between acquisition date and fulfilment date => None which indicates cancel now
    *     - usually contractEffectiveDate to customerAcceptanceDate, except in the case of Guardian Weekly+6for6
    *       where customerAcceptanceDate indicates start of GW proper invoiced period instead of start of 6for6
    *       invoiced period despite GW+6for6 being just a regular Subscription with multiple products.
-   *     - free trial or user choose start date of first issue in the future
+   *     - free trial, or user choose start date of first issue in the future (lead time)
    *   - Subscription within invoiced period proper => Some(endOfLastInvoicePeriod)
-   *   - non-paid product => None which indicates cancel now
+   *   - free product => None which indicates cancel now
    *   - edge case of being on the first day of invoice period however bill run has not yet happened => ERROR
    *   - Today is after end of last invoice date and bill run has already completed => ERROR
-   *  fetched with /v1/subscription/{key}?charge-detail=current-segment
-   * @return None indicates cancel now, Some indicates cancel at end of last invoiced period
+   *
+   * @return
+   *   Right(None) indicates cancel now,
+   *   Right(Some("yyyy-mm-dd")) indicates cancel at end of last invoiced period
+   *   Left indicates error and MMA should not proceed with automatic cancelation
    */
   private def calculateEffectiveCancellationDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](
     identityId: String,
@@ -98,8 +101,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         val billRunHasAlreadyHappened = now.isAfter(LocalTime.parse("12:00"))
 
         paidPlans match {
-          case paidPlan1 :: paidPlan2 :: _ =>
-            \/.left("Failed to determine specific single active paid rate plan charge")
+          case paidPlan1 :: paidPlan2 :: _ => \/.left("Failed to determine specific single active paid rate plan charge")
 
           case paidPlan :: Nil => // single rate plan charge identified
             paidPlan.chargedThrough match {
@@ -110,7 +112,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
                 else
                   \/.right(CancellationEffectiveDate(subscriptionName,Some(endOfLastInvoicePeriod)))
               case None =>
-                if (paidPlan.start.equals(LocalDate.now()) && billRunHasAlreadyHappened) // if effectiveStartDate exists but not chargedThroughDate
+                if (paidPlan.start.equals(LocalDate.now()) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
                   \/.left(s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
                 else
                   \/.left(s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")
@@ -122,6 +124,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       none = \/.right(CancellationEffectiveDate(subscriptionName, Option.empty[LocalDate]))) // we are within period between acquisition date and fulfilment date so cancel now (lead time / free trial)
     )
   }
+
+  private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
     val tp = request.touchpoint
@@ -155,14 +159,12 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
     logger.info(s"Attempting to cancel contribution for $maybeUserId")
 
-    def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
-
     (for {
       identityId <- EitherT(Future.successful(maybeUserId \/> unauthorized))
       cancellationReason <- EitherT(handleInputBody(cancelForm))
       sfContact <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId"))).leftMap(CancelError(_, 404))
       sfSub <- EitherT(tp.subService.current[P](sfContact).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact"))).leftMap(CancelError(_, 404))
-      accountId <- EitherT(Future.successful(if (sfSub.name == subscriptionName) \/-(sfSub.accountId) else -\/(s"$subscriptionName does not belong to $identityId"))).leftMap(CancelError(_, 503))
+      accountId <- EitherT(Future.successful(if (sfSub.name == subscriptionName) \/-(sfSub.accountId) else -\/(CancelError(s"$subscriptionName does not belong to $identityId", 503))))
       cancellationEffectiveDate <- calculateEffectiveCancellationDate[P](identityId, subscriptionName, tp).leftMap(CancelError(_, 500))
       cancellation <- EitherT(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, sfSub.termEndDate))
     } yield cancellation).run.map {
