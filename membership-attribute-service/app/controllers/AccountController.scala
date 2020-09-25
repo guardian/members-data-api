@@ -15,7 +15,7 @@ import com.gu.salesforce.SimpleContactRepository
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
-import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, cancelSubscriptionCommandWrites}
+import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
