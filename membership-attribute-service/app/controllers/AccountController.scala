@@ -22,6 +22,7 @@ import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
 import models.{AccountDetails, ApiError, ContactAndSubscription, DeliveryAddress}
+import org.joda.time.{LocalDate, LocalTime}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
@@ -58,13 +59,76 @@ object AccountHelpers {
 
 }
 
+case class CancellationEffectiveDate(cancellationEffectiveDate: String)
+object CancellationEffectiveDate {
+  implicit val cancellationEffectiveDateFormat = Json.format[CancellationEffectiveDate]
+}
+
 class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController with LazyLogging {
   import AccountHelpers._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+  /**
+   * fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
+   *
+   * There are multiple scenarios
+   *   - period between acquisition date and fulfilment date => None which indicates cancel now
+   *     - usually contractEffectiveDate to customerAcceptanceDate, except in the case of Guardian Weekly+6for6
+   *       where customerAcceptanceDate indicates start of GW proper invoiced period instead of start of 6for6
+   *       invoiced period despite GW+6for6 being just a regular Subscription with multiple products.
+   *     - free trial, or user choose start date of first issue in the future (lead time)
+   *   - Subscription within invoiced period proper => Some(endOfLastInvoicePeriod)
+   *   - free product => None which indicates cancel now
+   *   - edge case of being on the first day of invoice period however bill run has not yet happened => ERROR
+   *   - Today is after end of last invoice date and bill run has already completed => ERROR
+   *
+   * @return
+   *   Right(None) indicates cancel now,
+   *   Right(Some("yyyy-mm-dd")) indicates cancel at end of last invoiced period
+   *   Left indicates error and MMA should not proceed with automatic cancelation
+   */
+  private def calculateEffectiveCancellationDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](
+    identityId: String,
+    subscriptionName: memsub.Subscription.Name,
+    tp: TouchpointComponents,
+    wallClockTimeNow: LocalTime = LocalTime.now(),
+    today: LocalDate = LocalDate.now(),
+  ): EitherT[Future, String, Option[LocalDate]] = {
+    EitherT(OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).fold(
+      zuoraSubscriptionWithCurrentSegment => {
+        val paidPlans =
+          zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
+        val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(LocalTime.parse("12:00"))
+
+        paidPlans match {
+          case paidPlan1 :: paidPlan2 :: _ => \/.left("Failed to determine specific single active paid rate plan charge")
+
+          case paidPlan :: Nil => // single rate plan charge identified
+            paidPlan.chargedThrough match {
+              case Some(endOfLastInvoicePeriod) =>
+                val endOfLastInvoiceDateIsBeforeOrOnToday = endOfLastInvoicePeriod.isBefore(today) || endOfLastInvoicePeriod.isEqual(today)
+                if (endOfLastInvoiceDateIsBeforeOrOnToday && billRunHasAlreadyHappened)
+                  \/.left("chargedThroughDate exists but seems out-of-date because bill run should have moved chargedThroughDate to next invoice period. Investigate ASAP!")
+                else
+                  \/.right(Some(endOfLastInvoicePeriod))
+              case None =>
+                if (paidPlan.start.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
+                  \/.left(s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
+                else
+                  \/.left(s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")
+            }
+
+          case Nil => \/.right(Option.empty[LocalDate]) // free product so cancel now
+        }
+      },
+      none = \/.right(Option.empty[LocalDate])) // we are within period between acquisition date and fulfilment date so cancel now (lead time / free trial)
+    )
+  }
+
+  private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
+
+  def cancelSubscription[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
     val tp = request.touchpoint
     val cancelForm = Form { single("reason" -> nonEmptyText) }
     val maybeUserId = request.user.map(_.id)
@@ -78,55 +142,53 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     }
 
-    def validateUserOwnsTheSubscription(
-      identityId: String,
-      zuoraSub: Subscription[P]
-    ): EitherT[Future, String, Subscription[P]] = {
-      for {
-        sfUser <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId")))
-        sfSub <- EitherT(tp.subService.current[P](sfUser).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfUser")))
-        zuoraSub <- EitherT(Future.successful(if (sfSub.name == zuoraSub.name) \/-(zuoraSub) else -\/(s"${sfSub.name} does not belong to $identityId")))
-      } yield zuoraSub
-    }
-
-    def retrieveZuoraSubscription(identityId: String): Future[ApiError \/ Subscription[P]] =
+    def executeCancellation(
+      cancellationEffectiveDate: Option[LocalDate],
+      reason: String,
+      accountId: memsub.Subscription.AccountId,
+      endOfTermDate: LocalDate
+    ): Future[ApiError \/ Option[LocalDate]] = {
       (for {
-        zuoraCurrentSub <- OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).toRight("notFound")
-        validatedCurrentSub <- validateUserOwnsTheSubscription(identityId, zuoraCurrentSub)
-      } yield validatedCurrentSub).leftMap { error =>
-          logger.warn(s"Failed to retrieve subscription for user $identityId due to: $error")
-          notFound
-      }.run
-
-    def executeCancellation(zuoraSubscription: Subscription[P], reason: String): Future[ApiError \/ Unit] = {
-      (for {
-        _ <- EitherT(tp.zuoraRestService.disableAutoPay(zuoraSubscription.accountId)).leftMap(message => s"Error while trying to disable AutoPay: $message")
-        _ <- EitherT(tp.zuoraRestService.updateCancellationReason(zuoraSubscription.name, reason)).leftMap(message => s"Error while updating cancellation reason: $message")
-        maybeChargedThroughDate = zuoraSubscription.plans.list.flatMap{
-          case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan.chargedThrough
-          case _ => None
-        }.headOption
-        cancelResult <- EitherT(tp.zuoraRestService.cancelSubscription(zuoraSubscription.name, zuoraSubscription.termEndDate, maybeChargedThroughDate)).leftMap(message => s"Error while cancelling subscription: $message")
-      } yield cancelResult).leftMap { error =>
-        logger.warn(s"Failed to execute zuora cancellation steps for user $maybeUserId, due to: $error")
-        notFound
-      }.run
+        _ <- EitherT(tp.zuoraRestService.disableAutoPay(accountId)).leftMap(message => s"Failed to disable AutoPay: $message")
+        _ <- EitherT(tp.zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message => s"Failed to update cancellation reason: $message")
+        _ <- EitherT(tp.zuoraRestService.cancelSubscription(subscriptionName, endOfTermDate, cancellationEffectiveDate)).leftMap(message => s"Failed to execute Zuora cancellation proper: $message")
+      } yield cancellationEffectiveDate).leftMap(CancelError(_, 500)).run
     }
-
-    logger.info(s"Attempting to cancel contribution for $maybeUserId")
 
     (for {
-      user <- EitherT(Future.successful(maybeUserId \/> unauthorized))
+      identityId <- EitherT(Future.successful(maybeUserId \/> unauthorized))
       cancellationReason <- EitherT(handleInputBody(cancelForm))
-      zuoraSubscription <- EitherT(retrieveZuoraSubscription(user))
-      cancellation <- EitherT(executeCancellation(zuoraSubscription, cancellationReason))
-    } yield cancellation).run.map {
+      sfContact <- EitherT(tp.contactRepo.get(identityId).map(_.flatMap(_ \/> s"No Salesforce user: $identityId"))).leftMap(CancelError(_, 404))
+      sfSub <- EitherT(tp.subService.current[P](sfContact).map(subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact"))).leftMap(CancelError(_, 404))
+      accountId <- EitherT(Future.successful(if (sfSub.name == subscriptionName) \/-(sfSub.accountId) else -\/(CancelError(s"$subscriptionName does not belong to $identityId", 503))))
+      cancellationEffectiveDate <- calculateEffectiveCancellationDate[P](identityId, subscriptionName, tp).leftMap(CancelError(_, 500))
+      _ <- EitherT(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, sfSub.termEndDate))
+      result = cancellationEffectiveDate.getOrElse("now").toString
+    } yield result).run.map {
       case -\/(apiError) =>
-        SafeLogger.error(scrub"Failed to cancel subscription for user $maybeUserId")
+        SafeLogger.error(scrub"Failed to cancel subscription for user $maybeUserId because $apiError")
         apiError
-      case \/-(_) =>
-        logger.info(s"Successfully cancelled subscription for user $maybeUserId")
-        Ok
+      case \/-(cancellationEffectiveDate) =>
+        logger.info(s"Successfully cancelled subscription $subscriptionName owned by $maybeUserId")
+        Ok(Json.toJson(CancellationEffectiveDate(cancellationEffectiveDate)))
+    }
+  }
+
+  private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](subscriptionName: memsub.Subscription.Name) = AuthAndBackendViaAuthLibAction.async { implicit request =>
+    val tp = request.touchpoint
+    val maybeUserId = request.user.map(_.id)
+
+    (for {
+      identityId <- EitherT(Future.successful(maybeUserId \/> unauthorized))
+      cancellationEffectiveDate <- calculateEffectiveCancellationDate[P](identityId, subscriptionName, tp).leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
+      result = cancellationEffectiveDate.getOrElse("now").toString
+    } yield result).run.map {
+      case -\/(apiError) =>
+        SafeLogger.error(scrub"Failed to determine effectiveCancellationDate for $maybeUserId and $subscriptionName because $apiError")
+        apiError
+      case \/-(cancellationEffectiveDate) =>
+        logger.info(s"Successfully determined cancellation effective date for $subscriptionName owned by $maybeUserId as $cancellationEffectiveDate")
+        Ok(Json.toJson(CancellationEffectiveDate(cancellationEffectiveDate)))
     }
   }
 
@@ -185,6 +247,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
+      cancellationEffectiveDate <- OptionEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name))
       isAutoRenew = sub.autoRenew
     } yield AccountDetails(
       contactId = contact.salesforceContactId,
@@ -199,7 +262,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       safeToUpdatePaymentMethod = true,
       isAutoRenew = isAutoRenew,
       alertText = alertText,
-      accountId = accountSummary.id.get
+      accountId = accountSummary.id.get,
+      cancellationEffectiveDate
     ).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
@@ -276,6 +340,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some("")).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.name}. Reason: $x") })
       upToDatePaymentDetails <- ListEither.liftList(getUpToDatePaymentDetailsFromStripe(contactAndSubscription.subscription.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${contactAndSubscription.subscription.accountId}. Reason: $x") })
       accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} with account id ${contactAndSubscription.subscription.accountId}. Reason: $x") })
+      effectiveCancellationDate <- ListEither.liftList(tp.zuoraRestService.getCancellationEffectiveDate(contactAndSubscription.subscription.name).recover { case x => \/.left(s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} with account id ${contactAndSubscription.subscription.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- ListEither.liftEitherList(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
@@ -294,7 +359,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
       isAutoRenew = isAutoRenew,
       alertText = alertText,
-      accountId = accountSummary.id.get
+      accountId = accountSummary.id.get,
+      effectiveCancellationDate
     ).toJson).run.run.map {
       case \/-(subscriptionJSONs) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
@@ -336,6 +402,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   }
 
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+  def decideCancellationEffectiveDate(subscriptionName: String) = getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
 
   @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
