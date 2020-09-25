@@ -31,8 +31,8 @@ object SelfServiceCancellation {
 
     case (_, Some(Country.UK)) =>
       SelfServiceCancellation(
-        isAllowed = true,
-        shouldDisplayEmail = true,
+        isAllowed = false,
+        shouldDisplayEmail = false,
         phoneRegionsToDisplay = List(ukRowPhone)
       )
 
