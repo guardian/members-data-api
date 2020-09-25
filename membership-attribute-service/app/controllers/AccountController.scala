@@ -246,7 +246,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x") })
       stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
       alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
-//      cancellationEffectiveDate <- OptionEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name))
+      cancellationEffectiveDate <- OptionEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name))
       isAutoRenew = sub.autoRenew
     } yield AccountDetails(
       contactId = contact.salesforceContactId,
@@ -261,8 +261,8 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       safeToUpdatePaymentMethod = true,
       isAutoRenew = isAutoRenew,
       alertText = alertText,
-      accountId = accountSummary.id.get
-//      cancellationEffectiveDate
+      accountId = accountSummary.id.get,
+      cancellationEffectiveDate
     ).toJson).run.run.map {
       case \/-(Some(result)) =>
         logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")

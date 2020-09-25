@@ -27,7 +27,7 @@ case class AccountDetails(
   isAutoRenew: Boolean,
   alertText: Option[String],
   accountId: String,
-  cancellationEffectiveDate: Option[String] = None
+  cancellationEffectiveDate: Option[String]
 )
 
 object AccountDetails {
