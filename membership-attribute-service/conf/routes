@@ -8,7 +8,7 @@ GET         /user-attributes/me/mma                                             
 GET         /user-attributes/me/mma/:subscriptionName                           controllers.AccountController.paymentDetailsSpecificSub(subscriptionName: String)
 
 POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSpecificSub(subscriptionName: String)
-GET         /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.decideCancellationEffectiveDate(subscriptionName: String)
+GET         /user-attributes/me/cancellation-date/:subscriptionName             controllers.AccountController.decideCancellationEffectiveDate(subscriptionName: String)
 
 POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateAmountForSpecificContribution(subscriptionName: String)
 
