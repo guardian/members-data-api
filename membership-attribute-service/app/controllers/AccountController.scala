@@ -91,14 +91,15 @@ class AccountController(commonActions: CommonActions, override val controllerCom
   private def calculateEffectiveCancellationDate[P <: SubscriptionPlan.AnyPlan : SubPlanReads](
     identityId: String,
     subscriptionName: memsub.Subscription.Name,
-    tp: TouchpointComponents
+    tp: TouchpointComponents,
+    wallClockTimeNow: LocalTime = LocalTime.now(),
+    today: LocalDate = LocalDate.now(),
   ): EitherT[Future, String, Option[LocalDate]] = {
     EitherT(OptionT(tp.subService.get[P](subscriptionName, isActiveToday = true)).fold(
       zuoraSubscriptionWithCurrentSegment => {
         val paidPlans =
           zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
-        val now = LocalTime.now()
-        val billRunHasAlreadyHappened = now.isAfter(LocalTime.parse("12:00"))
+        val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(LocalTime.parse("12:00"))
 
         paidPlans match {
           case paidPlan1 :: paidPlan2 :: _ => \/.left("Failed to determine specific single active paid rate plan charge")
@@ -106,13 +107,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           case paidPlan :: Nil => // single rate plan charge identified
             paidPlan.chargedThrough match {
               case Some(endOfLastInvoicePeriod) =>
-                val endOfLastInvoiceDateIsBeforeToday = endOfLastInvoicePeriod.isBefore(LocalDate.now())
-                if (endOfLastInvoiceDateIsBeforeToday && billRunHasAlreadyHappened)
+                val endOfLastInvoiceDateIsBeforeOrOnToday = endOfLastInvoicePeriod.isBefore(today) || endOfLastInvoicePeriod.isEqual(today)
+                if (endOfLastInvoiceDateIsBeforeOrOnToday && billRunHasAlreadyHappened)
                   \/.left("chargedThroughDate exists but seems out-of-date because bill run should have moved chargedThroughDate to next invoice period. Investigate ASAP!")
                 else
                   \/.right(Some(endOfLastInvoicePeriod))
               case None =>
-                if (paidPlan.start.equals(LocalDate.now()) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
+                if (paidPlan.start.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
                   \/.left(s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
                 else
                   \/.left(s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")
