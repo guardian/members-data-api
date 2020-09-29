@@ -3,6 +3,7 @@ package services
 import configuration.Config
 import models.MobileSubscriptionStatus
 import com.github.nscala_time.time.OrderingImplicits._
+import com.gu.monitoring.SafeLogger
 import loghandling.LoggingWithLogstashFields
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.libs.ws.WSClient
@@ -16,7 +17,7 @@ trait MobileSubscriptionService {
 
 }
 
-class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionContext) extends MobileSubscriptionService with LoggingWithLogstashFields {
+class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionContext) extends MobileSubscriptionService {
 
   private val subscriptionURL = Config.stage match {
     case "PROD" => "https://mobile-purchases.mobile-aws.guardianapis.com"
@@ -38,9 +39,12 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
         parsedSubs match {
           case JsError(errors) => -\/(s"Unable to parse mobile subscription response: $errors")
           case JsSuccess(subs, _) =>
+            SafeLogger.info(s"Successfully retrieved ${subs.size} mobile subscriptions for $identityId")
             val mostRecentValidSub = subs.filter(_.valid).sortBy(_.to).lastOption
             val mostRecentInvalidSub = subs.filterNot(_.valid).sortBy(_.to).lastOption
-            \/-(mostRecentValidSub.orElse(mostRecentInvalidSub))
+            val result = mostRecentValidSub.orElse(mostRecentInvalidSub)
+            SafeLogger.info(s"Mobile subscription for $identityId is $result")
+            \/-(result)
         }
       }
     }
