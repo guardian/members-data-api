@@ -196,11 +196,10 @@ object AccountDetails {
     start: LocalDate,
     today: LocalDate = LocalDate.now()
   ): LocalDate = {
-    @tailrec def loop(left: LocalDate): LocalDate = {
-      val right = left.plusYears(1)
-      if (today.isEqual(left)) right
-      else if (today.isAfter(left) && today.isBefore(right)) right
-      else loop(right)
+    @tailrec def loop(current: LocalDate): LocalDate = {
+      val next = current.plusYears(1)
+      if (today.isBefore(next)) next
+      else loop(next)
     }
     loop(start)
   }
