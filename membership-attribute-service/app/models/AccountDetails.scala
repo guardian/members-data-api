@@ -2,7 +2,7 @@ package models
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
-
+import scala.annotation.tailrec
 import com.gu.i18n.Country
 import com.gu.memsub.subsv2.{PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
@@ -158,6 +158,7 @@ object AccountDetails {
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
+            "anniversaryDate" -> anniversary(startDate),
             "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
             "subscriptionId" -> paymentDetails.subscriberId,
@@ -179,5 +180,27 @@ object AccountDetails {
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
     }
+  }
+
+  /**
+   * Note this is a different concept than termEndDate because termEndDate
+   * could be many years in the future. termEndDate models when Zuora will
+   * renew the subscription whilst anniversary indicates when another year
+   * will have passed since user started their subscription.
+   *
+   * @param start beginning of subscription timeline, perhaps customerAcceptanceDate
+   * @param today where we are on the timeline today
+   * @return next anniversary date of the subscription
+   */
+  def anniversary(
+    start: LocalDate,
+    today: LocalDate = LocalDate.now()
+  ): LocalDate = {
+    @tailrec def loop(current: LocalDate): LocalDate = {
+      val next = current.plusYears(1)
+      if (today.isBefore(next)) next
+      else loop(next)
+    }
+    loop(start)
   }
 }
