@@ -113,6 +113,16 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         attributes must be_==("Zuora", None).await
       }
 
+      "return a gift subscription if the user has one" in new noAccounts {
+        val termEndDate = new LocalDate(2021, 12, 1)
+        val giftSubscriptionAttributes = Attributes(testId, DigitalSubscriptionExpiryDate = Some(termEndDate))
+        def giftSubscriptionsFromIdentityId(identityId: String) =
+          Future.successful(\/.right(GiftSubscriptionsFromIdentityIdResponse(List(GiftSubscriptionsFromIdentityIdRecord("abc123", termEndDate)), 1)))
+
+        val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, giftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", Some(giftSubscriptionAttributes)).await
+      }
+
       "return the attributes from Dynamo if Zuora query for account ids fails" in new errorWhenGettingAccounts {
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId,  nilGiftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Dynamo", Some(supporterAttributes)).await

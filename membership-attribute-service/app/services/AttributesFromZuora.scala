@@ -54,13 +54,23 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
+    def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) =
+      accountsWithSubscriptions.flatMap(_.subscriptions).exists(_.asDigipack.isDefined) //TODO: is this reliable?
+
     lazy val getAttrFromZuora =
       for {
         accounts <- EitherT(identityIdToAccounts(identityId))
-        subscriptions <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
+        subscriptions <- EitherT(
+          if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId)
+          else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil))
+        )
+        giftSubscriptions <- EitherT(
+          if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, GiftSubscriptionsFromIdentityIdResponse](GiftSubscriptionsFromIdentityIdResponse(Nil, 0)))
+          else giftSubscriptionsForIdentityId(identityId))
+        giftAttributes = giftSubscriptions.records.headOption.map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate))) //TODO: is identityId right?
         maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
-        val maybeAttributes = maybeZAttributes.map(ZuoraAttributes.asAttributes(_))
+        val maybeAttributes = maybeZAttributes.orElse(giftAttributes).map(ZuoraAttributes.asAttributes(_))
         attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
         Future.successful("Zuora", maybeAttributes)
       }
