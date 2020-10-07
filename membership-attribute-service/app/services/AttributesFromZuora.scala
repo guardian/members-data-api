@@ -7,7 +7,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdResponse, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, GiftSubscriptionsFromIdentityIdResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingWithLogstashFields
 import models._
 import org.joda.time.{DateTime, LocalDate}
@@ -26,7 +26,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      identityId: String,
      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-     giftSubscriptionsForIdentityId: String => Future[Disjunction[String, GiftSubscriptionsFromIdentityIdResponse]],
+     giftSubscriptionsForIdentityId: String => Future[Disjunction[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
      forDate: LocalDate = LocalDate.now(),
@@ -65,9 +65,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil))
         )
         giftSubscriptions <- EitherT(
-          if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, GiftSubscriptionsFromIdentityIdResponse](GiftSubscriptionsFromIdentityIdResponse(Nil, 0)))
-          else giftSubscriptionsForIdentityId(identityId))
-        giftAttributes = giftSubscriptions.records.headOption.map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate))) //TODO: is identityId right?
+          if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
+          else giftSubscriptionsForIdentityId(identityId)
+        )
+        giftAttributes = giftSubscriptions.headOption.map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate))) //TODO: is identityId right?
         maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
         val maybeAttributes = maybeZAttributes.orElse(giftAttributes).map(ZuoraAttributes.asAttributes(_))

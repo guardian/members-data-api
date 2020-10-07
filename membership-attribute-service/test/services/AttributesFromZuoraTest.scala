@@ -89,7 +89,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     size = accounts.size
   )
 
-  def nilGiftSubscriptionsFromIdentityId(identityId: String) = Future.successful(\/.right(GiftSubscriptionsFromIdentityIdResponse(Nil, 0)))
+  def nilGiftSubscriptionsFromIdentityId(identityId: String): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]] = Future.successful(\/.right(Nil))
 
   override def before = {
     org.mockito.Mockito.reset(mockDynamoAttributesService)
@@ -117,7 +117,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val termEndDate = new LocalDate(2021, 12, 1)
         val giftSubscriptionAttributes = Attributes(testId, DigitalSubscriptionExpiryDate = Some(termEndDate))
         def giftSubscriptionsFromIdentityId(identityId: String) =
-          Future.successful(\/.right(GiftSubscriptionsFromIdentityIdResponse(List(GiftSubscriptionsFromIdentityIdRecord("abc123", termEndDate)), 1)))
+          Future.successful(\/.right(List(GiftSubscriptionsFromIdentityIdRecord("abc123", termEndDate))))
 
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, giftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(giftSubscriptionAttributes)).await
