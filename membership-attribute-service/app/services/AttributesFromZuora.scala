@@ -56,7 +56,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         }
 
     def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) =
-      accountsWithSubscriptions.flatMap(_.subscriptions).exists(_.asDigipack.isDefined) //TODO: is this reliable?
+      accountsWithSubscriptions.flatMap(_.subscriptions).exists(_.asDigipack.isDefined)
 
     lazy val getAttrFromZuora =
       for {
@@ -69,7 +69,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        giftAttributes = giftSubscriptions.headOption.map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate))) //TODO: is identityId right?
+        giftAttributes = giftSubscriptions.headOption.map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate)))
         maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
         val maybeAttributes = maybeZAttributes.orElse(giftAttributes).map(ZuoraAttributes.asAttributes(_))
