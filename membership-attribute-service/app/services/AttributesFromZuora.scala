@@ -19,6 +19,7 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
+import com.gu.memsub.subsv2.ReaderType.Gift
 import utils.FutureRetry._
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
@@ -149,10 +150,16 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
   ): Future[Disjunction[String, List[AccountWithSubscriptions]]] = {
 
-    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] =
-      EitherT(subscriptionsForAccountId(account.Id)(anyPlanReads))
+    def isNotDigipackGiftSub(subscription: Subscription[AnyPlan]) = subscription.asDigipack.isEmpty || subscription.readerType != Gift
+
+    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
+      val nonDigipackGiftSubs = subscriptionsForAccountId(account.Id)(anyPlanReads).map(_.map(
+          _.filter(isNotDigipackGiftSub)
+      ))
+      EitherT(nonDigipackGiftSubs)
         .map(AccountWithSubscriptions(account, _))
         .run
+    }
 
     getAccountsResponse
       .records

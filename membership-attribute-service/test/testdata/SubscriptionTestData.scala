@@ -4,6 +4,7 @@ import com.github.nscala_time.time.Implicits._
 import com.gu.i18n.Currency.GBP
 import com.gu.memsub.Benefit._
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, _}
+import com.gu.memsub.subsv2.ReaderType.Gift
 import com.gu.memsub.subsv2._
 import com.gu.memsub.{Subscription => _, _}
 import org.joda.time.LocalDate
@@ -56,6 +57,7 @@ trait SubscriptionTestData {
   }
 
   val digipack = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
+  val digipackGift = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year))).copy(readerType = Gift)
   val guardianWeekly = toSubscription(false)(NonEmptyList(guardianWeeklyPlan(referenceDate, referenceDate + 1.year)))
   val sunday = toSubscription(false)(NonEmptyList(paperPlan(referenceDate, referenceDate + 1.year)))
   val sundayPlus = toSubscription(false)(NonEmptyList(paperPlusPlan(referenceDate, referenceDate + 1.year)))

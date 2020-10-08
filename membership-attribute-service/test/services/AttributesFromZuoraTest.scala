@@ -18,10 +18,9 @@ import org.specs2.specification.{BeforeEach, Scope}
 import testdata.SubscriptionTestData
 import testdata.AccountObjectTestData._
 import akka.actor.ActorSystem
-
 import scala.concurrent.duration._
 import scala.concurrent.Future
-import scalaz.{Disjunction, \/}
+import scalaz.\/
 
 class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach with EventuallyMatchers {
   implicit val as: ActorSystem = ActorSystem("test")
@@ -113,7 +112,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         attributes must be_==("Zuora", None).await
       }
 
-      "return a gift subscription if the user has one" in new noAccounts {
+      "return a gift Digital Subscription for the giftee" in new noAccounts {
         val termEndDate = new LocalDate(2021, 12, 1)
         val giftSubscriptionAttributes = Attributes(testId, DigitalSubscriptionExpiryDate = Some(termEndDate))
         def giftSubscriptionsFromIdentityId(identityId: String) =
@@ -121,6 +120,14 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, giftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(giftSubscriptionAttributes)).await
+      }
+
+      "NOT return a gift Digital Subscription for the gifter" in new giftDigiSub {
+        val termEndDate = new LocalDate(2021, 12, 1)
+        val attributesWithNoDigitalSub = Attributes(testId)
+
+        val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, nilGiftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", None).await
       }
 
       "return the attributes from Dynamo if Zuora query for account ids fails" in new errorWhenGettingAccounts {
@@ -427,6 +434,13 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
     def identityIdToAccountIds(identityId: String): Future[\/[String, GetAccountsQueryResponse]] = Future.successful(\/.right(emptyQueryResponse))
     def accountIdToAccountObject(accountId: AccountId) = Future.successful(\/.left("This account is not known so thus no summary"))
     def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(Nil))
+  }
+
+  trait giftDigiSub extends Scope {
+    mockDynamoAttributesService.get(testId) returns Future.successful(None)
+
+    def identityIdToAccountIds(identityId: String): Future[\/[String, GetAccountsQueryResponse]] = Future.successful(\/.right(oneAccountQueryResponse))
+    def subscriptionFromAccountId(accountId: AccountId)(reads: SubPlanReads[AnyPlan]) = Future.successful(\/.right(List(digipackGift)))
   }
 
   trait accountButNoSubscriptions extends Scope {
