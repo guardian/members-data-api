@@ -33,50 +33,6 @@ case class AccountDetails(
 
 object AccountDetails {
 
-  def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
-    case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
-    case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Subscription"))
-    case _ => None
-  }
-
-  def jsonifyPlan(plan: SubscriptionPlan.AnyPlan, subscription: Subscription[SubscriptionPlan.AnyPlan]): JsObject = {
-    Json.obj(
-      "name" -> externalisePlanName(plan),
-      "start" -> plan.start,
-      "end" -> plan.end,
-      // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
-      "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
-    ) ++ (plan match {
-      case paidPlan: PaidSubscriptionPlan[_, _] => Json.obj(
-        "chargedThrough" -> paidPlan.chargedThrough,
-        "amount" -> paidPlan.charges.price.prices.head.amount * 100,
-        "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
-        "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
-        "interval" -> paidPlan.charges.billingPeriod.noun,
-      )
-      case _ => Json.obj()
-    }) ++ (plan.charges match {
-      case paperCharges: PaperCharges => Json.obj("daysOfWeek" ->
-        paperCharges.dayPrices
-          .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
-          .keys.toList
-          .map(_.dayOfTheWeekIndex)
-          .sorted
-          .map(DayOfWeek.of)
-          .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH))
-      )
-      case _ => Json.obj()
-    })
-  }
-
-  def mmaCategoryFrom(product: Product): String = product match {
-    case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
-    case _: Product.ZDigipack => "subscriptions"
-    case _: Product.Contribution => "contributions"
-    case _: Product.Membership => "membership"
-    case _ => product.name // fallback
-  }
-
   implicit class ResultLike(accountDetails: AccountDetails) extends LazyLogging {
 
     import accountDetails._
@@ -127,6 +83,41 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
+
+      def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
+        case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
+        case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Subscription"))
+        case _ => None
+      }
+
+      def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
+        "name" -> externalisePlanName(plan),
+        "start" -> plan.start,
+        "end" -> plan.end,
+        // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
+        "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
+      ) ++ (plan match {
+        case paidPlan: PaidSubscriptionPlan[_, _] => Json.obj(
+          "chargedThrough" -> paidPlan.chargedThrough,
+          "amount" -> paidPlan.charges.price.prices.head.amount * 100,
+          "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
+          "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
+          "interval" -> paidPlan.charges.billingPeriod.noun,
+        )
+        case _ => Json.obj()
+      }) ++ (plan.charges match {
+        case paperCharges: PaperCharges => Json.obj("daysOfWeek" ->
+            paperCharges.dayPrices
+            .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
+            .keys.toList
+            .map(_.dayOfTheWeekIndex)
+            .sorted
+            .map(DayOfWeek.of)
+            .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH))
+        )
+        case _ => Json.obj()
+      })
+
       val sortedPlans = subscription.plans.list.sortBy(_.start.toDate)
       val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
@@ -175,8 +166,8 @@ object AccountDetails {
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "interval" -> paymentDetails.plan.interval.mkString
             ),
-            "currentPlans" -> currentPlans.map(plan => jsonifyPlan(plan, subscription)),
-            "futurePlans" -> futurePlans.map(plan => jsonifyPlan(plan, subscription)),
+            "currentPlans" -> currentPlans.map(jsonifyPlan),
+            "futurePlans" -> futurePlans.map(jsonifyPlan),
             "readerType" -> accountDetails.subscription.readerType.value,
             "accountId" -> accountDetails.accountId,
             "cancellationEffectiveDate" -> cancellationEffectiveDate
@@ -206,6 +197,13 @@ object AccountDetails {
       else loop(next)
     }
     loop(start)
+  }
+  def mmaCategoryFrom(product: Product): String = product match {
+    case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
+    case _: Product.ZDigipack => "subscriptions"
+    case _: Product.Contribution => "contributions"
+    case _: Product.Membership => "membership"
+    case _ => product.name // fallback
   }
 }
 
