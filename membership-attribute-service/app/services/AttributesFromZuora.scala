@@ -20,7 +20,7 @@ import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.subsv2.ReaderType.Gift
-import shapeless.record
+import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
 import utils.FutureRetry._
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
@@ -70,13 +70,13 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        giftAttributes = giftSubscriptions
+        maybeGiftAttributes = giftSubscriptions
           .sortWith((first, second) => first.TermEndDate.isAfter(second.TermEndDate)).headOption
           .map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate)))
-        maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+        maybeRegularAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
-        val maybeAttributes = maybeZAttributes.orElse(giftAttributes).map(ZuoraAttributes.asAttributes(_))
-        attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
+        val maybeAttributes = mergeDigitalSubscriptionExpiryDate(maybeRegularAttributes, maybeGiftAttributes).map(ZuoraAttributes.asAttributes(_))
+        attributesFromDynamo.foreach(maybeUpdateCache(maybeRegularAttributes, _, maybeAttributes))
         Future.successful("Zuora", maybeAttributes)
       }
 
@@ -189,5 +189,16 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
   }
 
   def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] =  response.records.map(_.Id)
+}
+
+object AttributesFromZuora {
+  def mergeDigitalSubscriptionExpiryDate(regular: Option[ZuoraAttributes], gift: Option[ZuoraAttributes]) = {
+    val mergedDigisubExpiry = List(regular.map(_.DigitalSubscriptionExpiryDate), gift.map(_.DigitalSubscriptionExpiryDate))
+      .flatten.flatten
+      .sortWith((first, second) => first.isAfter(second))
+      .headOption
+
+    regular.map(_.copy(DigitalSubscriptionExpiryDate = mergedDigisubExpiry)).orElse(gift)
+  }
 }
 

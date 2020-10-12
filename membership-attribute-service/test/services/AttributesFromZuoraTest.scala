@@ -399,6 +399,48 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
     }
 
+    "mergeDigitalSubscriptionExpiryDate" should {
+      "return the latest expiry date if there is both a regular and a gift subscription" in {
+        val earlyDate = LocalDate.now()
+        val laterDate = earlyDate.plusDays(1)
+
+        val earlyAttributes = Some(ZuoraAttributes("", DigitalSubscriptionExpiryDate = Some(earlyDate)))
+        val laterAttributes = Some(ZuoraAttributes("", DigitalSubscriptionExpiryDate = Some(laterDate)))
+
+        AttributesFromZuora.mergeDigitalSubscriptionExpiryDate(earlyAttributes, laterAttributes)
+          .get.DigitalSubscriptionExpiryDate.get must be_==(laterDate)
+
+        AttributesFromZuora.mergeDigitalSubscriptionExpiryDate(laterAttributes, earlyAttributes)
+          .get.DigitalSubscriptionExpiryDate.get must be_==(laterDate)
+      }
+
+      "return an expiry date if there is one of a regular or a gift subscription" in {
+        val expiryDate = LocalDate.now().plusDays(1)
+
+        val attributesWithSub = Some(ZuoraAttributes("", DigitalSubscriptionExpiryDate = Some(expiryDate)))
+        val attributesWithout = Some(ZuoraAttributes("", DigitalSubscriptionExpiryDate = None, RecurringContributionPaymentPlan = Some("")))
+
+        AttributesFromZuora.mergeDigitalSubscriptionExpiryDate(attributesWithSub, attributesWithout)
+          .get.DigitalSubscriptionExpiryDate.get must be_==(expiryDate)
+
+        AttributesFromZuora.mergeDigitalSubscriptionExpiryDate(attributesWithout, attributesWithSub)
+          .get.DigitalSubscriptionExpiryDate.get must be_==(expiryDate)
+      }
+
+      "return a ZuoraAttributes if either regular or gift attributes are not None" in {
+        val expiryDate = LocalDate.now().plusDays(1)
+
+        val regularAttributes = Some(ZuoraAttributes("", PaperSubscriptionExpiryDate = Some(expiryDate)))
+        val giftAttributes = Some(ZuoraAttributes("", DigitalSubscriptionExpiryDate = Some(expiryDate)))
+
+        AttributesFromZuora.mergeDigitalSubscriptionExpiryDate(None, giftAttributes)
+          .get.DigitalSubscriptionExpiryDate.get must be_==(expiryDate)
+
+        AttributesFromZuora.mergeDigitalSubscriptionExpiryDate(regularAttributes, None)
+          .get.PaperSubscriptionExpiryDate.get must be_==(expiryDate)
+      }
+    }
+
   }
 
   trait contributor extends Scope {
