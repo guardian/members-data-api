@@ -21,6 +21,7 @@ import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.subsv2.ReaderType.Gift
 import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
+import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
@@ -56,8 +57,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
-    def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) =
-      accountsWithSubscriptions.flatMap(_.subscriptions).exists(_.asDigipack.isDefined)
+    def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) = {
+      val subs = accountsWithSubscriptions.flatMap(_.subscriptions)
+      subs.exists(_.asDigipack.isDefined) || getSubsWhichIncludeDigitalPack(subs, LocalDate.now()).nonEmpty
+    }
 
     lazy val getAttrFromZuora =
       for {
@@ -155,11 +158,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
 
     def isNotDigipackGiftSub(subscription: Subscription[AnyPlan]) = subscription.asDigipack.isEmpty || subscription.readerType != Gift
 
-    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
-      val nonDigipackGiftSubs = subscriptionsForAccountId(account.Id)(anyPlanReads).map(_.map(
+    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[\/[String, AccountWithSubscriptions]] = {
+      val nonDigipackGiftSubs = EitherT(subscriptionsForAccountId(account.Id)(anyPlanReads)).map(
           _.filter(isNotDigipackGiftSub) //Filter out digital pack gift subs where the current user is the purchaser rather than the recipient
-      ))
-      EitherT(nonDigipackGiftSubs)
+      )
+      nonDigipackGiftSubs
         .map(AccountWithSubscriptions(account, _))
         .run
     }

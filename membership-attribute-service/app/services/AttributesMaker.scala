@@ -15,6 +15,7 @@ import PaymentFailureAlerter.alertAvailableFor
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 import scalaz.syntax.std.boolean._
+import services.AttributesMaker.{getCurrentPlans, getSubsWhichIncludeDigitalPack}
 
 case class ProductData(product:Product, account: ZuoraRestService.AccountObject, subscription:Subscription[AnyPlan])
 
@@ -29,17 +30,11 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscriptions)
 
-    def getCurrentPlans(subscription: Subscription[AnyPlan]): List[AnyPlan] = {
-      GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
-    }
     def getTopProduct(subscription: Subscription[AnyPlan]): Option[Product] = {
-      getCurrentPlans(subscription).headOption.map(_.product)
+      getCurrentPlans(subscription, forDate).headOption.map(_.product)
     }
     def getTopPlanName(subscription: Subscription[AnyPlan]): Option[String] = {
-      getCurrentPlans(subscription).headOption.map(_.name)
-    }
-    def getAllBenefits(subscription: Subscription[AnyPlan]): Set[Benefit] = {
-      getCurrentPlans(subscription).flatMap(_.charges.benefits.list.toList).toSet
+      getCurrentPlans(subscription, forDate).headOption.map(_.name)
     }
 
     val groupedSubs: Map[Option[Product], List[Subscription[AnyPlan]]] = subs.groupBy(getTopProduct)
@@ -82,7 +77,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
     val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil).headOption         // Assumes only 1 membership per Identity customer
     val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption     // Assumes only 1 regular contribution per Identity customer
-    val subsWhichIncludeDigitalPack = subs.filter(getAllBenefits(_).contains(Benefit.Digipack))
+    val subsWhichIncludeDigitalPack = getSubsWhichIncludeDigitalPack(subs, forDate)
 
     val paperSubscriptions = groupedSubs.filterKeys{
       case Some(_: Product.Weekly) => false // guardian weekly extends Paper, so we need to explicitly filter that out
@@ -107,7 +102,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
       maybeAlert foreach { alert => logInfoWithCustomFields(s"User $identityId has an alert available: $alert", customFields(identityId, alert)) }
 
       hasAttributableProduct.option {
-        val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_).headOption.map(_.charges.benefits.head.id))
+        val tier: Option[String] = membershipSub.flatMap(getCurrentPlans(_, forDate).headOption.map(_.charges.benefits.head.id))
         val recurringContributionPaymentPlan: Option[String] = contributionSub.flatMap(getTopPlanName)
         val membershipJoinDate: Option[LocalDate] = membershipSub.map(_.startDate)
         val latestDigitalPackExpiryDate: Option[LocalDate] = Some(subsWhichIncludeDigitalPack.map(_.termEndDate)).filter(_.nonEmpty).map(_.max)
@@ -128,4 +123,13 @@ class AttributesMaker extends LoggingWithLogstashFields{
   }
 }
 
-object AttributesMaker extends AttributesMaker
+object AttributesMaker extends AttributesMaker {
+  def getCurrentPlans(subscription: Subscription[AnyPlan], forDate: LocalDate): List[AnyPlan] =
+    GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
+
+  def getAllBenefits(subscription: Subscription[AnyPlan], forDate: LocalDate): Set[Benefit] =
+    getCurrentPlans(subscription, forDate).flatMap(_.charges.benefits.list.toList).toSet
+
+  def getSubsWhichIncludeDigitalPack(subs: List[Subscription[AnyPlan]], forDate: LocalDate) =
+    subs.filter(getAllBenefits(_, forDate).contains(Benefit.Digipack))
+}
