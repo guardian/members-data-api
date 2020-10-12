@@ -20,6 +20,7 @@ import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.subsv2.ReaderType.Gift
+import shapeless.record
 import utils.FutureRetry._
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
@@ -27,7 +28,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      identityId: String,
      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-     giftSubscriptionsForIdentityId: String => Future[Disjunction[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
+     giftSubscriptionsForIdentityId: String => Future[\/[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
      forDate: LocalDate = LocalDate.now(),
@@ -69,7 +70,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        giftAttributes = giftSubscriptions.headOption.map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate)))
+        giftAttributes = giftSubscriptions
+          .sortWith((first, second) => first.TermEndDate.isAfter(second.TermEndDate)).headOption
+          .map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate)))
         maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
         val maybeAttributes = maybeZAttributes.orElse(giftAttributes).map(ZuoraAttributes.asAttributes(_))
@@ -154,7 +157,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
 
     def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] = {
       val nonDigipackGiftSubs = subscriptionsForAccountId(account.Id)(anyPlanReads).map(_.map(
-          _.filter(isNotDigipackGiftSub)
+          _.filter(isNotDigipackGiftSub) //Filter out digital pack gift subs where the current user is the purchaser rather than the recipient
       ))
       EitherT(nonDigipackGiftSubs)
         .map(AccountWithSubscriptions(account, _))

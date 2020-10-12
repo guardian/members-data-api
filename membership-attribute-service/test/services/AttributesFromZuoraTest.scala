@@ -122,6 +122,21 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         attributes must be_==("Zuora", Some(giftSubscriptionAttributes)).await
       }
 
+      "return the gift Digital Subscription with the latest expiry date if there is more than one" in new noAccounts {
+        val earliestDate = new LocalDate(2021, 12, 1)
+        val latestDate = earliestDate.plusMonths(3)
+        val giftSubscriptionAttributes = Attributes(testId, DigitalSubscriptionExpiryDate = Some(latestDate))
+        def giftSubscriptionsFromIdentityId(identityId: String) =
+          Future.successful(\/.right(List(
+            GiftSubscriptionsFromIdentityIdRecord("abc123", earliestDate),
+            GiftSubscriptionsFromIdentityIdRecord("abc123", latestDate),
+            GiftSubscriptionsFromIdentityIdRecord("abc123", earliestDate)
+          )))
+
+        val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, giftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
+        attributes must be_==("Zuora", Some(giftSubscriptionAttributes)).await
+      }
+
       "NOT return a gift Digital Subscription for the gifter" in new giftDigiSub {
         val termEndDate = new LocalDate(2021, 12, 1)
         val attributesWithNoDigitalSub = Attributes(testId)
