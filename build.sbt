@@ -76,6 +76,7 @@ val api = app("membership-attribute-service")
   .settings(libraryDependencies ++= apiDependencies)
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(
+    scalacOptions += "-Ypartial-unification",
     addCommandAlias("devrun", "run 9400"),
     addCommandAlias("batch-load", "runMain BatchLoader"),
     addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")
