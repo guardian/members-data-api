@@ -4,6 +4,7 @@ import actions._
 import com.gu.memsub
 import services.PaymentFailureAlerter._
 import com.gu.memsub._
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -21,12 +22,12 @@ import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
-import models.{AccountDetails, ApiError, ContactAndSubscription, DeliveryAddress}
+import models.{AccountDetails, ApiError, CancelledSubscription, ContactAndSubscription, DeliveryAddress}
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.libs.json.Json
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.libs.json.{Format, JsObject, Json}
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
@@ -314,6 +315,23 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
+  def cancelledSubscriptionsImpl(): Action[AnyContent] =
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+      implicit val tp = request.touchpoint
+      val emptyResponse = Ok("[]")
+      request.redirectAdvice.userId match {
+        case Some(identityId) =>
+          (for {
+            contact <- OptionT(EitherT(tp.contactRepo.get(identityId)))
+            subs <- OptionT(EitherT(tp.subService.recentlyCancelled(contact)).map(Option(_)))
+          } yield {
+            Ok(Json.toJson(subs.map(CancelledSubscription(_))))
+          }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
+
+        case None => Future.successful(unauthorized)
+      }
+    }
+
   private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = AuthAndBackendViaAuthLibAction.async { implicit request =>
     if(subscriptionNameOption.isEmpty){
       DeprecatedRequestLogger.logDeprecatedRequest(request)
@@ -346,6 +364,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
   def cancelSpecificSub(subscriptionName: String) = cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
   def decideCancellationEffectiveDate(subscriptionName: String) = getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+  def cancelledSubscriptions() = cancelledSubscriptionsImpl()
 
   @Deprecated def contributionUpdateAmount = updateContributionAmount(None)
   def updateAmountForSpecificContribution(subscriptionName: String) = updateContributionAmount(Some(memsub.Subscription.Name(subscriptionName)))
