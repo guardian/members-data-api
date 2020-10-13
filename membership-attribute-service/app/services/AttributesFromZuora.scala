@@ -57,10 +57,11 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
-    def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) = {
-      val subs = accountsWithSubscriptions.flatMap(_.subscriptions)
-      subs.exists(_.asDigipack.isDefined) || getSubsWhichIncludeDigitalPack(subs, LocalDate.now()).nonEmpty
-    }
+    def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) =
+      getSubsWhichIncludeDigitalPack(
+        accountsWithSubscriptions.flatMap(_.subscriptions),
+        LocalDate.now()
+      ).nonEmpty
 
     lazy val getAttrFromZuora =
       for {
