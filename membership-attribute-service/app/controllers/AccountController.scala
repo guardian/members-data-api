@@ -321,17 +321,14 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       val emptyResponse = Ok("[]")
       request.redirectAdvice.userId match {
         case Some(identityId) =>
-          OptionT(EitherT(tp.contactRepo.get(identityId))).fold(
-            contact => tp.subService.recentlyCancelled[SubscriptionPlan.AnyPlan](LocalDate.now())(contact),
-            Future.successful(List.empty)
-          ).flatMapF(_.map(\/.right[String, List[Subscription[AnyPlan]]](_))).run.map {
-            case -\/(error) =>
-              logger.error(s"Failed to get recently cancelled subscriptions for $identityId due to $error")
-              emptyResponse // returning empty list as we do not want it to error MMA
-            case \/-(subs) => Ok(Json.toJson(subs.map(CancelledSubscription(_))))
-          }
+          (for {
+            contact <- OptionT(EitherT(tp.contactRepo.get(identityId)))
+            subs <- OptionT(EitherT(tp.subService.recentlyCancelled(contact)).map(Option(_)))
+          } yield {
+            Ok(Json.toJson(subs.map(CancelledSubscription(_))))
+          }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
 
-        case None => Future.successful(emptyResponse)
+        case None => Future.successful(unauthorized)
       }
     }
 
