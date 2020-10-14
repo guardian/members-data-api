@@ -74,9 +74,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        maybeGiftAttributes = Option(giftSubscriptions)
+        maybeGiftAttributes = Some(giftSubscriptions.map(_.TermEndDate))
           .filter(_.nonEmpty)
-          .map(_.maxBy(_.TermEndDate.toDateTimeAtStartOfDay.getMillis).TermEndDate)
+          .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeRegularAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
@@ -198,7 +198,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
 
 object AttributesFromZuora {
   def mergeDigitalSubscriptionExpiryDate(regular: Option[ZuoraAttributes], gift: Option[ZuoraAttributes]) = {
-    val maybeExpiryDates = Option(
+    val maybeExpiryDates = Some(
       List(regular, gift).flatten.flatMap(_.DigitalSubscriptionExpiryDate)
     ).filter(_.nonEmpty)
 
