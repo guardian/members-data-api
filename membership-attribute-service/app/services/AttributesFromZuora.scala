@@ -74,9 +74,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        maybeGiftAttributes = giftSubscriptions
-          .sortWith((first, second) => first.TermEndDate.isAfter(second.TermEndDate)).headOption
-          .map(record => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(record.TermEndDate)))
+        maybeGiftAttributes = Option(giftSubscriptions)
+          .filter(_.nonEmpty)
+          .map(_.maxBy(_.TermEndDate.toDateTimeAtStartOfDay.getMillis).TermEndDate)
+          .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeRegularAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
         val maybeAttributes = mergeDigitalSubscriptionExpiryDate(maybeRegularAttributes, maybeGiftAttributes).map(ZuoraAttributes.asAttributes(_))
@@ -197,12 +198,15 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
 
 object AttributesFromZuora {
   def mergeDigitalSubscriptionExpiryDate(regular: Option[ZuoraAttributes], gift: Option[ZuoraAttributes]) = {
-    val mergedDigisubExpiry = List(regular.map(_.DigitalSubscriptionExpiryDate), gift.map(_.DigitalSubscriptionExpiryDate))
-      .flatten.flatten
-      .sortWith((first, second) => first.isAfter(second))
-      .headOption
+    val maybeExpiryDates = Option(
+      List(regular, gift).flatten.flatMap(_.DigitalSubscriptionExpiryDate)
+    ).filter(_.nonEmpty)
 
-    regular.map(_.copy(DigitalSubscriptionExpiryDate = mergedDigisubExpiry)).orElse(gift)
+    val maybeLatestDate = maybeExpiryDates.map(
+      _.maxBy(_.toDateTimeAtStartOfDay.getMillis)
+    )
+
+    regular.map(_.copy(DigitalSubscriptionExpiryDate = maybeLatestDate)).orElse(gift)
   }
 }
 
