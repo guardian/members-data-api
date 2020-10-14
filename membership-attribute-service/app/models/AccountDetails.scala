@@ -4,7 +4,8 @@ import java.time.format.TextStyle
 import java.util.Locale
 import scala.annotation.tailrec
 import com.gu.i18n.Country
-import com.gu.memsub.subsv2.{PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
@@ -40,13 +41,7 @@ object AccountDetails {
 
       val product = accountDetails.subscription.plan.product
 
-      val mmaCategory = product match {
-        case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
-        case _: Product.ZDigipack => "subscriptions"
-        case _: Product.Contribution => "contributions"
-        case _: Product.Membership => "membership"
-        case _ => product.name // fallback
-      }
+      val mmaCategory = mmaCategoryFrom(product)
 
       val endDate = paymentDetails.chargedThroughDate.getOrElse(paymentDetails.termEndDate)
 
@@ -202,5 +197,32 @@ object AccountDetails {
       else loop(next)
     }
     loop(start)
+  }
+  def mmaCategoryFrom(product: Product): String = product match {
+    case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
+    case _: Product.ZDigipack => "subscriptions"
+    case _: Product.Contribution => "contributions"
+    case _: Product.Membership => "membership"
+    case _ => product.name // fallback
+  }
+}
+
+object CancelledSubscription {
+  import AccountDetails._
+  def apply(subscription: Subscription[AnyPlan]): JsObject = {
+    GetCurrentPlans.bestCancelledPlan(subscription).map { plan =>
+      Json.obj(
+        "mmaCategory" -> mmaCategoryFrom(plan.product),
+        "tier" -> plan.productName,
+        "subscription" -> (Json.obj(
+          "subscriptionId" -> subscription.name.get,
+          "cancellationEffectiveDate" -> subscription.termEndDate,
+          "start" -> subscription.acceptanceDate,
+          "end" -> subscription.termEndDate,
+          "readerType" -> subscription.readerType.value,
+          "accountId" -> subscription.accountId.get,
+        )),
+      )
+    }.getOrElse(Json.obj())
   }
 }
