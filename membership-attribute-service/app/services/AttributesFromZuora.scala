@@ -7,10 +7,11 @@ import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, GiftSubscriptionsFromIdentityIdResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingWithLogstashFields
 import models._
 import org.joda.time.{DateTime, LocalDate}
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import scalaz.std.list._
@@ -18,6 +19,9 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
+import com.gu.memsub.subsv2.ReaderType.Gift
+import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
+import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
@@ -25,6 +29,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      identityId: String,
      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
+     giftSubscriptionsForIdentityId: String => Future[\/[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
      forDate: LocalDate = LocalDate.now(),
@@ -52,14 +57,31 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
+    def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) =
+      getSubsWhichIncludeDigitalPack(
+        accountsWithSubscriptions.flatMap(_.subscriptions),
+        LocalDate.now()
+      ).nonEmpty
+
     lazy val getAttrFromZuora =
       for {
         accounts <- EitherT(identityIdToAccounts(identityId))
-        subscriptions <- EitherT(if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId) else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil)))
-        maybeZAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+        subscriptions <- EitherT(
+          if (accounts.size > 0) getSubscriptions(accounts, subscriptionsForAccountId)
+          else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil))
+        )
+        giftSubscriptions <- EitherT(
+          if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
+          else giftSubscriptionsForIdentityId(identityId)
+        )
+        maybeGiftAttributes = Some(giftSubscriptions.map(_.TermEndDate))
+          .filter(_.nonEmpty)
+          .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
+          .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
+        maybeRegularAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
-        val maybeAttributes = maybeZAttributes.map(ZuoraAttributes.asAttributes(_))
-        attributesFromDynamo.foreach(maybeUpdateCache(maybeZAttributes, _, maybeAttributes))
+        val maybeAttributes = mergeDigitalSubscriptionExpiryDate(maybeRegularAttributes, maybeGiftAttributes).map(ZuoraAttributes.asAttributes(_))
+        attributesFromDynamo.foreach(maybeUpdateCache(maybeRegularAttributes, _, maybeAttributes))
         Future.successful("Zuora", maybeAttributes)
       }
 
@@ -136,10 +158,16 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
   ): Future[Disjunction[String, List[AccountWithSubscriptions]]] = {
 
-    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[Disjunction[String, AccountWithSubscriptions]] =
-      EitherT(subscriptionsForAccountId(account.Id)(anyPlanReads))
+    def isNotDigipackGiftSub(subscription: Subscription[AnyPlan]) = subscription.asDigipack.isEmpty || subscription.readerType != Gift
+
+    def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[\/[String, AccountWithSubscriptions]] = {
+      val nonDigipackGiftSubs = EitherT(subscriptionsForAccountId(account.Id)(anyPlanReads)).map(
+          _.filter(isNotDigipackGiftSub) //Filter out digital pack gift subs where the current user is the purchaser rather than the recipient
+      )
+      nonDigipackGiftSubs
         .map(AccountWithSubscriptions(account, _))
         .run
+    }
 
     getAccountsResponse
       .records
@@ -166,5 +194,19 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
   }
 
   def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] =  response.records.map(_.Id)
+}
+
+object AttributesFromZuora {
+  def mergeDigitalSubscriptionExpiryDate(regular: Option[ZuoraAttributes], gift: Option[ZuoraAttributes]) = {
+    val maybeExpiryDates = Some(
+      List(regular, gift).flatten.flatMap(_.DigitalSubscriptionExpiryDate)
+    ).filter(_.nonEmpty)
+
+    val maybeLatestDate = maybeExpiryDates.map(
+      _.maxBy(_.toDateTimeAtStartOfDay.getMillis)
+    )
+
+    regular.map(_.copy(DigitalSubscriptionExpiryDate = maybeLatestDate)).orElse(gift)
+  }
 }
 
