@@ -12,7 +12,8 @@ def buildInfoSettings = Seq(
     name,
     BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
     BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse(commitId()))
+    BuildInfoKey.constant("gitCommitId",
+                          Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId()))
   ),
   buildInfoPackage := "app",
   buildInfoOptions += BuildInfoOption.ToMap
@@ -24,11 +25,12 @@ val commonSettings = Seq(
   scalaVersion := "2.12.11",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
-    "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
+    "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
     "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
     Resolver.bintrayRepo("dwhjames", "maven"),
-    Resolver.sonatypeRepo("releases")),
-  sources in (Compile,doc) := Seq.empty,
+    Resolver.sonatypeRepo("releases")
+  ),
+  sources in (Compile, doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false,
   parallelExecution in Global := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
@@ -50,10 +52,8 @@ val buildDebSettings = Seq(
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
   packageDescription := """Members Data API""",
-
   riffRaffPackageType := (packageBin in Debian).value,
   riffRaffArtifactResources += (file("cloudformation/membership-attribute-service.yaml") -> "cloudformation/membership-attribute-service.yaml"),
-
   javaOptions in Universal ++= Seq(
     "-Dpidfile.path=/dev/null",
     "-J-XX:MaxRAMFraction=2",
@@ -65,12 +65,15 @@ val buildDebSettings = Seq(
   )
 )
 
-def lib(name: String) = Project(name, file(name))
-  .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging).settings(commonSettings)
+def lib(name: String) =
+  Project(name, file(name))
+    .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging)
+    .settings(commonSettings)
 
-def app(name: String) = lib(name)
-  .settings(dynamoDBLocalSettings)
-  .settings(buildDebSettings)
+def app(name: String) =
+  lib(name)
+    .settings(dynamoDBLocalSettings)
+    .settings(buildDebSettings)
 
 val api = app("membership-attribute-service")
   .settings(libraryDependencies ++= apiDependencies)
