@@ -26,7 +26,7 @@ import org.joda.time.LocalDate
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, Request}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
@@ -469,14 +469,11 @@ class AccountController(commonActions: CommonActions,
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
-      val updateForm = Form { single("newPaymentAmount" -> bigDecimal(5, 2)) }
       val tp = request.touchpoint
       val maybeUserId = request.user.map(_.id)
       logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
       (for {
-        newPrice <- EitherT(
-          Future.successful(
-            updateForm.bindFromRequest().value \/> "no new payment amount submitted with request"))
+        newPrice <- EitherT.fromEither(Future.successful(validateContributionAmountUpdateForm))
         user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
         sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
         subscription <- EitherT(
@@ -507,6 +504,15 @@ class AccountController(commonActions: CommonActions,
         }
       }
     }
+
+  private[controllers] def validateContributionAmountUpdateForm(
+      implicit request: Request[AnyContent]): Either[String, BigDecimal] =
+    for {
+      amount <- Form(
+        single("newPaymentAmount" -> bigDecimal(5, 2))
+      ).bindFromRequest().value.toRight("no new payment amount submitted with request")
+      validAmount <- Either.cond(amount >= 2, amount, s"New payment amount '$amount' is too small")
+    } yield validAmount
 
   def cancelSpecificSub(subscriptionName: String) =
     cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
