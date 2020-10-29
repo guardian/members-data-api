@@ -506,13 +506,17 @@ class AccountController(commonActions: CommonActions,
     }
 
   private[controllers] def validateContributionAmountUpdateForm(
-      implicit request: Request[AnyContent]): Either[String, BigDecimal] =
+      implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
+    val minAmount = 1
     for {
       amount <- Form(
         single("newPaymentAmount" -> bigDecimal(5, 2))
       ).bindFromRequest().value.toRight("no new payment amount submitted with request")
-      validAmount <- Either.cond(amount >= 2, amount, s"New payment amount '$amount' is too small")
+      validAmount <- Either.cond(amount >= minAmount,
+                                 amount,
+                                 s"New payment amount '$amount' is too small")
     } yield validAmount
+  }
 
   def cancelSpecificSub(subscriptionName: String) =
     cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))

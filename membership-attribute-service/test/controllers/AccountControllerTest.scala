@@ -17,8 +17,8 @@ class AccountControllerTest extends Specification with Mockito {
 
     "succeed when given value is valid" in {
       val result = controller.validateContributionAmountUpdateForm(
-        request.withFormUrlEncodedBody("newPaymentAmount" -> "2"))
-      result must beRight(2)
+        request.withFormUrlEncodedBody("newPaymentAmount" -> "1"))
+      result must beRight(1)
     }
 
     "fail when no given value" in {
