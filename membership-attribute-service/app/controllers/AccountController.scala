@@ -13,7 +13,7 @@ import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{PaidChargeList, PaidSubscriptionPlan, Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import com.gu.salesforce.SimpleContactRepository
+import com.gu.salesforce.{Contact, SimpleContactRepository}
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
@@ -28,7 +28,7 @@ import models.{AccountDetails, ApiError, CancelledSubscription, ContactAndSubscr
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.libs.json.{Format, JsObject, Json}
+import play.api.libs.json.{Format, JsObject, Json, __}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -36,6 +36,7 @@ import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+import utils.OptionEither.FutureEither
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -238,38 +239,53 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     }
   }
 
-  def getGiftSubscription(
-      userId: String,
-      subscriptionService: SubscriptionService[Future],
-      zuoraRestService: ZuoraRestService[Future]
-  ): OptionT[OptionEither.FutureEither, Subscription[AnyPlan]] = {
-    for {
+  def checkForGiftSubscription(
+    userId: String,
+    subscriptionService: SubscriptionService[Future],
+    zuoraRestService: ZuoraRestService[Future],
+    nonGiftSubs: List[ContactAndSubscription],
+    contact: Contact
+  ): OptionT[FutureEither, List[ContactAndSubscription]] = {
+    val giftSub = for {
       records <- OptionEither.liftOption(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId))
       result <- if (records.isEmpty)
         OptionEither.liftFutureEither[Subscription[AnyPlan]](None)
       else
         OptionEither.liftFutureOption(subscriptionService.get[AnyPlan](Name(records.head.Name), isActiveToday = true))
     } yield result
+    val fullList = giftSub
+      .map(sub => ContactAndSubscription(contact, sub) :: nonGiftSubs)
+      .getOrElse(nonGiftSubs)
+    OptionEither.liftOption(fullList.run)
   }
 
   def allCurrentSubscriptions(
     contactRepo: SimpleContactRepository,
-    subService: SubscriptionService[Future]
+    subService: SubscriptionService[Future],
+    zuoraRestService: ZuoraRestService[Future]
   )(
       maybeUserId: Option[String],
       filter: OptionalSubscriptionsFilter
   ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = for {
-      user <- OptionEither.liftFutureEither(maybeUserId)
-      contact <- OptionEither(contactRepo.get(user))
-      contactAndSubscriptions <-
+    userId <- OptionEither.liftFutureEither(maybeUserId)
+    contact <- OptionEither(contactRepo.get(userId))
+    nonGiftContactAndSubscriptions <-
         OptionEither.liftEitherOption(
           subService.current[SubscriptionPlan.AnyPlan](contact) map {
             _ map { subscription =>
               ContactAndSubscription(contact, subscription)
             }
           }
-        ) // TODO are we happy with an empty list in case of error ?!?!
-      filteredIfApplicable = filter match {
+        )
+
+    contactAndSubscriptions <- checkForGiftSubscription(
+        userId,
+        subService,
+        zuoraRestService,
+        nonGiftContactAndSubscriptions,
+        contact
+      )
+    filteredIfApplicable = filter match {
         case FilterBySubName(subscriptionName) =>
           contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
         case FilterByProductType(productType) =>
@@ -292,7 +308,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
 
     logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
     (for {
-      contactAndSubscription <- ListEither.fromOptionEither(allCurrentSubscriptions(tp.contactRepo, tp.subService)(maybeUserId, filter))
+      contactAndSubscription <- ListEither.fromOptionEither(allCurrentSubscriptions(tp.contactRepo, tp.subService, tp.zuoraRestService)(maybeUserId, filter))
       freeOrPaidSub = contactAndSubscription.subscription.plan.charges match {
         case _: PaidChargeList => \/.right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
