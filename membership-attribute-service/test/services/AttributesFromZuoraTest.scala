@@ -116,7 +116,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val termEndDate = new LocalDate(2021, 12, 1)
         val giftSubscriptionAttributes = Attributes(testId, DigitalSubscriptionExpiryDate = Some(termEndDate))
         def giftSubscriptionsFromIdentityId(identityId: String) =
-          Future.successful(\/.right(List(GiftSubscriptionsFromIdentityIdRecord("abc123", termEndDate))))
+          Future.successful(\/.right(List(GiftSubscriptionsFromIdentityIdRecord("name", "abc123", termEndDate))))
 
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, giftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)
         attributes must be_==("Zuora", Some(giftSubscriptionAttributes)).await
@@ -128,9 +128,9 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         val giftSubscriptionAttributes = Attributes(testId, DigitalSubscriptionExpiryDate = Some(latestDate))
         def giftSubscriptionsFromIdentityId(identityId: String) =
           Future.successful(\/.right(List(
-            GiftSubscriptionsFromIdentityIdRecord("abc123", earliestDate),
-            GiftSubscriptionsFromIdentityIdRecord("abc123", latestDate),
-            GiftSubscriptionsFromIdentityIdRecord("abc123", earliestDate)
+            GiftSubscriptionsFromIdentityIdRecord("name", "abc123", earliestDate),
+            GiftSubscriptionsFromIdentityIdRecord("name", "abc123", latestDate),
+            GiftSubscriptionsFromIdentityIdRecord("name", "abc123", earliestDate)
           )))
 
         val attributes: Future[(String, Option[Attributes])] = attributesFromZuora.getAttributesFromZuoraWithCacheFallback(testId, identityIdToAccountIds, subscriptionFromAccountId, giftSubscriptionsFromIdentityId, paymentMethodResponseNoFailures, mockDynamoAttributesService, referenceDate)

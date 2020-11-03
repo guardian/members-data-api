@@ -2,6 +2,7 @@ package controllers
 
 import actions._
 import com.gu.memsub
+import com.gu.memsub.Subscription.Name
 import services.PaymentFailureAlerter._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
@@ -16,6 +17,7 @@ import com.gu.salesforce.SimpleContactRepository
 import com.gu.services.model.PaymentDetails
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
+import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
@@ -234,6 +236,20 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       case _: Product.ZDigipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription
       case _ => requestedProductType == product.name // fallback
     }
+  }
+
+  def getGiftSubscription(
+      userId: String,
+      subscriptionService: SubscriptionService[Future],
+      zuoraRestService: ZuoraRestService[Future]
+  ): OptionT[OptionEither.FutureEither, Subscription[AnyPlan]] = {
+    for {
+      records <- OptionEither.liftOption(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId))
+      result <- if (records.isEmpty)
+        OptionEither.liftFutureEither[Subscription[AnyPlan]](None)
+      else
+        OptionEither.liftFutureOption(subscriptionService.get[AnyPlan](Name(records.head.Name), isActiveToday = true))
+    } yield result
   }
 
   def allCurrentSubscriptions(
