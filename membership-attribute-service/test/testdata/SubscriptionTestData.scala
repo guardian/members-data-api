@@ -52,6 +52,7 @@ trait SubscriptionTestData {
       hasPendingFreePlan = false,
       plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
       readerType = ReaderType.Direct,
+      gifteeIdentityId = None,
       autoRenew = true
     )
   }

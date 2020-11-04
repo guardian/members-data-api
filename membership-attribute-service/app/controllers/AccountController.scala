@@ -5,6 +5,7 @@ import com.gu.memsub
 import com.gu.memsub.Subscription.Name
 import services.PaymentFailureAlerter._
 import com.gu.memsub._
+import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
@@ -15,6 +16,7 @@ import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.salesforce.{Contact, SimpleContactRepository}
 import com.gu.services.model.PaymentDetails
+import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraRestService
@@ -301,6 +303,37 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     } yield filteredIfApplicable
 
+  def getGiftPaymentDetails(giftSub: Subscription[SubscriptionPlan.Paid]) = PaymentDetails(
+    pendingCancellation = giftSub.isCancelled,
+    chargedThroughDate = None,
+    startDate = giftSub.startDate,
+    customerAcceptanceDate = giftSub.startDate,
+    nextPaymentPrice = None,
+    lastPaymentDate = None,
+    nextPaymentDate = None,
+    termEndDate = giftSub.termEndDate,
+    pendingAmendment = false,
+    paymentMethod = None,
+    plan = PersonalPlan(
+      name = giftSub.plan.productName,
+      price = Price(0f, giftSub.plan.charges.currencies.head),
+      interval = BillingPeriod.Year.noun // is this correct? What should this mean? Should it be optional?
+    ),
+    subscriberId = giftSub.name.get,
+    remainingTrialLength = 0
+  )
+
+  def getPaymentDetailsForSub(
+    maybeUserId: Option[String],
+    freeOrPaidSub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
+    paymentService: PaymentService
+  ): Future[PaymentDetails] = freeOrPaidSub match {
+      case \/-(paidSub) if paidSub.gifteeIdentityId != maybeUserId =>
+        paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some(""))
+      case \/-(giftSub) => Future.successful(getGiftPaymentDetails(giftSub))
+      case -\/(freeSub) => Future.successful(PaymentDetails(freeSub))
+    }
+
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
@@ -313,11 +346,29 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         case _: PaidChargeList => \/.right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => \/.left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
       }
-      paymentDetails <- ListEither.liftList(tp.paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some("")).map(\/.right).recover { case x => \/.left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.name}. Reason: $x") })
-      upToDatePaymentDetails <- ListEither.liftList(getUpToDatePaymentDetailsFromStripe(contactAndSubscription.subscription.accountId, paymentDetails).map(\/.right).recover { case x => \/.left(s"error getting up-to-date card details for payment method of account: ${contactAndSubscription.subscription.accountId}. Reason: $x") })
-      accountSummary <- ListEither.liftList(tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).recover { case x => \/.left(s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} with account id ${contactAndSubscription.subscription.accountId}. Reason: $x") })
-      effectiveCancellationDate <- ListEither.liftList(tp.zuoraRestService.getCancellationEffectiveDate(contactAndSubscription.subscription.name).recover { case x => \/.left(s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} with account id ${contactAndSubscription.subscription.accountId}. Reason: $x") })
-      stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry).flatMap(tp.stripeServicesByPaymentGateway.get).getOrElse(tp.ukStripeService)
+      paymentDetails <- ListEither.liftList(
+        getPaymentDetailsForSub(maybeUserId, freeOrPaidSub, tp.paymentService).map(\/.right).recover {
+          case x => \/.left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
+        }
+      )
+      upToDatePaymentDetails <- ListEither.liftList(
+        getUpToDatePaymentDetailsFromStripe(contactAndSubscription.subscription.accountId, paymentDetails).map(\/.right).recover {
+          case x => \/.left(s"error getting up-to-date card details for payment method of account: " +
+            s"${contactAndSubscription.subscription.accountId}. Reason: $x")
+        })
+      accountSummary <- ListEither.liftList(
+        tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).recover {
+          case x => \/.left(s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
+            s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x")
+        })
+      effectiveCancellationDate <- ListEither.liftList(
+        tp.zuoraRestService.getCancellationEffectiveDate(contactAndSubscription.subscription.name).recover {
+          case x => \/.left(s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
+            s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x")
+        })
+      stripeService = accountSummary.billToContact.country.map(RegionalStripeGateways.getGatewayForCountry)
+        .flatMap(tp.stripeServicesByPaymentGateway.get)
+        .getOrElse(tp.ukStripeService)
       alertText <- ListEither.liftEitherList(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield AccountDetails(
@@ -383,14 +434,13 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       oldPrice = subscription.plan.charges.price.prices.head.amount
       reasonForChange = s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
       result <- EitherT(tp.zuoraRestService.updateChargeAmount(subscription.name, subscription.plan.charges.subRatePlanChargeId, subscription.plan.id, newPrice.toDouble, reasonForChange, applyFromDate)).leftMap(message => s"Error while updating contribution amount: $message")
-    } yield result).run map { _ match {
+    } yield result).run map {
       case -\/(message) =>
         SafeLogger.error(scrub"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
         InternalServerError(message)
       case \/-(()) =>
         logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
         Ok("Success")
-    }
     }
   }
 
