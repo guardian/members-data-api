@@ -30,7 +30,7 @@ import models.{AccountDetails, ApiError, CancelledSubscription, ContactAndSubscr
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.libs.json.{Format, JsObject, Json, __}
+import play.api.libs.json.{Json}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -317,7 +317,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     plan = PersonalPlan(
       name = giftSub.plan.productName,
       price = Price(0f, giftSub.plan.charges.currencies.head),
-      interval = BillingPeriod.Year.noun // is this correct? What should this mean? Should it be optional?
+      interval = BillingPeriod.Year.noun
     ),
     subscriberId = giftSub.name.get,
     remainingTrialLength = 0
