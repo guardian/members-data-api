@@ -23,6 +23,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
+import controllers.PaymentDetailMapper.paymentDetailsForSub
 import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
 import models.ApiErrors._
@@ -30,7 +31,7 @@ import models.{AccountDetails, ApiError, CancelledSubscription, ContactAndSubscr
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.libs.json.{Json}
+import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -303,37 +304,6 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       }
     } yield filteredIfApplicable
 
-  def getGiftPaymentDetails(giftSub: Subscription[SubscriptionPlan.Paid]) = PaymentDetails(
-    pendingCancellation = giftSub.isCancelled,
-    chargedThroughDate = None,
-    startDate = giftSub.startDate,
-    customerAcceptanceDate = giftSub.startDate,
-    nextPaymentPrice = None,
-    lastPaymentDate = None,
-    nextPaymentDate = None,
-    termEndDate = giftSub.termEndDate,
-    pendingAmendment = false,
-    paymentMethod = None,
-    plan = PersonalPlan(
-      name = giftSub.plan.productName,
-      price = Price(0f, giftSub.plan.charges.currencies.head),
-      interval = BillingPeriod.Year.noun
-    ),
-    subscriberId = giftSub.name.get,
-    remainingTrialLength = 0
-  )
-
-  def getPaymentDetailsForSub(
-    maybeUserId: Option[String],
-    freeOrPaidSub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
-    paymentService: PaymentService
-  ): Future[PaymentDetails] = freeOrPaidSub match {
-      case \/-(paidSub) if paidSub.gifteeIdentityId != maybeUserId =>
-        paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some(""))
-      case \/-(giftSub) => Future.successful(getGiftPaymentDetails(giftSub))
-      case -\/(freeSub) => Future.successful(PaymentDetails(freeSub))
-    }
-
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
     implicit val tp = request.touchpoint
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get)
@@ -347,7 +317,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         case _ => \/.left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
       }
       paymentDetails <- ListEither.liftList(
-        getPaymentDetailsForSub(maybeUserId, freeOrPaidSub, tp.paymentService).map(\/.right).recover {
+        paymentDetailsForSub(maybeUserId, freeOrPaidSub, tp.paymentService).map(\/.right).recover {
           case x => \/.left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
         }
       )
