@@ -18,6 +18,11 @@ object OptionEither {
   def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
     apply(Future.successful(\/.right[String,Option[A]](x)))
 
+  def liftFutureOption[A](future: Future[Option[A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
+    apply(future map { value: Option[A] =>
+      \/.right[String, Option[A]](value)
+    })
+
   def liftEitherOption[A](future: Future[A])(implicit ex: ExecutionContext): OptionT[FutureEither, A] = {
     apply(future map { value: A =>
       \/.right[String, Option[A]](Some(value))

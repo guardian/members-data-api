@@ -58,7 +58,7 @@ class AttributeController(
         identityId = identityId,
         identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
         subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-        giftSubscriptionsForIdentityId = request.touchpoint.zuoraRestService.getGiftSubscriptionsFromIdentityId,
+        giftSubscriptionsForIdentityId = request.touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
         dynamoAttributeService = dynamoService,
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get)
       )

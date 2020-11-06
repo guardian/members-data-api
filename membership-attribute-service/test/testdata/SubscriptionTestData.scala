@@ -52,12 +52,14 @@ trait SubscriptionTestData {
       hasPendingFreePlan = false,
       plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
       readerType = ReaderType.Direct,
+      gifteeIdentityId = None,
       autoRenew = true
     )
   }
 
   val digipack = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
-  val digipackGift = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year))).copy(readerType = Gift)
+  val digipackGift = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
+    .copy(readerType = Gift, gifteeIdentityId = Some("12345"))
   val guardianWeekly = toSubscription(false)(NonEmptyList(guardianWeeklyPlan(referenceDate, referenceDate + 1.year)))
   val sunday = toSubscription(false)(NonEmptyList(paperPlan(referenceDate, referenceDate + 1.year)))
   val sundayPlus = toSubscription(false)(NonEmptyList(paperPlusPlan(referenceDate, referenceDate + 1.year)))
