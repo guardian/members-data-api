@@ -59,6 +59,8 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsync, table: String)(implic
       scanamoSetOpt('RecurringContributionPaymentPlan -> attributes.RecurringContributionPaymentPlan),
       scanamoSetOpt('MembershipJoinDate -> attributes.MembershipJoinDate),
       scanamoSetOpt('DigitalSubscriptionExpiryDate -> attributes.DigitalSubscriptionExpiryDate),
+      scanamoSetOpt('PaperSubscriptionExpiryDate -> attributes.PaperSubscriptionExpiryDate),
+      scanamoSetOpt('GuardianWeeklySubscriptionExpiryDate -> attributes.GuardianWeeklySubscriptionExpiryDate),
       Some(scanamoSet('TTLTimestamp, attributes.TTLTimestamp))
     ).flatten match {
       case first :: remaining =>
