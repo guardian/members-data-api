@@ -100,6 +100,8 @@ object ZuoraAttributes {
 }
 
 case class DynamoAttributes(
+  // this is the dynamo READ model, the WRITE model is in ScanamoAttributeService
+  // if you update this you must make sure you are writing the relevant properties too!
   UserId: String,
   Tier: Option[String] = None,
   RecurringContributionPaymentPlan: Option[String] = None,
