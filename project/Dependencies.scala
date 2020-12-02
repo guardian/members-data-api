@@ -3,12 +3,12 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientVersion = "1.11.286"
+  val awsClientVersion = "1.11.909"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.195"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.235"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.7"
-  val postgres = "org.postgresql" % "postgresql" % "42.2.1"
+  val postgres = "org.postgresql" % "postgresql" % "42.2.18"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
@@ -43,7 +43,8 @@ object Dependencies {
     kinesis,
     logstash,
     anorm,
-    "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion
+    "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.10.6",
   )
 
 }
