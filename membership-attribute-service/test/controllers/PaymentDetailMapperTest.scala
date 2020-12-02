@@ -21,7 +21,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
     "recognise a giftee's gift subscription" in {
       val mockPaymentService = mock[PaymentService]
       PaymentDetailMapper.paymentDetailsForSub(
-        Some("12345"),
+        isGiftRedemption = true,
         \/-(digipackGift),
         mockPaymentService
       ).map(
@@ -41,7 +41,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
       )
 
       PaymentDetailMapper.paymentDetailsForSub(
-        Some("6789"),
+        isGiftRedemption = false,
         \/-(digipack),
         mockPaymentService
       ).map(
@@ -61,7 +61,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
       )
 
       PaymentDetailMapper.paymentDetailsForSub(
-        Some("12345"),
+        isGiftRedemption = false,
         \/-(digipack),
         mockPaymentService
       ).map(
@@ -74,7 +74,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
       val expectedPaymentDetails = PaymentDetails(friend)
 
       PaymentDetailMapper.paymentDetailsForSub(
-        Some("12345"),
+        isGiftRedemption = false,
         -\/(friend),
         mockPaymentService
       ).map(

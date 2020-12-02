@@ -31,7 +31,7 @@ import models._
 import org.joda.time.LocalDate
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, __}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, Request}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
@@ -300,12 +300,28 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       result <- if (records.isEmpty)
         OptionEither.liftFutureEither[Subscription[AnyPlan]](None)
       else
-        OptionEither.liftFutureOption(subscriptionService.get[AnyPlan](Name(records.head.Name), isActiveToday = true))
+        reuseAlreadyFetchedSubscriptionIfAvailable(records, nonGiftSubs, subscriptionService)
     } yield result
     val fullList = giftSub
-      .map(sub => ContactAndSubscription(contact, sub) :: nonGiftSubs)
+      .map(sub => ContactAndSubscription(contact, sub, isGiftRedemption = true) :: nonGiftSubs)
       .getOrElse(nonGiftSubs)
     OptionEither.liftOption(fullList.run)
+  }
+
+  def reuseAlreadyFetchedSubscriptionIfAvailable(
+    giftRecords:  List[ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord],
+    nonGiftSubs: List[ContactAndSubscription],
+    subscriptionService: SubscriptionService[Future],
+  ) = {
+    val subscriptionName = Name(giftRecords.head.Name)
+    OptionEither.liftFutureOption(
+      // If the current user is both the gifter and the giftee we will have already retrieved their
+      // subscription so we can reuse it and avoid a call to Zuora
+      nonGiftSubs.find(_.subscription.name == subscriptionName) match {
+        case Some(contactAndSubscription) => Future.successful(Some(contactAndSubscription.subscription))
+        case _ => subscriptionService.get[AnyPlan](subscriptionName, isActiveToday = true)
+      }
+    )
   }
 
   def allCurrentSubscriptions(
@@ -322,7 +338,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         OptionEither.liftEitherOption(
           subService.current[SubscriptionPlan.AnyPlan](contact) map {
             _ map { subscription =>
-              ContactAndSubscription(contact, subscription)
+              ContactAndSubscription(contact, subscription, isGiftRedemption = false)
             }
           }
         )
@@ -364,7 +380,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
         case _ => \/.left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
       }
       paymentDetails <- ListEither.liftList(
-        paymentDetailsForSub(maybeUserId, freeOrPaidSub, tp.paymentService).map(\/.right).recover {
+        paymentDetailsForSub(contactAndSubscription.isGiftRedemption, freeOrPaidSub, tp.paymentService).map(\/.right).recover {
           case x => \/.left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
         }
       )
