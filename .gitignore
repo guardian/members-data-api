@@ -22,3 +22,4 @@ dynamodb-local
 
 api/conf/keys.conf
 api/public/
+.bsp

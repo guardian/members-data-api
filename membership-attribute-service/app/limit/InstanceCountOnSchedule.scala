@@ -26,7 +26,7 @@ class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, syst
       .getAutoScalingGroups
       .asScala
       .toList
-      .filter(_.getAutoScalingGroupName.startsWith(s"Memb-Attributes-$stage"))
+      .filter(_.getAutoScalingGroupName.startsWith(s"Memb-Attributes-${if (stage == "UAT") "CODE" else stage}"))
       .flatMap(_.getInstances.asScala)
       .filter(_.getHealthStatus == "Healthy")
       .filter(_.getLifecycleState == "InService")
@@ -37,12 +37,12 @@ class InstanceCountOnSchedule(stage: String)(implicit ec: ExecutionContext, syst
       Future(getCurrentNumberOfInstances(stage))
         .map { count =>
           if (count < 1) {
-            logger.error(s"There should be at least one healthy in-service instance. Failing to default value $defaultInstanceCount")
+            logger.error(s"There should be at least one healthy in-service instance in $stage. Failing to default value $defaultInstanceCount")
             defaultInstanceCount
           } else count
         }
         .recover { case e =>
-          logger.error(s"Failed to determine AWS instance count. Failing to default value $defaultInstanceCount", e)
+          logger.error(s"Failed to determine AWS instance count in $stage. Failing to default value $defaultInstanceCount", e)
           defaultInstanceCount
         }
     }
