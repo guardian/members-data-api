@@ -296,12 +296,8 @@ Resources:
     Properties:
       VpcId:
         Ref: VpcId
-      GroupDescription: Open up HTTP access to load balancer, SSH to office
+      GroupDescription: Open up HTTP access to load balancer
       SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: '22'
-        ToPort: '22'
-        CidrIp: 77.91.248.0/21
       - IpProtocol: tcp
         FromPort: '9000'
         ToPort: '9000'
