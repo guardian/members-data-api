@@ -153,6 +153,34 @@ Resources:
             Effect: Allow
       ManagedPolicyArns:
       - !Sub arn:aws:iam::${AWS::AccountId}:policy/guardian-ec2-role-for-ssm
+
+  SSMRunCommandPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ssm-run-command-policy
+      PolicyDocument:
+        Statement:
+          # minimal policy to allow running commands via ssm
+          - Effect: Allow
+            Resource: "*"
+            Action:
+              - ec2messages:AcknowledgeMessage
+              - ec2messages:DeleteMessage
+              - ec2messages:FailMessage
+              - ec2messages:GetEndpoint
+              - ec2messages:GetMessages
+              - ec2messages:SendReply
+              - ssm:UpdateInstanceInformation
+              - ssm:ListInstanceAssociations
+              - ssm:DescribeInstanceProperties
+              - ssm:DescribeDocumentParameters
+              - ssmmessages:CreateControlChannel
+              - ssmmessages:CreateDataChannel
+              - ssmmessages:OpenControlChannel
+              - ssmmessages:OpenDataChannel
+      Roles:
+        - !Ref MembershipRole
+
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
