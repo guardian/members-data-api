@@ -263,3 +263,23 @@ Responses:
       "userId": "123",
       "membershipJoinDate": "2017-04-04"
     }
+    
+## SSH into instances
+
+`membership-attribute-service` is installed as systemd service via `.deb` package.
+
+Application instances allow SSH via SSM tunnel, not via port 22,
+ 
+1. Get fresh Janus credentials
+1. Find instance `prism -f instanceName attribute code`
+1. 1ssm ssh -x -i i-123456 --profile membership`
+
+| Description           | Command |
+| --------------------- | ------------------------------------------------------------------------ |
+| application directory | `/usr/share/membership-attribute-service`                                |
+| service config        | `/lib/systemd/system/membership-attribute-service.service`               |
+| application logs      | `/var/log/membership-attribute-service/membership-attribute-service.log` |
+| stdout/stderr logs    | `journalctl -u membership-attribute-service`                             |
+| service status        | `systemctl status membership-attribute-service`                          |
+| healthcheck           | `curl http://127.0.0.1:9000/healthcheck`                                 |
+
