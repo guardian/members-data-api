@@ -20,6 +20,7 @@ import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.subsv2.ReaderType.Gift
+import monitoring.ExpensiveMetrics
 import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
 import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
@@ -35,10 +36,13 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      forDate: LocalDate = LocalDate.now(),
   ): Future[(String, Option[Attributes])] = {
 
+    lazy val expensiveMetrics = new ExpensiveMetrics("AttributesFromZuora")
+
     def maybeUpdateCache(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
       def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         log.info(s"Attempting to update cache for $identityId ...")
+        expensiveMetrics.countRequest("cache-update")
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry) onComplete {
           case Success(_) =>
             log.info(s"updated cache for $identityId")
@@ -88,6 +92,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
 
     lazy val fallbackToCache = (zuoraError: String) => {
       SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $zuoraError so falling back on cache.")
+      expensiveMetrics.countRequest("cache-fallback")
       attributesFromDynamo.map(maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))))
     }
 
