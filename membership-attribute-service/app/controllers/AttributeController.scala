@@ -160,6 +160,7 @@ class AttributeController(
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
                 val attr = enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
+                log.logger.info(s"${user.id} does not have zuora attributes - $attr - found via $fromWhere")
                 Ok(Json.toJson(attr))
               case _ =>
                 onNotFound

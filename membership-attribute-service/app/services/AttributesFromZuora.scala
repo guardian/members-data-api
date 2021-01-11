@@ -74,15 +74,16 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        maybeGiftAttributes = Some(giftSubscriptions.map(_.TermEndDate))
+        maybeGifteeAttributes = Some(giftSubscriptions.map(_.TermEndDate))
           .filter(_.nonEmpty)
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
-        maybeRegularAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+        maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
-        val maybeAttributes = mergeDigitalSubscriptionExpiryDate(maybeRegularAttributes, maybeGiftAttributes).map(ZuoraAttributes.asAttributes(_))
-        attributesFromDynamo.foreach(maybeUpdateCache(maybeRegularAttributes, _, maybeAttributes))
-        Future.successful("Zuora", maybeAttributes)
+        val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
+        val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
+        attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
+        Future.successful("Zuora", maybeAttributesFromZuora)
       }
 
     lazy val fallbackToCache = (zuoraError: String) => {
