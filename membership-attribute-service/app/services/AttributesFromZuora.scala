@@ -20,6 +20,7 @@ import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.subsv2.ReaderType.Gift
+import monitoring.ExpensiveMetrics
 import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
 import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
@@ -35,10 +36,13 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      forDate: LocalDate = LocalDate.now(),
   ): Future[(String, Option[Attributes])] = {
 
+    lazy val expensiveMetrics = new ExpensiveMetrics("AttributesFromZuora")
+
     def maybeUpdateCache(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
       def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
       if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         log.info(s"Attempting to update cache for $identityId ...")
+        expensiveMetrics.countRequest("cache-update")
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry) onComplete {
           case Success(_) =>
             log.info(s"updated cache for $identityId")
@@ -74,19 +78,21 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
-        maybeGiftAttributes = Some(giftSubscriptions.map(_.TermEndDate))
+        maybeGifteeAttributes = Some(giftSubscriptions.map(_.TermEndDate))
           .filter(_.nonEmpty)
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
-        maybeRegularAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+        maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
       } yield {
-        val maybeAttributes = mergeDigitalSubscriptionExpiryDate(maybeRegularAttributes, maybeGiftAttributes).map(ZuoraAttributes.asAttributes(_))
-        attributesFromDynamo.foreach(maybeUpdateCache(maybeRegularAttributes, _, maybeAttributes))
-        Future.successful("Zuora", maybeAttributes)
+        val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
+        val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
+        attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
+        Future.successful("Zuora", maybeAttributesFromZuora)
       }
 
     lazy val fallbackToCache = (zuoraError: String) => {
       SafeLogger.error(scrub"Failed to retrieve attributes from Zuora for $identityId because $zuoraError so falling back on cache.")
+      expensiveMetrics.countRequest("cache-fallback")
       attributesFromDynamo.map(maybeDynamoAttributes => ("Dynamo", maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_))))
     }
 
