@@ -26,6 +26,9 @@ import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
+
+  lazy val expensiveMetrics = new ExpensiveMetrics("AttributesFromZuora")
+
   def getAttributesFromZuoraWithCacheFallback(
      identityId: String,
      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
@@ -35,8 +38,6 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      dynamoAttributeService: AttributeService,
      forDate: LocalDate = LocalDate.now(),
   ): Future[(String, Option[Attributes])] = {
-
-    lazy val expensiveMetrics = new ExpensiveMetrics("AttributesFromZuora")
 
     def maybeUpdateCache(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
       def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
