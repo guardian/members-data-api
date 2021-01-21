@@ -7,7 +7,7 @@ deployments:
     parameters:
       templatePath: membership-attribute-service.yaml
       amiTags:
-        Recipe: xenial-membership
+        Recipe: bionic-membership-ARM
         AmigoStage: PROD
       amiEncrypted: true
       amiParameter: AmiId
