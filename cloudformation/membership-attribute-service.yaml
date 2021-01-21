@@ -12,6 +12,7 @@ Parameters:
     AllowedValues:
     - t2.small
     - t3.small
+    - t4g.small
     ConstraintDescription: must be a valid EC2 instance type.
   VpcId:
     Description: ID of the VPC onto which to launch the application
