@@ -3,6 +3,7 @@ package controllers
 import actions._
 import com.gu.memsub
 import com.gu.memsub.Subscription.Name
+import services._
 import services.PaymentFailureAlerter._
 import com.gu.memsub._
 import com.gu.memsub.services.PaymentService
@@ -73,7 +74,7 @@ object CancellationEffectiveDate {
   implicit val cancellationEffectiveDateFormat = Json.format[CancellationEffectiveDate]
 }
 
-class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents)
+class AccountController(commonActions: CommonActions, override val controllerComponents: ControllerComponents, contributionsStoreDatabaseService: ContributionsStoreDatabaseService)
     extends BaseController
     with LazyLogging {
   import AccountHelpers._
@@ -382,6 +383,21 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           contactAndSubscriptions
       }
     } yield filteredIfApplicable
+
+  def reminders = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async {
+    implicit request =>
+      request.redirectAdvice.userId match {
+        case Some(userId) =>
+          contributionsStoreDatabaseService.getSupportReminders(userId).map {
+            case -\/(databaseError) =>
+              log.error(databaseError)
+              InternalServerError
+            case \/-(supportReminders) =>
+              Ok(Json.toJson(supportReminders))
+          }
+        case None => Future.successful(InternalServerError)
+      }
+  }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async {
     implicit request =>

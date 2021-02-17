@@ -23,3 +23,9 @@ dynamodb-local
 api/conf/keys.conf
 api/public/
 .bsp
+
+.bloop/
+.metals/
+.vscode/
+project/.bloop/
+project/metals.sbt

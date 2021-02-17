@@ -70,7 +70,7 @@ class MyComponents(context: Context)
     new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService, mobileSubscriptionService),
     new ExistingPaymentOptionsController(commonActions, controllerComponents),
-    new AccountController(commonActions, controllerComponents),
+    new AccountController(commonActions, controllerComponents, dbService),
     new PaymentUpdateController(commonActions, controllerComponents),
     new ContactController(commonActions, controllerComponents)
   )

@@ -29,7 +29,7 @@ class AttributeController(
   attributesFromZuora: AttributesFromZuora,
   commonActions: CommonActions,
   override val controllerComponents: ControllerComponents,
-  oneOffContributionDatabaseService: OneOffContributionDatabaseService,
+  contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
   mobileSubscriptionService: MobileSubscriptionService
 )(implicit system: ActorSystem) extends BaseController with LoggingWithLogstashFields {
   import attributesFromZuora._
@@ -76,7 +76,7 @@ class AttributeController(
     val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
 
     if (userHasValidatedEmail) {
-      oneOffContributionDatabaseService.getLatestContribution(identityId) map {
+      contributionsStoreDatabaseService.getLatestContribution(identityId) map {
         case -\/(databaseError) =>
           //Failed to get one-off data, but this should not block the zuora request
           log.error(databaseError)
@@ -216,7 +216,7 @@ class AttributeController(
       if (userHasValidatedEmail) {
         request.user.map(_.id) match {
           case Some(identityId) =>
-            oneOffContributionDatabaseService.getAllContributions(identityId).map {
+            contributionsStoreDatabaseService.getAllContributions(identityId).map {
               case -\/(err) => Ok(err)
               case \/-(result) => Ok(Json.toJson(result).toString)
             }

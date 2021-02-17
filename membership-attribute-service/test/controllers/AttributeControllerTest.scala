@@ -17,11 +17,12 @@ import play.api.mvc._
 import play.api.test._
 import play.api.test.Helpers._
 import scalaz.\/
-import services.OneOffContributionDatabaseService.DatabaseGetResult
-import services.{AttributesFromZuora, AuthenticationService, MobileSubscriptionService, OneOffContributionDatabaseService}
+import services.ContributionsStoreDatabaseService.DatabaseGetResult
+import services.{AttributesFromZuora, AuthenticationService, MobileSubscriptionService, ContributionsStoreDatabaseService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import models.SupportReminders
 
 class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
@@ -118,11 +119,14 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }
 
-  object FakePostgresService extends OneOffContributionDatabaseService {
+  object FakePostgresService extends ContributionsStoreDatabaseService {
     def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] =
       Future.successful(\/.right(Nil))
 
     def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]] =
+      Future.successful(\/.right(None))
+
+    def getSupportReminders(identityId: String): DatabaseGetResult[Option[SupportReminders]] =
       Future.successful(\/.right(None))
   }
 
