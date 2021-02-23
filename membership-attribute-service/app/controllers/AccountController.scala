@@ -101,6 +101,23 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           }
       }
 
+      /**
+       * If user has multiple subscriptions within the same billing account, then disabling auto-pay
+       * on the account would stop collecting payments for all subscriptions including the non-cancelled ones.
+       * In this case debt would start to accumulate in the form of positive Zuora account balance, and if at
+       * any point auto-pay is switched back on, then payment for the entire amount would be attempted.
+       */
+      def disableAutoPayOnlyIfAccountHasOneSubscription(
+        accountId: memsub.Subscription.AccountId
+      ): EitherT[Future, String, Future[String \/ Unit]] = {
+          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).map { currentSubscriptions =>
+            if (currentSubscriptions.size <= 1)
+              tp.zuoraRestService.disableAutoPay(accountId)
+            else // do not disable auto pay
+              Future.successful(\/.right({}))
+          }
+      }
+
       def executeCancellation(
           cancellationEffectiveDate: Option[LocalDate],
           reason: String,
@@ -108,7 +125,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
           endOfTermDate: LocalDate
       ): Future[ApiError \/ Option[LocalDate]] = {
         (for {
-          _ <- EitherT(tp.zuoraRestService.disableAutoPay(accountId)).leftMap(message => s"Failed to disable AutoPay: $message")
+          _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
           _ <- EitherT(tp.zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message =>
             s"Failed to update cancellation reason: $message"
           )
