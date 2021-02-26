@@ -17,12 +17,12 @@ import play.api.mvc._
 import play.api.test._
 import play.api.test.Helpers._
 import scalaz.\/
-import services.ContributionsStoreDatabaseService.DatabaseGetResult
-import services.{AttributesFromZuora, AuthenticationService, MobileSubscriptionService, ContributionsStoreDatabaseService}
+import services.{AttributesFromZuora, AuthenticationService, MobileSubscriptionService, FakePostgresService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import models.SupportReminders
+import models.RecurringReminderStatus
 
 class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
@@ -117,17 +117,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
     override val AuthAndBackendViaAuthLibAction = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
     override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
-  }
-
-  object FakePostgresService extends ContributionsStoreDatabaseService {
-    def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] =
-      Future.successful(\/.right(Nil))
-
-    def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]] =
-      Future.successful(\/.right(None))
-
-    def getSupportReminders(identityId: String): DatabaseGetResult[Option[SupportReminders]] =
-      Future.successful(\/.right(None))
   }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
