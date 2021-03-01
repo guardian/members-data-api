@@ -1,8 +1,9 @@
 package services
 
 import models.SupporterRatePlanItem
-import org.joda.time.{DateTime, LocalDate}
+import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
+import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
 class SupporterRatePlanToAttributesMapperTest extends Specification {
   val mapper = new SupporterRatePlanToAttributesMapper("PROD")
@@ -38,7 +39,9 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
         "2c92a0fb4edd70c8014edeaa4e972204", // Annual
         "2c92a00d71c96bac0171df3a5622740f", // Corporate
         "2c92a00d779932ef0177a65430d30ac1", // Three Month Gift
-        "2c92a00c77992ba70177a6596f710265" // One Year Gift
+        "2c92a00c77992ba70177a6596f710265", // One Year Gift
+        "2c92a0ff73add07f0173b99f14390afc", // Deprecated Three Month Gift
+        "2c92a00773adc09d0173b99e4ded7f45" // Deprecated One Year Gift
       )
       possibleProductRatePlanIds.map(productRatePlanId =>
         mapper
@@ -155,11 +158,68 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       )
 
       possibleProductRatePlanIds.map { case (productRatePlanId, tier) =>
-        mapper.attributesFromSupporterRatePlans(
-          identityId,
-          List(ratePlanItem(productRatePlanId))
-        ).Tier must beSome(tier)
+        mapper
+          .attributesFromSupporterRatePlans(
+            identityId,
+            List(ratePlanItem(productRatePlanId))
+          )
+          .Tier must beSome(tier)
       }.toList
+    }
+
+    "have a product rate plan for all active subscriptions" in {
+      // This is a list of all active product rate plans from an extract taken
+      // using the support-frontend/supporter-product-data project on 26th Feb 2021
+      val allActiveProductRatePlans = List(
+        ("2c92a0fc5e1dc084015e37f58c200eea", "Annual Contribution"),
+        ("2c92a0fd56fe270b0157040dd79b35da", "Everyday"),
+        ("2c92a0fc5aacfadd015ad24db4ff5e97", "Monthly Contribution"),
+        ("2c92a0fb4edd70c8014edeaa4eae220a", "Digital Pack Monthly"),
+        ("2c92a0fb4edd70c8014edeaa4e972204", "Digital Pack Annual"),
+        ("2c92a0fe6619b4b301661aa494392ee2", "GW Oct 18 - Quarterly - Domestic"),
+        ("2c92a0fe6619b4b901661aa8e66c1692", "GW Oct 18 - Annual - Domestic"),
+        ("2c92a0fb4c5481db014c69f4a1e03bbd", "Non Founder Supporter - annual"),
+        ("2c92a0ff56fe33f00157040f9a537f4b", "Weekend"),
+        ("2c92a0ff56fe33f50157040bbdcf3ae4", "Everyday+"),
+        ("2c92a0fe5af9a6b9015b0fe1ecc0116c", "Sunday"),
+        ("2c92a0ff67cebd0d0167f0a1a834234e", "GW Oct 18 - 1 Year - Domestic"),
+        ("2c92a0fd56fe270b0157040e42e536ef", "Sixday"),
+        ("2c92a0fb4ce4b8e7014ce711d3c37e60", "Friends"),
+        ("2c92a0fd6205707201621fa1350710e3", "Saturday+"),
+        ("2c92a0fe56fe33ff0157040d4b824168", "Sunday+"),
+        ("2c92a0fd56fe26b60157040cdd323f76", "Weekend+"),
+        ("2c92a0f94c547592014c69f5b0ff4f7e", "Non Founder Supporter - monthly"),
+        ("2c92a0086619bf8901661ab02752722f", "GW Oct 18 - Quarterly - ROW"),
+        ("2c92a0fe6619b4b601661ab300222651", "GW Oct 18 - Annual - ROW"),
+        ("2c92a0fc56fe26ba0157040c5ea17f6a", "Sixday+"),
+        ("2c92a0fd5614305c01561dc88f3275be", "Weekend"),
+        ("2c92a0fd560d13880156136b72e50f0c", "Everyday"),
+        ("2c92a0ff5af9b657015b0fea5b653f81", "Sunday"),
+        ("2c92a00870ec598001710740ca532f69", "Sixday"),
+        ("2c92a00870ec598001710740d0d83017", "Sunday"),
+        ("2c92a00870ec598001710740d24b3022", "Weekend"),
+        ("2c92a00870ec598001710740c78d2f13", "Everyday"),
+        ("2c92a0ff560d311b0156136f2afe5315", "Sixday"),
+        ("2c92a00e6dd988e2016df85387417498", "GW Oct 18 - 3 Month - Domestic"),
+        ("2c92a0ff73add07f0173b99f14390afc", "Digital Subscription Three Month Fixed - Deprecated"),
+        ("2c92a00773adc09d0173b99e4ded7f45", "Digital Subscription One Year Fixed - Deprecated"),
+        ("2c92a0ff67cebd140167f0a2f66a12eb", "GW Oct 18 - 1 Year - ROW"),
+        ("2c92a00c77992ba70177a6596f710265", "Digital Subscription One Year Fixed - One Time Charge"),
+        ("2c92a0076dd9892e016df8503e7c6c48", "GW Oct 18 - 3 Month - ROW"),
+        ("2c92a0fd6205707201621f9f6d7e0116", "Saturday"),
+        ("2c92a0fd5e1dcf0d015e3cb39d0a7ddb", "Saturday"),
+        ("2c92a0ff560d311b0156136b9f5c3968", "Weekend+"),
+        ("2c92a00d779932ef0177a65430d30ac1", "Digital Subscription Three Month Fixed - One Time Charge"),
+        ("2c92a0f94c54758b014c69f813bd39ec", "Non Founder Partner - annual"),
+        ("2c92a0fd560d13880156136b8e490f8b", "Sunday+"),
+        ("2c92a0fb4c5481dc014c69f95fce7240", "Non Founder Partner - monthly")
+      )
+      val allMappedProductRatePlans = productRatePlanMappings("PROD").keys.flatten.toList
+
+      allActiveProductRatePlans.map { case (productRatePlanId, description) =>
+        System.out.println(s"Checking $description - $productRatePlanId")
+        allMappedProductRatePlans should contain(productRatePlanId)
+      }
     }
   }
 }

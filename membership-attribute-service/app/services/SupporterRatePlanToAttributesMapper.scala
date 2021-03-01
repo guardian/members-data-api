@@ -33,17 +33,20 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
 }
 
 object SupporterRatePlanToAttributesMapper {
-  val productRatePlanMappings = Map(
+  val productRatePlanMappings: Map[String, Map[List[String], (Attributes, SupporterRatePlanItem) => Attributes]] =
+    Map(
     "PROD" -> Map(
       List(
         "2c92a0fb4edd70c8014edeaa4eae220a",
         "2c92a0fb4edd70c8014edeaa4e972204",
         "2c92a00d71c96bac0171df3a5622740f",
         "2c92a00d779932ef0177a65430d30ac1",
-        "2c92a00c77992ba70177a6596f710265"
-      ) -> digitalSubTransformer _,
-      List("2c92a0fc5aacfadd015ad24db4ff5e97") -> monthlyContributionTransformer _,
-      List("2c92a0fc5e1dc084015e37f58c200eea") -> annualContributionTransformer _,
+        "2c92a00c77992ba70177a6596f710265",
+        "2c92a0ff73add07f0173b99f14390afc",
+        "2c92a00773adc09d0173b99e4ded7f45",
+      ) -> digitalSubTransformer,
+      List("2c92a0fc5aacfadd015ad24db4ff5e97") -> monthlyContributionTransformer,
+      List("2c92a0fc5e1dc084015e37f58c200eea") -> annualContributionTransformer,
       List(
         "2c92a00870ec598001710740cdd02fbd",
         "2c92a00870ec598001710740d0d83017",
@@ -60,7 +63,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92a0fd5614305c01561dc88f3275be",
         "2c92a0ff560d311b0156136f2afe5315",
         "2c92a0fd560d13880156136b72e50f0c"
-      ) -> paperTransformer _,
+      ) -> paperTransformer,
       List(
         "2c92a00870ec598001710740ce702ff0",
         "2c92a00870ec598001710740cf9e3004",
@@ -77,7 +80,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92a0ff560d311b0156136b9f5c3968",
         "2c92a0ff560d311b0156136b697438a9",
         "2c92a0fd560d132301560e43cf041a3c"
-      ) -> paperPlusDigitalTransformer _,
+      ) -> paperPlusDigitalTransformer,
       List(
         "2c92a0fe6619b4b601661ab300222651",
         "2c92a0ff67cebd140167f0a2f66a12eb",
@@ -87,32 +90,32 @@ object SupporterRatePlanToAttributesMapper {
         "2c92a0ff67cebd0d0167f0a1a834234e",
         "2c92a0fe6619b4b301661aa494392ee2",
         "2c92a00e6dd988e2016df85387417498"
-      ) -> guardianWeeklyTransformer _,
+      ) -> guardianWeeklyTransformer,
       List(
         "2c92a0fb4ce4b8e7014ce711d3c37e60",
         "2c92a0f9479fb46d0147d0155c6f558b"
-      ) -> memberTransformer("Friend") _,
+      ) -> memberTransformer("Friend"),
       List(
         "2c92a0f949efde7c0149f1f18162178e"
-      ) -> memberTransformer("Staff") _,
+      ) -> memberTransformer("Staff"),
       List(
         "2c92a0f94c547592014c69f5b0ff4f7e",
         "2c92a0fb4c5481db014c69f4a1e03bbd",
         "2c92a0fb4bb97034014bbbc562114fef",
         "2c92a0fb4bb97034014bbbc562604ff7"
-      ) -> memberTransformer("Supporter") _,
+      ) -> memberTransformer("Supporter"),
       List(
         "2c92a0fb4c5481dc014c69f95fce7240",
         "2c92a0f94c54758b014c69f813bd39ec",
         "2c92a0f9479fb46d0147d0155ca15595",
         "2c92a0f9479fb46d0147d0155cb15596"
-      ) -> memberTransformer("Partner") _,
+      ) -> memberTransformer("Partner"),
       List(
         "2c92a0fb4c5481db014c69fb9118704b",
         "2c92a0f94c547592014c69fb0c4274fc",
         "2c92a0f9479fb46d0147d0155bf9557a",
         "2c92a0f9479fb46d0147d0155c245581"
-      ) -> memberTransformer("Patron") _
+      ) -> memberTransformer("Patron")
     ),
     "UAT" -> Map(
       List(
@@ -121,9 +124,9 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f971c65df50171dfabef87093d",
         "2c92c0f9778c090d017795ef3000352f",
         "2c92c0f9778c0900017795da493b4f85"
-      ) -> digitalSubTransformer _,
-      List("2c92c0f85ab269be015acd9d014549b7") -> monthlyContributionTransformer _,
-      List("2c92c0f95e1d5c9c015e38f8c87d19a1") -> annualContributionTransformer _,
+      ) -> digitalSubTransformer,
+      List("2c92c0f85ab269be015acd9d014549b7") -> monthlyContributionTransformer,
+      List("2c92c0f95e1d5c9c015e38f8c87d19a1") -> annualContributionTransformer,
       List(
         "2c92c0f870f682820171070488df42ce",
         "2c92c0f870f682820171070487f142c4",
@@ -140,7 +143,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f955ca02900155da27f83c2d9b",
         "2c92c0f955ca02900155da27ff142e01",
         "2c92c0f955ca02900155da27f55b2d5f"
-      ) -> paperTransformer _,
+      ) -> paperTransformer,
       List(
         "2c92c0f870f682820171070489d542da",
         "2c92c0f870f68282017107047b214214",
@@ -157,7 +160,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f955ca02900155da27f9402dad",
         "2c92c0f955ca02900155da27f29e2d13",
         "2c92c0f955ca02900155da2803b02e33"
-      ) -> paperPlusDigitalTransformer _,
+      ) -> paperPlusDigitalTransformer,
       List(
         "2c92c0f9660fc4d70166109a2eb0607c",
         "2c92c0f967caee360167f044cd0d4adc",
@@ -167,26 +170,26 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f867cae0700167f043870d6d0e",
         "2c92c0f8660fb5d601661081ea010391",
         "2c92c0f96df75b51016df8444f36362f"
-      ) -> guardianWeeklyTransformer _,
+      ) -> guardianWeeklyTransformer,
       List(
         "2c92c0f94cc6ea05014cdb4b1d1f037d",
         "2c92c0f848f362750148f4c2727379d7"
-      ) -> memberTransformer("Friend") _,
+      ) -> memberTransformer("Friend"),
       List(
         "2c92c0f849f118740149f1d61ad07723"
-      ) -> memberTransformer("Staff") _,
+      ) -> memberTransformer("Staff"),
       List(
         "2c92c0f84c5100b6014c569ad3a23d10",
         "2c92c0f84c5100b6014c569b83b33ebd",
         "2c92c0f84bbfeca5014bc0c5a9a12427",
         "2c92c0f84bbfeca5014bc0c5a83f241f"
-      ) -> memberTransformer("Supporter") _,
+      ) -> memberTransformer("Supporter"),
       List(
         "2c92c0f84c510073014c56948fbe6894",
         "2c92c0f84c510081014c569327003593",
         "2c92c0f848f362750148f4c2729379db",
         "2c92c0f848f362750148f4c2728379d9"
-      ) -> memberTransformer("Partner") _,
+      ) -> memberTransformer("Partner"),
       List(
         "2c92c0f94c510a0d014c569070792fa7",
         "2c92c0f84c510081014c568daa112d2a",
@@ -201,9 +204,9 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f971c65dfe0171c6c1f86e603c",
         "2c92c0f8778bf8f60177915b477714aa",
         "2c92c0f8778bf8cd0177a610cdf230ae"
-      ) -> digitalSubTransformer _,
-      List("2c92c0f85a6b134e015a7fcd9f0c7855") -> monthlyContributionTransformer _,
-      List("2c92c0f85e2d19af015e3896e824092c") -> annualContributionTransformer _,
+      ) -> digitalSubTransformer,
+      List("2c92c0f85a6b134e015a7fcd9f0c7855") -> monthlyContributionTransformer,
+      List("2c92c0f85e2d19af015e3896e824092c") -> annualContributionTransformer,
       List(
         "2c92c0f86fa49142016fa49ea442291b",
         "2c92c0f86fa49142016fa49eb0a42a01",
@@ -220,7 +223,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f955c3cf0f0155c5d9df433bf7",
         "2c92c0f955c3cf0f0155c5d9ddf13bc5",
         "2c92c0f955c3cf0f0155c5d9e2493c43"
-      ) -> paperTransformer _,
+      ) -> paperTransformer,
       List(
         "2c92c0f86fa49142016fa49eb1732a39",
         "2c92c0f86fa49142016fa49ea90e2976",
@@ -237,7 +240,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f95aff3b56015b104aa9a13ea5",
         "2c92c0f85aff33ff015b1042d4ba0a05",
         "2c92c0f85aff3453015b10496b5e3d17"
-      ) -> paperPlusDigitalTransformer _,
+      ) -> paperPlusDigitalTransformer,
       List(
         "2c92c0f965f2122101660fb33ed24a45",
         "2c92c0f967caee410167eff78e7b5244",
@@ -247,32 +250,32 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f867cae0700167eff921734f7b",
         "2c92c0f965dc30640165f150c0956859",
         "2c92c0f96ded216a016df491134d4091"
-      ) -> guardianWeeklyTransformer _,
+      ) -> guardianWeeklyTransformer,
       List(
         "2c92c0f94c9ca1c5014c9e5c64ba4260",
         "2c92c0f945fee1c90146057402c7066b"
-      ) -> memberTransformer("Friend") _,
+      ) -> memberTransformer("Friend"),
       List(
         "2c92c0f849c6e58a0149c73d6f114be2"
-      ) -> memberTransformer("Staff") _,
+      ) -> memberTransformer("Staff"),
       List(
         "2c92c0f94c510a0d014c569ba8eb45f7",
         "2c92c0f94c510a01014c569e2d857cfd",
         "2c92c0f84b079582014b2754c07c0f7d",
         "2c92c0f84b079582014b2754bfd70f6d"
-      ) -> memberTransformer("Supporter") _,
+      ) -> memberTransformer("Supporter"),
       List(
         "2c92c0f94c510a0d014c569a93194575",
         "2c92c0f84c510081014c569a18b04e84",
         "2c92c0f945fee1c9014605749e450969",
         "2c92c0f8471e22bb01471ffe9596366c"
-      ) -> memberTransformer("Partner") _,
+      ) -> memberTransformer("Partner"),
       List(
         "2c92c0f84c5100b6014c56908a63216d",
         "2c92c0f94c510a04014c568d648d097d",
         "2c92c0f845fed48301460578277167c3",
         "2c92c0f9471e145d01471ffd7c304df9"
-      ) -> memberTransformer("Patron") _
+      ) -> memberTransformer("Patron")
     )
   )
 
