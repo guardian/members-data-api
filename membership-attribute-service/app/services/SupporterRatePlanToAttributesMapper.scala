@@ -1,38 +1,40 @@
 package services
 
 import models.{Attributes, SupporterRatePlanItem}
-import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
+import services.SupporterRatePlanToAttributesMapper.{emptyAttributes, productRatePlanMappings}
 
 class SupporterRatePlanToAttributesMapper(stage: String) {
 
   def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[SupporterRatePlanItem]) = {
-    val emptyAttributes = Attributes(
-      identityId,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None
-    )
-    supporterRatePlanItems.foldLeft(emptyAttributes) { (attributes, item) =>
-      mapRatePlanToAttributes(attributes, item)
+    supporterRatePlanItems.foldLeft[Option[Attributes]](None) { (maybeAttributes, item) =>
+      mapRatePlanToAttributes(maybeAttributes, item, identityId)
     }
   }
 
-  private def mapRatePlanToAttributes(attributes: Attributes, ratePlanItem: SupporterRatePlanItem) =
+  private def mapRatePlanToAttributes(maybeAttributes: Option[Attributes], ratePlanItem: SupporterRatePlanItem, identityId: String) =
     productRatePlanMappings(stage)
       .collectFirst {
-        case (ids, transformFunction) if ids.contains(ratePlanItem.productRatePlanId) => transformFunction(attributes, ratePlanItem)
+        case (ids, transformFunction) if ids.contains(ratePlanItem.productRatePlanId) =>
+          Some(transformFunction(maybeAttributes.getOrElse(emptyAttributes(identityId)), ratePlanItem))
       }
-      .getOrElse(attributes)
+      .getOrElse(maybeAttributes)
 
 }
 
 object SupporterRatePlanToAttributesMapper {
+  def emptyAttributes(identityId: String) = Attributes(
+    identityId,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None
+  )
+
   val productRatePlanMappings: Map[String, Map[List[String], (Attributes, SupporterRatePlanItem) => Attributes]] =
     Map(
     "PROD" -> Map(
@@ -195,7 +197,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92c0f84c510081014c568daa112d2a",
         "2c92c0f848f362750148f4c2726079d5",
         "2c92c0f848f362750148f4c2724679d3"
-      ) -> memberTransformer("Patron") _
+      ) -> memberTransformer("Patron")
     ),
     "DEV" -> Map(
       List(

@@ -19,19 +19,17 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
 
   "SupporterRatePlanToAttributesMapper" should {
     "identify a monthly contribution" in {
-      val attributes = mapper.attributesFromSupporterRatePlans(
+      mapper.attributesFromSupporterRatePlans(
         identityId,
         List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"))
-      )
-      attributes.RecurringContributionPaymentPlan must beSome("Monthly")
+      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Monthly"))
     }
 
     "identify an annual contribution" in {
-      val attributes = mapper.attributesFromSupporterRatePlans(
+      mapper.attributesFromSupporterRatePlans(
         identityId,
         List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea"))
-      )
-      attributes.RecurringContributionPaymentPlan must beSome("Annual")
+      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Annual"))
     }
 
     "identify a Digital Subscription" in {
@@ -49,8 +47,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          )
-          .latestDigitalSubscriptionExpiryDate must beSome(termEndDate)
+          ) should beSome.which(_.latestDigitalSubscriptionExpiryDate must beSome(termEndDate))
       )
     }
 
@@ -70,8 +67,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          )
-          .GuardianWeeklySubscriptionExpiryDate must beSome(termEndDate)
+          ) should beSome.which(_.GuardianWeeklySubscriptionExpiryDate must beSome(termEndDate))
       )
     }
 
@@ -101,8 +97,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          )
-          .PaperSubscriptionExpiryDate must beSome(termEndDate)
+          ) should beSome.which(_.PaperSubscriptionExpiryDate must beSome(termEndDate))
       )
     }
 
@@ -128,14 +123,16 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
         "2c92a0fd560d132301560e43cf041a3c" //Everyday+"
       )
       possibleProductRatePlanIds.map(productRatePlanId => {
-        val attributes = mapper
+        val maybeAttributes = mapper
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
           )
 
-        attributes.PaperSubscriptionExpiryDate must beSome(termEndDate)
-        attributes.latestDigitalSubscriptionExpiryDate must beSome(termEndDate)
+        maybeAttributes should beSome.which { attributes =>
+          attributes.PaperSubscriptionExpiryDate should beSome(termEndDate)
+          attributes.latestDigitalSubscriptionExpiryDate must beSome(termEndDate)
+        }
       })
     }
 
@@ -163,8 +160,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          )
-          .Tier must beSome(tier)
+          ) should beSome.which(_.Tier must beSome(tier))
       }.toList
     }
 
@@ -173,9 +169,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             Nil
-          ).shouldEqual(
-          Attributes(identityId, None, None, None, None, None, None, None, None, None)
-        )
+          ) should beNone
     }
 
     "handle supporter with multiple products correctly" in {
@@ -189,8 +183,8 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             ratePlanItem("2c92a00870ec598001710740d0d83017"),
             ratePlanItem("2c92a0fe6619b4b601661ab300222651")
           )
-        ).shouldEqual(
-        Attributes(identityId, Some("Supporter"),Some("Monthly"), None, None, Some(termEndDate), Some(termEndDate), Some(termEndDate), None, None)
+        ) should beSome(
+          Attributes(identityId, Some("Supporter"),Some("Monthly"), None, None, Some(termEndDate), Some(termEndDate), Some(termEndDate), None, None)
       )
     }
 
@@ -211,8 +205,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
 
       val allActiveProductRatePlanIds = allActiveProductRatePlans.map(_._1)
       val allUnused = allMappedProductRatePlans.filter(productRatePlanId => !allActiveProductRatePlanIds.contains(productRatePlanId))
-      allUnused.foreach(id => s"${System.out.println(id)}") //TODO: Should we remove legacy product rate plan ids from the mapper
-
+      System.out.println(s"There are ${allUnused.length} mapped rate plans which appear to be unused") //TODO: Should we remove legacy product rate plan ids from the mapper
       success
     }
   }
