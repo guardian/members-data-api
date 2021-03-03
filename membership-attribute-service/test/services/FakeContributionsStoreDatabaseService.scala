@@ -14,5 +14,5 @@ object FakePostgresService extends ContributionsStoreDatabaseService {
         Future.successful(\/.right(None))
 
     def getSupportReminders(identityId: String): DatabaseGetResult[SupportReminders] =
-        Future.successful(\/.right(SupportReminders(RecurringReminderStatus.NotSet)))
+        Future.successful(\/.right(SupportReminders(RecurringReminderStatus.NotSet, None)))
 }

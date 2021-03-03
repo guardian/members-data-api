@@ -24,7 +24,8 @@ object RecurringReminderStatus {
 }
 
 case class SupportReminderDb (
-  isCancelled: Boolean,
+  is_cancelled: Boolean,
+  reminder_code: java.util.UUID,
 )
 
 object SupportReminderDb {
@@ -33,6 +34,7 @@ object SupportReminderDb {
 
 case class SupportReminders (
   recurringStatus: RecurringReminderStatus,
+  recurringReminderCode: Option[String],
 )
 
 object SupportReminders {

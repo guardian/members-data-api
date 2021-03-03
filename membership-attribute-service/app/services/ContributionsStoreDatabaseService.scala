@@ -65,7 +65,9 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
 
   override def getSupportReminders(identityId: String): ContributionsStoreDatabaseService.DatabaseGetResult[SupportReminders] = {
     val statement = SQL"""
-      SELECT reminder_cancelled_at IS NOT NULL as isCancelled
+      SELECT
+        reminder_cancelled_at IS NOT NULL as is_cancelled,
+        reminder_code
       FROM recurring_reminder_signups
       WHERE identity_id = $identityId
     """
@@ -73,9 +75,9 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
 
     executeQuery(statement, rowParser).map { result =>
       result.map {
-        case Some(SupportReminderDb(true)) => SupportReminders(recurringStatus=Cancelled)
-        case Some(SupportReminderDb(false)) => SupportReminders(recurringStatus=Active)
-        case None => SupportReminders(recurringStatus=NotSet)
+        case Some(SupportReminderDb(true, reminderCode)) => SupportReminders(recurringStatus=Cancelled, recurringReminderCode=Some(reminderCode.toString()))
+        case Some(SupportReminderDb(false, reminderCode)) => SupportReminders(recurringStatus=Active, recurringReminderCode=Some(reminderCode.toString()))
+        case None => SupportReminders(recurringStatus=NotSet, recurringReminderCode=None)
       }
     }
   }
