@@ -1,6 +1,6 @@
 package services
 
-import models.SupporterRatePlanItem
+import models.{Attributes, SupporterRatePlanItem}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
@@ -168,16 +168,39 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       }.toList
     }
 
+    "handle an empty list of supporterProductRatePlanIds correctly" in {
+        mapper
+          .attributesFromSupporterRatePlans(
+            identityId,
+            Nil
+          ).shouldEqual(
+          Attributes(identityId, None, None, None, None, None, None, None, None, None)
+        )
+    }
+
+    "handle supporter with multiple products correctly" in {
+      mapper
+        .attributesFromSupporterRatePlans(
+          identityId,
+          List(
+            ratePlanItem("2c92a0f94c547592014c69f5b0ff4f7e"),
+            ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"),
+            ratePlanItem("2c92a0fb4edd70c8014edeaa4eae220a"),
+            ratePlanItem("2c92a00870ec598001710740d0d83017"),
+            ratePlanItem("2c92a0fe6619b4b601661ab300222651")
+          )
+        ).shouldEqual(
+        Attributes(identityId, Some("Supporter"),Some("Monthly"), None, None, Some(termEndDate), Some(termEndDate), Some(termEndDate), None, None)
+      )
+    }
+
     "have a product rate plan for all active subscriptions" in {
 
       val allMappedProductRatePlans: List[String] = productRatePlanMappings("PROD").keys.flatten.toList
 
       val allActiveProductRatePlanIds = allActiveProductRatePlans.map(_._1)
-      val allUnused = allMappedProductRatePlans.filter(productRatePlanId => !allActiveProductRatePlanIds.contains(productRatePlanId))
-      allUnused.foreach(id => s"${System.out.println(id)}")
 
-      allActiveProductRatePlans.map { case (productRatePlanId, description) =>
-        System.out.println(s"Checking $description - $productRatePlanId")
+      allActiveProductRatePlans.map { case (productRatePlanId, _) =>
         allMappedProductRatePlans should contain(productRatePlanId)
       }
 
