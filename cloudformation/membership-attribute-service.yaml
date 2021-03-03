@@ -556,6 +556,30 @@ Resources:
           ReturnData: false
     DependsOn:
       - LoadBalancer
+      -
+  CatalogLoadingFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+      AlarmName: !Join
+        - ' '
+        - - 'Non-urgent supporter-product-data attribute mismatch'
+          - !Ref 'Stage'
+      AlarmDescription: !Join
+        - ' '
+        - - 'There was a mismatch between attribute data returned from Zuora and data from the supporter-product-data DynamoDB table'
+      MetricName: AttributesMismatch
+      Namespace: members-data-api
+      Dimensions:
+        - Name: Environment
+          Value: PROD
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 1
+      Statistic: Sum
 
 Outputs:
   LoadBalancerUrl:
