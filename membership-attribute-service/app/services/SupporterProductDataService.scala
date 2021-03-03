@@ -1,11 +1,13 @@
 package services
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.gu.scanamo.error.DynamoReadError.describe
 import com.gu.scanamo.syntax._
 import com.gu.scanamo.{ScanamoAsync, Table, _}
 import com.typesafe.scalalogging.LazyLogging
 import models.SupporterRatePlanItem
 import org.joda.time.{Instant, LocalDate}
+import scalaz.\/
 
 import scala.concurrent.ExecutionContext
 
@@ -21,13 +23,17 @@ class SupporterProductDataService(client: AmazonDynamoDBAsync, table: String, ma
   def getAttributes(identityId: String) =
     for {
       futureDynamoResult <- getSupporterRatePlanItems(identityId)
-      _ = futureDynamoResult.collect { case Left(error) =>
+      futureErrors = futureDynamoResult.collect { case Left(error) =>
         error
-      }.foreach(error => logger.error(error.toString))
+      }
+      _ = futureErrors.foreach(error => logger.error(error.toString))
       futureRatePlanItems = futureDynamoResult.collect({ case Right(ratePlanItem) =>
         ratePlanItem
       })
-    } yield mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems)
+    } yield if(futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
+      \/.right(mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems))
+    else
+      \/.left(s"Errors occurred while fetching supporter-product-data from DynamoDB: ${futureErrors.map(describe).mkString(", ")}")
 
   private def getSupporterRatePlanItems(identityId: String) =
     ScanamoAsync.exec(client) {

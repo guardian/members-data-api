@@ -557,7 +557,7 @@ Resources:
     DependsOn:
       - LoadBalancer
       -
-  CatalogLoadingFailureAlarm:
+  AttributesMismatchAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateProdMonitoring
     Properties:
@@ -573,8 +573,10 @@ Resources:
       MetricName: AttributesMismatch
       Namespace: members-data-api
       Dimensions:
-        - Name: Environment
-          Value: PROD
+        - Name: Services
+          Value: AttributesFromZuora
+        - Name: Stage
+          Value: !Sub ${Stage}
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 1
       Period: 60
