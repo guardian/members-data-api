@@ -1,6 +1,7 @@
 package services
 
 import models.{Attributes, SupporterRatePlanItem}
+import org.joda.time.LocalDate
 import services.SupporterRatePlanToAttributesMapper.{emptyAttributes, productRatePlanMappings}
 
 class SupporterRatePlanToAttributesMapper(stage: String) {
@@ -282,27 +283,51 @@ object SupporterRatePlanToAttributesMapper {
   )
 
   def digitalSubTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
-    attributes.copy(DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate))
+    attributes.copy(
+      DigitalSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
 
   def monthlyContributionTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly"))
+    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
 
   def annualContributionTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual"))
+    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
 
   def paperTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
-    attributes.copy(PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate))
+    attributes.copy(
+      PaperSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
 
   def paperPlusDigitalTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
     attributes.copy(
-      PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
-      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
+      PaperSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      ),
+      DigitalSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
     )
 
   def guardianWeeklyTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
-    attributes.copy(GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate))
+    attributes.copy(
+      GuardianWeeklySubscriptionExpiryDate = Some(
+        getLatestDate(attributes.GuardianWeeklySubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
 
   def memberTransformer(tier: String)(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
     attributes.copy(Tier = Some(tier))
+
+  def getLatestDate(maybeExistingDate: Option[LocalDate], newDate: LocalDate) =
+    maybeExistingDate.map(existingDate =>
+    if (newDate.isAfter(existingDate))
+      newDate
+    else
+      existingDate
+    ).getOrElse(newDate)
 
 }

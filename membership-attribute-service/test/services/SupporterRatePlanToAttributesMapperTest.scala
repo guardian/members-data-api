@@ -10,7 +10,8 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
   val mapper = new SupporterRatePlanToAttributesMapper("PROD")
   val identityId = "999"
   val termEndDate = LocalDate.now().plusDays(5)
-  def ratePlanItem(ratePlanId: String) = SupporterRatePlanItem(
+
+  def ratePlanItem(ratePlanId: String, termEndDate: LocalDate = termEndDate) = SupporterRatePlanItem(
     identityId,
     "some-rate-plan-id",
     ratePlanId,
@@ -22,14 +23,14 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       mapper.attributesFromSupporterRatePlans(
         identityId,
         List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"))
-      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Monthly"))
+      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Monthly Contribution"))
     }
 
     "identify an annual contribution" in {
       mapper.attributesFromSupporterRatePlans(
         identityId,
         List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea"))
-      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Annual"))
+      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Annual Contribution"))
     }
 
     "identify a Digital Subscription" in {
@@ -184,7 +185,33 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             ratePlanItem("2c92a0fe6619b4b601661ab300222651")
           )
         ) should beSome(
-          Attributes(identityId, Some("Supporter"),Some("Monthly"), None, None, Some(termEndDate), Some(termEndDate), Some(termEndDate), None, None)
+          Attributes(identityId, Some("Supporter"),Some("Monthly Contribution"), None, None, Some(termEndDate), Some(termEndDate), Some(termEndDate), None, None)
+      )
+    }
+
+    "always return the latest term end date if there are multiples" in {
+      val furthestEndDate = LocalDate.now().plusYears(1)
+      mapper
+        .attributesFromSupporterRatePlans(
+          identityId,
+          List(
+            ratePlanItem("2c92a0ff56fe33f50157040bbdcf3ae4", furthestEndDate), // Everyday+
+            ratePlanItem("2c92a0fb4edd70c8014edeaa4eae220a"), //Digital pack
+            ratePlanItem("2c92a00870ec598001710740d0d83017"), //Sunday
+          )
+        ) should beSome(
+        Attributes(
+          UserId = identityId,
+          Tier = None,
+          RecurringContributionPaymentPlan = None,
+          OneOffContributionDate = None,
+          MembershipJoinDate = None,
+          DigitalSubscriptionExpiryDate = Some(furthestEndDate),
+          PaperSubscriptionExpiryDate = Some(furthestEndDate),
+          GuardianWeeklySubscriptionExpiryDate = None,
+          LiveAppSubscriptionExpiryDate = None,
+          AlertAvailableFor = None
+        )
       )
     }
 

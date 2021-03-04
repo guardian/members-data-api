@@ -228,18 +228,30 @@ object AttributesFromZuora extends LazyLogging {
     if (attributesDoNotMatch(fromZuora, fromSupporterProductData)) {
       logger.warn(
         "There was a mismatch between the attributes returned by Zuora and the supporter-product-data data store\n" +
-        s"Zuora returned: ${normaliseAttributes(fromZuora)}\n" +
+        s"Zuora returned: $fromZuora\n" +
         s"supporter-product-data returned: $fromSupporterProductData"
       )
       metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
     }
 
-  private def normaliseAttributes(attributes: Option[Attributes]) = attributes.map(_.copy(MembershipJoinDate = None))
-
   def attributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    // We are dropping MembershipJoinDate so don't store it in the supporter product data datastore
-    normaliseAttributes(fromZuora) != fromSupporterProductData
+    !(
+      fromZuora.isEmpty && fromSupporterProductData.isEmpty ||
+        (fromZuora.map(_.Tier) == fromSupporterProductData.map(_.Tier) &&
+          fromZuora.map(_.RecurringContributionPaymentPlan) == fromSupporterProductData.map(_.RecurringContributionPaymentPlan) &&
+          datesAreEqualEnough(fromZuora.flatMap(_.DigitalSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.DigitalSubscriptionExpiryDate)) &&
+          datesAreEqualEnough(fromZuora.flatMap(_.PaperSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.PaperSubscriptionExpiryDate)) &&
+          datesAreEqualEnough(fromZuora.flatMap(_.GuardianWeeklySubscriptionExpiryDate), fromSupporterProductData.flatMap(_.GuardianWeeklySubscriptionExpiryDate))
+          )
+      )
 
+  def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) =
+    (fromZuora.isEmpty && fromSupporterProductData.isEmpty) || (for{
+        zuora <- fromZuora
+        supporter <- fromSupporterProductData
+      } yield {
+      zuora == supporter || zuora.plusDays(1) == supporter
+    }).getOrElse(false)
 
 }
 
