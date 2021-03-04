@@ -232,7 +232,7 @@ object AttributesFromZuora extends LazyLogging {
         s"supporter-product-data returned: $fromSupporterProductData"
       )
       metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
-    }
+    } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
 
   def attributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
     !(
