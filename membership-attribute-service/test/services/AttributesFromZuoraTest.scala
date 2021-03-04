@@ -321,7 +321,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
         attributesDoNotMatch(fromZuora, fromSupporterProductData) should beFalse
       }
 
-      "be tolerant of zuora dates being one up to day ahead supporter-product-data dates" in {
+      "be tolerant of zuora dates being one up to day ahead of supporter-product-data dates" in {
         datesAreEqualEnough(
           fromZuora = Some(LocalDate.parse("2022-02-16")),
           fromSupporterProductData = Some(LocalDate.parse("2022-02-17"))

@@ -23,14 +23,14 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       mapper.attributesFromSupporterRatePlans(
         identityId,
         List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"))
-      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Monthly Contribution"))
+      )  should beSome.which(_.RecurringContributionPaymentPlan should beSome("Monthly Contribution"))
     }
 
     "identify an annual contribution" in {
       mapper.attributesFromSupporterRatePlans(
         identityId,
         List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea"))
-      )  should beSome.which(_.RecurringContributionPaymentPlan must beSome("Annual Contribution"))
+      )  should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution"))
     }
 
     "identify a Digital Subscription" in {
@@ -48,7 +48,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          ) should beSome.which(_.latestDigitalSubscriptionExpiryDate must beSome(termEndDate))
+          ) should beSome.which(_.latestDigitalSubscriptionExpiryDate should beSome(termEndDate))
       )
     }
 
@@ -68,7 +68,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          ) should beSome.which(_.GuardianWeeklySubscriptionExpiryDate must beSome(termEndDate))
+          ) should beSome.which(_.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate))
       )
     }
 
@@ -98,7 +98,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          ) should beSome.which(_.PaperSubscriptionExpiryDate must beSome(termEndDate))
+          ) should beSome.which(_.PaperSubscriptionExpiryDate should beSome(termEndDate))
       )
     }
 
@@ -132,7 +132,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
 
         maybeAttributes should beSome.which { attributes =>
           attributes.PaperSubscriptionExpiryDate should beSome(termEndDate)
-          attributes.latestDigitalSubscriptionExpiryDate must beSome(termEndDate)
+          attributes.latestDigitalSubscriptionExpiryDate should beSome(termEndDate)
         }
       })
     }
@@ -161,7 +161,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           .attributesFromSupporterRatePlans(
             identityId,
             List(ratePlanItem(productRatePlanId))
-          ) should beSome.which(_.Tier must beSome(tier))
+          ) should beSome.which(_.Tier should beSome(tier))
       }.toList
     }
 

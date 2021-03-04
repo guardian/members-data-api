@@ -2,7 +2,7 @@ package services
 
 import models.{Attributes, SupporterRatePlanItem}
 import org.joda.time.LocalDate
-import services.SupporterRatePlanToAttributesMapper.{emptyAttributes, productRatePlanMappings}
+import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
 class SupporterRatePlanToAttributesMapper(stage: String) {
 
@@ -16,25 +16,13 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
     productRatePlanMappings(stage)
       .collectFirst {
         case (ids, transformFunction) if ids.contains(ratePlanItem.productRatePlanId) =>
-          Some(transformFunction(maybeAttributes.getOrElse(emptyAttributes(identityId)), ratePlanItem))
+          Some(transformFunction(maybeAttributes.getOrElse(Attributes(identityId)), ratePlanItem))
       }
       .getOrElse(maybeAttributes)
 
 }
 
 object SupporterRatePlanToAttributesMapper {
-  def emptyAttributes(identityId: String) = Attributes(
-    identityId,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None
-  )
 
   val productRatePlanMappings: Map[String, Map[List[String], (Attributes, SupporterRatePlanItem) => Attributes]] =
     Map(

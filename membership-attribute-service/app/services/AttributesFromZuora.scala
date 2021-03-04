@@ -245,13 +245,16 @@ object AttributesFromZuora extends LazyLogging {
           )
       )
 
-  def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) =
+  def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) = {
+    //Currently dates from the supporter-product-data store will be a day after the zuora term end date to avoid
+    // worrying about time zones and when new subscriptions are created. This may well change.
     (fromZuora.isEmpty && fromSupporterProductData.isEmpty) || (for{
         zuora <- fromZuora
         supporter <- fromSupporterProductData
       } yield {
       zuora == supporter || zuora.plusDays(1) == supporter
     }).getOrElse(false)
+  }
 
 }
 
