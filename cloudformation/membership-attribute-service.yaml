@@ -572,7 +572,6 @@ Resources:
           ReturnData: false
     DependsOn:
       - LoadBalancer
-      -
   AttributesMismatchAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateProdMonitoring
