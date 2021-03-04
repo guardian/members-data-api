@@ -78,6 +78,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
 
   val mockDynamoAttributesService = mock[AttributeService]
   val mockSupporterProductDataService = mock[SupporterProductDataService]
+  mockSupporterProductDataService.getAttributes(anyString) returns Future.successful(\/.right(Some(Attributes(testId))))
 
   def dynamoAttributeUpdater(attributes: Attributes) = Future.successful(Right(attributes))
 
