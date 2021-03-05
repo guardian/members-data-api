@@ -70,6 +70,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         LocalDate.now()
       ).nonEmpty
 
+    val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
+
     lazy val getAttrFromZuora =
       for {
         accounts <- EitherT(identityIdToAccounts(identityId))
@@ -86,7 +88,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-        supporterProductDataAttributes <- EitherT(supporterProductDataService.getAttributes(identityId))
+        supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
         val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
