@@ -577,7 +577,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
       AlarmName: !Join
         - ' '
         - - 'Non-urgent supporter-product-data attribute mismatch'
