@@ -15,8 +15,8 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
   private def mapRatePlanToAttributes(maybeAttributes: Option[Attributes], ratePlanItem: DynamoSupporterRatePlanItem, identityId: String) =
     productRatePlanMappings(stage)
       .collectFirst {
-        case (ids, transformFunction) if ids.contains(ratePlanItem.productRatePlanId) =>
-          Some(transformFunction(maybeAttributes.getOrElse(Attributes(identityId)), ratePlanItem))
+        case (ids, transformer) if ids.contains(ratePlanItem.productRatePlanId) =>
+          Some(transformer.transform(maybeAttributes.getOrElse(Attributes(identityId)), ratePlanItem))
       }
       .getOrElse(maybeAttributes)
 
@@ -24,7 +24,62 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
 
 object SupporterRatePlanToAttributesMapper {
 
-  val productRatePlanMappings: Map[String, Map[List[String], (Attributes, DynamoSupporterRatePlanItem) => Attributes]] =
+  trait AttributeTransformer {
+    def transform(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem): Attributes
+  }
+
+  val digitalSubTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      DigitalSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
+
+  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
+    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
+
+  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
+    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
+
+  val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      PaperSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
+
+  val paperPlusDigitalTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      PaperSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      ),
+      DigitalSubscriptionExpiryDate = Some(
+        getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
+
+  val guardianWeeklyTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      GuardianWeeklySubscriptionExpiryDate = Some(
+        getLatestDate(attributes.GuardianWeeklySubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
+      )
+    )
+
+  def memberTransformer(tier: String): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
+    attributes.copy(Tier = Some(tier))
+
+  def getLatestDate(maybeExistingDate: Option[LocalDate], newDate: LocalDate) =
+    maybeExistingDate.map(existingDate =>
+      if (newDate.isAfter(existingDate))
+        newDate
+      else
+        existingDate
+    ).getOrElse(newDate)
+
+  type Stage = String
+  type ProductRatePlanId = String
+
+  val productRatePlanMappings: Map[Stage, Map[List[ProductRatePlanId], AttributeTransformer]] =
     Map(
     "PROD" -> Map(
       List(
@@ -269,53 +324,5 @@ object SupporterRatePlanToAttributesMapper {
       ) -> memberTransformer("Patron")
     )
   )
-
-  def digitalSubTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(
-      DigitalSubscriptionExpiryDate = Some(
-        getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
-      )
-    )
-
-  def monthlyContributionTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-
-  def annualContributionTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
-
-  def paperTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(
-      PaperSubscriptionExpiryDate = Some(
-        getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
-      )
-    )
-
-  def paperPlusDigitalTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(
-      PaperSubscriptionExpiryDate = Some(
-        getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
-      ),
-      DigitalSubscriptionExpiryDate = Some(
-        getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
-      )
-    )
-
-  def guardianWeeklyTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(
-      GuardianWeeklySubscriptionExpiryDate = Some(
-        getLatestDate(attributes.GuardianWeeklySubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
-      )
-    )
-
-  def memberTransformer(tier: String)(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
-    attributes.copy(Tier = Some(tier))
-
-  def getLatestDate(maybeExistingDate: Option[LocalDate], newDate: LocalDate) =
-    maybeExistingDate.map(existingDate =>
-    if (newDate.isAfter(existingDate))
-      newDate
-    else
-      existingDate
-    ).getOrElse(newDate)
 
 }
