@@ -597,6 +597,31 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       Statistic: Sum
+  SupporterProductDataDynamoErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
+      AlarmName: !Join
+        - ' '
+        - - 'A DynamoReadError occurred while reading from the SupporterProductData DynamoDB table'
+          - !Ref 'Stage'
+      AlarmDescription: !Join
+        - ' '
+        - - 'There was at least one DynamoReadError returned while fetching supporter rate plan items from the SupporterProductData DynamoDB table, check logs for details.'
+      MetricName: SupporterProductDataDynamoError
+      Namespace: members-data-api
+      Dimensions:
+        - Name: Services
+          Value: SupporterProductDataService
+        - Name: Stage
+          Value: !Sub ${Stage}
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 1
+      Statistic: Sum
 
 Outputs:
   LoadBalancerUrl:
