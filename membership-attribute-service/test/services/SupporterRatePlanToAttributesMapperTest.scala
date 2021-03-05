@@ -1,6 +1,6 @@
 package services
 
-import models.{Attributes, SupporterRatePlanItem}
+import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
@@ -11,7 +11,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
   val identityId = "999"
   val termEndDate = LocalDate.now().plusDays(5)
 
-  def ratePlanItem(ratePlanId: String, termEndDate: LocalDate = termEndDate) = SupporterRatePlanItem(
+  def ratePlanItem(ratePlanId: String, termEndDate: LocalDate = termEndDate) = DynamoSupporterRatePlanItem(
     identityId,
     "some-rate-plan-id",
     ratePlanId,

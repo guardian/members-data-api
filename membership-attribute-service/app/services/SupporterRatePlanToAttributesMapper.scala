@@ -1,18 +1,18 @@
 package services
 
-import models.{Attributes, SupporterRatePlanItem}
+import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
 class SupporterRatePlanToAttributesMapper(stage: String) {
 
-  def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[SupporterRatePlanItem]) = {
+  def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]) = {
     supporterRatePlanItems.foldLeft[Option[Attributes]](None) { (maybeAttributes, item) =>
       mapRatePlanToAttributes(maybeAttributes, item, identityId)
     }
   }
 
-  private def mapRatePlanToAttributes(maybeAttributes: Option[Attributes], ratePlanItem: SupporterRatePlanItem, identityId: String) =
+  private def mapRatePlanToAttributes(maybeAttributes: Option[Attributes], ratePlanItem: DynamoSupporterRatePlanItem, identityId: String) =
     productRatePlanMappings(stage)
       .collectFirst {
         case (ids, transformFunction) if ids.contains(ratePlanItem.productRatePlanId) =>
@@ -24,7 +24,7 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
 
 object SupporterRatePlanToAttributesMapper {
 
-  val productRatePlanMappings: Map[String, Map[List[String], (Attributes, SupporterRatePlanItem) => Attributes]] =
+  val productRatePlanMappings: Map[String, Map[List[String], (Attributes, DynamoSupporterRatePlanItem) => Attributes]] =
     Map(
     "PROD" -> Map(
       List(
@@ -270,27 +270,27 @@ object SupporterRatePlanToAttributesMapper {
     )
   )
 
-  def digitalSubTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def digitalSubTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(
       DigitalSubscriptionExpiryDate = Some(
         getLatestDate(attributes.DigitalSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
       )
     )
 
-  def monthlyContributionTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def monthlyContributionTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
 
-  def annualContributionTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def annualContributionTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
 
-  def paperTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def paperTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(
         getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
       )
     )
 
-  def paperPlusDigitalTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def paperPlusDigitalTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(
         getLatestDate(attributes.PaperSubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
@@ -300,14 +300,14 @@ object SupporterRatePlanToAttributesMapper {
       )
     )
 
-  def guardianWeeklyTransformer(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def guardianWeeklyTransformer(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(
       GuardianWeeklySubscriptionExpiryDate = Some(
         getLatestDate(attributes.GuardianWeeklySubscriptionExpiryDate, supporterRatePlanItem.termEndDate)
       )
     )
 
-  def memberTransformer(tier: String)(attributes: Attributes, supporterRatePlanItem: SupporterRatePlanItem) =
+  def memberTransformer(tier: String)(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =
     attributes.copy(Tier = Some(tier))
 
   def getLatestDate(maybeExistingDate: Option[LocalDate], newDate: LocalDate) =

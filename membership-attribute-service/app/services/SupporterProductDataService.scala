@@ -5,7 +5,7 @@ import com.gu.scanamo.error.DynamoReadError.describe
 import com.gu.scanamo.syntax._
 import com.gu.scanamo.{ScanamoAsync, Table, _}
 import com.typesafe.scalalogging.LazyLogging
-import models.SupporterRatePlanItem
+import models.DynamoSupporterRatePlanItem
 import org.joda.time.{Instant, LocalDate}
 import scalaz.\/
 
@@ -37,7 +37,7 @@ class SupporterProductDataService(client: AmazonDynamoDBAsync, table: String, ma
 
   private def getSupporterRatePlanItems(identityId: String) =
     ScanamoAsync.exec(client) {
-      Table[SupporterRatePlanItem](table)
+      Table[DynamoSupporterRatePlanItem](table)
         .query('identityId -> identityId)
 
     }
