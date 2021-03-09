@@ -49,8 +49,6 @@ Mappings:
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
-      DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-PROD
-      DynamoDBSupporterProductDataUATTable: arn:aws:dynamodb:*:*:table/SupporterProductData-UAT
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/PROD/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/PROD/*
@@ -66,8 +64,6 @@ Mappings:
       DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
-      DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-DEV
-      DynamoDBSupporterProductDataUATTable: arn:aws:dynamodb:*:*:table/SupporterProductData-UAT
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/CODE/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/CODE/*
@@ -143,18 +139,6 @@ Resources:
             - dynamodb:DescribeTable
             Resource:
               Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
-            Effect: Allow
-          - Action:
-            - dynamodb:Query
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBSupporterProductDataTable ]
-            Effect: Allow
-          - Action:
-            - dynamodb:Query
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBSupporterProductDataUATTable ]
             Effect: Allow
           - Action:
             - cloudwatch:*
@@ -572,56 +556,6 @@ Resources:
           ReturnData: false
     DependsOn:
       - LoadBalancer
-  AttributesMismatchAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Condition: CreateProdMonitoring
-    Properties:
-      AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
-      AlarmName: !Join
-        - ' '
-        - - 'Non-urgent supporter-product-data attribute mismatch'
-          - !Ref 'Stage'
-      AlarmDescription: !Join
-        - ' '
-        - - 'There was a mismatch between attribute data returned from Zuora and data from the supporter-product-data DynamoDB table'
-      MetricName: AttributesMismatch
-      Namespace: members-data-api
-      Dimensions:
-        - Name: Services
-          Value: AttributesFromZuora
-        - Name: Stage
-          Value: !Sub ${Stage}
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 1
-      Period: 60
-      EvaluationPeriods: 1
-      Statistic: Sum
-  SupporterProductDataDynamoErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Condition: CreateProdMonitoring
-    Properties:
-      AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
-      AlarmName: !Join
-        - ' '
-        - - 'A DynamoReadError occurred while reading from the SupporterProductData DynamoDB table'
-          - !Ref 'Stage'
-      AlarmDescription: !Join
-        - ' '
-        - - 'There was at least one DynamoReadError returned while fetching supporter rate plan items from the SupporterProductData DynamoDB table, check logs for details.'
-      MetricName: SupporterProductDataDynamoError
-      Namespace: members-data-api
-      Dimensions:
-        - Name: Services
-          Value: SupporterProductDataService
-        - Name: Stage
-          Value: !Sub ${Stage}
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 1
-      Period: 60
-      EvaluationPeriods: 1
-      Statistic: Sum
 
 Outputs:
   LoadBalancerUrl:

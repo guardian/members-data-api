@@ -26,10 +26,10 @@ import limit.{InstanceCountOnSchedule, TotalZuoraConcurrentLimitOnSchedule, Zuor
 import services._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executionContext: ExecutionContext) {
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit val ec = system.dispatcher
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")
 
@@ -38,7 +38,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
   lazy val dynamoAttributesTable = environmentConf.getString("dynamodb.table")
   lazy val dynamoFeatureToggleTable = environmentConf.getString("featureToggles.dynamodb.table")
-  lazy val supporterProductDataTable = environmentConf.getString("supporter-product-data.table")
   lazy val invoiceTemplatesConf = environmentConf.getConfig(s"zuora.invoiceTemplateIds")
 
   lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
@@ -47,7 +46,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
   lazy val tpConfig = TouchpointBackendConfig.byEnv(stage, conf)
-  implicit lazy val _bt: TouchpointBackendConfig = tpConfig
+  implicit lazy val _bt = tpConfig
 
   lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
   lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
@@ -61,8 +60,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
   lazy val featureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
-  lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
-  lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
 
   private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
   private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner, zuoraMetrics)

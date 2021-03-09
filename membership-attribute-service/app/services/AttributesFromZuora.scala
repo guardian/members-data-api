@@ -20,9 +20,8 @@ import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
 import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.subsv2.ReaderType.Gift
-import com.typesafe.scalalogging.LazyLogging
-import monitoring.{ExpensiveMetrics, Metrics}
-import services.AttributesFromZuora.{alertIfAttributesDoNotMatch, mergeDigitalSubscriptionExpiryDate}
+import monitoring.ExpensiveMetrics
+import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
 import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
 
@@ -37,7 +36,6 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      giftSubscriptionsForIdentityId: String => Future[\/[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
-     supporterProductDataService: SupporterProductDataService,
      forDate: LocalDate = LocalDate.now(),
   ): Future[(String, Option[Attributes])] = {
 
@@ -70,8 +68,6 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         LocalDate.now()
       ).nonEmpty
 
-    val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
-
     lazy val getAttrFromZuora =
       for {
         accounts <- EitherT(identityIdToAccounts(identityId))
@@ -88,13 +84,9 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-        supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
         val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
-
-        alertIfAttributesDoNotMatch(maybeAttributesFromZuora, supporterProductDataAttributes)
-
         attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
         Future.successful("Zuora", maybeAttributesFromZuora)
       }
@@ -211,7 +203,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
   def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] =  response.records.map(_.Id)
 }
 
-object AttributesFromZuora extends LazyLogging {
+object AttributesFromZuora {
   def mergeDigitalSubscriptionExpiryDate(regular: Option[ZuoraAttributes], gift: Option[ZuoraAttributes]) = {
     val maybeExpiryDates = Some(
       List(regular, gift).flatten.flatMap(_.DigitalSubscriptionExpiryDate)
@@ -223,35 +215,5 @@ object AttributesFromZuora extends LazyLogging {
 
     regular.map(_.copy(DigitalSubscriptionExpiryDate = maybeLatestDate)).orElse(gift)
   }
-
-  val metrics = Metrics("AttributesFromZuora") //referenced in CloudFormation
-
-  def alertIfAttributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]): Unit =
-    if (attributesDoNotMatch(fromZuora, fromSupporterProductData)) {
-      logger.warn(
-        "There was a mismatch between the attributes returned by Zuora and the supporter-product-data data store\n" +
-        s"Zuora returned: $fromZuora\n" +
-        s"supporter-product-data returned: $fromSupporterProductData"
-      )
-      metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
-    } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
-
-  def attributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    !(
-      fromZuora.isEmpty && fromSupporterProductData.isEmpty ||
-        (fromZuora.map(_.Tier) == fromSupporterProductData.map(_.Tier) &&
-          fromZuora.map(_.RecurringContributionPaymentPlan) == fromSupporterProductData.map(_.RecurringContributionPaymentPlan) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.DigitalSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.DigitalSubscriptionExpiryDate)) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.PaperSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.PaperSubscriptionExpiryDate)) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.GuardianWeeklySubscriptionExpiryDate), fromSupporterProductData.flatMap(_.GuardianWeeklySubscriptionExpiryDate))
-          )
-      )
-
-  def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) = {
-    //Currently dates from the supporter-product-data store will be a day after the zuora term end date to avoid
-    // worrying about time zones and when new subscriptions are created. This may well change.
-    fromZuora == fromSupporterProductData || fromZuora.map(_.plusDays(1)) == fromSupporterProductData
-  }
-
 }
 
