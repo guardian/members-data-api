@@ -90,6 +90,7 @@ object SupporterRatePlanToAttributesMapper {
         "2c92a00c77992ba70177a6596f710265",
         "2c92a0ff73add07f0173b99f14390afc",
         "2c92a00773adc09d0173b99e4ded7f45",
+        "2c92a0fb4edd70c8014edeaa4e8521fe"
       ) -> digitalSubTransformer,
       List("2c92a0fc5aacfadd015ad24db4ff5e97") -> monthlyContributionTransformer,
       List("2c92a0fc5e1dc084015e37f58c200eea") -> annualContributionTransformer,
@@ -108,7 +109,9 @@ object SupporterRatePlanToAttributesMapper {
         "2c92a0ff5af9b657015b0fea5b653f81",
         "2c92a0fd5614305c01561dc88f3275be",
         "2c92a0ff560d311b0156136f2afe5315",
-        "2c92a0fd560d13880156136b72e50f0c"
+        "2c92a0fd560d13880156136b72e50f0c",
+        "2c92a0ff56fe33f001572334561765c1",
+        "2c92a0fd596d321a0159735a7b150e43"
       ) -> paperTransformer,
       List(
         "2c92a00870ec598001710740ce702ff0",
@@ -135,7 +138,27 @@ object SupporterRatePlanToAttributesMapper {
         "2c92a0fe6619b4b901661aa8e66c1692",
         "2c92a0ff67cebd0d0167f0a1a834234e",
         "2c92a0fe6619b4b301661aa494392ee2",
-        "2c92a00e6dd988e2016df85387417498"
+        "2c92a00e6dd988e2016df85387417498",
+        "2c92a0fd58cf57000158f30ae6d06f2a",
+        "2c92a0ff58bdf4eb0158f2ecc89c1034",
+        "2c92a0ff58bdf4ee0158f30905e82181",
+        "2c92a0fd5a5adc8b015a5c690d0d1ec6",
+        "2c92a0ff5a4b85e7015a4cf95d352a07",
+        "2c92a0ff5a5adca9015a611f77db4431",
+        "2c92a0fc5a2a49f0015a41f473da233a",
+        "2c92a0fe5a5ad344015a5c67b1144250",
+        "2c92a0ff59d9d540015a41a40b3e07d3",
+        "2c92a0fd5a5adc8b015a5c65074b7c41",
+        "2c92a0ff5a5adca7015a5c4af5963efa",
+        "2c92a0fe5a5ad349015a5c61d6e05d8d",
+        "2c92a0fe57d0a0c40157d74240de5543",
+        "2c92a0ff57d0a0b60157d741e722439a",
+        "2c92a0ff58bdf4eb0158f307eccf02af",
+        "2c92a0fc6ae918b6016b080950e96d75",
+        "2c92a0fc5b42d2c9015b6259f7f40040",
+        "2c92a0fd57d0a9870157d7412f19424f",
+        "2c92a0fe57d0a0c40157d74241005544",
+        "2c92a0ff58bdf4eb0158f307ed0e02be",
       ) -> guardianWeeklyTransformer,
       List(
         "2c92a0fb4ce4b8e7014ce711d3c37e60",
