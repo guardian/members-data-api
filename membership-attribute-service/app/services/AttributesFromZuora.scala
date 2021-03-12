@@ -71,7 +71,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         LocalDate.now()
       ).nonEmpty
 
-    val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
+    // Disable this checking for now while I make some changes to the data store
+    // val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
 
     lazy val getAttrFromZuora =
       for {
@@ -89,12 +90,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-        supporterProductDataAttributes <- futureSupporterProductDataAttributes
+        // supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
         val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
 
-        alertIfAttributesDoNotMatch(identityId, maybeAttributesFromZuora, supporterProductDataAttributes)
+        // alertIfAttributesDoNotMatch(identityId, maybeAttributesFromZuora, supporterProductDataAttributes)
 
         attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
         Future.successful("Zuora", maybeAttributesFromZuora)
