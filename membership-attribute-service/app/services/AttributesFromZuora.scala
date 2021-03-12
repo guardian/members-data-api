@@ -238,9 +238,18 @@ object AttributesFromZuora extends LazyLogging {
       metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
     } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
 
+  def subIsNoneOrExpired(maybeDate: Option[LocalDate]) = maybeDate.isEmpty || maybeDate.exists(_.isBefore(LocalDate.now))
+
+  def allSubsExpired(maybeAttributes: Option[Attributes]) =
+    maybeAttributes.exists(attributes =>
+      subIsNoneOrExpired(attributes.DigitalSubscriptionExpiryDate) &&
+        subIsNoneOrExpired(attributes.PaperSubscriptionExpiryDate) &&
+        subIsNoneOrExpired(attributes.GuardianWeeklySubscriptionExpiryDate))
+
   def attributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
     !(
       fromZuora.isEmpty && fromSupporterProductData.isEmpty ||
+        (allSubsExpired(fromZuora) && fromSupporterProductData.isEmpty) ||
         (fromZuora.map(_.Tier) == fromSupporterProductData.map(_.Tier) &&
           fromZuora.map(_.RecurringContributionPaymentPlan) == fromSupporterProductData.map(_.RecurringContributionPaymentPlan) &&
           datesAreEqualEnough(fromZuora.flatMap(_.DigitalSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.DigitalSubscriptionExpiryDate)) &&
@@ -252,7 +261,10 @@ object AttributesFromZuora extends LazyLogging {
   def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) = {
     //Currently dates from the supporter-product-data store will be a day after the zuora term end date to avoid
     // worrying about time zones and when new subscriptions are created. This may well change.
-    fromZuora == fromSupporterProductData || fromZuora.map(_.plusDays(1)) == fromSupporterProductData
+    // Also the zuora version will show dates for expired subs but supporter-product-data will not
+    fromZuora == fromSupporterProductData ||
+      fromZuora.map(_.plusDays(1)) == fromSupporterProductData ||
+      fromZuora.exists(expiryDate => expiryDate.isBefore(LocalDate.now)) && fromSupporterProductData.isEmpty
   }
 
 }
