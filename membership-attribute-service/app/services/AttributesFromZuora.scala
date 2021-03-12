@@ -11,6 +11,7 @@ import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryRespon
 import loghandling.LoggingWithLogstashFields
 import models._
 import org.joda.time.{DateTime, LocalDate}
+import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -70,7 +71,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         LocalDate.now()
       ).nonEmpty
 
-    val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
+    // Disable this checking for now while I make some changes to the data store
+    // val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
 
     lazy val getAttrFromZuora =
       for {
@@ -88,12 +90,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-        supporterProductDataAttributes <- futureSupporterProductDataAttributes
+        // supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
         val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
 
-        alertIfAttributesDoNotMatch(maybeAttributesFromZuora, supporterProductDataAttributes)
+        // alertIfAttributesDoNotMatch(identityId, maybeAttributesFromZuora, supporterProductDataAttributes)
 
         attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
         Future.successful("Zuora", maybeAttributesFromZuora)
@@ -226,12 +228,12 @@ object AttributesFromZuora extends LazyLogging {
 
   val metrics = Metrics("AttributesFromZuora") //referenced in CloudFormation
 
-  def alertIfAttributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]): Unit =
+  def alertIfAttributesDoNotMatch(identityId: String, fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]): Unit =
     if (attributesDoNotMatch(fromZuora, fromSupporterProductData)) {
       logger.warn(
-        "There was a mismatch between the attributes returned by Zuora and the supporter-product-data data store\n" +
-        s"Zuora returned: $fromZuora\n" +
-        s"supporter-product-data returned: $fromSupporterProductData"
+        s"Mismatched attributes for user $identityId\n" +
+        s"Zuora returned: ${Json.toJson(fromZuora)}\n" +
+        s"supporter-product-data returned: ${Json.toJson(fromSupporterProductData)}"
       )
       metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
     } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
