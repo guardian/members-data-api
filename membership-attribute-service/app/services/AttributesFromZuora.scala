@@ -1,5 +1,7 @@
 package services
+import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.subsv2.ReaderType.Gift
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
@@ -7,25 +9,22 @@ import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, GiftSubscriptionsFromIdentityIdResponse, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, PaymentMethodId, PaymentMethodResponse}
+import com.typesafe.scalalogging.LazyLogging
 import loghandling.LoggingWithLogstashFields
 import models._
+import monitoring.ExpensiveMetrics
 import org.joda.time.{DateTime, LocalDate}
-import play.api.libs.json._
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
-import akka.actor.{ActorSystem, Scheduler}
-import com.gu.memsub.subsv2.ReaderType.Gift
-import com.typesafe.scalalogging.LazyLogging
-import monitoring.{ExpensiveMetrics, Metrics}
-import services.AttributesFromZuora.{alertIfAttributesDoNotMatch, mergeDigitalSubscriptionExpiryDate}
+import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
 import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
 
@@ -224,47 +223,6 @@ object AttributesFromZuora extends LazyLogging {
     )
 
     regular.map(_.copy(DigitalSubscriptionExpiryDate = maybeLatestDate)).orElse(gift)
-  }
-
-  val metrics = Metrics("AttributesFromZuora") //referenced in CloudFormation
-
-  def alertIfAttributesDoNotMatch(identityId: String, fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]): Unit =
-    if (attributesDoNotMatch(fromZuora, fromSupporterProductData)) {
-      logger.warn(
-        s"Mismatched attributes for user $identityId\n" +
-        s"Zuora returned: ${Json.toJson(fromZuora)}\n" +
-        s"supporter-product-data returned: ${Json.toJson(fromSupporterProductData)}"
-      )
-      metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
-    } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
-
-  def subIsNoneOrExpired(maybeDate: Option[LocalDate]) = maybeDate.isEmpty || maybeDate.exists(_.isBefore(LocalDate.now))
-
-  def allSubsExpired(maybeAttributes: Option[Attributes]) =
-    maybeAttributes.exists(attributes =>
-      subIsNoneOrExpired(attributes.DigitalSubscriptionExpiryDate) &&
-        subIsNoneOrExpired(attributes.PaperSubscriptionExpiryDate) &&
-        subIsNoneOrExpired(attributes.GuardianWeeklySubscriptionExpiryDate))
-
-  def attributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    !(
-      fromZuora.isEmpty && fromSupporterProductData.isEmpty ||
-        (allSubsExpired(fromZuora) && fromSupporterProductData.isEmpty) ||
-        (fromZuora.map(_.Tier) == fromSupporterProductData.map(_.Tier) &&
-          fromZuora.map(_.RecurringContributionPaymentPlan) == fromSupporterProductData.map(_.RecurringContributionPaymentPlan) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.DigitalSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.DigitalSubscriptionExpiryDate)) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.PaperSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.PaperSubscriptionExpiryDate)) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.GuardianWeeklySubscriptionExpiryDate), fromSupporterProductData.flatMap(_.GuardianWeeklySubscriptionExpiryDate))
-          )
-      )
-
-  def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) = {
-    //Currently dates from the supporter-product-data store will be a day after the zuora term end date to avoid
-    // worrying about time zones and when new subscriptions are created. This may well change.
-    // Also the zuora version will show dates for expired subs but supporter-product-data will not
-    fromZuora == fromSupporterProductData ||
-      fromZuora.map(_.plusDays(1)) == fromSupporterProductData ||
-      fromZuora.exists(expiryDate => expiryDate.isBefore(LocalDate.now)) && fromSupporterProductData.isEmpty
   }
 
 }
