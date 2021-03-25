@@ -6,21 +6,19 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
-import models.Attributes
+import models.{Attributes, ContentAccess}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
-import services.SupporterProductDataIntegrationTest.ids
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
 import scala.io.Source
-import scala.util.Sorting
 
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
-  val stage = "PROD"
+  val stage = "PROD" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
   lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val supporterProductDataTable = "SupporterProductData-PROD"
@@ -33,6 +31,30 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
   implicit private val actorSystem: ActorSystem = ActorSystem()
   lazy val touchpoint = new TouchpointComponents("PROD")
   lazy val attributesFromZuora = new AttributesFromZuora()
+
+  "SupporterProductData" should {
+    "match Zuora" in {
+      val excluded = List()
+      val allIds: List[String] = Source.fromURL(getClass.getResource("/identityIds.txt")).mkString.split("\n").toList.filter(!excluded.contains(_))
+
+      allIds.grouped(3).map {
+        subList =>
+          logger.info("------------------------ Running new batch ------------------------------")
+          Await.result(runBatch(subList), 20.seconds)
+      }.toList.head
+    }
+  }
+
+  def runBatch(ids: List[String]): Future[MatchResult[List[(Option[Attributes], Option[Attributes])]]] = {
+    for {
+      fromZuora <- Future.sequence(ids.map(getFromZuora))
+      fromSupporterProductData <- Future.sequence(ids.map(supporterProductDataService.getAttributes))
+    } yield {
+      val allMismatched = compareLists(fromZuora.map(_._2), fromSupporterProductData.map(_.getOrElse(None)))
+      logger.info(s"Original list count: ${ids.length}, mismatched count: ${allMismatched.length}")
+      allMismatched should beEmpty
+    }
+  }
 
   def getFromZuora(identityId: String) = {
     attributesFromZuora.getAttributesFromZuoraWithCacheFallback(
@@ -48,35 +70,43 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
 
   def compareLists(fromDynamo: List[Option[Attributes]], fromSupporterProductData:  List[Option[Attributes]]) =
   fromDynamo.zip(fromSupporterProductData).flatMap { case (dynamo, supporter) =>
-    if (AttributesFromZuora.attributesDoNotMatch(dynamo, supporter)) {
+    if (!contentAccessMatches(dynamo, supporter)) {
       logger.info(
-        s"""{"zuora": ${Json.toJson(dynamo)},\n""" +
-        s""""supporter-product-data": ${Json.toJson(supporter)}}"""
+        s"""{
+          "zuora": ${Json.toJson(dynamo)},\n""" +
+          s""""  supporter-product-data": ${Json.toJson(supporter)}
+        }"""
       )
       Some((dynamo, supporter))
     } else None
   }
 
-  def runBatch(ids: List[String]): Future[MatchResult[List[(Option[Attributes], Option[Attributes])]]] = {
-    for {
-      fromZuora <- Future.sequence(ids.map(getFromZuora))
-      fromSupporterProductData <- Future.sequence(ids.map(supporterProductDataService.getAttributes))
-    } yield {
-      val allMismatched = compareLists(fromZuora.map(_._2), fromSupporterProductData.map(_.getOrElse(None)))
-      logger.info(s"Original list count: ${ids.length}, mismatched count: ${allMismatched.length}")
-      allMismatched should beEmpty
-    }
-  }
+  def contentAccessMatches(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromZuora.map(_.contentAccess.copy(recurringContributor = false)) == fromSupporterProductData.map(_.contentAccess.copy(recurringContributor = false)) ||
+      isCancelledRecurringContribution(fromZuora, fromSupporterProductData) ||
+      isExpiredSub(fromZuora, fromSupporterProductData)
 
-  "SupporterProductData" should {
-    "match Zuora" in {
-      val allIds: List[String] = Source.fromURL(getClass.getResource("/identityIds.txt")).mkString.split("\n").toList // List("105066199")
+  def isExpiredSub(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromSupporterProductData.isEmpty && fromZuora.exists(att =>
+      att.contentAccess == ContentAccess(
+        member = false,
+        paidMember = false,
+        recurringContributor = false,
+        digitalPack = false,
+        paperSubscriber = false,
+        guardianWeeklySubscriber = false
+      )
+    )
 
-      allIds.grouped(3).map {
-        subList =>
-          logger.info("------------------------ Running new batch ------------------------------")
-          Await.result(runBatch(subList), 20.seconds)
-      }.toList.head
-    }
-  }
+  def isCancelledRecurringContribution(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromZuora.isEmpty && fromSupporterProductData.exists(att =>
+      att.contentAccess == ContentAccess(
+        member = false,
+        paidMember = false,
+        recurringContributor = true,
+        digitalPack = false,
+        paperSubscriber = false,
+        guardianWeeklySubscriber = false
+      )
+    )
 }
