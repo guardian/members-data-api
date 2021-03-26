@@ -74,7 +74,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
       logger.info(
         s"""{
           "zuora": ${Json.toJson(dynamo)},\n""" +
-          s""""  supporter-product-data": ${Json.toJson(supporter)}
+          s"""    "supporter-product-data": ${Json.toJson(supporter)}
         }"""
       )
       Some((dynamo, supporter))
