@@ -32,6 +32,8 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
   lazy val touchpoint = new TouchpointComponents("PROD")
   lazy val attributesFromZuora = new AttributesFromZuora()
 
+  args(skipAll = true) // This test requires credentials so won't run on CI, change skipAll to false to run locally
+
   "SupporterProductData" should {
     "match Zuora" in {
       val excluded = List()
