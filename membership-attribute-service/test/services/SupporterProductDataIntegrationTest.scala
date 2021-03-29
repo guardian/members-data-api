@@ -64,7 +64,6 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
       giftSubscriptionsForIdentityId = touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
       dynamoAttributeService = attrService,
       paymentMethodForPaymentMethodId = paymentMethodId => touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
-      supporterProductDataService = touchpoint.supporterProductDataService
     )
   }
 
