@@ -115,7 +115,7 @@ class AttributeController(
   private lazy val random = new Random
 
   private def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
-    if(random.nextInt(100) > 5) {
+    if(random.nextInt(100) >= 5) {
       log.info(s"Fetching attributes from Zuora for user $identityId")
       getAttributesWithConcurrencyLimitHandling(identityId)
     } else {
