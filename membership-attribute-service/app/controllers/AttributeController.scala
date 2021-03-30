@@ -61,6 +61,7 @@ class AttributeController(
         giftSubscriptionsForIdentityId = request.touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
         dynamoAttributeService = dynamoService,
         paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
+        supporterProductDataService = request.touchpoint.supporterProductDataService
       )
     } else {
       expensiveMetrics.countRequest(s"cache-hit")

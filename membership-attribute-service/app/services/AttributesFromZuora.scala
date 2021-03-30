@@ -1,7 +1,5 @@
 package services
-import akka.actor.{ActorSystem, Scheduler}
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub.subsv2.ReaderType.Gift
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
@@ -9,22 +7,25 @@ import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, PaymentMethodId, PaymentMethodResponse}
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, GiftSubscriptionsFromIdentityIdResponse, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingWithLogstashFields
 import models._
-import monitoring.ExpensiveMetrics
 import org.joda.time.{DateTime, LocalDate}
+import play.api.libs.json._
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.traverse._
 import scalaz.{Disjunction, EitherT, \/}
-import services.AttributesFromZuora.mergeDigitalSubscriptionExpiryDate
+import akka.actor.{ActorSystem, Scheduler}
+import com.gu.memsub.subsv2.ReaderType.Gift
+import com.typesafe.scalalogging.LazyLogging
+import monitoring.{ExpensiveMetrics, Metrics}
+import services.AttributesFromZuora.{alertIfAttributesDoNotMatch, mergeDigitalSubscriptionExpiryDate}
 import services.AttributesMaker.getSubsWhichIncludeDigitalPack
 import utils.FutureRetry._
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 class AttributesFromZuora(implicit val executionContext: ExecutionContext, system: ActorSystem) extends LoggingWithLogstashFields {
 
@@ -37,6 +38,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
      giftSubscriptionsForIdentityId: String => Future[\/[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
      dynamoAttributeService: AttributeService,
+     supporterProductDataService: SupporterProductDataService,
      forDate: LocalDate = LocalDate.now(),
   ): Future[(String, Option[Attributes])] = {
 
@@ -69,6 +71,8 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         LocalDate.now()
       ).nonEmpty
 
+    val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
+
     lazy val getAttrFromZuora =
       for {
         accounts <- EitherT(identityIdToAccounts(identityId))
@@ -85,9 +89,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+        supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
         val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
+
+        alertIfAttributesDoNotMatch(identityId, maybeAttributesFromZuora, supporterProductDataAttributes)
 
         attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
         Future.successful("Zuora", maybeAttributesFromZuora)
@@ -217,6 +224,47 @@ object AttributesFromZuora extends LazyLogging {
 
     regular.map(_.copy(DigitalSubscriptionExpiryDate = maybeLatestDate)).orElse(gift)
   }
+
+  val metrics = Metrics("AttributesFromZuora") //referenced in CloudFormation
+
+  def alertIfAttributesDoNotMatch(identityId: String, fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]): Unit =
+    if (!contentAccessMatches(fromZuora, fromSupporterProductData)) {
+      logger.warn(
+        s"Mismatched attributes for user $identityId\n" +
+        s"Zuora returned: ${Json.toJson(fromZuora)}\n" +
+        s"supporter-product-data returned: ${Json.toJson(fromSupporterProductData)}"
+      )
+      metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
+    } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
+
+  def contentAccessMatches(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromZuora.map(_.contentAccess.copy(recurringContributor = false)) == fromSupporterProductData.map(_.contentAccess.copy(recurringContributor = false)) ||
+      isCancelledRecurringContribution(fromZuora, fromSupporterProductData) ||
+      isExpiredSub(fromZuora, fromSupporterProductData)
+
+  def isExpiredSub(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromSupporterProductData.isEmpty && fromZuora.exists(att =>
+      att.contentAccess == ContentAccess(
+        member = false,
+        paidMember = false,
+        recurringContributor = false,
+        digitalPack = false,
+        paperSubscriber = false,
+        guardianWeeklySubscriber = false
+      )
+    )
+
+  def isCancelledRecurringContribution(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromZuora.isEmpty && fromSupporterProductData.exists(att =>
+      att.contentAccess == ContentAccess(
+        member = false,
+        paidMember = false,
+        recurringContributor = true,
+        digitalPack = false,
+        paperSubscriber = false,
+        guardianWeeklySubscriber = false
+      )
+    )
 
 }
 

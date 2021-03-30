@@ -11,6 +11,7 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
+import services.AttributesFromZuora.contentAccessMatches
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
@@ -66,6 +67,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
       giftSubscriptionsForIdentityId = touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
       dynamoAttributeService = attrService,
       paymentMethodForPaymentMethodId = paymentMethodId => touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
+      supporterProductDataService = touchpoint.supporterProductDataService
     )
   }
 
@@ -82,32 +84,5 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     } else None
   }
 
-  def contentAccessMatches(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    fromZuora.map(_.contentAccess.copy(recurringContributor = false)) == fromSupporterProductData.map(_.contentAccess.copy(recurringContributor = false)) ||
-      isCancelledRecurringContribution(fromZuora, fromSupporterProductData) ||
-      isExpiredSub(fromZuora, fromSupporterProductData)
 
-  def isExpiredSub(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    fromSupporterProductData.isEmpty && fromZuora.exists(att =>
-      att.contentAccess == ContentAccess(
-        member = false,
-        paidMember = false,
-        recurringContributor = false,
-        digitalPack = false,
-        paperSubscriber = false,
-        guardianWeeklySubscriber = false
-      )
-    )
-
-  def isCancelledRecurringContribution(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    fromZuora.isEmpty && fromSupporterProductData.exists(att =>
-      att.contentAccess == ContentAccess(
-        member = false,
-        paidMember = false,
-        recurringContributor = true,
-        digitalPack = false,
-        paperSubscriber = false,
-        guardianWeeklySubscriber = false
-      )
-    )
 }

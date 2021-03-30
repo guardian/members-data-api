@@ -572,6 +572,31 @@ Resources:
           ReturnData: false
     DependsOn:
       - LoadBalancer
+  AttributesMismatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
+      AlarmName: !Join
+        - ' '
+        - - 'Non-urgent supporter-product-data attribute mismatch'
+          - !Ref 'Stage'
+      AlarmDescription: !Join
+        - ' '
+        - - 'There was a mismatch between attribute data returned from Zuora and data from the supporter-product-data DynamoDB table'
+      MetricName: AttributesMismatch
+      Namespace: members-data-api
+      Dimensions:
+        - Name: Services
+          Value: AttributesFromZuora
+        - Name: Stage
+          Value: !Sub ${Stage}
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 1
+      Statistic: Sum
   SupporterProductDataDynamoErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateProdMonitoring
