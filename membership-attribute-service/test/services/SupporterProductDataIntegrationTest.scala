@@ -37,8 +37,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
 
   "SupporterProductData" should {
     "match Zuora" in {
-      val excluded = List()
-      val allIds: List[String] = Source.fromURL(getClass.getResource("/identityIds.txt")).mkString.split("\n").toList.filter(!excluded.contains(_))
+      val allIds: List[String] = List("testId")
 
       allIds.grouped(3).map {
         subList =>
