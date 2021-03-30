@@ -8,7 +8,7 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
 
   def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]) = {
     supporterRatePlanItems
-      .filter(_.termEndDate.isAfter(LocalDate.now))
+      .filter(_.termEndDate.isAfter(LocalDate.now.minusDays(1)))
       .sortWith((first, second) => first.termEndDate.isBefore(second.termEndDate))
       .foldLeft[Option[Attributes]](None) { (maybeAttributes, item) =>
         mapRatePlanToAttributes(maybeAttributes, item, identityId)
