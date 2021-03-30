@@ -17,7 +17,7 @@ import scala.concurrent.ExecutionContext
 class SupporterProductDataService(client: AmazonDynamoDBAsync, table: String, mapper: SupporterRatePlanToAttributesMapper)
   (implicit executionContext: ExecutionContext) {
 
-  implicit val jodaStringFormat: AnyRef with DynamoFormat[LocalDate] = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse)(
+  implicit val jodaStringFormat: DynamoFormat[LocalDate] = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse)(
     _.toString
   )
 
