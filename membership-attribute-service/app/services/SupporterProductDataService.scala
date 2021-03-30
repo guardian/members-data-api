@@ -17,11 +17,9 @@ import scala.concurrent.ExecutionContext
 class SupporterProductDataService(client: AmazonDynamoDBAsync, table: String, mapper: SupporterRatePlanToAttributesMapper)
   (implicit executionContext: ExecutionContext) {
 
-  implicit val jodaNumberFormat: DynamoFormat[LocalDate] =
-    DynamoFormat.coercedXmap[LocalDate, Long, IllegalArgumentException](epochSeconds => Instant.ofEpochSecond(epochSeconds).toDateTime.toLocalDate)(
-      // We need epoch time in seconds https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/time-to-live-ttl-before-you-start.html
-      _.toDateTimeAtStartOfDay.getMillis / 1000
-    )
+  implicit val jodaStringFormat: DynamoFormat[LocalDate] = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse)(
+    _.toString
+  )
 
   def getAttributes(identityId: String) =
     for {

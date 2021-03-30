@@ -71,8 +71,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         LocalDate.now()
       ).nonEmpty
 
-    // Disable this checking for now while I make some changes to the data store
-    // val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
+    val futureSupporterProductDataAttributes = EitherT(supporterProductDataService.getAttributes(identityId))
 
     lazy val getAttrFromZuora =
       for {
@@ -90,12 +89,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
         maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
-        // supporterProductDataAttributes <- futureSupporterProductDataAttributes
+        supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
         val maybeAttributesFromZuora = maybeGifteeAndNonGifteeAttributes.map(ZuoraAttributes.asAttributes(_))
 
-        // alertIfAttributesDoNotMatch(identityId, maybeAttributesFromZuora, supporterProductDataAttributes)
+        alertIfAttributesDoNotMatch(identityId, maybeAttributesFromZuora, supporterProductDataAttributes)
 
         attributesFromDynamo.foreach(maybeUpdateCache(maybeGifteeAndNonGifteeAttributes, _, maybeAttributesFromZuora))
         Future.successful("Zuora", maybeAttributesFromZuora)
@@ -229,7 +228,7 @@ object AttributesFromZuora extends LazyLogging {
   val metrics = Metrics("AttributesFromZuora") //referenced in CloudFormation
 
   def alertIfAttributesDoNotMatch(identityId: String, fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]): Unit =
-    if (attributesDoNotMatch(fromZuora, fromSupporterProductData)) {
+    if (!contentAccessMatches(fromZuora, fromSupporterProductData)) {
       logger.warn(
         s"Mismatched attributes for user $identityId\n" +
         s"Zuora returned: ${Json.toJson(fromZuora)}\n" +
@@ -238,22 +237,34 @@ object AttributesFromZuora extends LazyLogging {
       metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
     } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
 
-  def attributesDoNotMatch(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    !(
-      fromZuora.isEmpty && fromSupporterProductData.isEmpty ||
-        (fromZuora.map(_.Tier) == fromSupporterProductData.map(_.Tier) &&
-          fromZuora.map(_.RecurringContributionPaymentPlan) == fromSupporterProductData.map(_.RecurringContributionPaymentPlan) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.DigitalSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.DigitalSubscriptionExpiryDate)) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.PaperSubscriptionExpiryDate), fromSupporterProductData.flatMap(_.PaperSubscriptionExpiryDate)) &&
-          datesAreEqualEnough(fromZuora.flatMap(_.GuardianWeeklySubscriptionExpiryDate), fromSupporterProductData.flatMap(_.GuardianWeeklySubscriptionExpiryDate))
-          )
-      )
+  def contentAccessMatches(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromZuora.map(_.contentAccess.copy(recurringContributor = false)) == fromSupporterProductData.map(_.contentAccess.copy(recurringContributor = false)) ||
+      isCancelledRecurringContribution(fromZuora, fromSupporterProductData) ||
+      isExpiredSub(fromZuora, fromSupporterProductData)
 
-  def datesAreEqualEnough(fromZuora: Option[LocalDate], fromSupporterProductData: Option[LocalDate]) = {
-    //Currently dates from the supporter-product-data store will be a day after the zuora term end date to avoid
-    // worrying about time zones and when new subscriptions are created. This may well change.
-    fromZuora == fromSupporterProductData || fromZuora.map(_.plusDays(1)) == fromSupporterProductData
-  }
+  def isExpiredSub(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromSupporterProductData.isEmpty && fromZuora.exists(att =>
+      att.contentAccess == ContentAccess(
+        member = false,
+        paidMember = false,
+        recurringContributor = false,
+        digitalPack = false,
+        paperSubscriber = false,
+        guardianWeeklySubscriber = false
+      )
+    )
+
+  def isCancelledRecurringContribution(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
+    fromZuora.isEmpty && fromSupporterProductData.exists(att =>
+      att.contentAccess == ContentAccess(
+        member = false,
+        paidMember = false,
+        recurringContributor = true,
+        digitalPack = false,
+        paperSubscriber = false,
+        guardianWeeklySubscriber = false
+      )
+    )
 
 }
 

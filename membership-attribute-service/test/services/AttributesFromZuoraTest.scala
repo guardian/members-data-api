@@ -1,6 +1,6 @@
 package services
 
-import java.net.SocketTimeoutException
+import akka.actor.ActorSystem
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult
 import com.gu.i18n.Currency.GBP
 import com.gu.memsub.Subscription.AccountId
@@ -14,14 +14,14 @@ import org.specs2.matcher.EventuallyMatchers
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.{BeforeEach, Scope}
-import testdata.SubscriptionTestData
-import testdata.AccountObjectTestData._
-import akka.actor.ActorSystem
-
-import scala.concurrent.duration._
-import scala.concurrent.Future
 import scalaz.\/
-import services.AttributesFromZuora.{attributesDoNotMatch, datesAreEqualEnough}
+import services.AttributesFromZuora.contentAccessMatches
+import testdata.AccountObjectTestData._
+import testdata.SubscriptionTestData
+
+import java.net.SocketTimeoutException
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito with BeforeEach with EventuallyMatchers {
   implicit val as: ActorSystem = ActorSystem("test")
@@ -287,9 +287,9 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
       "identify a mismatch between attributes" in {
         val fromZuora = Some(Attributes("123", Some("Supporter")))
         val fromSupporterProductData = Some(Attributes("123"))
-        attributesDoNotMatch(fromZuora, fromSupporterProductData) should beTrue
-        attributesDoNotMatch(fromZuora, None) should beTrue
-        attributesDoNotMatch(None, None) should beFalse
+        contentAccessMatches(fromZuora, fromSupporterProductData) should beFalse
+        contentAccessMatches(fromZuora, None) should beFalse
+        contentAccessMatches(None, None) should beTrue
       }
 
       "Complex attributes should match" in {
@@ -318,40 +318,7 @@ class AttributesFromZuoraTest(implicit ee: ExecutionEnv) extends Specification w
             GuardianWeeklySubscriptionExpiryDate = Some(LocalDate.parse("2022-10-31")),
             LiveAppSubscriptionExpiryDate = None,
             AlertAvailableFor = None))
-        attributesDoNotMatch(fromZuora, fromSupporterProductData) should beFalse
-      }
-
-      "be tolerant of zuora dates being one up to day ahead of supporter-product-data dates" in {
-        datesAreEqualEnough(
-          fromZuora = Some(LocalDate.parse("2022-02-16")),
-          fromSupporterProductData = Some(LocalDate.parse("2022-02-17"))
-        ) should beTrue
-
-        datesAreEqualEnough(
-          fromZuora = None,
-          fromSupporterProductData = None
-        ) should beTrue
-
-        datesAreEqualEnough(
-          fromZuora = Some(LocalDate.parse("2021-03-03")),
-          fromSupporterProductData = None
-        ) should beFalse
-
-        datesAreEqualEnough(
-          fromZuora = None,
-          fromSupporterProductData = Some(LocalDate.parse("2021-03-03"))
-        ) should beFalse
-
-        datesAreEqualEnough(
-          fromZuora = Some(LocalDate.parse("2021-03-04")),
-          fromSupporterProductData = Some(LocalDate.parse("2021-03-03"))
-        ) should beFalse
-      }
-
-      "ignore MembershipJoinDate when comparing attributes" in {
-        val fromZuora = Some(Attributes("123", MembershipJoinDate = Some(LocalDate.now())))
-        val fromSupporterProductData = Some(Attributes("123"))
-        attributesDoNotMatch(fromZuora, fromSupporterProductData) should beFalse
+        contentAccessMatches(fromZuora, fromSupporterProductData) should beTrue
       }
 
     }
