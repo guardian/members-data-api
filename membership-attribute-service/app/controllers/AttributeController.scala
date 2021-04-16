@@ -19,7 +19,7 @@ import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
 
 /**
@@ -112,6 +112,19 @@ class AttributeController(
     )
   }
 
+  private lazy val random = new Random
+
+  private def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
+    if(random.nextInt(100) >= 5) {
+      log.info(s"Fetching attributes from Zuora for user $identityId")
+      getAttributesWithConcurrencyLimitHandling(identityId)
+    } else {
+      log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
+      request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
+    }
+
+  }
+
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
 
@@ -122,7 +135,7 @@ class AttributeController(
       request.user match {
         case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureAttributes = getAttributesWithConcurrencyLimitHandling(user.id)
+          val futureAttributes = getZuoraAttributes(user.id)
           val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
