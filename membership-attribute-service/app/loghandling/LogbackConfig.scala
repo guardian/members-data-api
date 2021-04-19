@@ -1,8 +1,8 @@
 package loghandling
 
 import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.{Logger => LogbackLogger, LoggerContext}
-import com.amazonaws.auth.AWSCredentialsProvider
+import ch.qos.logback.classic.{LoggerContext, Logger => LogbackLogger}
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import com.gu.logback.appender.kinesis.KinesisAppender
 import net.logstash.logback.layout.LogstashLayout
 import org.slf4j.{Logger => SLFLogger, LoggerFactory}
@@ -15,7 +15,7 @@ object LogbackConfig {
 
   case class KinesisAppenderConfig(stream: String,
     region: String,
-    awsCredentialsProvider: AWSCredentialsProvider,
+    awsCredentialsProvider: AwsCredentialsProvider,
     bufferSize: Int)
 
   def makeCustomFields(customFields: Map[String, String]): String = {

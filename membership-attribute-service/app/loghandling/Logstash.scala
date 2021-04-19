@@ -1,19 +1,23 @@
 package loghandling
 
-import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.util.EC2MetadataUtils
 import configuration.Config
-import play.api.Configuration
-import com.gu.aws.CredentialsProvider
+import com.gu.aws.ProfileName
 import com.typesafe.scalalogging.StrictLogging
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 
 case class LogStashConf(enabled: Boolean,
   stream: String,
   region: String,
-  awsCredentialsProvider: AWSCredentialsProvider,
+  awsCredentialsProvider: AwsCredentialsProvider,
   customFields: Map[String, String])
 
 object Logstash extends StrictLogging {
+
+  private val CredentialsProvider = AwsCredentialsProviderChain.builder
+    .addCredentialsProvider(ProfileCredentialsProvider.builder.profileName(ProfileName).build)
+    .addCredentialsProvider(InstanceProfileCredentialsProvider.builder.build)
+    .build()
 
   def customFields(playConfig: Config.type) = Map(
     "stack" -> "unknownStack",// all TODO
