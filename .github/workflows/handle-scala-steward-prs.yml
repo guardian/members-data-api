@@ -1,0 +1,24 @@
+name: Scala Steward PR handling
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test Scala Steward PR
+    if: github.actor == 'scala-steward'
+    runs-on: ubuntu-latest
+    steps:
+    - 
+      name: Checkout repo
+      uses: actions/checkout@v2.3.4
+    - 
+      name: Set up Java
+      uses: actions/setup-java@v2.0.0
+      with:
+        java-version: 11
+    - 
+      name: Run tests
+      run: sbt test
+      
