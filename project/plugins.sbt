@@ -11,6 +11,6 @@ addSbtPlugin("com.localytics" % "sbt-dynamodb" % "2.0.2")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.2")
 
-addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "1.0.0")
+addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "1.1.12")
 
 libraryDependencies += "org.vafer" % "jdeb" % "1.3" artifacts (Artifact("jdeb", "jar", "jar"))
