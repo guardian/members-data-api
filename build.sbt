@@ -26,8 +26,6 @@ val commonSettings = Seq(
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
-    "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
-    Resolver.bintrayRepo("dwhjames", "maven"),
     Resolver.sonatypeRepo("releases")
   ),
   sources in (Compile, doc) := Seq.empty,
