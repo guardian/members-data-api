@@ -110,7 +110,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
        */
       def disableAutoPayOnlyIfAccountHasOneSubscription(
         accountId: memsub.Subscription.AccountId
-      ): EitherT[Future, String, Future[String \/ Unit]] = {
+      ): EitherT[String, Future, Future[String \/ Unit]] = {
           EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).map { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
               tp.zuoraRestService.disableAutoPay(accountId)
