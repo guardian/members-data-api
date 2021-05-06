@@ -46,7 +46,7 @@ object Dependencies {
     logstash,
     anorm,
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.10.6",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.10.8",
     netty,
     nettyHttp,
   )
