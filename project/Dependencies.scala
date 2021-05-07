@@ -20,7 +20,7 @@ object Dependencies {
   val membershipCommon = "com.gu" %% "membership-common" % "0.592"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.31"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.2"
-  val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.11"
+  val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
   val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.59.Final"
