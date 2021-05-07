@@ -190,6 +190,44 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       }.toList
     }
 
+    "Always choose the most valuable membership" in {
+      val friend = "2c92a0fb4ce4b8e7014ce711d3c37e60"
+      val staff = "2c92a0f949efde7c0149f1f18162178e"
+      val supporter = "2c92a0f94c547592014c69f5b0ff4f7e"
+      val partner = "2c92a0fb4c5481dc014c69f95fce7240"
+      val patron = "2c92a0fb4c5481db014c69fb9118704b"
+
+      mapper
+        .attributesFromSupporterRatePlans(
+          identityId,
+          List(
+            ratePlanItem(staff),
+            ratePlanItem(friend),
+          )
+        ) should beSome.which(_.Tier should beSome("Staff"))
+
+      mapper
+        .attributesFromSupporterRatePlans(
+          identityId,
+          List(
+            ratePlanItem(friend),
+            ratePlanItem(patron),
+            ratePlanItem(partner)
+          )
+        ) should beSome.which(_.Tier should beSome("Patron"))
+
+      mapper
+        .attributesFromSupporterRatePlans(
+          identityId,
+          List(
+            ratePlanItem(staff),
+            ratePlanItem(supporter),
+            ratePlanItem(friend)
+          )
+        ) should beSome.which(_.Tier should beSome("Supporter"))
+
+    }
+
     "handle an empty list of supporterProductRatePlanIds correctly" in {
       mapper
         .attributesFromSupporterRatePlans(
