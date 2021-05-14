@@ -22,8 +22,9 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.2"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
-  val netty = "io.netty" % "netty-codec" % "4.1.63.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.63.Final"
+  val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.59.Final"
+  val jacksonVersion = "2.12.3"
 
   //projects
 
@@ -46,7 +47,8 @@ object Dependencies {
     logstash,
     anorm,
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.10.6",
+    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     netty,
     nettyHttp,
   )
