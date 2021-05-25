@@ -6,7 +6,7 @@ object Dependencies {
   val awsClientVersion = "1.11.1022"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.235"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.248"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.7"
   val postgres = "org.postgresql" % "postgresql" % "42.2.20"
   val jdbc = PlayImport.jdbc
@@ -19,7 +19,7 @@ object Dependencies {
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.592"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.31"
-  val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.2"
+  val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
   val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
@@ -51,6 +51,7 @@ object Dependencies {
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     netty,
     nettyHttp,
+    "com.google.guava"         % "guava"        % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
   )
 
 }
