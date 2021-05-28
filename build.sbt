@@ -22,7 +22,7 @@ def buildInfoSettings = Seq(
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.12.13",
+  scalaVersion := "2.12.14",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
