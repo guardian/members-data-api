@@ -117,7 +117,7 @@ class AttributeController(
 
   protected def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     Timing.record(metrics, s"Fetch attributes - Average time") {
-      if (random.nextInt(100) >= 50) {
+      if (random.nextInt(100) >= 80) {
         log.info(s"Fetching attributes from Zuora for user $identityId")
         Timing.record(metrics, "Fetch Attributes - Zuora") {
           getAttributesWithConcurrencyLimitHandling(identityId)
