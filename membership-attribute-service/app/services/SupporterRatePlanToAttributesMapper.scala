@@ -2,6 +2,7 @@ package services
 
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
+import services.MembershipTier.{Friend, Partner, Patron, Staff, Supporter, getMostValuableTier}
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
 class SupporterRatePlanToAttributesMapper(stage: String) {
@@ -134,28 +135,28 @@ object SupporterRatePlanToAttributesMapper {
         List(
           "2c92a0fb4ce4b8e7014ce711d3c37e60",
           "2c92a0f9479fb46d0147d0155c6f558b"
-        ) -> memberTransformer("Friend"),
+        ) -> memberTransformer(Friend),
         List(
           "2c92a0f949efde7c0149f1f18162178e"
-        ) -> memberTransformer("Staff"),
+        ) -> memberTransformer(Staff),
         List(
           "2c92a0f94c547592014c69f5b0ff4f7e",
           "2c92a0fb4c5481db014c69f4a1e03bbd",
           "2c92a0fb4bb97034014bbbc562114fef",
           "2c92a0fb4bb97034014bbbc562604ff7"
-        ) -> memberTransformer("Supporter"),
+        ) -> memberTransformer(Supporter),
         List(
           "2c92a0fb4c5481dc014c69f95fce7240",
           "2c92a0f94c54758b014c69f813bd39ec",
           "2c92a0f9479fb46d0147d0155ca15595",
           "2c92a0f9479fb46d0147d0155cb15596"
-        ) -> memberTransformer("Partner"),
+        ) -> memberTransformer(Partner),
         List(
           "2c92a0fb4c5481db014c69fb9118704b",
           "2c92a0f94c547592014c69fb0c4274fc",
           "2c92a0f9479fb46d0147d0155bf9557a",
           "2c92a0f9479fb46d0147d0155c245581"
-        ) -> memberTransformer("Patron")
+        ) -> memberTransformer(Patron)
       ),
       "UAT" -> Map(
         List(
@@ -214,28 +215,28 @@ object SupporterRatePlanToAttributesMapper {
         List(
           "2c92c0f94cc6ea05014cdb4b1d1f037d",
           "2c92c0f848f362750148f4c2727379d7"
-        ) -> memberTransformer("Friend"),
+        ) -> memberTransformer(Friend),
         List(
           "2c92c0f849f118740149f1d61ad07723"
-        ) -> memberTransformer("Staff"),
+        ) -> memberTransformer(Staff),
         List(
           "2c92c0f84c5100b6014c569ad3a23d10",
           "2c92c0f84c5100b6014c569b83b33ebd",
           "2c92c0f84bbfeca5014bc0c5a9a12427",
           "2c92c0f84bbfeca5014bc0c5a83f241f"
-        ) -> memberTransformer("Supporter"),
+        ) -> memberTransformer(Supporter),
         List(
           "2c92c0f84c510073014c56948fbe6894",
           "2c92c0f84c510081014c569327003593",
           "2c92c0f848f362750148f4c2729379db",
           "2c92c0f848f362750148f4c2728379d9"
-        ) -> memberTransformer("Partner"),
+        ) -> memberTransformer(Partner),
         List(
           "2c92c0f94c510a0d014c569070792fa7",
           "2c92c0f84c510081014c568daa112d2a",
           "2c92c0f848f362750148f4c2726079d5",
           "2c92c0f848f362750148f4c2724679d3"
-        ) -> memberTransformer("Patron")
+        ) -> memberTransformer(Patron)
       ),
       "DEV" -> Map(
         List(
@@ -294,36 +295,58 @@ object SupporterRatePlanToAttributesMapper {
         List(
           "2c92c0f94c9ca1c5014c9e5c64ba4260",
           "2c92c0f945fee1c90146057402c7066b"
-        ) -> memberTransformer("Friend"),
+        ) -> memberTransformer(Friend),
         List(
           "2c92c0f849c6e58a0149c73d6f114be2"
-        ) -> memberTransformer("Staff"),
+        ) -> memberTransformer(Staff),
         List(
           "2c92c0f94c510a0d014c569ba8eb45f7",
           "2c92c0f94c510a01014c569e2d857cfd",
           "2c92c0f84b079582014b2754c07c0f7d",
           "2c92c0f84b079582014b2754bfd70f6d"
-        ) -> memberTransformer("Supporter"),
+        ) -> memberTransformer(Supporter),
         List(
           "2c92c0f94c510a0d014c569a93194575",
           "2c92c0f84c510081014c569a18b04e84",
           "2c92c0f945fee1c9014605749e450969",
           "2c92c0f8471e22bb01471ffe9596366c"
-        ) -> memberTransformer("Partner"),
+        ) -> memberTransformer(Partner),
         List(
           "2c92c0f84c5100b6014c56908a63216d",
           "2c92c0f94c510a04014c568d648d097d",
           "2c92c0f845fed48301460578277167c3",
           "2c92c0f9471e145d01471ffd7c304df9"
-        ) -> memberTransformer("Patron")
+        ) -> memberTransformer(Patron)
       )
     )
 
-  def memberTransformer(tier: String): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(Tier = Some(tier))
+  def memberTransformer(tier: MembershipTier): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
+    attributes.copy(Tier = getMostValuableTier(tier, attributes.Tier))
 
   trait AttributeTransformer {
     def transform(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem): Attributes
   }
+
+}
+
+
+sealed abstract class MembershipTier(val name: String, val value: Int)
+
+object MembershipTier {
+  case object Friend extends MembershipTier("Friend", 1)
+  case object Staff extends MembershipTier("Staff", 2)
+  case object Supporter extends MembershipTier("Supporter", 3)
+  case object Partner extends MembershipTier("Partner", 4)
+  case object Patron extends MembershipTier("Patron", 5)
+
+  private def fromString(name: String): Option[MembershipTier] =
+    List(Friend, Staff, Supporter, Partner, Patron).find(_.name == name)
+
+  def getMostValuableTier(newTier: MembershipTier, existingTier: Option[String]) =
+    if (existingTier.flatMap(fromString).exists(_.value > newTier.value))
+      existingTier
+    else
+      Some(newTier.name)
+
 
 }
