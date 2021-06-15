@@ -113,21 +113,10 @@ class AttributeController(
     )
   }
 
-  private lazy val random = new Random
-
   protected def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
-    Timing.record(metrics, s"Fetch attributes - Average time") {
-      if (random.nextInt(100) >= 20) {
-        log.info(s"Fetching attributes from Zuora for user $identityId")
-        Timing.record(metrics, "Fetch Attributes - Zuora") {
-          getAttributesWithConcurrencyLimitHandling(identityId)
-        }
-      } else {
-        log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
-        Timing.record(metrics, "Fetch Attributes - SupporterProductData") {
-          request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
-        }
-      }
+    log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
+    Timing.record(metrics, "Fetch Attributes - SupporterProductData") {
+      request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
     }
   }
 
