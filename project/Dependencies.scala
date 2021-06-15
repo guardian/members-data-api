@@ -3,7 +3,7 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientVersion = "1.11.1012"
+  val awsClientVersion = "1.11.1022"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.235"
@@ -17,14 +17,19 @@ object Dependencies {
   val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.592"
-  val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.31"
-  val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.2"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.603"
+  val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.32"
+  val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
-  val netty = "io.netty" % "netty-codec" % "4.1.65.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.65.Final"
-  val jacksonVersion = "2.12.3"
+  val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.59.Final"
+  val jacksonVersion = "2.11.4"
+
+  val jackson = Seq(
+    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
+  )
 
   //projects
 
@@ -47,10 +52,10 @@ object Dependencies {
     logstash,
     anorm,
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
-    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     netty,
     nettyHttp,
-  )
+  ) ++ jackson
+
+  val depOverrides = jackson
 
 }
