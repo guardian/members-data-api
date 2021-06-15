@@ -24,7 +24,12 @@ object Dependencies {
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
   val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.59.Final"
-  val jacksonVersion = "2.12.3"
+  val jacksonVersion = "2.11.4"
+
+  val jackson = Seq(
+    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
+  )
 
   //projects
 
@@ -47,10 +52,10 @@ object Dependencies {
     logstash,
     anorm,
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
-    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     netty,
     nettyHttp,
-  )
+  ) ++ jackson
+
+  val depOverrides = jackson
 
 }
