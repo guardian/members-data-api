@@ -14,6 +14,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 import com.gu.identity.model.User
+import com.gu.memsub.util.Timing
 import limit.ZuoraRequestCounter
 import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
@@ -112,17 +113,9 @@ class AttributeController(
     )
   }
 
-  private lazy val random = new Random
-
-  private def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
-    if(random.nextInt(100) >= 5) {
-      log.info(s"Fetching attributes from Zuora for user $identityId")
-      getAttributesWithConcurrencyLimitHandling(identityId)
-    } else {
-      log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
-      request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
-    }
-
+  protected def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
+    log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
+    request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {

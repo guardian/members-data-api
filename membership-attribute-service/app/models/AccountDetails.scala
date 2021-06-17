@@ -6,7 +6,7 @@ import scala.annotation.tailrec
 import com.gu.i18n.Country
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product, Sepa}
 import com.gu.services.model.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
 import json.localDateWrites
@@ -74,6 +74,13 @@ object AccountDetails {
             "accountName" -> dd.accountName,
             "accountNumber" -> dd.accountNumber,
             "sortCode" -> dd.sortCode
+          )
+        )
+        case Some(sepa: Sepa) => Json.obj(
+          "paymentMethod" -> "Sepa",
+          "sepaMandate" -> Json.obj(
+            "accountName" -> sepa.accountName,
+            "iban" -> sepa.accountNumber,
           )
         )
         case _ if accountHasMissedRecentPayments && safeToUpdatePaymentMethod => Json.obj(
