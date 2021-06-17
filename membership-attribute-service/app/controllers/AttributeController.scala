@@ -115,9 +115,7 @@ class AttributeController(
 
   protected def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
-    Timing.record(metrics, "Fetch Attributes - SupporterProductData") {
-      request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
-    }
+    request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
