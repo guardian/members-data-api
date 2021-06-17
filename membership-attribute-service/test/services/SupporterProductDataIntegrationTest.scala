@@ -3,6 +3,7 @@ package services
 import akka.actor.ActorSystem
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
+import com.gu.aws.ProfileName
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
@@ -12,6 +13,9 @@ import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
 import services.AttributesFromZuora.contentAccessMatches
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
@@ -20,7 +24,15 @@ import scala.io.Source
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
   val stage = "PROD" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
-  lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
+  lazy val CredentialsProvider =  AwsCredentialsProviderChain.builder.credentialsProviders(
+    ProfileCredentialsProvider.builder.profileName(ProfileName).build,
+    InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
+    EnvironmentVariableCredentialsProvider.create()
+  ).build
+
+  lazy val dynamoClientBuilder: DynamoDbAsyncClientBuilder = DynamoDbAsyncClient.builder
+    .credentialsProvider(CredentialsProvider)
+    .region(Region.EU_WEST_1)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val supporterProductDataTable = "SupporterProductData-PROD"
   lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
