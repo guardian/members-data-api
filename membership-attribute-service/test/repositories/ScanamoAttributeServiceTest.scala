@@ -1,18 +1,18 @@
 package repositories
 
-import java.util.UUID
 import models.DynamoAttributes
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import services.ScanamoAttributeService
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
-import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
-import software.amazon.awssdk.services.dynamodb.model.{AttributeDefinition, CreateTableRequest, KeySchemaElement, KeyType, ProvisionedThroughput, ScalarAttributeType}
+import software.amazon.awssdk.services.dynamodb.model._
 
 import java.net.URI
+import java.util.UUID
+import scala.compat.java8.FutureConverters
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -52,7 +52,7 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
       .keySchema(keySchema)
       .build()
 
-  val createTableResult = awsDynamoClient.createTable(tableRequest)
+  val createTableResult = Await.result(FutureConverters.toScala(awsDynamoClient.createTable(tableRequest)), 20.seconds)
 
   val testExpiryDate = DateTime.now()
 
