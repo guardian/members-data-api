@@ -6,7 +6,7 @@ object Dependencies {
   val awsClientVersion = "1.11.1022"
   val awsClientV2Version = "2.16.86"
 
-  val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
+  val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.30"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.248"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.7"
   val postgres = "org.postgresql" % "postgresql" % "42.2.22"
