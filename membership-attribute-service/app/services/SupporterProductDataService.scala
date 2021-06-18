@@ -1,25 +1,26 @@
 package services
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
-import com.gu.scanamo.error.DynamoReadError
-import com.gu.scanamo.error.DynamoReadError.describe
-import com.gu.scanamo.syntax._
-import com.gu.scanamo._
 import com.typesafe.scalalogging.LazyLogging
 import models.DynamoSupporterRatePlanItem
 import monitoring.Metrics
-import org.joda.time.{Instant, LocalDate}
+import org.joda.time.LocalDate
+import org.scanamo.DynamoReadError.describe
+import org.scanamo.{DynamoReadError, _}
+import org.scanamo.generic.semiauto._
+import org.scanamo.syntax._
 import scalaz.\/
 import services.SupporterProductDataService.{alertOnDynamoReadErrors, errorMessage}
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.ExecutionContext
 
-class SupporterProductDataService(client: AmazonDynamoDBAsync, table: String, mapper: SupporterRatePlanToAttributesMapper)
+class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)
   (implicit executionContext: ExecutionContext) {
 
-  implicit val jodaStringFormat: DynamoFormat[LocalDate] = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse)(
+  implicit val jodaStringFormat: DynamoFormat[LocalDate] = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse,
     _.toString
   )
+  implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
   def getAttributes(identityId: String) =
     for {
@@ -37,9 +38,9 @@ class SupporterProductDataService(client: AmazonDynamoDBAsync, table: String, ma
       \/.left(errorMessage(futureErrors))
 
   private def getSupporterRatePlanItems(identityId: String) =
-    ScanamoAsync.exec(client) {
+    ScanamoAsync(client).exec {
       Table[DynamoSupporterRatePlanItem](table)
-        .query('identityId -> identityId)
+        .query("identityId" === identityId)
 
     }
 

@@ -1,17 +1,18 @@
 package repositories
 
-import java.util.UUID
-
-import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
-import com.amazonaws.client.builder.AwsClientBuilder
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-import com.amazonaws.services.dynamodbv2.model._
 import models.DynamoAttributes
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import services.ScanamoAttributeService
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import software.amazon.awssdk.services.dynamodb.model._
 
+import java.net.URI
+import java.util.UUID
+import scala.compat.java8.FutureConverters
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -30,28 +31,28 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     val membershipJoinDate = "MembershipJoinDate"
   }
 
-  private val endpoint = new AwsClientBuilder.EndpointConfiguration("http://localhost:8000/", "eu-west-1")
-  private val awsDynamoClient = AmazonDynamoDBAsyncClientBuilder
-    .standard()
-    .withEndpointConfiguration(endpoint)
-    .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("foo", "bar")))
-    .build()
+  private val awsDynamoClient = DynamoDbAsyncClient.builder
+    .endpointOverride(URI.create("http://localhost:8000/"))
+    .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("foo", "bar")))
+    .region(Region.EU_WEST_1)
+    .build
 
   private val testTable = "MembershipAttributes-TEST"
 
   private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
-  val provisionedThroughput = new ProvisionedThroughput().withReadCapacityUnits(10L).withWriteCapacityUnits(5L)
-  val userIdAtt = new AttributeDefinition().withAttributeName(AttributeNames.userId).withAttributeType(ScalarAttributeType.S)
-  val keySchema = new KeySchemaElement().withAttributeName(AttributeNames.userId).withKeyType(KeyType.HASH)
+  val provisionedThroughput =  ProvisionedThroughput.builder().readCapacityUnits(10L).writeCapacityUnits(5L).build()
+  val userIdAtt = AttributeDefinition.builder().attributeName(AttributeNames.userId).attributeType(ScalarAttributeType.S).build()
+  val keySchema = KeySchemaElement.builder().attributeName(AttributeNames.userId).keyType(KeyType.HASH).build()
   val tableRequest =
-    new CreateTableRequest()
-      .withTableName(testTable)
-      .withProvisionedThroughput(provisionedThroughput)
-      .withAttributeDefinitions(userIdAtt)
-      .withKeySchema(keySchema)
+    CreateTableRequest.builder()
+      .tableName(testTable)
+      .provisionedThroughput(provisionedThroughput)
+      .attributeDefinitions(userIdAtt)
+      .keySchema(keySchema)
+      .build()
 
-  val createTableResult = awsDynamoClient.createTable(tableRequest)
+  val createTableResult = Await.result(FutureConverters.toScala(awsDynamoClient.createTable(tableRequest)), 20.seconds)
 
   val testExpiryDate = DateTime.now()
 

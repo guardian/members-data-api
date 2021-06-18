@@ -1,29 +1,30 @@
 package components
 
 import akka.actor.ActorSystem
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-import scalaz.std.scalaFuture._
+import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.i18n.Country
 import com.gu.identity.IdapiService
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
-import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.monitoring.SafeLogger._
+import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.stripe.StripeService
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
-import com.gu.zuora.rest.SimpleClient
-import com.gu.zuora.rest.ZuoraRestService
-import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.ZuoraSoapService
+import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
+import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
+import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
 import limit.{InstanceCountOnSchedule, TotalZuoraConcurrentLimitOnSchedule, ZuoraRequestCounter}
+import scalaz.std.scalaFuture._
 import services._
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
@@ -58,7 +59,17 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
 
   lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
-  lazy val dynamoClientBuilder: AmazonDynamoDBAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder.standard().withCredentials(com.gu.aws.CredentialsProvider).withRegion(Regions.EU_WEST_1)
+
+  lazy val CredentialsProvider =  AwsCredentialsProviderChain.builder.credentialsProviders(
+    ProfileCredentialsProvider.builder.profileName(ProfileName).build,
+    InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
+    EnvironmentVariableCredentialsProvider.create()
+  ).build
+
+  lazy val dynamoClientBuilder: DynamoDbAsyncClientBuilder = DynamoDbAsyncClient.builder
+    .credentialsProvider(CredentialsProvider)
+    .region(Region.EU_WEST_1)
+
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
   lazy val featureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)

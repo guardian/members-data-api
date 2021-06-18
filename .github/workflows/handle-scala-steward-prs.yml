@@ -17,6 +17,7 @@ jobs:
       name: Set up Java
       uses: actions/setup-java@v2.0.0
       with:
+        distribution: adopt
         java-version: 11
     - 
       name: Run tests

@@ -1,8 +1,8 @@
 package controllers
 
+import org.joda.time.{DateTime, DateTimeZone}
 import org.specs2.mutable.Specification
 import play.api.mvc.{Result, Results}
-import org.joda.time.DateTime
 
 class CachedTest extends Specification with Results {
 
@@ -19,7 +19,7 @@ class CachedTest extends Specification with Results {
   }
 
   "Convert to http date string" in {
-    val theDate = new DateTime(2001, 5, 20, 12, 3, 4, 555)
+    val theDate = new DateTime(2001, 5, 20, 12, 3, 4, 555, DateTimeZone.forID("Europe/London"))
     Cached.toHttpDateTimeString(theDate) mustEqual "Sun, 20 May 2001 11:03:04 GMT"
   }
 
