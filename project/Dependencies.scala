@@ -4,17 +4,18 @@ import play.sbt.PlayImport
 object Dependencies {
 
   val awsClientVersion = "1.11.1022"
+  val awsClientV2Version = "2.16.86"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.235"
-  val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.248"
+  val identityTestUsers = "com.gu" %% "identity-test-users" % "0.7"
   val postgres = "org.postgresql" % "postgresql" % "42.2.22"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
-  val scanamo = "com.gu" %% "scanamo" % "1.0.0-M8"
-  val awsDynamo = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
+  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M15"
+  val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.603"
@@ -54,6 +55,7 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
     netty,
     nettyHttp,
+    "com.google.guava"         % "guava"        % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
   ) ++ jackson
 
   val depOverrides = jackson
