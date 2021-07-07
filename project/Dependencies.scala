@@ -25,7 +25,7 @@ object Dependencies {
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
   val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.59.Final"
-  val jacksonVersion = "2.11.4"
+  val jacksonVersion = "2.12.4"
 
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
