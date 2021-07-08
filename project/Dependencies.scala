@@ -19,7 +19,7 @@ object Dependencies {
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.603"
-  val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.32"
+  val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.33"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
