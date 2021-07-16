@@ -23,8 +23,8 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
-  val netty = "io.netty" % "netty-codec" % "4.1.59.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.59.Final"
+  val netty = "io.netty" % "netty-codec" % "4.1.66.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.66.Final"
   val jacksonVersion = "2.11.4"
 
   val jackson = Seq(
