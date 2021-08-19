@@ -33,13 +33,13 @@ object PaymentDetailMapper {
   )
 
   def paymentDetailsForSub(
-    isGiftRedemption: Boolean,
-    freeOrPaidSub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
-    paymentService: PaymentService
+      isGiftRedemption: Boolean,
+      freeOrPaidSub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
+      paymentService: PaymentService
   ): Future[PaymentDetails] = freeOrPaidSub match {
     case \/-(giftSub) if isGiftRedemption =>
       Future.successful(getGiftPaymentDetails(giftSub))
-    case \/-(paidSub)  =>
+    case \/-(paidSub) =>
       paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some(""))
     case -\/(freeSub) => Future.successful(PaymentDetails(freeSub))
   }

@@ -13,12 +13,12 @@ import scalaz.syntax.std.boolean._
 import json._
 
 case class ContentAccess(
-  member: Boolean,
-  paidMember: Boolean,
-  recurringContributor: Boolean,
-  digitalPack: Boolean,
-  paperSubscriber: Boolean,
-  guardianWeeklySubscriber: Boolean
+    member: Boolean,
+    paidMember: Boolean,
+    recurringContributor: Boolean,
+    digitalPack: Boolean,
+    paperSubscriber: Boolean,
+    guardianWeeklySubscriber: Boolean
 )
 
 object ContentAccess {
@@ -27,16 +27,17 @@ object ContentAccess {
 }
 
 case class Attributes(
-  UserId: String,
-  Tier: Option[String] = None,
-  RecurringContributionPaymentPlan: Option[String] = None,
-  OneOffContributionDate: Option[LocalDate] = None,
-  MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
-  LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
-  AlertAvailableFor: Option[String] = None) {
+    UserId: String,
+    Tier: Option[String] = None,
+    RecurringContributionPaymentPlan: Option[String] = None,
+    OneOffContributionDate: Option[LocalDate] = None,
+    MembershipJoinDate: Option[LocalDate] = None,
+    DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+    PaperSubscriptionExpiryDate: Option[LocalDate] = None,
+    GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
+    LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
+    AlertAvailableFor: Option[String] = None
+) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -46,7 +47,8 @@ case class Attributes(
   lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
   lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(3)))
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
-  lazy val latestDigitalSubscriptionExpiryDate =  Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
+  lazy val latestDigitalSubscriptionExpiryDate =
+    Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
   lazy val digitalSubscriberHasActivePlan = latestDigitalSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPaperSubscriber = PaperSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
@@ -71,19 +73,20 @@ case class Attributes(
       || isPaperSubscriber
       || isGuardianWeeklySubscriber
       || isPremiumLiveAppSubscriber
-    )
+  )
 
 }
 
 case class ZuoraAttributes(
-  UserId: String,
-  Tier: Option[String] = None,
-  RecurringContributionPaymentPlan: Option[String] = None,
-  MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
-  AlertAvailableFor: Option[String] = None)
+    UserId: String,
+    Tier: Option[String] = None,
+    RecurringContributionPaymentPlan: Option[String] = None,
+    MembershipJoinDate: Option[LocalDate] = None,
+    DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+    PaperSubscriptionExpiryDate: Option[LocalDate] = None,
+    GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
+    AlertAvailableFor: Option[String] = None
+)
 
 object ZuoraAttributes {
   def asAttributes(zuoraAttributes: ZuoraAttributes, oneOffContributionDate: Option[LocalDate] = None) = Attributes(
@@ -100,16 +103,17 @@ object ZuoraAttributes {
 }
 
 case class DynamoAttributes(
-  // this is the dynamo READ model, the WRITE model is in ScanamoAttributeService
-  // if you update this you must make sure you are writing the relevant properties too!
-  UserId: String,
-  Tier: Option[String] = None,
-  RecurringContributionPaymentPlan: Option[String] = None,
-  MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
-  TTLTimestamp: Long) {
+    // this is the dynamo READ model, the WRITE model is in ScanamoAttributeService
+    // if you update this you must make sure you are writing the relevant properties too!
+    UserId: String,
+    Tier: Option[String] = None,
+    RecurringContributionPaymentPlan: Option[String] = None,
+    MembershipJoinDate: Option[LocalDate] = None,
+    DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
+    PaperSubscriptionExpiryDate: Option[LocalDate] = None,
+    GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
+    TTLTimestamp: Long
+) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -151,20 +155,20 @@ object Attributes {
 }
 
 case class MembershipAttributes(
-  UserId: String,
-  Tier: String,
-  AdFree: Option[Boolean] = None,
-  ContentAccess : MembershipContentAccess
+    UserId: String,
+    Tier: String,
+    AdFree: Option[Boolean] = None,
+    ContentAccess: MembershipContentAccess
 )
 
 object MembershipAttributes {
 
   implicit val jsWrite: OWrites[MembershipAttributes] = (
     (__ \ "userId").write[String] and
-    (__ \ "tier").write[String] and
-    (__ \ "adFree").writeNullable[Boolean] and
-    (__ \ "contentAccess").write[MembershipContentAccess](MembershipContentAccess.jsWrite)
-   )(unlift(MembershipAttributes.unapply))
+      (__ \ "tier").write[String] and
+      (__ \ "adFree").writeNullable[Boolean] and
+      (__ \ "contentAccess").write[MembershipContentAccess](MembershipContentAccess.jsWrite)
+  )(unlift(MembershipAttributes.unapply))
 
   def fromAttributes(attr: Attributes): Option[MembershipAttributes] = for {
     tier <- attr.Tier
