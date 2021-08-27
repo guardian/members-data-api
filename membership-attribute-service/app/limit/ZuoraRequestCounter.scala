@@ -11,7 +11,7 @@ object ZuoraRequestCounter extends LoggingWithLogstashFields {
   private val counter = new AtomicInteger()
 
   def withZuoraRequestCounter(
-    runner: (Request) => Future[Response]
+      runner: (Request) => Future[Response]
   )(implicit ec: ExecutionContext): (Request) => Future[Response] = { request =>
     val inProgress = counter.incrementAndGet()
     logInfoWithCustomFields(s"started request to zuora, now have $inProgress in progress", List("zuora_concurrency_count" -> inProgress))
@@ -28,8 +28,7 @@ object ZuoraRequestCounter extends LoggingWithLogstashFields {
       if (totalConcurrentCallThreshold > 40) {
         log.error("Total Zuora concurrent requests limit set too high. Capping it to 40...")
         40
-      }
-      else totalConcurrentCallThreshold
+      } else totalConcurrentCallThreshold
 
     if (cappedTotalConcurrentCallThreshold <= 0) {
       log.warn("All requests will be served from cache because totalConcurrentCallThreshold = 0")

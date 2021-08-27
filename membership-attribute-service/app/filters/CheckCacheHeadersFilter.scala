@@ -6,13 +6,16 @@ import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class CheckCacheHeadersFilter (implicit val mat: Materializer, ex: ExecutionContext) extends Filter {
+class CheckCacheHeadersFilter(implicit val mat: Materializer, ex: ExecutionContext) extends Filter {
 
   def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
     nextFilter(requestHeader).map { result =>
       if (requestHeader.method.toUpperCase != "OPTIONS" && suitableForCaching(result)) {
         val hasCacheControl = result.header.headers.contains("Cache-Control")
-        assert(hasCacheControl, s"Cache-Control not set. Ensure controller response has Cache-Control header set for ${requestHeader.path}. Throwing exception... ")
+        assert(
+          hasCacheControl,
+          s"Cache-Control not set. Ensure controller response has Cache-Control header set for ${requestHeader.path}. Throwing exception... "
+        )
       }
       result
     }

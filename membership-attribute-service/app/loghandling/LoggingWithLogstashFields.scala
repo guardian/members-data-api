@@ -37,11 +37,12 @@ object LoggingField {
   implicit def tupleToLogFieldInt(t: (String, Int)): LogFieldInt = LogFieldInt(t._1, t._2)
   implicit def tupleToLogFieldString(t: (String, String)): LogFieldString = LogFieldString(t._1, t._2)
 
-  def customFieldMarkers(fields: List[LogField]) : LogstashMarker = {
-    val fieldsMap = fields.map {
-      case LogFieldInt(n, v) => (n, v)
-      case LogFieldString(n, v) => (n, v)
-    }
+  def customFieldMarkers(fields: List[LogField]): LogstashMarker = {
+    val fieldsMap = fields
+      .map {
+        case LogFieldInt(n, v)    => (n, v)
+        case LogFieldString(n, v) => (n, v)
+      }
       .toMap
       .asJava
     appendEntries(fieldsMap)

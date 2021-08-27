@@ -13,7 +13,12 @@ import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
 import services.AttributesFromZuora.contentAccessMatches
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -24,11 +29,13 @@ import scala.io.Source
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
   val stage = "PROD" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
-  lazy val CredentialsProvider =  AwsCredentialsProviderChain.builder.credentialsProviders(
-    ProfileCredentialsProvider.builder.profileName(ProfileName).build,
-    InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
-    EnvironmentVariableCredentialsProvider.create()
-  ).build
+  lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
+    .credentialsProviders(
+      ProfileCredentialsProvider.builder.profileName(ProfileName).build,
+      InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
+      EnvironmentVariableCredentialsProvider.create()
+    )
+    .build
 
   lazy val dynamoClientBuilder: DynamoDbAsyncClientBuilder = DynamoDbAsyncClient.builder
     .credentialsProvider(CredentialsProvider)
@@ -40,7 +47,6 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
   lazy val dynamoAttributesTable = "SupporterAttributesFallback-PROD"
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
 
-
   implicit private val actorSystem: ActorSystem = ActorSystem()
   lazy val touchpoint = new TouchpointComponents("PROD")
   lazy val attributesFromZuora = new AttributesFromZuora()
@@ -51,11 +57,14 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     "match Zuora" in {
       val allIds: List[String] = List("testId")
 
-      allIds.grouped(3).map {
-        subList =>
+      allIds
+        .grouped(3)
+        .map { subList =>
           logger.info("------------------------ Running new batch ------------------------------")
           Await.result(runBatch(subList), 20.seconds)
-      }.toList.head
+        }
+        .toList
+        .head
     }
   }
 
@@ -82,18 +91,17 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     )
   }
 
-  def compareLists(fromDynamo: List[Option[Attributes]], fromSupporterProductData:  List[Option[Attributes]]) =
-  fromDynamo.zip(fromSupporterProductData).flatMap { case (dynamo, supporter) =>
-    if (!contentAccessMatches(dynamo, supporter)) {
-      logger.info(
-        s"""{
+  def compareLists(fromDynamo: List[Option[Attributes]], fromSupporterProductData: List[Option[Attributes]]) =
+    fromDynamo.zip(fromSupporterProductData).flatMap { case (dynamo, supporter) =>
+      if (!contentAccessMatches(dynamo, supporter)) {
+        logger.info(
+          s"""{
           "zuora": ${Json.toJson(dynamo)},\n""" +
-          s"""    "supporter-product-data": ${Json.toJson(supporter)}
+            s"""    "supporter-product-data": ${Json.toJson(supporter)}
         }"""
-      )
-      Some((dynamo, supporter))
-    } else None
-  }
-
+        )
+        Some((dynamo, supporter))
+      } else None
+    }
 
 }
