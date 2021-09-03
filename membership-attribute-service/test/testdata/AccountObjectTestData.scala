@@ -7,14 +7,15 @@ import com.gu.memsub.Subscription.{AccountId, AccountNumber}
 import com.gu.zuora.rest.ZuoraRestService._
 import org.joda.time.DateTime
 
-
 object AccountObjectTestData {
   private val testAccountId = AccountId("accountId")
   private val testPaymentMethodId = PaymentMethodId("testme")
   private val testIdentityId = "123"
   private val currency = GBP
-  val accountObjectWithBalanceAndOldInvoice = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(30)))
-  val accountObjectWithBalance = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(3)))
+  val accountObjectWithBalanceAndOldInvoice =
+    AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(30)))
+  val accountObjectWithBalance =
+    AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(3)))
   val accountObjectWithZeroBalance = AccountObject(testAccountId, 0, Some(currency), Some(testPaymentMethodId), None, None)
 }
 
@@ -41,15 +42,17 @@ object AccountSummaryTestData {
         state = None,
         country = None
       ),
-      invoices = List(Invoice(
-        id = InvoiceId("someid"),
-        invoiceNumber = "INV123",
-        invoiceDate = DateTime.now().minusDays(14),
-        dueDate = DateTime.now().minusDays(7),
-        amount = 11.99,
-        balance = balance,
-        status = "Posted"
-      )),
+      invoices = List(
+        Invoice(
+          id = InvoiceId("someid"),
+          invoiceNumber = "INV123",
+          invoiceDate = DateTime.now().minusDays(14),
+          dueDate = DateTime.now().minusDays(7),
+          amount = 11.99,
+          balance = balance,
+          status = "Posted"
+        )
+      ),
       payments = List(),
       currency = None,
       balance = balance,

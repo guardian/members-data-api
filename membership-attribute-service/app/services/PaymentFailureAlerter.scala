@@ -18,7 +18,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import scalaz.syntax.std.boolean._
 import scalaz.{Disjunction, \/}
 
-
 object PaymentFailureAlerter extends LoggingWithLogstashFields {
 
   private def accountObject(accountSummary: AccountSummary) =
@@ -32,26 +31,28 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     )
 
   def latestUnpaidInvoiceDate(invoices: List[Invoice]): Option[DateTime] = {
-    implicit def latestFirstDateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter  _)
+    implicit def latestFirstDateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter _)
 
     val unpaidInvoices = invoices.filter(invoice => invoice.balance > 0 && invoice.status == "Posted")
     val latestUnpaidInvoice = unpaidInvoices.sortBy(invoice => invoice.invoiceDate).headOption
 
-    latestUnpaidInvoice.map (_.invoiceDate)
+    latestUnpaidInvoice.map(_.invoiceDate)
   }
 
   def alertText(
-    accountSummary: AccountSummary,
-    subscription: Subscription[AnyPlan],
-    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
+      accountSummary: AccountSummary,
+      subscription: Subscription[AnyPlan],
+      paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
+  )(implicit ec: ExecutionContext): Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
       val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
 
       val maybePaymentMethodLatestDate: Future[Option[DateTime]] = accountSummary.defaultPaymentMethod.map(_.id) match {
         case Some(id) =>
-          val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
-          paymentMethod.map (_.map ( _.lastTransactionDateTime).toOption)
+          val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] =
+            paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
+          paymentMethod.map(_.map(_.lastTransactionDateTime).toOption)
         case None => Future.successful(None)
       }
 
@@ -67,7 +68,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
         val logFields = List(LogFieldString("payment_failed_date", paymentFailedDate), LogFieldString("product_name", productName))
         identityId match {
           case Some(id) => LogFieldString("identity_id", id) :: logFields
-          case None => logFields
+          case None     => logFields
         }
       }
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
@@ -76,7 +77,10 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
           val productName = subscription.plan.productName
 
           val fields = customFields(accountSummary.identityId, latestDate.toString(formatter), productName)
-          logInfoWithCustomFields(s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}", fields)
+          logInfoWithCustomFields(
+            s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}",
+            fields
+          )
 
           s"Our attempt to take payment for your $productDescription failed on ${latestDate.toString(formatter)}."
         }
@@ -84,18 +88,20 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     }
 
     alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap { shouldShowAlert: Boolean =>
-      expectedAlertText.map { someText => shouldShowAlert.option (someText).flatten }
+      expectedAlertText.map { someText => shouldShowAlert.option(someText).flatten }
     }
   }
   val alertableProducts = List(Product.Membership, Product.Contribution, Product.Digipack)
 
   def alertAvailableFor(
-    account: AccountObject, subscription: Subscription[AnyPlan],
-    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
+      account: AccountObject,
+      subscription: Subscription[AnyPlan],
+      paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
   )(implicit ec: ExecutionContext): Future[Boolean] = {
 
-    def isAlertableProduct =  alertableProducts.contains(subscription.plan.product)
-    def creditCard(paymentMethodResponse: PaymentMethodResponse) = paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
+    def isAlertableProduct = alertableProducts.contains(subscription.plan.product)
+    def creditCard(paymentMethodResponse: PaymentMethodResponse) =
+      paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
 
     val stillFreshInDays = 27
     def recentEnough(lastInvoiceDateTime: DateTime) = lastInvoiceDateTime.plusDays(stillFreshInDays).isAfterNow
@@ -114,13 +120,13 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
       invoiceDate: DateTime <- account.LastInvoiceDate
       paymentMethodId: PaymentMethodId <- account.DefaultPaymentMethodId
     } yield {
-      if (isAlertableProduct &&
+      if (
+        isAlertableProduct &&
         account.Balance > 0 &&
         isActionablePaymentGateway &&
         !subscription.isCancelled &&
         recentEnough(invoiceDate)
       ) hasFailureForCreditCardPaymentMethod(paymentMethodId)
-
       else Future.successful(\/.right(false))
     }.map(_.getOrElse(false))
 
@@ -130,14 +136,15 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
   // Ignore unpaid invoices which are less than a month old, because these should be automatically dealt with by the payment retry process
   def mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices: List[Invoice]): List[Invoice] = {
     implicit def localDateOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isAfter _)
-    val nonZeroInvoicesOlderThanOneMonth = recentInvoices.filter(invoice => invoice.invoiceDate.isBefore(DateTime.now().minusMonths(1)) && invoice.amount > 0)
+    val nonZeroInvoicesOlderThanOneMonth =
+      recentInvoices.filter(invoice => invoice.invoiceDate.isBefore(DateTime.now().minusMonths(1)) && invoice.amount > 0)
     nonZeroInvoicesOlderThanOneMonth.sortBy(_.invoiceDate).take(2)
   }
 
   def accountHasMissedPayments(accountId: AccountId, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
     val paidInvoiceNumbers = recentPayments.filter(_.status == "Processed").flatMap(_.paidInvoices).map(_.invoiceNumber)
     val unpaidPayableInvoiceOlderThanOneMonth = mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices) match {
-      case Nil => false
+      case Nil      => false
       case invoices => !invoices.forall(invoice => paidInvoiceNumbers.contains(invoice.invoiceNumber))
     }
     SafeLogger.info(s"${accountId.get} | accountHasMissedPayments: ${unpaidPayableInvoiceOlderThanOneMonth}")

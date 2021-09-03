@@ -21,8 +21,7 @@ import services.{AttributesFromZuora, MobileSubscriptionServiceImpl, PostgresDat
 
 import scala.concurrent.ExecutionContext
 
-class AppLoader extends ApplicationLoader
-{
+class AppLoader extends ApplicationLoader {
   def load(context: Context) = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
@@ -34,14 +33,11 @@ class AppLoader extends ApplicationLoader
 }
 
 class MyComponents(context: Context)
-  extends BuiltInComponentsFromContext(context)
+    extends BuiltInComponentsFromContext(context)
     with AhcWSComponents
     with CSRFComponents
     with HikariCPComponents
-    with DBComponents
-{
-
-
+    with DBComponents {
 
   val touchPointBackends = new TouchpointBackends(actorSystem)
   val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)

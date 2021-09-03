@@ -15,19 +15,22 @@ import testdata.{InvoiceAndPaymentTestData, SubscriptionTestData}
 import scala.concurrent.Future
 import scalaz.\/
 
-
-class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specification with SubscriptionTestData {
+class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData {
   override def referenceDate = new LocalDate()
 
-  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
-  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
+  def paymentMethodResponseNoFailures(id: PaymentMethodId) =
+    Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
+  def paymentMethodResponseRecentFailure(id: PaymentMethodId) =
+    Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
   def paymentMethodLeftResponse(id: PaymentMethodId) = Future.successful(\/.left("Something's gone wrong!"))
-  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
+  def paymentMethodResponseStaleFailure(id: PaymentMethodId) =
+    Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
 
   "PaymentFailureAlerterTest" should {
     "membershipAlertText" should {
       "not return any for a user with no balance" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
 
         result must be_==(None).await
       }
@@ -39,7 +42,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       }
 
       "return a message for a member who is in payment failure" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -49,7 +53,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       }
 
       "return a message for a contributor who is in payment failure" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, contributor, paymentMethodResponseRecentFailure)
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, contributor, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -91,7 +96,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       }
 
       "return false for a member who pays via paypal" in {
-        def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
+        def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) =
+          Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
 
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal)
 
@@ -319,20 +325,20 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
 
     }
 
-  "safeToAllowPaymentUpdate" should {
+    "safeToAllowPaymentUpdate" should {
 
-    import InvoiceAndPaymentTestData._
+      import InvoiceAndPaymentTestData._
 
-    val accountId = AccountId("id123")
+      val accountId = AccountId("id123")
 
-    "return false if the user has an outstanding balance from an invoice older than 31 days" in {
-      PaymentFailureAlerter.safeToAllowPaymentUpdate(accountId, List(oldUnpaidInvoice)) === false
+      "return false if the user has an outstanding balance from an invoice older than 31 days" in {
+        PaymentFailureAlerter.safeToAllowPaymentUpdate(accountId, List(oldUnpaidInvoice)) === false
+      }
+
+      "return true if the user has failed to pay for an invoice within the last month (normal payment failure scenario)" in {
+        PaymentFailureAlerter.safeToAllowPaymentUpdate(accountId, List(recentUnpaidInvoice)) === true
+      }
     }
-
-    "return true if the user has failed to pay for an invoice within the last month (normal payment failure scenario)" in {
-      PaymentFailureAlerter.safeToAllowPaymentUpdate(accountId, List(recentUnpaidInvoice)) === true
-    }
-  }
 
   }
 }
