@@ -15,7 +15,9 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
   override def ok = exec()
 }
 
-class HealthCheckController(touchPointBackends:TouchpointBackends,  override val controllerComponents: ControllerComponents) extends BaseController with StrictLogging {
+class HealthCheckController(touchPointBackends: TouchpointBackends, override val controllerComponents: ControllerComponents)
+    extends BaseController
+    with StrictLogging {
 
   val touchpointComponents = touchPointBackends.normal
   // behaviourService, Stripe and all Zuora services are not critical

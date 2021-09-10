@@ -202,7 +202,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           identityId,
           List(
             ratePlanItem(staff),
-            ratePlanItem(friend),
+            ratePlanItem(friend)
           )
         ) should beSome.which(_.Tier should beSome("Staff"))
 

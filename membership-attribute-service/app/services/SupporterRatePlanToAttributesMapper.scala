@@ -329,7 +329,6 @@ object SupporterRatePlanToAttributesMapper {
 
 }
 
-
 sealed abstract class MembershipTier(val name: String, val value: Int)
 
 object MembershipTier {
@@ -347,6 +346,5 @@ object MembershipTier {
       existingTier
     else
       Some(newTier.name)
-
 
 }

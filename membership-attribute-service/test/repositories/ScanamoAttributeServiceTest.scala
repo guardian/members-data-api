@@ -16,9 +16,7 @@ import scala.compat.java8.FutureConverters
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-
-/**
-  * Depends upon DynamoDB Local to be running on the default port of 8000.
+/** Depends upon DynamoDB Local to be running on the default port of 8000.
   *
   * Amazon's embedded version doesn't work with an async client, so using https://github.com/localytics/sbt-dynamodb
   */
@@ -41,11 +39,12 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
 
   private val repo = new ScanamoAttributeService(awsDynamoClient, testTable)
 
-  val provisionedThroughput =  ProvisionedThroughput.builder().readCapacityUnits(10L).writeCapacityUnits(5L).build()
+  val provisionedThroughput = ProvisionedThroughput.builder().readCapacityUnits(10L).writeCapacityUnits(5L).build()
   val userIdAtt = AttributeDefinition.builder().attributeName(AttributeNames.userId).attributeType(ScalarAttributeType.S).build()
   val keySchema = KeySchemaElement.builder().attributeName(AttributeNames.userId).keyType(KeyType.HASH).build()
   val tableRequest =
-    CreateTableRequest.builder()
+    CreateTableRequest
+      .builder()
       .tableName(testTable)
       .provisionedThroughput(provisionedThroughput)
       .attributeDefinitions(userIdAtt)
@@ -123,7 +122,12 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
 
     "update a user who has bought a digital subscription" in {
       val oldAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), TTLTimestamp = testTtl)
-      val newAttributes = DynamoAttributes(UserId = "6789", RecurringContributionPaymentPlan = Some("Monthly Contribution"), DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl)
+      val newAttributes = DynamoAttributes(
+        UserId = "6789",
+        RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+        DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)),
+        TTLTimestamp = testTtl
+      )
 
       val result = for {
         _ <- repo.set(oldAttributes)
@@ -135,7 +139,8 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
     }
 
     "leave attribute in the table if nothing has changed" in {
-      val existingAttributes = DynamoAttributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl)
+      val existingAttributes =
+        DynamoAttributes(UserId = "6789", DigitalSubscriptionExpiryDate = Some(LocalDate.now().plusWeeks(5)), TTLTimestamp = testTtl)
 
       val result = for {
         _ <- repo.set(existingAttributes)
@@ -148,5 +153,3 @@ class ScanamoAttributeServiceTest(implicit ee: ExecutionEnv) extends Specificati
 
   }
 }
-
-
