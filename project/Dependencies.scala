@@ -14,7 +14,7 @@ object Dependencies {
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
-  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M15"
+  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M16"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
