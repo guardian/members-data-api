@@ -29,7 +29,7 @@ object Dependencies {
 
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion
   )
 
   //projects
@@ -55,7 +55,7 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
     netty,
     nettyHttp,
-    "com.google.guava"         % "guava"        % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
+    "com.google.guava" % "guava" % "30.1.1-jre" // until https://github.com/playframework/playframework/pull/10874
   ) ++ jackson
 
   val depOverrides = jackson

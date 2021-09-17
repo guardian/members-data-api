@@ -11,11 +11,14 @@ import software.amazon.awssdk.services.dynamodb.model.{DescribeTableRequest, Tab
 import scala.concurrent.{ExecutionContext, Future}
 
 class ScanamoFeatureToggleService(
-  client: DynamoDbAsyncClient,
-  table: String
-)(implicit executionContext: ExecutionContext) extends HealthCheckableService with LazyLogging {
+    client: DynamoDbAsyncClient,
+    table: String
+)(implicit executionContext: ExecutionContext)
+    extends HealthCheckableService
+    with LazyLogging {
 
-  def checkHealth: Boolean = client.describeTable(DescribeTableRequest.builder().tableName(table).build()).get.table().tableStatus() == TableStatus.ACTIVE
+  def checkHealth: Boolean =
+    client.describeTable(DescribeTableRequest.builder().tableName(table).build()).get.table().tableStatus() == TableStatus.ACTIVE
 
   implicit val dynamoFeatureToggle: DynamoFormat[FeatureToggle] = deriveDynamoFormat
 
@@ -25,7 +28,7 @@ class ScanamoFeatureToggleService(
         .get("FeatureName" === featureName)
         .map {
           case Some(value) => value.left.map(DynamoReadError.describe)
-          case None => Left("Feature toggle not found")
+          case None        => Left("Feature toggle not found")
         }
     }
 }

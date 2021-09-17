@@ -44,7 +44,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
   private val validUser = User(
     primaryEmailAddress = "test@gu.com",
-    id = validUserId,
+    id = validUserId
   )
 
   private val userWithoutAttributes = User(
@@ -66,7 +66,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
 
-
   private val validEmployeeUser = User(
     primaryEmailAddress = "bar@theguardian.com",
     id = "userWithRealProducts",
@@ -77,12 +76,12 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val fakeAuthService = new AuthenticationService {
     override def user(implicit request: RequestHeader) =
       request.cookies.headOption match {
-        case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
-        case Some(c) if c == userWithoutAttributesCookie => Future.successful(Some(userWithoutAttributes))
-        case Some(c) if c == guardianEmployeeCookie => Future.successful(Some(guardianEmployeeUser))
+        case Some(c) if c == validUserCookie                   => Future.successful(Some(validUser))
+        case Some(c) if c == userWithoutAttributesCookie       => Future.successful(Some(userWithoutAttributes))
+        case Some(c) if c == guardianEmployeeCookie            => Future.successful(Some(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Some(guardianEmployeeUserTheguardian))
-        case Some(c) if c == validEmployeeUserCookie => Future.successful(Some(validEmployeeUser))
-        case _ => Future.successful(None)
+        case Some(c) if c == validEmployeeUserCookie           => Future.successful(Some(validEmployeeUser))
+        case _                                                 => Future.successful(None)
       }
   }
 
@@ -104,7 +103,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently,None,None,None,None)
+      val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
       Future(Right(new AuthAndBackendRequest[A](redirectAdviceResponse, components, request)))
     }
@@ -116,7 +115,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
     override val AuthAndBackendViaAuthLibAction = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
-    override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
+    override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
+      NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
@@ -124,9 +124,17 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       Future.successful(\/.right(None))
   }
 
-  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService, FakeMobileSubscriptionService) {
+  private val controller = new AttributeController(
+    new AttributesFromZuora(),
+    commonActions,
+    Helpers.stubControllerComponents(),
+    FakePostgresService,
+    FakeMobileSubscriptionService
+  ) {
     override val executionContext = scala.concurrent.ExecutionContext.global
-    override def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
+    override def getZuoraAttributes(
+        identityId: String
+    )(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId || identityId == validEmployeeUser.id)
         ("Zuora", Some(testAttributes))
       else
