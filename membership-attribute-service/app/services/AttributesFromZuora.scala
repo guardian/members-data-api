@@ -7,7 +7,14 @@ import com.gu.memsub.subsv2.reads.SubPlanReads.anyPlanReads
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import org.scanamo.DynamoReadError
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, GetAccountsQueryResponse, GiftSubscriptionsFromIdentityIdRecord, GiftSubscriptionsFromIdentityIdResponse, PaymentMethodId, PaymentMethodResponse}
+import com.gu.zuora.rest.ZuoraRestService.{
+  AccountObject,
+  GetAccountsQueryResponse,
+  GiftSubscriptionsFromIdentityIdRecord,
+  GiftSubscriptionsFromIdentityIdResponse,
+  PaymentMethodId,
+  PaymentMethodResponse
+}
 import loghandling.LoggingWithLogstashFields
 import models._
 import org.joda.time.{DateTime, LocalDate}
@@ -32,19 +39,23 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
   lazy val expensiveMetrics = new ExpensiveMetrics("AttributesFromZuora")
 
   def getAttributesFromZuoraWithCacheFallback(
-     identityId: String,
-     identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
-     subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
-     giftSubscriptionsForIdentityId: String => Future[\/[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
-     paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
-     dynamoAttributeService: AttributeService,
-     supporterProductDataService: SupporterProductDataService,
-     forDate: LocalDate = LocalDate.now(),
+      identityId: String,
+      identityIdToAccounts: String => Future[String \/ GetAccountsQueryResponse],
+      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]],
+      giftSubscriptionsForIdentityId: String => Future[\/[String, List[GiftSubscriptionsFromIdentityIdRecord]]],
+      paymentMethodForPaymentMethodId: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+      dynamoAttributeService: AttributeService,
+      supporterProductDataService: SupporterProductDataService,
+      forDate: LocalDate = LocalDate.now()
   ): Future[(String, Option[Attributes])] = {
 
-    def maybeUpdateCache(zuoraAttributes: Option[ZuoraAttributes], dynamoAttributes: Option[DynamoAttributes], attributes: Option[Attributes]): Unit = {
+    def maybeUpdateCache(
+        zuoraAttributes: Option[ZuoraAttributes],
+        dynamoAttributes: Option[DynamoAttributes],
+        attributes: Option[Attributes]
+    ): Unit = {
       def twoWeekExpiry = forDate.toDateTimeAtStartOfDay.plusDays(14)
-      if(dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
+      if (dynamoUpdateRequired(dynamoAttributes, zuoraAttributes, identityId, twoWeekExpiry)) {
         log.info(s"Attempting to update cache for $identityId ...")
         expensiveMetrics.countRequest("cache-update")
         updateCache(identityId, attributes, dynamoAttributeService, twoWeekExpiry) onComplete {
@@ -62,7 +73,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
         .get(identityId)
         .andThen {
           case Success(attrib) => dynamoAttributeService.ttlAgeCheck(attrib, identityId, forDate)
-          case Failure(e) => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
+          case Failure(e)      => SafeLogger.error(scrub"Failed to retrieve attributes from cache for $identityId because $e")
         }
 
     def userHasDigiSub(accountsWithSubscriptions: List[AccountWithSubscriptions]) =
@@ -81,14 +92,18 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
           else Future.successful(\/.right[String, List[AccountWithSubscriptions]](Nil))
         )
         giftSubscriptions <- EitherT(
-          if(userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
+          if (userHasDigiSub(subscriptions)) Future.successful(\/.right[String, List[GiftSubscriptionsFromIdentityIdRecord]](Nil))
           else giftSubscriptionsForIdentityId(identityId)
         )
         maybeGifteeAttributes = Some(giftSubscriptions.map(_.TermEndDate))
           .filter(_.nonEmpty)
           .map(_.maxBy(_.toDateTimeAtStartOfDay.getMillis))
           .map(date => ZuoraAttributes(identityId, DigitalSubscriptionExpiryDate = Some(date)))
-        maybeNonGifteeAttributes <- EitherT(AttributesMaker.zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate).map(\/.right[String, Option[ZuoraAttributes]]))
+        maybeNonGifteeAttributes <- EitherT(
+          AttributesMaker
+            .zuoraAttributes(identityId, subscriptions, paymentMethodForPaymentMethodId, forDate)
+            .map(\/.right[String, Option[ZuoraAttributes]])
+        )
         supporterProductDataAttributes <- futureSupporterProductDataAttributes
       } yield {
         val maybeGifteeAndNonGifteeAttributes = mergeDigitalSubscriptionExpiryDate(maybeNonGifteeAttributes, maybeGifteeAttributes)
@@ -109,19 +124,24 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
     implicit val scheduler: Scheduler = system.scheduler
 
     // try zuora first and fallback to cache
-    EitherT(retry(getAttrFromZuora.run))                     // Zuora takes precedence
-      .leftMap(fallbackToCache)                              // handles Zuora un-parsable response etc.
+    EitherT(retry(getAttrFromZuora.run)) // Zuora takes precedence
+      .leftMap(fallbackToCache) // handles Zuora un-parsable response etc.
       .merge
       .flatten
       .recoverWith { case e => fallbackToCache(e.toString) } // handles Zuora timeouts etc.
   }
 
-  def dynamoUpdateRequired(dynamoAttributes: Option[DynamoAttributes], zuoraAttributes: Option[ZuoraAttributes], identityId: String, twoWeekExpiry: => DateTime): Boolean = {
+  def dynamoUpdateRequired(
+      dynamoAttributes: Option[DynamoAttributes],
+      zuoraAttributes: Option[ZuoraAttributes],
+      identityId: String,
+      twoWeekExpiry: => DateTime
+  ): Boolean = {
 
     def ttlUpdateRequired(currentExpiry: DateTime) = twoWeekExpiry.isAfter(currentExpiry.plusDays(1))
     def calculateExpiry(currentExpiry: Option[DateTime]): DateTime = currentExpiry match {
       case Some(expiry) if ttlUpdateRequired(expiry) =>
-        log.info (s"TTL update required for user $identityId with current expiry $expiry. New expiry is $twoWeekExpiry.")
+        log.info(s"TTL update required for user $identityId with current expiry $expiry. New expiry is $twoWeekExpiry.")
         twoWeekExpiry
       case Some(expiry) =>
         log.info(s"No TTL update required for user $identityId with current expiry $expiry.")
@@ -140,7 +160,12 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
     expiryShouldChange(dynamoAttributes, currentExpiry, newExpiry) || !dynamoAndZuoraAgree(dynamoAttributes, zuoraAttributes, identityId)
   }
 
-  private def updateCache(identityId: String, maybeAttributes: Option[Attributes], dynamoAttributeService: AttributeService, twoWeekExpiry: => DateTime): Future[Unit] = {
+  private def updateCache(
+      identityId: String,
+      maybeAttributes: Option[Attributes],
+      dynamoAttributeService: AttributeService,
+      twoWeekExpiry: => DateTime
+  ): Future[Unit] = {
     val attributesWithTTL: Option[DynamoAttributes] = maybeAttributes map { attributes =>
       DynamoAttributes(
         UserId = attributes.UserId,
@@ -170,29 +195,32 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
   }
 
   def getSubscriptions(
-    getAccountsResponse: GetAccountsQueryResponse,
-    subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
+      getAccountsResponse: GetAccountsQueryResponse,
+      subscriptionsForAccountId: AccountId => SubPlanReads[AnyPlan] => Future[Disjunction[String, List[Subscription[AnyPlan]]]]
   ): Future[Disjunction[String, List[AccountWithSubscriptions]]] = {
 
     def isNotDigipackGiftSub(subscription: Subscription[AnyPlan]) = subscription.asDigipack.isEmpty || subscription.readerType != Gift
 
     def accountWithSubscriptions(account: AccountObject)(implicit reads: SubPlanReads[AnyPlan]): Future[\/[String, AccountWithSubscriptions]] = {
       val nonDigipackGiftSubs = EitherT(subscriptionsForAccountId(account.Id)(anyPlanReads)).map(
-          _.filter(isNotDigipackGiftSub) //Filter out digital pack gift subs where the current user is the purchaser rather than the recipient
+        _.filter(isNotDigipackGiftSub) //Filter out digital pack gift subs where the current user is the purchaser rather than the recipient
       )
       nonDigipackGiftSubs
         .map(AccountWithSubscriptions(account, _))
         .run
     }
 
-    getAccountsResponse
-      .records
+    getAccountsResponse.records
       .traverse(accountWithSubscriptions(_)(anyPlanReads))
       .map(_.sequenceU)
   }
 
   //if Zuora attributes have changed at all, we should update the cache even if the ttl is not stale
-  def dynamoAndZuoraAgree(maybeDynamoAttributes: Option[DynamoAttributes], maybeZuoraAttributes: Option[ZuoraAttributes], identityId: String): Boolean = {
+  def dynamoAndZuoraAgree(
+      maybeDynamoAttributes: Option[DynamoAttributes],
+      maybeZuoraAttributes: Option[ZuoraAttributes],
+      identityId: String
+  ): Boolean = {
 
     val zuoraAttributesAsAttributes = maybeZuoraAttributes map (ZuoraAttributes.asAttributes(_))
     val dynamoAttributesAsAttributes = maybeDynamoAttributes map (DynamoAttributes.asAttributes(_))
@@ -200,8 +228,10 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
     val dynamoAndZuoraAgree = dynamoAttributesAsAttributes == zuoraAttributesAsAttributes
 
     if (!dynamoAndZuoraAgree)
-      log.info(s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
-        s" Zuora attributes as attributes: $zuoraAttributesAsAttributes. Dynamo attributes as attributes: $dynamoAttributesAsAttributes.")
+      log.info(
+        s"We looked up attributes via Zuora for $identityId and Zuora and Dynamo disagreed." +
+          s" Zuora attributes as attributes: $zuoraAttributesAsAttributes. Dynamo attributes as attributes: $dynamoAttributesAsAttributes."
+      )
     else if (zuoraAttributesAsAttributes.isEmpty) {
       log.info(s"There are no Zuora attributes for $identityId")
     }
@@ -209,7 +239,7 @@ class AttributesFromZuora(implicit val executionContext: ExecutionContext, syste
     dynamoAndZuoraAgree
   }
 
-  def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] =  response.records.map(_.Id)
+  def queryToAccountIds(response: GetAccountsQueryResponse): List[AccountId] = response.records.map(_.Id)
 }
 
 object AttributesFromZuora extends LazyLogging {
@@ -231,14 +261,16 @@ object AttributesFromZuora extends LazyLogging {
     if (!contentAccessMatches(fromZuora, fromSupporterProductData)) {
       logger.warn(
         s"Mismatched attributes for user $identityId\n" +
-        s"Zuora returned: ${Json.toJson(fromZuora)}\n" +
-        s"supporter-product-data returned: ${Json.toJson(fromSupporterProductData)}"
+          s"Zuora returned: ${Json.toJson(fromZuora)}\n" +
+          s"supporter-product-data returned: ${Json.toJson(fromSupporterProductData)}"
       )
       metrics.put("AttributesMismatch", 1) //referenced in CloudFormation
     } else logger.info("attributes returned from Zuora match those returned from supporter-product-data")
 
   def contentAccessMatches(fromZuora: Option[Attributes], fromSupporterProductData: Option[Attributes]) =
-    fromZuora.map(_.contentAccess.copy(recurringContributor = false)) == fromSupporterProductData.map(_.contentAccess.copy(recurringContributor = false)) ||
+    fromZuora.map(_.contentAccess.copy(recurringContributor = false)) == fromSupporterProductData.map(
+      _.contentAccess.copy(recurringContributor = false)
+    ) ||
       isCancelledRecurringContribution(fromZuora, fromSupporterProductData) ||
       isExpiredSub(fromZuora, fromSupporterProductData)
 
@@ -267,4 +299,3 @@ object AttributesFromZuora extends LazyLogging {
     )
 
 }
-

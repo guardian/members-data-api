@@ -26,7 +26,7 @@ object Features {
 }
 
 case class Features(
-  userId: Option[String],
-  adblockMessage: Boolean,
-  membershipJoinDate: Option[LocalDate]
+    userId: Option[String],
+    adblockMessage: Boolean,
+    membershipJoinDate: Option[LocalDate]
 )
