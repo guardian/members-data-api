@@ -222,7 +222,7 @@ class AttributeController(
 
       val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
 
-      if (userHasValidatedEmail) {
+      val futureResult: Future[Result] = if (userHasValidatedEmail) {
         request.user.map(_.id) match {
           case Some(identityId) =>
             contributionsStoreDatabaseService.getAllContributions(identityId).map {
@@ -231,7 +231,15 @@ class AttributeController(
             }
           case None => Future(unauthorized)
         }
-      } else Future(unauthorized)
+      } else
+        Future(unauthorized)
+
+      futureResult.map { result =>
+        request.user match {
+          case Some(user) => AddGuIdentityHeaders.fromUser(result, user)
+          case None => result
+        }
+      }
     }
   }
 
