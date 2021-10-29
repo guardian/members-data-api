@@ -17,16 +17,16 @@ import scalaz.\/
 import scalaz.syntax.std.boolean._
 import services.AttributesMaker.{getCurrentPlans, getSubsWhichIncludeDigitalPack}
 
-case class ProductData(product:Product, account: ZuoraRestService.AccountObject, subscription:Subscription[AnyPlan])
+case class ProductData(product: Product, account: ZuoraRestService.AccountObject, subscription: Subscription[AnyPlan])
 
-class AttributesMaker extends LoggingWithLogstashFields{
-
+class AttributesMaker extends LoggingWithLogstashFields {
 
   def zuoraAttributes(
-                       identityId: String,
-                       subsWithAccounts: List[AccountWithSubscriptions],
-                       paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
-                       forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
+      identityId: String,
+      subsWithAccounts: List[AccountWithSubscriptions],
+      paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+      forDate: LocalDate
+  )(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
     val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscriptions)
 
@@ -46,20 +46,23 @@ class AttributesMaker extends LoggingWithLogstashFields{
           subscriptions.map(sub => (account, sub))
       }.flatten
 
-      val groupedByProduct = accountWithSub.groupBy {
-        case (account, subscription) => getTopProduct(subscription)
+      val groupedByProduct = accountWithSub.groupBy { case (account, subscription) =>
+        getTopProduct(subscription)
       }
 
-      val firstSubPerProduct = groupedByProduct.collect {
-        case (Some(k), sub :: _) => (k, sub)
+      val firstSubPerProduct = groupedByProduct.collect { case (Some(k), sub :: _) =>
+        (k, sub)
       }
 
-      firstSubPerProduct.map {
-        case (product, (account, subscription)) => ProductData(product, account, subscription)
-      }.toList.sortWith(_.product.name < _.product.name)
+      firstSubPerProduct
+        .map { case (product, (account, subscription)) =>
+          ProductData(product, account, subscription)
+        }
+        .toList
+        .sortWith(_.product.name < _.product.name)
     }
 
-    //TODO this should really return a list of all products with alerts and the banner logic etc should handle multiple
+    // TODO this should really return a list of all products with alerts and the banner logic etc should handle multiple
     def findFirstAlert(productData: List[ProductData]): Future[Option[String]] = productData match {
 
       case Nil => Future.successful(None)
@@ -75,20 +78,27 @@ class AttributesMaker extends LoggingWithLogstashFields{
       }
     }
 
-    val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil).headOption         // Assumes only 1 membership per Identity customer
-    val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption     // Assumes only 1 regular contribution per Identity customer
+    val membershipSub = groupedSubs.getOrElse(Some(Product.Membership), Nil).headOption // Assumes only 1 membership per Identity customer
+    val contributionSub =
+      groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption // Assumes only 1 regular contribution per Identity customer
     val subsWhichIncludeDigitalPack = getSubsWhichIncludeDigitalPack(subs, forDate)
 
-    val paperSubscriptions = groupedSubs.filterKeys{
-      case Some(_: Product.Weekly) => false // guardian weekly extends Paper, so we need to explicitly filter that out
-      case Some(_: Product.Paper) => true
-      case _ => false
-    }.values.flatten
+    val paperSubscriptions = groupedSubs
+      .filterKeys {
+        case Some(_: Product.Weekly) => false // guardian weekly extends Paper, so we need to explicitly filter that out
+        case Some(_: Product.Paper)  => true
+        case _                       => false
+      }
+      .values
+      .flatten
 
-    val guardianWeeklySubscriptions = groupedSubs.filterKeys{
-      case Some(_: Product.Weekly) => true // guardian weekly extends Paper, so we need to explicitly filter that out
-      case _ => false
-    }.values.flatten
+    val guardianWeeklySubscriptions = groupedSubs
+      .filterKeys {
+        case Some(_: Product.Weekly) => true // guardian weekly extends Paper, so we need to explicitly filter that out
+        case _                       => false
+      }
+      .values
+      .flatten
 
     val hasAttributableProduct: Boolean = membershipSub.nonEmpty ||
       contributionSub.nonEmpty ||
@@ -97,7 +107,8 @@ class AttributesMaker extends LoggingWithLogstashFields{
       guardianWeeklySubscriptions.nonEmpty
 
     findFirstAlert(sortedProductData) map { maybeAlert =>
-      def customFields(identityId: String, alertAvailableFor: String) = List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
+      def customFields(identityId: String, alertAvailableFor: String) =
+        List(LogFieldString("identity_id", identityId), LogFieldString("alert_available_for", alertAvailableFor))
 
       maybeAlert foreach { alert => logInfoWithCustomFields(s"User $identityId has an alert available: $alert", customFields(identityId, alert)) }
 
@@ -125,7 +136,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
 
 object AttributesMaker extends AttributesMaker {
   def getCurrentPlans(subscription: Subscription[AnyPlan], forDate: LocalDate): List[AnyPlan] =
-    GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten  // it's expected that users may not have any current plans
+    GetCurrentPlans(subscription, forDate).map(_.list.toList).toList.flatten // it's expected that users may not have any current plans
 
   def getAllBenefits(subscription: Subscription[AnyPlan], forDate: LocalDate): Set[Benefit] =
     getCurrentPlans(subscription, forDate).flatMap(_.charges.benefits.list.toList).toSet

@@ -21,11 +21,12 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
 
   private val subscriptionURL = Config.stage match {
     case "PROD" => "https://mobile-purchases.mobile-aws.guardianapis.com"
-    case _ => "https://mobile-purchases.mobile-aws.code.dev-guardianapis.com"
+    case _      => "https://mobile-purchases.mobile-aws.code.dev-guardianapis.com"
   }
 
   override def getSubscriptionStatusForUser(identityId: String): Future[String \/ Option[MobileSubscriptionStatus]] = {
-    val response = wsClient.url(s"$subscriptionURL/user/subscriptions/$identityId")
+    val response = wsClient
+      .url(s"$subscriptionURL/user/subscriptions/$identityId")
       .withHttpHeaders("Authorization" -> s"Bearer ${Config.Mobile.subscriptionApiKey}")
       .get()
 

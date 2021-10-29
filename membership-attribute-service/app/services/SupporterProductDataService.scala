@@ -14,12 +14,12 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.ExecutionContext
 
-class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)
-  (implicit executionContext: ExecutionContext) {
+class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)(implicit
+    executionContext: ExecutionContext
+) {
 
-  implicit val jodaStringFormat: DynamoFormat[LocalDate] = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse,
-    _.toString
-  )
+  implicit val jodaStringFormat: DynamoFormat[LocalDate] =
+    DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
   def getAttributes(identityId: String) =
@@ -32,10 +32,11 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
       futureRatePlanItems = futureDynamoResult.collect({ case Right(ratePlanItem) =>
         ratePlanItem
       })
-    } yield if(futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
-      \/.right(mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems))
-    else
-      \/.left(errorMessage(futureErrors))
+    } yield
+      if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
+        \/.right(mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems))
+      else
+        \/.left(errorMessage(futureErrors))
 
   private def getSupporterRatePlanItems(identityId: String) =
     ScanamoAsync(client).exec {
@@ -47,14 +48,14 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
 }
 
 object SupporterProductDataService extends LazyLogging {
-  val metrics = Metrics("SupporterProductDataService") //referenced in CloudFormation
+  val metrics = Metrics("SupporterProductDataService") // referenced in CloudFormation
 
   def errorMessage(errors: List[DynamoReadError]) =
     s"There were read errors while reading from the SupporterProductData DynamoDB table\n ${errors.map(describe).mkString("\n")}"
 
   def alertOnDynamoReadErrors(errors: List[DynamoReadError]) =
-    if (errors.nonEmpty){
+    if (errors.nonEmpty) {
       logger.error(errorMessage(errors))
-      metrics.put("SupporterProductDataDynamoError", 1) //referenced in CloudFormation
+      metrics.put("SupporterProductDataDynamoError", 1) // referenced in CloudFormation
     }
 }

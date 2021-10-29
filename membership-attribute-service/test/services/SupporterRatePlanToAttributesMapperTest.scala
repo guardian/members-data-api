@@ -98,25 +98,25 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     "identify a Paper sub" in {
       val possibleProductRatePlanIds = List(
         // digital voucher
-        "2c92a00870ec598001710740cdd02fbd", //Saturday
-        "2c92a00870ec598001710740d0d83017", //Sunday
-        "2c92a00870ec598001710740d24b3022", //Weekend
-        "2c92a00870ec598001710740ca532f69", //Sixday
-        "2c92a00870ec598001710740c78d2f13", //Everyday
+        "2c92a00870ec598001710740cdd02fbd", // Saturday
+        "2c92a00870ec598001710740d0d83017", // Sunday
+        "2c92a00870ec598001710740d24b3022", // Weekend
+        "2c92a00870ec598001710740ca532f69", // Sixday
+        "2c92a00870ec598001710740c78d2f13", // Everyday
         // voucher book
-        "2c92a0fd6205707201621f9f6d7e0116", //Saturday
-        "2c92a0fe5af9a6b9015b0fe1ecc0116c", //Sunday
-        "2c92a0ff56fe33f00157040f9a537f4b", //Weekend
-        "2c92a0fd56fe270b0157040e42e536ef", //Sixday
-        "2c92a0fd56fe270b0157040dd79b35da", //Everyday
+        "2c92a0fd6205707201621f9f6d7e0116", // Saturday
+        "2c92a0fe5af9a6b9015b0fe1ecc0116c", // Sunday
+        "2c92a0ff56fe33f00157040f9a537f4b", // Weekend
+        "2c92a0fd56fe270b0157040e42e536ef", // Sixday
+        "2c92a0fd56fe270b0157040dd79b35da", // Everyday
         // Home delivery
-        "2c92a0fd5e1dcf0d015e3cb39d0a7ddb", //Saturday"
-        "2c92a0ff5af9b657015b0fea5b653f81", //Sunday"
-        "2c92a0fd5614305c01561dc88f3275be", //Weekend"
-        "2c92a0ff560d311b0156136f2afe5315", //Sixday"
-        "2c92a0fd560d13880156136b72e50f0c", //Everyday"
-        "2c92a0ff56fe33f001572334561765c1", //Echo-Legacy
-        "2c92a0fd596d321a0159735a7b150e43" //Fiveday
+        "2c92a0fd5e1dcf0d015e3cb39d0a7ddb", // Saturday"
+        "2c92a0ff5af9b657015b0fea5b653f81", // Sunday"
+        "2c92a0fd5614305c01561dc88f3275be", // Weekend"
+        "2c92a0ff560d311b0156136f2afe5315", // Sixday"
+        "2c92a0fd560d13880156136b72e50f0c", // Everyday"
+        "2c92a0ff56fe33f001572334561765c1", // Echo-Legacy
+        "2c92a0fd596d321a0159735a7b150e43" // Fiveday
       )
       possibleProductRatePlanIds.map(productRatePlanId =>
         mapper
@@ -130,23 +130,23 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     "identify a Paper plus digital sub" in {
       val possibleProductRatePlanIds = List(
         // digital voucher
-        "2c92a00870ec598001710740ce702ff0", //Voucher Saturday+
-        "2c92a00870ec598001710740cf9e3004", //Voucher Sunday+
-        "2c92a00870ec598001710740c6672ee7", //Voucher Weekend+
-        "2c92a00870ec598001710740c4582ead", //Voucher Sixday+
-        "2c92a00870ec598001710740d3d03035", //Voucher Everyday+
+        "2c92a00870ec598001710740ce702ff0", // Voucher Saturday+
+        "2c92a00870ec598001710740cf9e3004", // Voucher Sunday+
+        "2c92a00870ec598001710740c6672ee7", // Voucher Weekend+
+        "2c92a00870ec598001710740c4582ead", // Voucher Sixday+
+        "2c92a00870ec598001710740d3d03035", // Voucher Everyday+
         // voucher book
-        "2c92a0fd6205707201621fa1350710e3", //Voucher Saturday+
-        "2c92a0fe56fe33ff0157040d4b824168", //Voucher Sunday+
-        "2c92a0fd56fe26b60157040cdd323f76", //Voucher Weekend+
-        "2c92a0fc56fe26ba0157040c5ea17f6a", //Voucher Sixday+
-        "2c92a0ff56fe33f50157040bbdcf3ae4", //Voucher Everyday+
+        "2c92a0fd6205707201621fa1350710e3", // Voucher Saturday+
+        "2c92a0fe56fe33ff0157040d4b824168", // Voucher Sunday+
+        "2c92a0fd56fe26b60157040cdd323f76", // Voucher Weekend+
+        "2c92a0fc56fe26ba0157040c5ea17f6a", // Voucher Sixday+
+        "2c92a0ff56fe33f50157040bbdcf3ae4", // Voucher Everyday+
         // Home delivery
-        "2c92a0ff6205708e01622484bb2c4613", //Saturday+"
-        "2c92a0fd560d13880156136b8e490f8b", //Sunday+"
-        "2c92a0ff560d311b0156136b9f5c3968", //Weekend+"
-        "2c92a0ff560d311b0156136b697438a9", //Sixday+"
-        "2c92a0fd560d132301560e43cf041a3c" //Everyday+"
+        "2c92a0ff6205708e01622484bb2c4613", // Saturday+"
+        "2c92a0fd560d13880156136b8e490f8b", // Sunday+"
+        "2c92a0ff560d311b0156136b9f5c3968", // Weekend+"
+        "2c92a0ff560d311b0156136b697438a9", // Sixday+"
+        "2c92a0fd560d132301560e43cf041a3c" // Everyday+"
       )
       possibleProductRatePlanIds.map(productRatePlanId => {
         val maybeAttributes = mapper
@@ -202,7 +202,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           identityId,
           List(
             ratePlanItem(staff),
-            ratePlanItem(friend),
+            ratePlanItem(friend)
           )
         ) should beSome.which(_.Tier should beSome("Staff"))
 
@@ -270,8 +270,8 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           identityId,
           List(
             ratePlanItem("2c92a0ff56fe33f50157040bbdcf3ae4", furthestEndDate), // Everyday+
-            ratePlanItem("2c92a0fb4edd70c8014edeaa4eae220a"), //Digital pack
-            ratePlanItem("2c92a00870ec598001710740d0d83017") //Sunday
+            ratePlanItem("2c92a0fb4edd70c8014edeaa4eae220a"), // Digital pack
+            ratePlanItem("2c92a00870ec598001710740d0d83017") // Sunday
           )
         ) should beSome(
         Attributes(
@@ -303,7 +303,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       val allUnused = allMappedProductRatePlans.filter(productRatePlanId => !allActiveProductRatePlanIds.contains(productRatePlanId))
       System.out.println(
         s"There are ${allUnused.length} mapped rate plans which appear to be unused"
-      ) //TODO: Should we remove legacy product rate plan ids from the mapper
+      ) // TODO: Should we remove legacy product rate plan ids from the mapper
       success
     }
   }

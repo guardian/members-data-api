@@ -6,7 +6,7 @@ import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class AddEC2InstanceHeader (wSClient: WSClient)(implicit val mat: Materializer,ex: ExecutionContext) extends Filter {
+class AddEC2InstanceHeader(wSClient: WSClient)(implicit val mat: Materializer, ex: ExecutionContext) extends Filter {
 
   // http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
   lazy val instanceIdF = wSClient.url("http://169.254.169.254/latest/meta-data/instance-id").get().map(_.body)

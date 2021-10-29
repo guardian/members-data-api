@@ -37,8 +37,8 @@ class ContactController(
               val contactRepo = request.touchpoint.contactRepo
               update(contactRepo, contactId, address) map { _ =>
                 NoContent
-              } recover {
-                case updateFailure => BadGateway(updateFailure.getMessage)
+              } recover { case updateFailure =>
+                BadGateway(updateFailure.getMessage)
               }
           }
         } else

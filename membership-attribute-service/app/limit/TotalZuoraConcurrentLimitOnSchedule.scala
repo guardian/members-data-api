@@ -9,8 +9,9 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 
 class TotalZuoraConcurrentLimitOnSchedule(
-  featureToggleService: ScanamoFeatureToggleService
-)(implicit ec: ExecutionContext, system: ActorSystem) extends LazyLogging {
+    featureToggleService: ScanamoFeatureToggleService
+)(implicit ec: ExecutionContext, system: ActorSystem)
+    extends LazyLogging {
   private val defaultTotalZuoraConcurrencyLimit = 6
 
   val getTotalZuoraConcurrentLimitTask: ScheduledTask[Int] =

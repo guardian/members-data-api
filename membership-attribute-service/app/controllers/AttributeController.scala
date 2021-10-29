@@ -23,34 +23,35 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
 
-/**
- *  What benefits is the user entitled to?
- */
+/** What benefits is the user entitled to?
+  */
 class AttributeController(
-  attributesFromZuora: AttributesFromZuora,
-  commonActions: CommonActions,
-  override val controllerComponents: ControllerComponents,
-  contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
-  mobileSubscriptionService: MobileSubscriptionService
-)(implicit system: ActorSystem) extends BaseController with LoggingWithLogstashFields {
+    attributesFromZuora: AttributesFromZuora,
+    commonActions: CommonActions,
+    override val controllerComponents: ControllerComponents,
+    contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
+    mobileSubscriptionService: MobileSubscriptionService
+)(implicit system: ActorSystem)
+    extends BaseController
+    with LoggingWithLogstashFields {
   import attributesFromZuora._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = Metrics("AttributesController")
   lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
 
-  /**
-   * Zuora enforces 40 concurrent requests limit, without providing caching mechanisms.
-   * So the following custom workaround logic is attempted:
-   *
-   * 1. Count Zuora concurrent requests
-   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
-   * 1. Calculate concurrency limit per instance
-   * 1. If the count is greater than limit, then hit cache
-   * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
-   * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
-   */
-  def getAttributesWithConcurrencyLimitHandling(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
+  /** Zuora enforces 40 concurrent requests limit, without providing caching mechanisms. So the following custom workaround logic is attempted:
+    *
+    *   1. Count Zuora concurrent requests
+    *   1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
+    *   1. Calculate concurrency limit per instance
+    *   1. If the count is greater than limit, then hit cache
+    *   1. If the count is less than limit and Zuora is healthy, then hit Zuora
+    *   1. If the count is less than limit and Zuora is unhealthy, then hit cache
+    */
+  def getAttributesWithConcurrencyLimitHandling(
+      identityId: String
+  )(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
     val dynamoService = request.touchpoint.attrService
 
     if (ZuoraRequestCounter.isZuoraConcurrentRequestLimitNotReached) {
@@ -73,24 +74,27 @@ class AttributeController(
     }
   }
 
-  private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
+  private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit
+      executionContext: ExecutionContext
+  ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
     val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
 
     if (userHasValidatedEmail) {
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
         case -\/(databaseError) =>
-          //Failed to get one-off data, but this should not block the zuora request
+          // Failed to get one-off data, but this should not block the zuora request
           log.error(databaseError)
           None
         case \/-(maybeOneOff) =>
           maybeOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli))
       }
-    }
-    else Future.successful(None)
+    } else Future.successful(None)
   }
 
-  private def getLatestMobileSubscription(identityId: String)(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
+  private def getLatestMobileSubscription(
+      identityId: String
+  )(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(NonFatal(error)) =>
         metrics.put(s"mobile-subscription-fetch-exception", 1)
@@ -104,24 +108,34 @@ class AttributeController(
     }
   }
 
-  private def enrichZuoraAttributes(zuoraAttributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
+  private def enrichZuoraAttributes(
+      zuoraAttributes: Attributes,
+      latestOneOffDate: Option[LocalDate],
+      mobileSubscriptionStatus: Option[MobileSubscriptionStatus]
+  ): Attributes = {
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
     zuoraAttributes.copy(
       OneOffContributionDate = latestOneOffDate,
-      LiveAppSubscriptionExpiryDate = mobileExpiryDate,
-
+      LiveAppSubscriptionExpiryDate = mobileExpiryDate
     )
   }
 
   protected def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
-    request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
+    request.touchpoint.supporterProductDataService
+      .getAttributes(identityId)
+      .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
+  private def lookup(
+      endpointDescription: String,
+      onSuccessMember: Attributes => Result,
+      onSuccessSupporter: Attributes => Result,
+      onNotFound: Result,
+      sendAttributesIfNotFound: Boolean = false
+  ) = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
-
-      if(endpointDescription == "membership" || endpointDescription == "features") {
+      if (endpointDescription == "membership" || endpointDescription == "features") {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
@@ -133,7 +147,7 @@ class AttributeController(
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
           (for {
-            //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
+            // Fetch one-off data independently of zuora data so that we can handle users with no zuora record
             (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
@@ -141,7 +155,11 @@ class AttributeController(
             enrichedZuoraAttributes: Option[Attributes] = combinedAttributes.map(enrichZuoraAttributes(_, latestOneOffDate, latestMobileSubscription))
           } yield {
 
-            def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+            def customFields(supporterType: String): List[LogField] = List(
+              LogFieldString("lookup-endpoint-description", endpointDescription),
+              LogFieldString("supporter-type", supporterType),
+              LogFieldString("data-source", fromWhere)
+            )
 
             enrichedZuoraAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
@@ -154,10 +172,10 @@ class AttributeController(
                 attrs.DigitalSubscriptionExpiryDate.foreach { date =>
                   logInfoWithCustomFields(s"${user.id} is a digital subscriber expiring $date", customFields("digital-subscriber"))
                 }
-                attrs.PaperSubscriptionExpiryDate.foreach {date =>
+                attrs.PaperSubscriptionExpiryDate.foreach { date =>
                   logInfoWithCustomFields(s"${user.id} is a paper subscriber expiring $date", customFields("paper-subscriber"))
                 }
-                attrs.GuardianWeeklySubscriptionExpiryDate.foreach {date =>
+                attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
                   logInfoWithCustomFields(s"${user.id} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
                 }
                 attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
@@ -173,26 +191,27 @@ class AttributeController(
                 onNotFound
             }
           }).recover { case e =>
-              // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
-              // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
-              val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Supporter Experience team: $e"
-              metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
-              log.error(errMsg, e)
-              InternalServerError(errMsg)
-            }
+            // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
+            // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
+            val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Supporter Experience team: $e"
+            metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
+            log.error(errMsg, e)
+            InternalServerError(errMsg)
+          }
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
-        }
       }
+    }
   }
 
   private val notFound = ApiError("Not found", "Could not find user in the database", 404)
 
   private def membershipAttributesFromAttributes(attributes: Attributes): Result = {
-     MembershipAttributes.fromAttributes(attributes)
-       .map(member => Ok(Json.toJson(member)))
-       .getOrElse(notFound)
+    MembershipAttributes
+      .fromAttributes(attributes)
+      .map(member => Ok(Json.toJson(member)))
+      .getOrElse(notFound)
   }
 
   def membership = lookup(
@@ -217,14 +236,13 @@ class AttributeController(
 
   def oneOffContributions = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
-
       val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
 
       if (userHasValidatedEmail) {
         request.user.map(_.id) match {
           case Some(identityId) =>
             contributionsStoreDatabaseService.getAllContributions(identityId).map {
-              case -\/(err) => Ok(err)
+              case -\/(err)    => Ok(err)
               case \/-(result) => Ok(Json.toJson(result).toString)
             }
           case None => Future(unauthorized)
@@ -233,13 +251,12 @@ class AttributeController(
     }
   }
 
-  /**
-   * Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
-   */
+  /** Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
+    */
   private def maybeAllowAccessToDigipackForGuardianEmployees(
-    maybeUser: Option[User],
-    maybeAttributes: Option[Attributes],
-    identityId: String,
+      maybeUser: Option[User],
+      maybeAttributes: Option[Attributes],
+      identityId: String
   ): Option[Attributes] = {
 
     val allowDigiPackAccessToStaff =

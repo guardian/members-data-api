@@ -18,11 +18,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 
 class ScanamoAttributeService(client: DynamoDbAsyncClient, table: String)(implicit executionContext: ExecutionContext)
-    extends AttributeService with LazyLogging {
+    extends AttributeService
+    with LazyLogging {
 
-  val metrics = Metrics("ScanamoAttributeService") //referenced in CloudFormation
+  val metrics = Metrics("ScanamoAttributeService") // referenced in CloudFormation
 
-  def checkHealth: Boolean = client.describeTable(DescribeTableRequest.builder().tableName(table).build()).get.table().tableStatus() == TableStatus.ACTIVE
+  def checkHealth: Boolean =
+    client.describeTable(DescribeTableRequest.builder().tableName(table).build()).get.table().tableStatus() == TableStatus.ACTIVE
 
   implicit val jodaStringFormat = DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](
     LocalDate.parse(_),
@@ -35,18 +37,20 @@ class ScanamoAttributeService(client: DynamoDbAsyncClient, table: String)(implic
   def run[T] = ScanamoAsync(client).exec[T] _
 
   override def get(userId: String): Future[Option[DynamoAttributes]] =
-    run(scanamo.get("UserId" === userId).map(_.flatMap {
-      _
-        .left.map(e => logger.warn("Scanamo error in get: ", e))
-        .right.toOption
-    }))
+    run(
+      scanamo
+        .get("UserId" === userId)
+        .map(_.flatMap {
+          _.left.map(e => logger.warn("Scanamo error in get: ", e)).right.toOption
+        })
+    )
 
   def getMany(userIds: List[String]): Future[Seq[DynamoAttributes]] =
-    run(scanamo.getAll("UserId" in userIds.toSet)).map(_.flatMap{
-      _
-        .left.map(e => logger.warn("Scanamo error in getAll: ", e))
-        .right.toOption
-    }).map(_.toList)
+    run(scanamo.getAll("UserId" in userIds.toSet))
+      .map(_.flatMap {
+        _.left.map(e => logger.warn("Scanamo error in getAll: ", e)).right.toOption
+      })
+      .map(_.toList)
 
   override def set(attributes: DynamoAttributes): Future[Unit] = run(scanamo.put(attributes))
 
@@ -89,8 +93,10 @@ class ScanamoAttributeService(client: DynamoDbAsyncClient, table: String)(implic
       attributes <- dynamoAttributes
     } yield TtlConversions.secondsToDateTime(attributes.TTLTimestamp).isBefore(oldestAcceptedAge)
     if (tooOld.contains(true)) {
-      SafeLogger.error(scrub"Dynamo Attributes for $identityId have an old TTL. The oldest accepted age is: $oldestAcceptedAge - are we still cleaning the table correctly?")
-      metrics.put("Old Dynamo Item", 1) //referenced in CloudFormation
+      SafeLogger.error(
+        scrub"Dynamo Attributes for $identityId have an old TTL. The oldest accepted age is: $oldestAcceptedAge - are we still cleaning the table correctly?"
+      )
+      metrics.put("Old Dynamo Item", 1) // referenced in CloudFormation
     }
   }
 
@@ -100,4 +106,3 @@ object TtlConversions {
   def toDynamoTtlInSeconds(dateTime: DateTime) = dateTime.getMillis / 1000
   def secondsToDateTime(seconds: Long) = new DateTime(seconds * 1000)
 }
-

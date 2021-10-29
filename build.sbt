@@ -5,15 +5,15 @@ val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
 
 def commitId(): String =
-  try { "git rev-parse HEAD".!!.trim } catch { case _: Exception => "unknown" }
+  try { "git rev-parse HEAD".!!.trim }
+  catch { case _: Exception => "unknown" }
 
 def buildInfoSettings = Seq(
   buildInfoKeys := Seq[BuildInfoKey](
     name,
     BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
     BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId",
-                          Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId()))
+    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId()))
   ),
   buildInfoPackage := "app",
   buildInfoOptions += BuildInfoOption.ToMap
@@ -76,7 +76,7 @@ def app(name: String) =
 val api = app("membership-attribute-service")
   .settings(
     libraryDependencies ++= apiDependencies,
-    dependencyOverrides ++= depOverrides,
+    dependencyOverrides ++= depOverrides
   )
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(
