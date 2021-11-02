@@ -538,9 +538,9 @@ Resources:
         - ' '
         - - "Impact - we're serving errors to too many people, often a Zuora issue, but could be very serious"
           - !FindInMap [ Constants, Alarm, Process ]
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 10
-      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 50
+      EvaluationPeriods: 4
       TreatMissingData: notBreaching
       Metrics:
         - Id: total5XX
