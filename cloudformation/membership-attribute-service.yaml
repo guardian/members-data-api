@@ -541,6 +541,7 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Threshold: 50
       EvaluationPeriods: 4
+      DatapointsToAlarm: 2
       TreatMissingData: notBreaching
       Metrics:
         - Id: total5XX
