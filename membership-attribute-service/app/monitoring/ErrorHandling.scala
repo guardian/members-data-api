@@ -40,7 +40,7 @@ class ErrorHandler(
 
   override protected def onProdServerError(request: RequestHeader, ex: UsefulException): Future[Result] = {
     SafeLogger.error(scrub"Error handling request request: $request", ex)
-    AddGuIdentityHeaders.headersFor(request, internalError, identityAuthService)
+    AddGuIdentityHeaders.fromIdapiIfMissing(request, internalError, identityAuthService)
   }
   override protected def onBadRequest(request: RequestHeader, message: String): Future[Result] = {
     logServerError(request, new PlayException("Bad request", message))

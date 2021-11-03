@@ -14,7 +14,7 @@ class AccountControllerTest extends Specification with Mockito {
 
     val subName = "s1"
     val commonActions = mock[CommonActions]
-    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService)
+    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"))
     val request = FakeRequest("POST", s"/api/update/amount/contributions/$subName")
 
     "succeed when given value is valid" in {
