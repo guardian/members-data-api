@@ -7,7 +7,7 @@ object Dependencies {
   val awsClientV2Version = "2.16.86"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.248"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.251"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.7"
   val postgres = "org.postgresql" % "postgresql" % "42.2.23"
   val jdbc = PlayImport.jdbc
@@ -29,7 +29,7 @@ object Dependencies {
 
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion
   )
 
   //projects
@@ -55,7 +55,7 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
     netty,
     nettyHttp,
-    "com.google.guava"         % "guava"        % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
+    "com.google.guava" % "guava" % "30.1.1-jre" // until https://github.com/playframework/playframework/pull/10874
   ) ++ jackson
 
   val depOverrides = jackson
