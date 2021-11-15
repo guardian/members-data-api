@@ -112,7 +112,10 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
       createPaymentMethod = CreatePaymentMethod(
         accountId = subscription.accountId,
         paymentMethod = bankTransferPaymentMethod,
-        paymentGateway = account.paymentGateway.get, // this will need to change to use this endpoint for 'payment method' SWITCH
+        paymentGateway = account.paymentGateway
+          .getOrElse(
+            throw new RuntimeException(s"Unrecognised payment gateway for account ${subscription.accountId} for user $maybeUserId")
+          ), // this will need to change to use this endpoint for 'payment method' SWITCH
         billtoContact = billToContact,
         invoiceTemplateOverride = None
       )
