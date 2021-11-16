@@ -114,7 +114,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
                  .map(paymentGateway => CreatePaymentMethod(
                    accountId = subscription.accountId,
                    paymentMethod = bankTransferPaymentMethod,
-                   paymentGateway = paymentGateway, // this will need to change to use this endpoint for 'payment method' SWITCH
+                   paymentGateway = paymentGateway,
                    billtoContact = billToContact,
                    invoiceTemplateOverride = None
                  )) \/>
