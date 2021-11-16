@@ -15,6 +15,7 @@ import play.api.mvc._
 import services._
 import com.gu.identity.model.User
 import com.gu.memsub.util.Timing
+import filters.AddGuIdentityHeaders
 import limit.ZuoraRequestCounter
 import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
@@ -22,7 +23,6 @@ import scalaz.{-\/, \/-}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
-
 /**
  *  What benefits is the user entitled to?
  */
@@ -143,7 +143,7 @@ class AttributeController(
 
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
-            enrichedZuoraAttributes match {
+            val result = enrichedZuoraAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
@@ -172,6 +172,8 @@ class AttributeController(
               case _ =>
                 onNotFound
             }
+            AddGuIdentityHeaders.fromUser(result, user)
+
           }).recover { case e =>
               // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
               // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
@@ -220,7 +222,7 @@ class AttributeController(
 
       val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
 
-      if (userHasValidatedEmail) {
+      val futureResult: Future[Result] = if (userHasValidatedEmail) {
         request.user.map(_.id) match {
           case Some(identityId) =>
             contributionsStoreDatabaseService.getAllContributions(identityId).map {
@@ -229,7 +231,15 @@ class AttributeController(
             }
           case None => Future(unauthorized)
         }
-      } else Future(unauthorized)
+      } else
+        Future(unauthorized)
+
+      futureResult.map { result =>
+        request.user match {
+          case Some(user) => AddGuIdentityHeaders.fromUser(result, user)
+          case None => result
+        }
+      }
     }
   }
 
