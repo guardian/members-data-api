@@ -7,9 +7,9 @@ object Dependencies {
   val awsClientV2Version = "2.16.86"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.251"
-  val identityTestUsers = "com.gu" %% "identity-test-users" % "0.7"
-  val postgres = "org.postgresql" % "postgresql" % "42.2.23"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.248"
+  val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
+  val postgres = "org.postgresql" % "postgresql" % "42.2.24"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
@@ -23,8 +23,8 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
-  val netty = "io.netty" % "netty-codec" % "4.1.69.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.69.Final"
+  val netty = "io.netty" % "netty-codec" % "4.1.70.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.70.Final"
   val jacksonVersion = "2.11.4"
 
   val jackson = Seq(
