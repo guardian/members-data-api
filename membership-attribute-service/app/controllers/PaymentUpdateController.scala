@@ -109,13 +109,17 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
         lastName = billToContact.lastName,
         countryCode = "GB"
       )
-      createPaymentMethod = CreatePaymentMethod(
-        accountId = subscription.accountId,
-        paymentMethod = bankTransferPaymentMethod,
-        paymentGateway = account.paymentGateway.get, // this will need to change to use this endpoint for 'payment method' SWITCH
-        billtoContact = billToContact,
-        invoiceTemplateOverride = None
-      )
+        createPaymentMethod <- EitherT(Future.successful {
+          account.paymentGateway
+                 .map(paymentGateway => CreatePaymentMethod(
+                   accountId = subscription.accountId,
+                   paymentMethod = bankTransferPaymentMethod,
+                   paymentGateway = paymentGateway,
+                   billtoContact = billToContact,
+                   invoiceTemplateOverride = None
+                 )) \/>
+          s"Unrecognised payment gateway for account ${subscription.accountId}"
+        })
       _ <- EitherT(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
       freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
     } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map {
