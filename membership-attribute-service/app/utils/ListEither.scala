@@ -6,10 +6,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object ListEither {
 
-  type FutureEither[X] = EitherT[Future, String, X]
+  type FutureEither[X] = EitherT[String, Future, X]
 
   def apply[A](m: Future[\/[String, List[A]]]): ListT[FutureEither, A] =
-    ListT[FutureEither, A](EitherT[Future, String, List[A]](m))
+    ListT[FutureEither, A](EitherT[String, Future, List[A]](m))
 
   def fromOptionEither[A](value: OptionT[FutureEither, List[A]])(implicit ex: ExecutionContext): ListT[FutureEither, A] =
     ListT[FutureEither, A](value.run.map(_.toList.flatten))
