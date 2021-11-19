@@ -1,8 +1,6 @@
 package services
 
-import java.util.{Date, GregorianCalendar}
-
-import scalaz.\/
+import java.util.GregorianCalendar
 
 import scala.concurrent.Future
 import services.ContributionsStoreDatabaseService.DatabaseGetResult
@@ -18,13 +16,13 @@ case class FakePostgresService(validId: String) extends ContributionsStoreDataba
     )
     def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] =
         if (identityId == validId)
-            Future.successful(\/.right(List(testContributionData)))
+            Future.successful(Right(List(testContributionData)))
         else
-            Future.successful(\/.right(Nil))
+            Future.successful(Right(Nil))
 
     def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]] =
-        Future.successful(\/.right(None))
+        Future.successful(Right(None))
 
     def getSupportReminders(identityId: String): DatabaseGetResult[SupportReminders] =
-        Future.successful(\/.right(SupportReminders(RecurringReminderStatus.NotSet, None)))
+        Future.successful(Right(SupportReminders(RecurringReminderStatus.NotSet, None)))
 }

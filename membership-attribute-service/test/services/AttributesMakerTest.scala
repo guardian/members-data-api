@@ -3,15 +3,14 @@ package services
 import com.github.nscala_time.time.Implicits._
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraRestService.{PaymentMethodId, PaymentMethodResponse}
-import models.{Attributes, AccountWithSubscriptions, DynamoAttributes, ZuoraAttributes}
+import models.{AccountWithSubscriptions, ZuoraAttributes}
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
-import testdata.SubscriptionTestData
 import testdata.AccountObjectTestData._
+import testdata.SubscriptionTestData
 
 import scala.concurrent.Future
-import scalaz.\/
 
 class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with SubscriptionTestData {
   override def referenceDate = new LocalDate()
@@ -19,9 +18,9 @@ class AttributesMakerTest(implicit ee: ExecutionEnv)  extends Specification with
   val referenceDateAsDynamoTimestamp = referenceDate.toDateTimeAtStartOfDay.getMillis / 1000
   val identityId = "123"
 
-  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
-  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
-  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
+  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
+  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
+  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
 
   "zuoraAttributes" should {
     val anotherAccountSummary = accountObjectWithZeroBalance.copy(Id = AccountId("another accountId"))

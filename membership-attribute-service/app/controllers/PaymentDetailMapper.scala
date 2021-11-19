@@ -1,18 +1,17 @@
 package controllers
 
-import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.memsub.services.PaymentService
-import com.gu.memsub.subsv2.ReaderType.Gift
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
-import scalaz.{-\/, \/, \/-}
+import scalaz.\/
 
 import scala.concurrent.Future
 
 object PaymentDetailMapper {
 
-  def getGiftPaymentDetails(giftSub: Subscription[SubscriptionPlan.Paid]) = PaymentDetails(
+  def getGiftPaymentDetails(giftSub: Subscription[SubscriptionPlan.Paid]): PaymentDetails = PaymentDetails(
     pendingCancellation = giftSub.isCancelled,
     chargedThroughDate = None,
     startDate = giftSub.startDate,
@@ -34,14 +33,14 @@ object PaymentDetailMapper {
 
   def paymentDetailsForSub(
     isGiftRedemption: Boolean,
-    freeOrPaidSub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
+    freeOrPaidSub: Either[Subscription[SubscriptionPlan.Free],Subscription[SubscriptionPlan.Paid]],
     paymentService: PaymentService
   ): Future[PaymentDetails] = freeOrPaidSub match {
-    case \/-(giftSub) if isGiftRedemption =>
+    case Right(giftSub) if isGiftRedemption =>
       Future.successful(getGiftPaymentDetails(giftSub))
-    case \/-(paidSub)  =>
-      paymentService.paymentDetails(freeOrPaidSub, defaultMandateIdIfApplicable = Some(""))
-    case -\/(freeSub) => Future.successful(PaymentDetails(freeSub))
+    case Right(paidSub)  =>
+      paymentService.paymentDetails(\/.fromEither(freeOrPaidSub), defaultMandateIdIfApplicable = Some(""))
+    case Left(freeSub) => Future.successful(PaymentDetails(freeSub))
   }
 
 }
