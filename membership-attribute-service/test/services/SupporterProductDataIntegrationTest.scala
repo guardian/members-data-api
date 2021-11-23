@@ -73,11 +73,11 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
   def getFromZuora(identityId: String) = {
     attributesFromZuora.getAttributesFromZuoraWithCacheFallback(
       identityId,
-      identityIdToAccounts = touchpoint.zuoraRestService.getAccounts,
-      subscriptionsForAccountId = accountId => reads => touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-      giftSubscriptionsForIdentityId = touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
+      identityIdToAccounts = id => touchpoint.zuoraRestService.getAccounts(id).map(_.toEither),
+      subscriptionsForAccountId = accountId => reads => touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads).map(_.toEither),
+      giftSubscriptionsForIdentityId = id => touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(id).map(_.toEither),
       dynamoAttributeService = attrService,
-      paymentMethodForPaymentMethodId = paymentMethodId => touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
+      paymentMethodForPaymentMethodId = paymentMethodId => touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get).map(_.toEither),
       supporterProductDataService = touchpoint.supporterProductDataService
     )
   }

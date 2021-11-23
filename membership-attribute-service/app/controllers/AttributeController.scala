@@ -2,7 +2,10 @@ package controllers
 
 import actions._
 import akka.actor.ActorSystem
+import com.gu.identity.model.User
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import filters.AddGuIdentityHeaders
+import limit.ZuoraRequestCounter
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
 import models.ApiError._
@@ -10,19 +13,14 @@ import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.{ExpensiveMetrics, Metrics}
+import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-import com.gu.identity.model.User
-import com.gu.memsub.util.Timing
-import filters.AddGuIdentityHeaders
-import limit.ZuoraRequestCounter
-import org.joda.time.LocalDate
-import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Random, Success, Try}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 /**
  *  What benefits is the user entitled to?
  */
@@ -57,11 +55,11 @@ class AttributeController(
       expensiveMetrics.countRequest(s"zuora-hit")
       getAttributesFromZuoraWithCacheFallback(
         identityId = identityId,
-        identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
-        subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-        giftSubscriptionsForIdentityId = request.touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
+        identityIdToAccounts = id => request.touchpoint.zuoraRestService.getAccounts(id).map(_.toEither)(executionContext),
+        subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads).map(_.toEither)(executionContext),
+        giftSubscriptionsForIdentityId = id => request.touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(id).map(_.toEither)(executionContext),
         dynamoAttributeService = dynamoService,
-        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
+        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get).map(_.toEither)(executionContext),
         supporterProductDataService = request.touchpoint.supporterProductDataService
       )
     } else {
@@ -79,11 +77,11 @@ class AttributeController(
 
     if (userHasValidatedEmail) {
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
-        case -\/(databaseError) =>
+        case Left(databaseError) =>
           //Failed to get one-off data, but this should not block the zuora request
           log.error(databaseError)
           None
-        case \/-(maybeOneOff) =>
+        case Right(maybeOneOff) =>
           maybeOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli))
       }
     }
@@ -96,11 +94,11 @@ class AttributeController(
         metrics.put(s"mobile-subscription-fetch-exception", 1)
         log.warn("Exception while fetching mobile subscription, assuming none", error)
         Success(None)
-      case Success(-\/(error)) =>
+      case Success(Left(error)) =>
         metrics.put(s"mobile-subscription-fetch-error-non-http-200", 1)
         log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
         Success(None)
-      case Success(\/-(status)) => Success(status)
+      case Success(Right(status)) => Success(status)
     }
   }
 
@@ -226,8 +224,8 @@ class AttributeController(
         request.user.map(_.id) match {
           case Some(identityId) =>
             contributionsStoreDatabaseService.getAllContributions(identityId).map {
-              case -\/(err) => Ok(err)
-              case \/-(result) => Ok(Json.toJson(result).toString)
+              case Left(err) => Ok(err)
+              case Right(result) => Ok(Json.toJson(result).toString)
             }
           case None => Future(unauthorized)
         }

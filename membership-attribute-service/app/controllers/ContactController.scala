@@ -5,7 +5,6 @@ import com.gu.salesforce.{SFContactId, SimpleContactRepository}
 import com.typesafe.scalalogging.LazyLogging
 import models.DeliveryAddress
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
-import scalaz.\/-
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Exception
@@ -57,8 +56,8 @@ class ContactController(
     val contactRepo = request.touchpoint.contactRepo
     request.redirectAdvice.userId match {
       case Some(userId) =>
-        contactRepo.get(userId) map {
-          case \/-(Some(contact)) => contact.salesforceContactId == contactId
+        contactRepo.get(userId).map(_.toEither).map {
+          case Right(Some(contact)) => contact.salesforceContactId == contactId
           case _                  => false
         }
       case None => Future.successful(false)

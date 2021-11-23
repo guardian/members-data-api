@@ -2,17 +2,13 @@ package services
 
 import anorm._
 import com.typesafe.scalalogging.StrictLogging
-import models.ContributionData
+import models.RecurringReminderStatus._
+import models.{ContributionData, SupportReminderDb, SupportReminders}
 import play.api.db.Database
 import services.ContributionsStoreDatabaseService.DatabaseGetResult
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scalaz.\/
-import models.SupportReminders
-import models.SupportReminderDb
-import models.RecurringReminderStatus._
-
 
 trait ContributionsStoreDatabaseService {
   def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]]
@@ -23,7 +19,7 @@ trait ContributionsStoreDatabaseService {
 }
 
 object ContributionsStoreDatabaseService {
-  type DatabaseGetResult[R] = Future[\/[String, R]]
+  type DatabaseGetResult[R] = Future[Either[String, R]]
 }
 
 class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext)
@@ -33,9 +29,9 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
     Future(database.withConnection { implicit conn =>
       statement.as(parser)
     })
-      .map(\/.right)
+      .map(Right(_))
       .recover { case NonFatal(err) =>
-        \/.left(s"Error querying contributions store. Error: $err")
+        Left(s"Error querying contributions store. Error: $err")
       }
 
   override def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] = {

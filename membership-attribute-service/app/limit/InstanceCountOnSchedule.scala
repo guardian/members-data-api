@@ -6,7 +6,7 @@ import com.gu.aws.CredentialsProvider
 import com.gu.memsub.util.ScheduledTask
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
