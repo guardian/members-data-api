@@ -15,7 +15,6 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{DescribeTableRequest, TableStatus}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.higherKinds
 
 class ScanamoAttributeService(client: DynamoDbAsyncClient, table: String)(implicit executionContext: ExecutionContext)
     extends AttributeService with LazyLogging {
@@ -38,14 +37,14 @@ class ScanamoAttributeService(client: DynamoDbAsyncClient, table: String)(implic
     run(scanamo.get("UserId" === userId).map(_.flatMap {
       _
         .left.map(e => logger.warn("Scanamo error in get: ", e))
-        .right.toOption
+        .toOption
     }))
 
   def getMany(userIds: List[String]): Future[Seq[DynamoAttributes]] =
     run(scanamo.getAll("UserId" in userIds.toSet)).map(_.flatMap{
       _
         .left.map(e => logger.warn("Scanamo error in getAll: ", e))
-        .right.toOption
+        .toOption
     }).map(_.toList)
 
   override def set(attributes: DynamoAttributes): Future[Unit] = run(scanamo.put(attributes))

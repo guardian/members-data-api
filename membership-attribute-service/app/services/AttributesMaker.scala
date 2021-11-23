@@ -13,7 +13,6 @@ import org.joda.time.LocalDate
 import PaymentFailureAlerter.alertAvailableFor
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.\/
 import scalaz.syntax.std.boolean._
 import services.AttributesMaker.{getCurrentPlans, getSubsWhichIncludeDigitalPack}
 
@@ -25,7 +24,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
   def zuoraAttributes(
                        identityId: String,
                        subsWithAccounts: List[AccountWithSubscriptions],
-                       paymentMethodGetter: PaymentMethodId => Future[\/[String, PaymentMethodResponse]],
+                       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
                        forDate: LocalDate)(implicit ec: ExecutionContext): Future[Option[ZuoraAttributes]] = {
 
     val subs: List[Subscription[AnyPlan]] = subsWithAccounts.flatMap(subAccount => subAccount.subscriptions)
@@ -79,13 +78,13 @@ class AttributesMaker extends LoggingWithLogstashFields{
     val contributionSub = groupedSubs.getOrElse(Some(Product.Contribution), Nil).headOption     // Assumes only 1 regular contribution per Identity customer
     val subsWhichIncludeDigitalPack = getSubsWhichIncludeDigitalPack(subs, forDate)
 
-    val paperSubscriptions = groupedSubs.filterKeys{
+    val paperSubscriptions = groupedSubs.view.filterKeys{
       case Some(_: Product.Weekly) => false // guardian weekly extends Paper, so we need to explicitly filter that out
       case Some(_: Product.Paper) => true
       case _ => false
     }.values.flatten
 
-    val guardianWeeklySubscriptions = groupedSubs.filterKeys{
+    val guardianWeeklySubscriptions = groupedSubs.view.filterKeys{
       case Some(_: Product.Weekly) => true // guardian weekly extends Paper, so we need to explicitly filter that out
       case _ => false
     }.values.flatten

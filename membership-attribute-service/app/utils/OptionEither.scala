@@ -1,6 +1,6 @@
 package utils
 
-import scalaz.{EitherT, OptionT, \/}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -12,8 +12,11 @@ object OptionEither {
   def apply[A](m: Future[\/[String, Option[A]]]): OptionT[FutureEither, A] =
     OptionT[FutureEither, A](EitherT[String, Future, Option[A]](m))
 
-  def liftOption[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
+  private def liftOptionDisjunction[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
     apply(x.map(_.map[Option[A]](Some.apply)))
+
+  def liftOption[A](x: Future[Either[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
+    liftOptionDisjunction(x.map(\/.fromEither))
 
   def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
     apply(Future.successful(\/.right[String,Option[A]](x)))

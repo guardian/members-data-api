@@ -1,28 +1,26 @@
 package controllers
 
 import actions._
-import com.gu.memsub._
+import com.gu.i18n.Currency
+import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.SimpleContactRepository
+import com.gu.zuora.rest.ZuoraRestService
 import com.typesafe.scalalogging.LazyLogging
+import components.TouchpointComponents
 import models.ExistingPaymentOption
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.json.Json
-import play.api.mvc.{BaseController, ControllerComponents}
-import scalaz.std.option._
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.std.scalaFuture._
-import scalaz.syntax.monad._
-import scalaz.syntax.std.option._
-import scalaz.syntax.traverse._
 import scalaz.syntax.monadPlus._
-import scalaz.{-\/, OptionT, \/, \/-}
-import com.gu.i18n.Currency
-import com.gu.identity.SignedInRecently
+import scalaz.OptionT
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -63,15 +61,15 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
       )
     }
 
-    existingPaymentOptions.groupBy(extractConsolidationPart).filterKeys(_.isDefined).values.map(mapConsolidatedBackToSingle)
+    existingPaymentOptions.groupBy(extractConsolidationPart).view.filterKeys(_.isDefined).values.map(mapConsolidatedBackToSingle)
   }
 
   // TODO should probably fetch upToDate details from Stripe to determine this (rather than relying on Zuora) - see getUpToDatePaymentDetailsFromStripe in AccountController
-  def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails) =
+  def cardThatWontBeExpiredOnFirstTransaction(cardDetails: PaymentCardDetails): Boolean =
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
-  def existingPaymentOptions(currencyFilter: Option[String]) = AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
-    implicit val tp = request.touchpoint
+  def existingPaymentOptions(currencyFilter: Option[String]): Action[AnyContent] = AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
+    implicit val tp: TouchpointComponents = request.touchpoint
     val maybeUserId = request.redirectAdvice.userId
     val isSignedInRecently = request.redirectAdvice.signInStatus == SignedInRecently
 
@@ -102,18 +100,20 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     (for {
       groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
       (accountId, subscriptions) = groupedSubsList
-      objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).recover { case x => \/.left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
+      objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x => Left(s"error receiving OBJECT account with account id $accountId. Reason: $x") })
       if currencyMatchesFilter(objectAccount.currency) &&
          objectAccount.defaultPaymentMethodId.isDefined
-      paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable)).map(\/.right).recover { case x => \/.left(s"error retrieving payment method for account: $accountId. Reason: $x") })
+      paymentMethodOption <- ListEither.liftList(tp.paymentService.getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable))
+                                                   .map(Right(_))
+                                                   .recover { case x => Left(s"error retrieving payment method for account: $accountId. Reason: $x") })
       if paymentMethodStillValid(paymentMethodOption) &&
          paymentMethodHasNoFailures(paymentMethodOption) &&
          paymentMethodIsActive(paymentMethodOption)
-    } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map {
-      case \/-(existingPaymentOptions) =>
+    } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map(_.toEither).map {
+      case Right(existingPaymentOptions) =>
         logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
-        Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions).map(_.toJson)))
-      case -\/(message) =>
+        Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson)))
+      case Left(message) =>
         logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
         InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
     }
