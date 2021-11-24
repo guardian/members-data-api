@@ -33,7 +33,7 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
 - `gu_one_off_contribution_date` = `oneOffContributionDate` in the response
 
 ##### Useful Links 
-- DCR [dotcom-rendering/blob/master/src/web/lib/contributions.tsx](https://github.com/guardian/dotcom-rendering/blob/master/src/web/lib/contributions.tsx)
+- DCR [dotcom-rendering/src/web/lib/contributions.ts](https://github.com/guardian/dotcom-rendering/blob/main/dotcom-rendering/src/web/lib/contributions.ts)
 - Dotcom
   - [frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js](https://github.com/guardian/frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js)
   - [frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js](https://github.com/guardian/frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js)
