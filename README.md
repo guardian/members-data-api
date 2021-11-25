@@ -35,7 +35,7 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
 ##### Useful Links 
 - DCR [dotcom-rendering/src/web/lib/contributions.ts](https://github.com/guardian/dotcom-rendering/blob/main/dotcom-rendering/src/web/lib/contributions.ts)
 - Dotcom
-  - [frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js](https://github.com/guardian/frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js)
+  - [frontend/static/src/javascripts/projects/common/modules/commercial/user-features.ts](https://github.com/guardian/frontend/blob/main/static/src/javascripts/projects/common/modules/commercial/user-features.ts)
   - [frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js](https://github.com/guardian/frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js)
 
 ### DynamoDB table
