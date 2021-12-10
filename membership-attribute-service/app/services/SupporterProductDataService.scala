@@ -1,18 +1,17 @@
 package services
 
 import com.typesafe.scalalogging.LazyLogging
-import models.DynamoSupporterRatePlanItem
+import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.Metrics
 import org.joda.time.LocalDate
 import org.scanamo.DynamoReadError.describe
 import org.scanamo.{DynamoReadError, _}
 import org.scanamo.generic.semiauto._
 import org.scanamo.syntax._
-import scalaz.\/
 import services.SupporterProductDataService.{alertOnDynamoReadErrors, errorMessage}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)
   (implicit executionContext: ExecutionContext) {
@@ -22,7 +21,7 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
   )
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
-  def getAttributes(identityId: String) =
+  def getAttributes(identityId: String): Future[Either[String, Option[Attributes]]] =
     for {
       futureDynamoResult <- getSupporterRatePlanItems(identityId)
       futureErrors = futureDynamoResult.collect { case Left(error) =>
@@ -33,9 +32,9 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
         ratePlanItem
       })
     } yield if(futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
-      \/.right(mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems))
+      Right(mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems))
     else
-      \/.left(errorMessage(futureErrors))
+      Left(errorMessage(futureErrors))
 
   private def getSupporterRatePlanItems(identityId: String) =
     ScanamoAsync(client).exec {

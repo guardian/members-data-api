@@ -1,19 +1,22 @@
 package utils
 
-import scalaz.{EitherT, OptionT, \/}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 // this is helping us stack future/either/option
 object OptionEither {
 
-  type FutureEither[X] = EitherT[Future, String, X]
+  type FutureEither[X] = EitherT[String, Future, X]
 
   def apply[A](m: Future[\/[String, Option[A]]]): OptionT[FutureEither, A] =
-    OptionT[FutureEither, A](EitherT[Future, String, Option[A]](m))
+    OptionT[FutureEither, A](EitherT[String, Future, Option[A]](m))
 
-  def liftOption[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
+  private def liftOptionDisjunction[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
     apply(x.map(_.map[Option[A]](Some.apply)))
+
+  def liftOption[A](x: Future[Either[String, A]])(implicit ex: ExecutionContext): OptionT[FutureEither, A] =
+    liftOptionDisjunction(x.map(\/.fromEither))
 
   def liftFutureEither[A](x: Option[A]): OptionT[FutureEither, A] =
     apply(Future.successful(\/.right[String,Option[A]](x)))

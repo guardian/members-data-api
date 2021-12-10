@@ -8,7 +8,7 @@ import org.mockito.Mockito.when
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
-import scalaz.{-\/, \/, \/-}
+import scalaz.\/
 import testdata.SubscriptionTestData
 
 import scala.concurrent.Future
@@ -22,7 +22,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
       val mockPaymentService = mock[PaymentService]
       PaymentDetailMapper.paymentDetailsForSub(
         isGiftRedemption = true,
-        \/-(digipackGift),
+        Right(digipackGift),
         mockPaymentService
       ).map(
         details => details mustEqual PaymentDetailMapper.getGiftPaymentDetails(digipackGift)
@@ -42,7 +42,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
 
       PaymentDetailMapper.paymentDetailsForSub(
         isGiftRedemption = false,
-        \/-(digipack),
+        Right(digipack),
         mockPaymentService
       ).map(
         details => details mustEqual expectedPaymentDetails
@@ -62,7 +62,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
 
       PaymentDetailMapper.paymentDetailsForSub(
         isGiftRedemption = false,
-        \/-(digipack),
+        Right(digipack),
         mockPaymentService
       ).map(
         details => details mustEqual expectedPaymentDetails
@@ -75,7 +75,7 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
 
       PaymentDetailMapper.paymentDetailsForSub(
         isGiftRedemption = false,
-        -\/(friend),
+        Left(friend),
         mockPaymentService
       ).map(
         details => details mustEqual expectedPaymentDetails
