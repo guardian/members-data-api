@@ -4,12 +4,12 @@ import loghandling.LoggingField._
 import play.api.Logger
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 trait LoggingWithLogstashFields {
 
-  lazy implicit val log = Logger(getClass)
+  lazy implicit val log: Logger = Logger(getClass)
 
   def logInfoWithCustomFields(message: String, customFields: List[LogField]): Unit = {
     log.logger.info(customFieldMarkers(customFields), message)

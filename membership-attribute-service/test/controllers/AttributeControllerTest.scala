@@ -3,26 +3,23 @@ package controllers
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.gu.identity.model.{PrivateFields, StatusFields, User}
+import com.gu.identity.model.{StatusFields, User}
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{Attributes, ContributionData, MobileSubscriptionStatus}
+import models.{Attributes, MobileSubscriptionStatus}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
 import play.api.libs.json.Json
 import play.api.mvc._
-import play.api.test._
 import play.api.test.Helpers._
-import scalaz.\/
+import play.api.test._
 import services.{AttributesFromZuora, AuthenticationService, FakePostgresService, MobileSubscriptionService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import models.SupportReminders
-import models.RecurringReminderStatus
 
 class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
@@ -129,8 +126,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
-    override def getSubscriptionStatusForUser(identityId: String): Future[String \/ Option[MobileSubscriptionStatus]] =
-      Future.successful(\/.right(None))
+    override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] =
+      Future.successful(Right(None))
   }
 
   private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService(validUserId), FakeMobileSubscriptionService) {
@@ -185,8 +182,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   
   private def verifyIdentityHeadersSet(result:Future[Result], expectedUserId:String, expectedTestUser:Boolean = false) = {
     val resultHeaders = headers(result)
-    resultHeaders.get("X-Gu-Identity-Id") should beEqualTo(Some(expectedUserId))
-    resultHeaders.get("X-Gu-Membership-Test-User") should beEqualTo(Some(expectedTestUser.toString))
+    resultHeaders.get("X-Gu-Identity-Id") should beSome(expectedUserId)
+    resultHeaders.get("X-Gu-Membership-Test-User") should beSome(expectedTestUser.toString)
 
   }
 
@@ -361,5 +358,5 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
   }
 
-  override def afterAll() = as.terminate()
+  override def afterAll(): Unit = as.terminate()
 }

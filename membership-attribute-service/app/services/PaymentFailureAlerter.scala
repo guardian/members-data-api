@@ -16,7 +16,6 @@ import org.joda.time.format.DateTimeFormat
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.syntax.std.boolean._
-import scalaz.{Disjunction, \/}
 
 
 object PaymentFailureAlerter extends LoggingWithLogstashFields {
@@ -43,14 +42,14 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
   def alertText(
     accountSummary: AccountSummary,
     subscription: Subscription[AnyPlan],
-    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse])(implicit ec: ExecutionContext) : Future[Option[String]] = {
+    paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]])(implicit ec: ExecutionContext) : Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
       val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
 
       val maybePaymentMethodLatestDate: Future[Option[DateTime]] = accountSummary.defaultPaymentMethod.map(_.id) match {
         case Some(id) =>
-          val paymentMethod: Future[Disjunction[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(\/.left("Failed to get payment method"))
+          val paymentMethod: Future[Either[String, PaymentMethodResponse]] = paymentMethodGetter(id) fallbackTo Future.successful(Left("Failed to get payment method"))
           paymentMethod.map (_.map ( _.lastTransactionDateTime).toOption)
         case None => Future.successful(None)
       }
@@ -91,7 +90,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
 
   def alertAvailableFor(
     account: AccountObject, subscription: Subscription[AnyPlan],
-    paymentMethodGetter: PaymentMethodId => Future[String \/ PaymentMethodResponse]
+    paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]]
   )(implicit ec: ExecutionContext): Future[Boolean] = {
 
     def isAlertableProduct =  alertableProducts.contains(subscription.plan.product)
@@ -101,9 +100,9 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
     def recentEnough(lastInvoiceDateTime: DateTime) = lastInvoiceDateTime.plusDays(stillFreshInDays).isAfterNow
     val isActionablePaymentGateway = account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway)
 
-    def hasFailureForCreditCardPaymentMethod(paymentMethodId: PaymentMethodId): Future[\/[String, Boolean]] = {
-      val eventualPaymentMethod: Future[\/[String, PaymentMethodResponse]] = paymentMethodGetter(paymentMethodId)
-      eventualPaymentMethod map { maybePaymentMethod: \/[String, PaymentMethodResponse] =>
+    def hasFailureForCreditCardPaymentMethod(paymentMethodId: PaymentMethodId): Future[Either[String, Boolean]] = {
+      val eventualPaymentMethod: Future[Either[String, PaymentMethodResponse]] = paymentMethodGetter(paymentMethodId)
+      eventualPaymentMethod map { maybePaymentMethod: Either[String, PaymentMethodResponse] =>
         maybePaymentMethod.map { pm: PaymentMethodResponse =>
           creditCard(pm) && pm.numConsecutiveFailures > 0
         }
@@ -121,7 +120,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
         recentEnough(invoiceDate)
       ) hasFailureForCreditCardPaymentMethod(paymentMethodId)
 
-      else Future.successful(\/.right(false))
+      else Future.successful(Right(false))
     }.map(_.getOrElse(false))
 
     alertAvailable.getOrElse(Future.successful(false))
