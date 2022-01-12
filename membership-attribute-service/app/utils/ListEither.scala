@@ -26,4 +26,13 @@ object ListEither {
       \/.right[String, IList[A]](IList(value))
     })
   }
+
+  def liftFutureEither[A](x: List[A]): ListT[FutureEither, A] =
+    apply(Future.successful(\/.right[String,IList[A]](IList.fromList(x))))
+
+  def liftFutureList[A](future: Future[List[A]])(implicit ex: ExecutionContext): ListT[FutureEither, A] =
+    apply(future map { value: List[A] =>
+      \/.right[String, IList[A]](IList.fromList(value))
+    })
+
 }

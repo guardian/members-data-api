@@ -36,7 +36,7 @@ import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
-import scalaz.{EitherT, OptionT, \/}
+import scalaz.{EitherT, IList, ListT, OptionT, \/}
 import utils.OptionEither.FutureEither
 import utils.{ListEither, OptionEither}
 
@@ -311,32 +311,32 @@ class AccountController(commonActions: CommonActions, override val controllerCom
     contact: Contact
   ): OptionT[FutureEither, List[ContactAndSubscription]] = {
     val giftSub = for {
-      records <- OptionEither.liftOption(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId).map(_.toEither))
+      records <- ListT(EitherT(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId).map(_.map(IList(_)))))
       result <- if (records.isEmpty)
-        OptionEither.liftFutureEither[Subscription[AnyPlan]](None)
+        ListEither.liftFutureEither[Subscription[AnyPlan]](Nil)
       else
         reuseAlreadyFetchedSubscriptionIfAvailable(records, nonGiftSubs, subscriptionService)
     } yield result
     val fullList = giftSub
-      .map(sub => ContactAndSubscription(contact, sub, isGiftRedemption = true) :: nonGiftSubs)
-      .getOrElse(nonGiftSubs)
-    OptionEither.liftOption(fullList.run.map(_.toEither))
+      .map(sub => ContactAndSubscription(contact, sub, isGiftRedemption = true))
+    OptionEither.liftOption(fullList.run.map(_ ++ IList.fromList(nonGiftSubs)).run.map(_.toEither)).map(_.toList)
   }
 
   def reuseAlreadyFetchedSubscriptionIfAvailable(
     giftRecords:  List[ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord],
     nonGiftSubs: List[ContactAndSubscription],
     subscriptionService: SubscriptionService[Future],
-  ): OptionT[FutureEither, Subscription[AnyPlan]] = {
-    val subscriptionName = Name(giftRecords.head.Name)
-    OptionEither.liftFutureOption(
+  ): ListT[FutureEither, Subscription[AnyPlan]] = ListEither.liftFutureList {
+    val all = giftRecords.map { giftRecord =>
+      val subscriptionName = Name(giftRecord.Name)
       // If the current user is both the gifter and the giftee we will have already retrieved their
       // subscription so we can reuse it and avoid a call to Zuora
       nonGiftSubs.find(_.subscription.name == subscriptionName) match {
         case Some(contactAndSubscription) => Future.successful(Some(contactAndSubscription.subscription))
-        case _ => subscriptionService.get[AnyPlan](subscriptionName, isActiveToday = true)
+        case _ => subscriptionService.get[AnyPlan](subscriptionName, isActiveToday = false) //set isActiveToday to false so that we find digisub plans with a one time charge
       }
-    )
+    }
+    Future.sequence(all).map(_.flatten) // failures turn to None, and are logged, so just ignore them
   }
 
   def allCurrentSubscriptions(
