@@ -333,7 +333,7 @@ class AccountController(commonActions: CommonActions, override val controllerCom
       // subscription so we can reuse it and avoid a call to Zuora
       nonGiftSubs.find(_.subscription.name == subscriptionName) match {
         case Some(contactAndSubscription) => Future.successful(Some(contactAndSubscription.subscription))
-        case _ => subscriptionService.get[AnyPlan](subscriptionName, isActiveToday = true)
+        case _ => subscriptionService.get[AnyPlan](subscriptionName, isActiveToday = false) //set isActiveToday to false so that we find digisub plans with a one time charge
       }
     }
     Future.sequence(all).map(_.flatten) // failures turn to None, and are logged, so just ignore them
