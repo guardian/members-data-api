@@ -23,7 +23,7 @@ import scala.io.Source
 
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
-  val stage = "PROD" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
+  val stage = "DEV" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
   lazy val CredentialsProvider =  AwsCredentialsProviderChain.builder.credentialsProviders(
     ProfileCredentialsProvider.builder.profileName(ProfileName).build,
     InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
@@ -34,15 +34,15 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     .credentialsProvider(CredentialsProvider)
     .region(Region.EU_WEST_1)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
-  lazy val supporterProductDataTable = "SupporterProductData-PROD"
+  lazy val supporterProductDataTable = s"SupporterProductData-$stage"
   lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
 
-  lazy val dynamoAttributesTable = "SupporterAttributesFallback-PROD"
+  lazy val dynamoAttributesTable = s"SupporterAttributesFallback-$stage"
   lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
 
 
   implicit private val actorSystem: ActorSystem = ActorSystem()
-  lazy val touchpoint = new TouchpointComponents("PROD")
+  lazy val touchpoint = new TouchpointComponents(stage)
   lazy val attributesFromZuora = new AttributesFromZuora()
 
   args(skipAll = true) // This test requires credentials so won't run on CI, change skipAll to false to run locally

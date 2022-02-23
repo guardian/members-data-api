@@ -16,7 +16,8 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     "some-rate-plan-id",
     ratePlanId,
     termEndDate,
-    LocalDate.now()
+    LocalDate.now(),
+    None
   )
 
   "SupporterRatePlanToAttributesMapper" should {

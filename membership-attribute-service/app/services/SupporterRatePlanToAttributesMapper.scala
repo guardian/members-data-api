@@ -30,14 +30,29 @@ object SupporterRatePlanToAttributesMapper {
 
   type Stage = String
   type ProductRatePlanId = String
+
+  def maybeDigitalSubBenefitForContributions(item: DynamoSupporterRatePlanItem): Option[LocalDate] =
+    item.acquisitionMetadataAsObject.flatMap(metadata =>
+      if(metadata.shouldGetDigitalSubBenefits)
+        Some(item.termEndDate)
+      else
+        None
+    )
+
   val digitalSubTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
     )
-  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
+  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+      DigitalSubscriptionExpiryDate = maybeDigitalSubBenefitForContributions(item)
+    )
+  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Annual Contribution"),
+      DigitalSubscriptionExpiryDate = maybeDigitalSubBenefitForContributions(item)
+    )
   val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
