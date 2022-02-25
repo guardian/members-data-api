@@ -5,11 +5,13 @@ import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
+import com.typesafe.scalalogging.LazyLogging
 import scalaz.\/
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
-object PaymentDetailMapper {
+object PaymentDetailMapper extends LazyLogging {
 
   def getGiftPaymentDetails(giftSub: Subscription[SubscriptionPlan.Paid]): PaymentDetails = PaymentDetails(
     pendingCancellation = giftSub.isCancelled,
@@ -35,11 +37,16 @@ object PaymentDetailMapper {
     isGiftRedemption: Boolean,
     freeOrPaidSub: Either[Subscription[SubscriptionPlan.Free],Subscription[SubscriptionPlan.Paid]],
     paymentService: PaymentService
-  ): Future[PaymentDetails] = freeOrPaidSub match {
+  )(implicit ec: ExecutionContext): Future[PaymentDetails] = freeOrPaidSub match {
     case Right(giftSub) if isGiftRedemption =>
       Future.successful(getGiftPaymentDetails(giftSub))
     case Right(paidSub)  =>
-      paymentService.paymentDetails(\/.fromEither(freeOrPaidSub), defaultMandateIdIfApplicable = Some(""))
+      val paymentDetails = paymentService.paymentDetails(\/.fromEither(freeOrPaidSub), defaultMandateIdIfApplicable = Some(""))
+      paymentDetails.onComplete {
+        case Failure(exception) => logger.error(s"Failed to get payment details for $paidSub: $exception")
+        case Success(_) => logger.info(s"Successfully got payment details for $paidSub")
+      }
+      paymentDetails
     case Left(freeSub) => Future.successful(PaymentDetails(freeSub))
   }
 
