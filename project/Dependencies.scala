@@ -26,6 +26,7 @@ object Dependencies {
   val netty = "io.netty" % "netty-codec" % "4.1.74.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.74.Final"
   val jacksonVersion = "2.11.4"
+  val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.8"
 
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
@@ -55,7 +56,8 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
     netty,
     nettyHttp,
-    "com.google.guava" % "guava" % "30.1.1-jre" // until https://github.com/playframework/playframework/pull/10874
+    "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
+    akkaHttpCore
   ) ++ jackson
 
   val depOverrides = jackson
