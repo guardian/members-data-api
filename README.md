@@ -94,28 +94,29 @@ drastic increase of load due to breaking news.**
 
 1. Create an ssh tunnel to the CODE one-off contributions database:
     1. Clone https://github.com/guardian/contributions-platform
-    2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
+    1. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
+    1. If you need to close your tunnel and didn't make a note of the process number you can run `ps aux | grep amazonaws.com` to find the process number. The output will look something like this `username      1693   0.0  0.0 34153208    952   ??  Ss    4:20pm   0:00.00 ssh -i /private/var/folders/yv/dbtm9psd5ddbjm_lvcjm9zf1vdng_j/T/security_ssm-scala_temporary-rsa-private-key.tmp -f machine.eu-west-1.compute.amazonaws.com -L 5432:contributions-store-code.address.rds.amazonaws.com:5432 -N -o IdentitiesOnly yes -o ExitOnForwardFailure yes` where `1693` is the process number. You can close the tunnel with `kill 1693`.
 
-1. Ensure an `nginx` service is running locally.
+1. Ensure an `nginx` service is running locally. You can run `dev-nginx restart-nginx` to do this.
 
+### Identity frontend local sign in
+As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you will need to sign in to the identity-frontend locally.
+1. Start up a local Identity service by running script `start-frontend.sh` in the `identity-frontend` repo.
+1. Go to https://profile.thegulocal.com/signin.
+
+### Starting the API
 1. To start the Members' data API service run `./start-api.sh`.  
 The service will be running on 9400 and use the SupporterAttributesFallback-DEV DynamoDB table.
 
-1. go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership.  
+1. go to https://members-data-api.thegulocal.com/user-attributes/me.
 If you get a 401 response, it probably means your Identity credentials have expired.  
-Renew them by:
-    1. Start up a local Identity service by running script `start-frontend.sh` in the `identity-frontend` repo.
-    1. Go to https://profile.thegulocal.com/signin.
+Renew them by following the steps in [Identity frontend local sign in](#identity-frontend-local-sign-in)
+
+2. As of 22/04/2022 the https://members-data-api.thegulocal.com/user-attributes/me endpoint should work correctly if your set up is correct. Other endpoints may not work correctly due to upstream dependencies.
 
 ## Running tests
 
 run sbt and then test.  It will download a dynamodb table from S3 and use that.  Tip: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
-
-## Testing manually
-
-A good strategy for testing your stuff is to run a local identity-frontend, membership-frontend and members-data-api.  Then sign up for membership and hit the above url, which should return the right JSON structure.
-
-The /me endpoints use the GU_U and SC_GU_U from the Cookie request header.
 
 ### Identity Frontend
 
