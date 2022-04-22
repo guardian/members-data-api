@@ -101,7 +101,7 @@ drastic increase of load due to breaking news.**
 
 ### Identity frontend local sign in
 As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you will need to sign in to the identity-frontend locally.
-1. Start up a local Identity service by running script `start-frontend.sh` in the `identity-frontend` repo.
+1. Start up a local Identity service by running script `start-frontend.sh` in the [identity-frontend](https://github.com/guardian/identity-frontend) repo.
 1. Go to https://profile.thegulocal.com/signin.
 
 ### Starting the API
@@ -112,7 +112,7 @@ The service will be running on 9400 and use the SupporterAttributesFallback-DEV 
 If you get a 401 response, it probably means your Identity credentials have expired.  
 Renew them by following the steps in [Identity frontend local sign in](#identity-frontend-local-sign-in)
 
-2. As of 22/04/2022 the https://members-data-api.thegulocal.com/user-attributes/me endpoint should work correctly if your set up is correct. Other endpoints (`/healthcheck`, `/user-attributes/me/mma-membership`) may not work correctly due to upstream dependencies.
+1. As of 22/04/2022 the https://members-data-api.thegulocal.com/user-attributes/me endpoint should work correctly if your set up is correct. Other endpoints (`/healthcheck`, `/user-attributes/me/mma-membership`) may not work correctly due to upstream dependencies.
 
 ## Running tests
 
