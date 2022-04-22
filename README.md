@@ -112,7 +112,7 @@ The service will be running on 9400 and use the SupporterAttributesFallback-DEV 
 If you get a 401 response, it probably means your Identity credentials have expired.  
 Renew them by following the steps in [Identity frontend local sign in](#identity-frontend-local-sign-in)
 
-2. As of 22/04/2022 the https://members-data-api.thegulocal.com/user-attributes/me endpoint should work correctly if your set up is correct. Other endpoints may not work correctly due to upstream dependencies.
+2. As of 22/04/2022 the https://members-data-api.thegulocal.com/user-attributes/me endpoint should work correctly if your set up is correct. Other endpoints (`/healthcheck`, `/user-attributes/me/mma-membership`) may not work correctly due to upstream dependencies.
 
 ## Running tests
 
