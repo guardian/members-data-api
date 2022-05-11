@@ -1,12 +1,9 @@
 package models
 
-import java.util.Date
-
-import anorm.{RowParser, Macro, Row, Success, ~}
+import anorm.{Macro, RowParser}
 import play.api.libs.json.{Json, Writes}
-import org.scalactic.Bool
 
-sealed trait RecurringReminderStatus 
+sealed trait RecurringReminderStatus
 
 
 object RecurringReminderStatus {
