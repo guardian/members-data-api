@@ -26,6 +26,7 @@ import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, Env
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
+import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
@@ -76,7 +77,14 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
 
   private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
-  private lazy val zuoraSoapClient = new ClientWithFeatureSupplier(Set.empty, tpConfig.zuoraSoap, RequestRunners.futureRunner, RequestRunners.futureRunner, zuoraMetrics)
+  private lazy val zuoraSoapClient =
+    new ClientWithFeatureSupplier(
+      featureCodes = Set.empty,
+      apiConfig = tpConfig.zuoraSoap,
+      httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
+      extendedHttpClient = RequestRunners.futureRunner,
+      metrics = zuoraMetrics
+    )
   lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
     override def checkHealth: Boolean = zuoraSoapClient.isReady
   }

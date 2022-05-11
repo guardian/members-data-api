@@ -7,22 +7,19 @@ import com.gu.identity.model.{StatusFields, User}
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{Attributes, ContributionData, MobileSubscriptionStatus}
+import models.{Attributes, MobileSubscriptionStatus}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
 import play.api.libs.json.Json
 import play.api.mvc._
-import play.api.test._
 import play.api.test.Helpers._
-import scalaz.\/
-import services.{AttributesFromZuora, AuthenticationService, MobileSubscriptionService, FakePostgresService}
+import play.api.test._
+import services.{AttributesFromZuora, AuthenticationService, FakePostgresService, MobileSubscriptionService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import models.SupportReminders
-import models.RecurringReminderStatus
 
 class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
@@ -30,6 +27,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
   private val validUserId = "123"
   private val userWithoutAttributesUserId = "456"
+  private val unvalidatedEmailUserId = "789"
+
   private val testAttributes = Attributes(
     UserId = validUserId,
     Tier = Some("patron"),
@@ -41,12 +40,18 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   )
 
   private val validUserCookie = Cookie("validUser", "true")
+  private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
   private val validUser = User(
     primaryEmailAddress = "test@gu.com",
     id = validUserId,
+    statusFields = StatusFields(userEmailValidated = Some(true))
   )
-
+  private val unvalidatedEmailUser = User(
+    primaryEmailAddress = "unvalidatedEmail@gu.com",
+    id = unvalidatedEmailUserId,
+    statusFields = StatusFields(userEmailValidated = Some(false))
+  )
   private val userWithoutAttributes = User(
     primaryEmailAddress = "notcached@gu.com",
     id = userWithoutAttributesUserId
@@ -78,6 +83,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override def user(implicit request: RequestHeader) =
       request.cookies.headOption match {
         case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
+        case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Some(unvalidatedEmailUser))
         case Some(c) if c == userWithoutAttributesCookie => Future.successful(Some(userWithoutAttributes))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Some(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Some(guardianEmployeeUserTheguardian))
@@ -120,11 +126,11 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
-    override def getSubscriptionStatusForUser(identityId: String): Future[String \/ Option[MobileSubscriptionStatus]] =
-      Future.successful(\/.right(None))
+    override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] =
+      Future.successful(Right(None))
   }
 
-  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService, FakeMobileSubscriptionService) {
+  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService(validUserId), FakeMobileSubscriptionService) {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId || identityId == validEmployeeUser.id)
@@ -173,6 +179,13 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
         | }
       """.stripMargin)
   }
+  
+  private def verifyIdentityHeadersSet(result:Future[Result], expectedUserId:String, expectedTestUser:Boolean = false) = {
+    val resultHeaders = headers(result)
+    resultHeaders.get("X-Gu-Identity-Id") should beSome(expectedUserId)
+    resultHeaders.get("X-Gu-Membership-Test-User") should beSome(expectedTestUser.toString)
+
+  }
 
   private def verifySuccessfullAttributesResult(result: Future[Result]) = {
     status(result) shouldEqual OK
@@ -199,27 +212,44 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                    | }
                  """.stripMargin)
   }
-
+  
+  private def verifySuccessfullOneOfContributionsResult(result: Future[Result]) = {
+    status(result) shouldEqual OK
+    val jsonBody = contentAsJson(result)
+    jsonBody shouldEqual
+      Json.parse("""[
+                   | {
+                   |   "created":1638057600000,
+                   |   "currency":"GBP",
+                   |   "amount":11,
+                   |   "status":"statusValue"
+                   | }
+                   | ]
+                 """.stripMargin)
+  }
   "getMyMembershipAttributesFeatures" should {
     "return unauthorised when cookies not provided" in {
       val req = FakeRequest()
       val result1 = controller.membership(req)
       val result2 = controller.attributes(req)
       val result3 = controller.features(req)
+      val result4 = controller.oneOffContributions(req)
 
       status(result1) shouldEqual UNAUTHORIZED
       status(result2) shouldEqual UNAUTHORIZED
       status(result3) shouldEqual UNAUTHORIZED
+      status(result4) shouldEqual UNAUTHORIZED
     }
 
-    "return not found for unknown users in membership" in {
+    "return not found and set identity headers for unknown users in membership" in {
       val req = FakeRequest().withCookies(userWithoutAttributesCookie)
       val result = controller.membership(req)
 
       status(result) shouldEqual NOT_FOUND
+      verifyIdentityHeadersSet(result, userWithoutAttributesUserId)
     }
 
-    "return all false attributes for unknown users" in {
+    "return all false attributes and set identity headers for unknown users" in {
       val req = FakeRequest().withCookies(userWithoutAttributesCookie)
       val result = controller.attributes(req)
 
@@ -239,36 +269,70 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                      |    "guardianWeeklySubscriber": false
                      |  }
                      |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithoutAttributesUserId)
+
     }
 
-    "retrieve default features for unknown users" in {
+    "retrieve default features and set identity headers for unknown users" in {
       val req = FakeRequest().withCookies(userWithoutAttributesCookie)
+      
       val result = controller.features(req)
-
       verifyDefaultFeaturesResult(result)
-    }
+      verifyIdentityHeadersSet(result, userWithoutAttributesUserId)
 
-    "retrieve features for user in cookie" in {
+    }    
+    
+    "retrieve features and set identity headers for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.features(req)
 
       verifySuccessfulFeaturesResult(result)
+      verifyIdentityHeadersSet(result, validUser.id)
+
     }
 
-    "retrieve membership attributes for user in cookie" in {
+
+    "retrieve membership attributes and set identity headers for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.membership(req)
 
       verifySuccessfulMembershipResult(result)
-    }
+      verifyIdentityHeadersSet(result, validUser.id)
 
-    "retrieve all the attributes for user in cookie" in {
+    }    
+    
+    "retrieve all the attributes and set identity headers for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.attributes(req)
 
       verifySuccessfullAttributesResult(result)
+      verifyIdentityHeadersSet(result, validUser.id)
+
+    }
+    
+    "return unauthorised and set identity headers when attempting to retrieve one off contributions for user with a non validated email" in {
+      val req = FakeRequest().withCookies(validUnvalidatedEmailCookie)
+      val result: Future[Result] = controller.oneOffContributions(req)
+      status(result) shouldEqual 401
+      verifyIdentityHeadersSet(result, unvalidatedEmailUser.id)
     }
 
+    "return one off contributions and set identity headers for user with a validated email" in {
+      val req = FakeRequest().withCookies(validUserCookie)
+      val result: Future[Result] = controller.oneOffContributions(req)
+      
+      verifySuccessfullOneOfContributionsResult(result)
+      verifyIdentityHeadersSet(result, validUser.id)
+    }
+
+    "return unauthorised and set identity headers for user with a validated email but not contributions" in {
+      val req = FakeRequest().withCookies(validUserCookie)
+      val result: Future[Result] = controller.oneOffContributions(req)
+
+      verifySuccessfullOneOfContributionsResult(result)
+      verifyIdentityHeadersSet(result, validUser.id)
+    }
+    
     val digipackAllowEmployeeAccessDateHack = Some(new LocalDate(2999, 1, 1))
     "allow DigiPack access via hack to guardian employees with validated guardian.co.uk email" in {
       val req = FakeRequest().withCookies(guardianEmployeeCookie)
@@ -294,5 +358,5 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
   }
 
-  override def afterAll() = as.terminate()
+  override def afterAll(): Unit = as.terminate()
 }

@@ -22,7 +22,7 @@ def buildInfoSettings = Seq(
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.12.14",
+  scalaVersion := "2.13.8",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
@@ -80,7 +80,6 @@ val api = app("membership-attribute-service")
   )
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(
-    scalacOptions += "-Ypartial-unification",
     addCommandAlias("devrun", "run 9400"),
     addCommandAlias("batch-load", "runMain BatchLoader"),
     addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")

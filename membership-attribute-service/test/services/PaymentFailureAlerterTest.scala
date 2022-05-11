@@ -1,7 +1,5 @@
 package services
 
-import java.util.Locale
-
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraRestService.{Invoice, InvoiceId, PaymentMethodId, PaymentMethodResponse}
 import org.joda.time.format.DateTimeFormat
@@ -12,30 +10,30 @@ import testdata.AccountObjectTestData._
 import testdata.AccountSummaryTestData.{accountSummaryWithBalance, accountSummaryWithZeroBalance}
 import testdata.{InvoiceAndPaymentTestData, SubscriptionTestData}
 
+import java.util.Locale
 import scala.concurrent.Future
-import scalaz.\/
 
 
 class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specification with SubscriptionTestData {
   override def referenceDate = new LocalDate()
 
-  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
-  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
-  def paymentMethodLeftResponse(id: PaymentMethodId) = Future.successful(\/.left("Something's gone wrong!"))
-  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
+  def paymentMethodResponseNoFailures(id: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
+  def paymentMethodResponseRecentFailure(id: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
+  def paymentMethodLeftResponse(id: PaymentMethodId) = Future.successful(Left("Something's gone wrong!"))
+  def paymentMethodResponseStaleFailure(id: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
 
   "PaymentFailureAlerterTest" should {
     "membershipAlertText" should {
       "not return any for a user with no balance" in {
         val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
 
-        result must be_==(None).await
+        result must beNone.await
       }
 
       "return none if one of the zuora calls returns a left" in {
         val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodLeftResponse)
 
-        result must be_==(None).await
+        result must beNone.await
       }
 
       "return a message for a member who is in payment failure" in {
@@ -45,7 +43,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
         val expectedActionText = s"Our attempt to take payment for your Supporter membership failed on ${attemptDateTime.toString(formatter)}."
 
-        result must be_==(Some(expectedActionText)).await
+        result must beSome(expectedActionText).await
       }
 
       "return a message for a contributor who is in payment failure" in {
@@ -55,7 +53,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
         val expectedActionText = s"Our attempt to take payment for your contribution failed on ${attemptDateTime.toString(formatter)}."
 
-        result must be_==(Some(expectedActionText)).await
+        result must beSome(expectedActionText).await
       }
 
       "return a message for a digipack holder who is in payment failure" in {
@@ -65,7 +63,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
         val expectedActionText = s"Our attempt to take payment for your Digital Pack failed on ${attemptDateTime.toString(formatter)}."
 
-        result must be_==(Some(expectedActionText)).await
+        result must beSome(expectedActionText).await
       }
 
     }
@@ -91,7 +89,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv)  extends Specificatio
       }
 
       "return false for a member who pays via paypal" in {
-        def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(\/.right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
+        def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) = Future.successful(Right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
 
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal)
 

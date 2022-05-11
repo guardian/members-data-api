@@ -18,13 +18,13 @@ case class Metrics(service: String) extends CloudWatch {
 final class ExpensiveMetrics(
   val service: String
 )(implicit system: ActorSystem, ec: ExecutionContext) extends CloudWatch with LazyLogging {
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
   private val chm = new ConcurrentHashMap[String, AtomicInteger]().asScala // keep it first in the constructor
 
   val stage = Config.stage
   val application = Config.applicationName
 
-  system.scheduler.schedule(5.seconds, 60.seconds)(publishAllMetrics())
+  system.scheduler.scheduleAtFixedRate(5.seconds, 60.seconds)(() => publishAllMetrics())
 
   def countRequest(key: String): Unit =
     chm.getOrElseUpdate(key, new AtomicInteger(1)).incrementAndGet()

@@ -12,15 +12,14 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
 import play.api.mvc.{BaseController, ControllerComponents}
+import scalaz.std.scalaFuture._
+import scalaz.EitherT
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.{-\/, EitherT, \/-}
-import scalaz.std.scalaFuture._
-import scalaz.syntax.std.option._
 
 class PaymentUpdateController(commonActions: CommonActions, override val controllerComponents: ControllerComponents) extends BaseController {
-  import commonActions._
   import AccountHelpers._
+  import commonActions._
   implicit val executionContext: ExecutionContext= controllerComponents.executionContext
 
   def updateCard(subscriptionName: String) = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
@@ -32,13 +31,13 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     val maybeUserId = request.redirectAdvice.userId
     SafeLogger.info(s"Attempting to update card for $maybeUserId")
     (for {
-      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      stripeDetails <- EitherT(Future.successful(updateForm.orElse(legacyForm) \/> "no 'stripePaymentMethodID' and 'stripePublicKey' submitted with request"))
+      user <- EitherT.fromEither(Future.successful(maybeUserId.toRight("no identity cookie for user")))
+      stripeDetails <- EitherT.fromEither(Future.successful(updateForm.orElse(legacyForm).toRight("no 'stripePaymentMethodID' and 'stripePublicKey' submitted with request")))
       (stripeCardIdentifier, stripePublicKey) = stripeDetails
-      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
-      subscription <- EitherT(tp.subService.current[SubscriptionPlan.AnyPlan](sfUser).map(subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")))
-      stripeService <- EitherT(Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_ \/> s"No Stripe service for public key: $stripePublicKey"))
-      updateResult <- EitherT(setPaymentCardFunction(subscription.accountId, stripeCardIdentifier, stripeService).map(_ \/> "something was missing when attempting to update payment card in Zuora"))
+      sfUser <- EitherT.fromEither(tp.contactRepo.get(user).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $user"))))
+      subscription <- EitherT.fromEither(tp.subService.current[SubscriptionPlan.AnyPlan](sfUser).map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)))
+      stripeService <- EitherT.fromEither(Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_.toRight(s"No Stripe service for public key: $stripePublicKey")))
+      updateResult <- EitherT.fromEither(setPaymentCardFunction(subscription.accountId, stripeCardIdentifier, stripeService).map(_.toRight("something was missing when attempting to update payment card in Zuora")))
     } yield updateResult match {
       case success: CardUpdateSuccess => {
         SafeLogger.info(s"Successfully updated card for identity user: $user")
@@ -48,11 +47,11 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
         SafeLogger.error(scrub"Failed to update card for identity user: $user due to $failure")
         Forbidden(Json.toJson(failure))
       }
-    }).run.map {
-      case -\/(message) =>
+    }).run.map(_.toEither).map {
+      case Left(message) =>
         SafeLogger.warn(s"Failed to update card for user $maybeUserId, due to $message")
         InternalServerError(s"Failed to update card for user $maybeUserId")
-      case \/-(result) => result
+      case Right(result) => result
     }
   }
 
@@ -94,13 +93,13 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     val maybeUserId = request.redirectAdvice.userId
     SafeLogger.info(s"Attempting to update direct debit for $maybeUserId")
     (for {
-      user <- EitherT(Future.successful(maybeUserId \/> "no identity cookie for user"))
-      directDebitDetails <- EitherT(Future.successful(updateForm.bindFromRequest().value \/> "no direct debit details submitted with request"))
+      user <- EitherT.fromEither(Future.successful(maybeUserId.toRight("no identity cookie for user")))
+      directDebitDetails <- EitherT.fromEither(Future.successful(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request")))
       (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
-      sfUser <- EitherT(tp.contactRepo.get(user).map(_.flatMap(_ \/> s"no SF user $user")))
-      subscription <- EitherT(tp.subService.current[SubscriptionPlan.AnyPlan](sfUser).map(subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")))
-      account <- EitherT(annotateFailableFuture(tp.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"))
-      billToContact <- EitherT(annotateFailableFuture(tp.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"))
+      sfUser <- EitherT.fromEither(tp.contactRepo.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
+      subscription <- EitherT.fromEither(tp.subService.current[SubscriptionPlan.AnyPlan](sfUser).map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)))
+      account <- EitherT.fromEither(annotateFailableFuture(tp.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"))
+      billToContact <- EitherT.fromEither(annotateFailableFuture(tp.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"))
       bankTransferPaymentMethod = BankTransfer(
         accountHolderName = bankAccountName,
         accountNumber = bankAccountNumber,
@@ -109,20 +108,24 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
         lastName = billToContact.lastName,
         countryCode = "GB"
       )
-      createPaymentMethod = CreatePaymentMethod(
-        accountId = subscription.accountId,
-        paymentMethod = bankTransferPaymentMethod,
-        paymentGateway = account.paymentGateway.get, // this will need to change to use this endpoint for 'payment method' SWITCH
-        billtoContact = billToContact,
-        invoiceTemplateOverride = None
-      )
-      _ <- EitherT(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
-      freshDefaultPaymentMethodOption <- EitherT(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
-    } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map {
-      case -\/(message) =>
+      createPaymentMethod <- EitherT.fromEither(Future.successful {
+        account.paymentGateway
+               .map(paymentGateway => CreatePaymentMethod(
+                 accountId = subscription.accountId,
+                 paymentMethod = bankTransferPaymentMethod,
+                 paymentGateway = paymentGateway,
+                 billtoContact = billToContact,
+                 invoiceTemplateOverride = None
+               )).toRight(
+        s"Unrecognised payment gateway for account ${subscription.accountId}"
+        )})
+      _ <- EitherT.fromEither(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
+      freshDefaultPaymentMethodOption <- EitherT.fromEither(annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"))
+    } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run.map(_.toEither).map {
+      case Left(message) =>
         SafeLogger.warn(s"default-payment-method-lost: failed to update direct debit for user $maybeUserId, due to $message")
         InternalServerError("")
-      case \/-(result) => result
+      case Right(result) => result
     }
 
   }
