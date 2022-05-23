@@ -58,6 +58,7 @@ object SupporterRatePlanToAttributesMapper {
   val productRatePlanMappings: Map[Stage, Map[List[ProductRatePlanId], AttributeTransformer]] =
     Map(
       "PROD" -> Map(
+        List("guardian_patron") -> guardianPatronTransformer,
         List(
           "2c92a0fb4edd70c8014edeaa4eae220a",
           "2c92a0fb4edd70c8014edeaa4e972204",
@@ -136,7 +137,6 @@ object SupporterRatePlanToAttributesMapper {
           "2c92a0fe57d0a0c40157d74241005544",
           "2c92a0ff58bdf4eb0158f307ed0e02be"
         ) -> guardianWeeklyTransformer,
-        List("guardian_patron") -> guardianPatronTransformer,
         List(
           "2c92a0fb4ce4b8e7014ce711d3c37e60",
           "2c92a0f9479fb46d0147d0155c6f558b"
@@ -164,6 +164,7 @@ object SupporterRatePlanToAttributesMapper {
         ) -> memberTransformer(Patron)
       ),
       "UAT" -> Map(
+        List("guardian_patron") -> guardianPatronTransformer,
         List(
           "2c92c0f94f2acf73014f2c908f671591",
           "2c92c0f84f2ac59d014f2c94aea9199e",
@@ -244,6 +245,7 @@ object SupporterRatePlanToAttributesMapper {
         ) -> memberTransformer(Patron)
       ),
       "DEV" -> Map(
+        List("guardian_patron") -> guardianPatronTransformer,
         List(
           "2c92c0f84bbfec8b014bc655f4852d9d",
           "2c92c0f94bbffaaa014bc6a4212e205b",

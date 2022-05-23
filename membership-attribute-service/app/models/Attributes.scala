@@ -18,7 +18,8 @@ case class ContentAccess(
   recurringContributor: Boolean,
   digitalPack: Boolean,
   paperSubscriber: Boolean,
-  guardianWeeklySubscriber: Boolean
+  guardianWeeklySubscriber: Boolean,
+  guardianPatron: Boolean
 )
 
 object ContentAccess {
@@ -60,7 +61,8 @@ case class Attributes(
     recurringContributor = isRecurringContributor,
     digitalPack = digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianPatron,
     paperSubscriber = isPaperSubscriber,
-    guardianWeeklySubscriber = isGuardianWeeklySubscriber
+    guardianWeeklySubscriber = isGuardianWeeklySubscriber,
+    guardianPatron = isGuardianPatron
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
