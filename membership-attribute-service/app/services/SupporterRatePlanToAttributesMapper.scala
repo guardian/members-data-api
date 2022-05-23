@@ -51,6 +51,10 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
     )
+  val guardianPatronTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      GuardianPatronExpiryDate = Some(supporterRatePlanItem.termEndDate)
+    )
   val productRatePlanMappings: Map[Stage, Map[List[ProductRatePlanId], AttributeTransformer]] =
     Map(
       "PROD" -> Map(
@@ -132,6 +136,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92a0fe57d0a0c40157d74241005544",
           "2c92a0ff58bdf4eb0158f307ed0e02be"
         ) -> guardianWeeklyTransformer,
+        List("guardian_patron") -> guardianPatronTransformer,
         List(
           "2c92a0fb4ce4b8e7014ce711d3c37e60",
           "2c92a0f9479fb46d0147d0155c6f558b"
