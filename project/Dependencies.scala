@@ -9,7 +9,7 @@ object Dependencies {
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.254"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
-  val postgres = "org.postgresql" % "postgresql" % "42.3.3"
+  val postgres = "org.postgresql" % "postgresql" % "42.3.6"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
