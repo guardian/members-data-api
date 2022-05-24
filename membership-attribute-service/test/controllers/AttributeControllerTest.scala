@@ -207,7 +207,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                    |     "recurringContributor": true,
                    |     "digitalPack": true,
                    |     "paperSubscriber": true,
-                   |     "guardianWeeklySubscriber": true
+                   |     "guardianWeeklySubscriber": true,
+                   |     "guardianPatron": false
                    |   }
                    | }
                  """.stripMargin)
@@ -266,7 +267,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                      |    "recurringContributor": false,
                      |    "digitalPack": false,
                      |    "paperSubscriber": false,
-                     |    "guardianWeeklySubscriber": false
+                     |    "guardianWeeklySubscriber": false,
+                     |    "guardianPatron": false
                      |  }
                      |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithoutAttributesUserId)
