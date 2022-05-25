@@ -20,6 +20,13 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
   )
 
   "SupporterRatePlanToAttributesMapper" should {
+    "identify a Guardian Patron" in {
+      mapper.attributesFromSupporterRatePlans(
+        identityId,
+        List(ratePlanItem("guardian_patron"))
+      ) should beSome.which(_.GuardianPatronExpiryDate should beSome(termEndDate))
+    }
+
     "identify a monthly contribution" in {
       mapper.attributesFromSupporterRatePlans(
         identityId,

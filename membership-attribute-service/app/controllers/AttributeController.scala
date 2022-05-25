@@ -111,9 +111,11 @@ class AttributeController(
     )
   }
 
-  protected def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
+  protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
-    request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
+    request.touchpoint.supporterProductDataService
+      .getAttributes(identityId)
+      .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
@@ -126,7 +128,7 @@ class AttributeController(
       request.user match {
         case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureAttributes = getZuoraAttributes(user.id)
+          val futureAttributes = getSupporterProductDataAttributes(user.id)
           val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
@@ -142,7 +144,7 @@ class AttributeController(
             def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
 
             val result = enrichedZuoraAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
@@ -157,6 +159,9 @@ class AttributeController(
                 }
                 attrs.GuardianWeeklySubscriptionExpiryDate.foreach {date =>
                   logInfoWithCustomFields(s"${user.id} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
+                }
+                attrs.GuardianPatronExpiryDate.foreach {date =>
+                  logInfoWithCustomFields(s"${user.id} is a Guardian Patron expiring $date", customFields("guardian-patron"))
                 }
                 attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
                   logInfoWithCustomFields(s"${user.id} is a regular $paymentPlan contributor", customFields("contributor"))

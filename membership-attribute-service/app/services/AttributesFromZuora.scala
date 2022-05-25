@@ -256,7 +256,8 @@ object AttributesFromZuora extends LazyLogging {
         recurringContributor = false,
         digitalPack = false,
         paperSubscriber = false,
-        guardianWeeklySubscriber = false
+        guardianWeeklySubscriber = false,
+        guardianPatron = false
       )
     )
 
@@ -268,7 +269,8 @@ object AttributesFromZuora extends LazyLogging {
         recurringContributor = true,
         digitalPack = false,
         paperSubscriber = false,
-        guardianWeeklySubscriber = false
+        guardianWeeklySubscriber = false,
+        guardianPatron = false
       )
     )
 
