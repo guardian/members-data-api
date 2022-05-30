@@ -71,7 +71,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
     .credentialsProvider(CredentialsProvider)
     .region(Region.EU_WEST_1)
 
-  lazy val featureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
 

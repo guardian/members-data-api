@@ -45,8 +45,6 @@ Mappings:
       MinInstances: 3
       NotificationAlarmPeriod: 1200
       InstanceName: PROD:membership-attribute-service
-      DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
-      DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-PROD
       DynamoDBSupporterProductDataUATTable: arn:aws:dynamodb:*:*:table/SupporterProductData-UAT
       ReadableS3Resources:
@@ -60,8 +58,6 @@ Mappings:
       MinInstances: 1
       NotificationAlarmPeriod: 1200
       InstanceName: CODE:membership-attribute-service
-      DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
-      DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-DEV
       DynamoDBSupporterProductDataUATTable: arn:aws:dynamodb:*:*:table/SupporterProductData-UAT
       ReadableS3Resources:
@@ -105,18 +101,6 @@ Resources:
             - autoscaling:DescribeAutoScalingInstances
             - autoscaling:DescribeAutoScalingGroups
             Resource: '*'
-            Effect: Allow
-          - Action:
-            - dynamodb:GetItem
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTable ]
-            Effect: Allow
-          - Action:
-            - dynamodb:GetItem
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBFeatureToggleTableTestUsers ]
             Effect: Allow
           - Action:
             - dynamodb:Query
