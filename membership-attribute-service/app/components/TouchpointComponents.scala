@@ -19,7 +19,6 @@ import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
 import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
-import limit.InstanceCountOnSchedule
 import scalaz.std.scalaFuture._
 import services._
 import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
@@ -103,7 +102,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
-  lazy val instanceCountOnSchedule = new InstanceCountOnSchedule(stage)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
   lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi)

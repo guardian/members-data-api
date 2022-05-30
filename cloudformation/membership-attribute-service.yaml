@@ -94,14 +94,6 @@ Resources:
           - Effect: Allow
             Action: s3:GetObject
             Resource: !FindInMap [StageVariables, !Ref Stage, ReadableS3Resources]
-          - Action: ec2:DescribeTags
-            Resource: "*"
-            Effect: Allow
-          - Action:
-            - autoscaling:DescribeAutoScalingInstances
-            - autoscaling:DescribeAutoScalingGroups
-            Resource: '*'
-            Effect: Allow
           - Action:
             - dynamodb:Query
             - dynamodb:DescribeTable
