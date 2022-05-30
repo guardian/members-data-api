@@ -66,7 +66,7 @@ class AttributeController(
     }
   }
 
-  private def addOneOffAndLiveApp(attributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
+  private def addOneOffAndMobile(attributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
     attributes.copy(
       OneOffContributionDate = latestOneOffDate,
@@ -97,12 +97,11 @@ class AttributeController(
 
           (for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
-            (fromWhere: String, maybeSupporterAttributes: Option[Attributes]) <- futureSupporterAttributes
+            (fromWhere: String, supporterAttributes: Option[Attributes]) <- futureSupporterAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
-            maybeSupporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, maybeSupporterAttributes, user.id)
-            maybeSupporterStaffOneOffOrAppAttributes: Option[Attributes] =
-              maybeSupporterOrStaffAttributes.map(addOneOffAndLiveApp(_, latestOneOffDate, latestMobileSubscription))
+            supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, supporterAttributes, user.id)
+            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(
@@ -111,7 +110,7 @@ class AttributeController(
               LogFieldString("data-source", fromWhere)
             )
 
-            val result = maybeSupporterStaffOneOffOrAppAttributes match {
+            val result = allProductAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
@@ -137,7 +136,7 @@ class AttributeController(
                 logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                val attr = addOneOffAndLiveApp(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
+                val attr = addOneOffAndMobile(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
                 log.logger.info(s"${user.id} does not have zuora attributes - $attr - found via $fromWhere")
                 Ok(Json.toJson(attr))
               case _ =>

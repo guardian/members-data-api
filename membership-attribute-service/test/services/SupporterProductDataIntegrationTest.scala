@@ -32,7 +32,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
 
   implicit private val actorSystem: ActorSystem = ActorSystem()
 
-  args(skipAll = false) // This test requires credentials so won't run on CI, change skipAll to false to run locally
+  args(skipAll = true) // This test requires credentials so won't run on CI, change skipAll to false to run locally
 
   "SupporterProductData" should {
     "get attributes by identity id" in {
