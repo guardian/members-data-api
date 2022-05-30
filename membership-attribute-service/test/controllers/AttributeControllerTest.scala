@@ -16,7 +16,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
-import services.{AttributesFromZuora, AuthenticationService, FakePostgresService, MobileSubscriptionService}
+import services.{AuthenticationService, FakePostgresService, MobileSubscriptionService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -130,7 +130,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       Future.successful(Right(None))
   }
 
-  private val controller = new AttributeController(new AttributesFromZuora(), commonActions, Helpers.stubControllerComponents(), FakePostgresService(validUserId), FakeMobileSubscriptionService) {
+  private val controller = new AttributeController(commonActions, Helpers.stubControllerComponents(), FakePostgresService(validUserId), FakeMobileSubscriptionService) {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
       if (identityId == validUserId || identityId == validEmployeeUser.id)

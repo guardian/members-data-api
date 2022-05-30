@@ -5,7 +5,6 @@ import akka.actor.ActorSystem
 import com.gu.identity.model.User
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import filters.AddGuIdentityHeaders
-import limit.ZuoraRequestCounter
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
 import models.ApiError._
@@ -25,51 +24,16 @@ import scala.util.{Failure, Success}
  *  What benefits is the user entitled to?
  */
 class AttributeController(
-  attributesFromZuora: AttributesFromZuora,
   commonActions: CommonActions,
   override val controllerComponents: ControllerComponents,
   contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
   mobileSubscriptionService: MobileSubscriptionService
 )(implicit system: ActorSystem) extends BaseController with LoggingWithLogstashFields {
-  import attributesFromZuora._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = Metrics("AttributesController")
   lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
 
-  /**
-   * Zuora enforces 40 concurrent requests limit, without providing caching mechanisms.
-   * So the following custom workaround logic is attempted:
-   *
-   * 1. Count Zuora concurrent requests
-   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
-   * 1. Calculate concurrency limit per instance
-   * 1. If the count is greater than limit, then hit cache
-   * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
-   * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
-   */
-  def getAttributesWithConcurrencyLimitHandling(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
-    val dynamoService = request.touchpoint.attrService
-
-    if (ZuoraRequestCounter.isZuoraConcurrentRequestLimitNotReached) {
-      expensiveMetrics.countRequest(s"zuora-hit")
-      getAttributesFromZuoraWithCacheFallback(
-        identityId = identityId,
-        identityIdToAccounts = id => request.touchpoint.zuoraRestService.getAccounts(id).map(_.toEither)(executionContext),
-        subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads).map(_.toEither)(executionContext),
-        giftSubscriptionsForIdentityId = id => request.touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(id).map(_.toEither)(executionContext),
-        dynamoAttributeService = dynamoService,
-        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get).map(_.toEither)(executionContext),
-        supporterProductDataService = request.touchpoint.supporterProductDataService
-      )
-    } else {
-      expensiveMetrics.countRequest(s"cache-hit")
-      dynamoService
-        .get(identityId)
-        .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
-        .map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
-    }
-  }
 
   private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
@@ -102,12 +66,11 @@ class AttributeController(
     }
   }
 
-  private def enrichZuoraAttributes(zuoraAttributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
+  private def addOneOffAndMobile(attributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
-    zuoraAttributes.copy(
+    attributes.copy(
       OneOffContributionDate = latestOneOffDate,
       LiveAppSubscriptionExpiryDate = mobileExpiryDate,
-
     )
   }
 
@@ -128,22 +91,26 @@ class AttributeController(
       request.user match {
         case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureAttributes = getSupporterProductDataAttributes(user.id)
+          val futureSupporterAttributes = getSupporterProductDataAttributes(user.id)
           val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
           val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
 
           (for {
             //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
-            (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
+            (fromWhere: String, supporterAttributes: Option[Attributes]) <- futureSupporterAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
-            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttributes, user.id)
-            enrichedZuoraAttributes: Option[Attributes] = combinedAttributes.map(enrichZuoraAttributes(_, latestOneOffDate, latestMobileSubscription))
+            supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, supporterAttributes, user.id)
+            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
           } yield {
 
-            def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+            def customFields(supporterType: String): List[LogField] = List(
+              LogFieldString("lookup-endpoint-description", endpointDescription),
+              LogFieldString("supporter-type", supporterType),
+              LogFieldString("data-source", fromWhere)
+            )
 
-            val result = enrichedZuoraAttributes match {
+            val result = allProductAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
@@ -169,7 +136,7 @@ class AttributeController(
                 logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                val attr = enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
+                val attr = addOneOffAndMobile(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
                 log.logger.info(s"${user.id} does not have zuora attributes - $attr - found via $fromWhere")
                 Ok(Json.toJson(attr))
               case _ =>
@@ -180,7 +147,7 @@ class AttributeController(
           }).recover { case e =>
               // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
               // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
-              val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Supporter Experience team: $e"
+              val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
               metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
               log.error(errMsg, e)
               InternalServerError(errMsg)
