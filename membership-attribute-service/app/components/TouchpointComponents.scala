@@ -19,7 +19,7 @@ import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
 import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
-import limit.{InstanceCountOnSchedule, TotalZuoraConcurrentLimitOnSchedule, ZuoraRequestCounter}
+import limit.InstanceCountOnSchedule
 import scalaz.std.scalaFuture._
 import services._
 import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
@@ -71,7 +71,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
     .credentialsProvider(CredentialsProvider)
     .region(Region.EU_WEST_1)
 
-  lazy val attrService: AttributeService = new ScanamoAttributeService(dynamoClientBuilder.build(), dynamoAttributesTable)
   lazy val featureToggleService = new ScanamoFeatureToggleService(dynamoClientBuilder.build(), dynamoFeatureToggleTable)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
@@ -89,7 +88,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
     override def checkHealth: Boolean = zuoraSoapClient.isReady
   }
 
-  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, ZuoraRequestCounter.withZuoraRequestCounter(RequestRunners.configurableFutureRunner(30.seconds)))
+  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
   lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
 
   lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
@@ -105,7 +104,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
-  lazy val totalZuoraConcurrentLimitOnSchedule = new TotalZuoraConcurrentLimitOnSchedule(featureToggleService)
   lazy val instanceCountOnSchedule = new InstanceCountOnSchedule(stage)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)

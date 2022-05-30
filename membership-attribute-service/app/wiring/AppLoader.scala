@@ -17,7 +17,7 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.CORSFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.{AttributesFromZuora, MobileSubscriptionServiceImpl, PostgresDatabaseService}
+import services.{MobileSubscriptionServiceImpl, PostgresDatabaseService}
 
 import scala.concurrent.ExecutionContext
 
@@ -54,7 +54,6 @@ class MyComponents(context: Context)
       touchPointBackends.normal.identityAuthService
     )
   implicit val system: ActorSystem = actorSystem
-  val attributesFromZuora = new AttributesFromZuora()
 
   val dbService = {
     val db = dbApi.database("oneOffStore")
@@ -68,7 +67,7 @@ class MyComponents(context: Context)
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
-    new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService, mobileSubscriptionService),
+    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService),
     new ExistingPaymentOptionsController(commonActions, controllerComponents),
     new AccountController(commonActions, controllerComponents, dbService),
     new PaymentUpdateController(commonActions, controllerComponents),

@@ -35,14 +35,6 @@ val commonSettings = Seq(
   Test / javaOptions += "-Dconfig.resource=TEST.public.conf"
 ) ++ buildInfoSettings
 
-lazy val dynamoDBLocalSettings = Seq(
-  dynamoDBLocalDownloadDir := file("dynamodb-local"),
-  startDynamoDBLocal := (startDynamoDBLocal.dependsOn(Test / compile)).value,
-  Test / test := (Test / test).dependsOn(startDynamoDBLocal).value,
-  Test / testOnly := ((Test / testOnly).dependsOn(startDynamoDBLocal)).evaluated,
-  Test / testOptions += (dynamoDBLocalTestCleanup).value
-)
-
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 val buildDebSettings = Seq(
   Debian / serverLoading := Some(Systemd),
@@ -70,7 +62,6 @@ def lib(name: String) =
 
 def app(name: String) =
   lib(name)
-    .settings(dynamoDBLocalSettings)
     .settings(buildDebSettings)
 
 val api = app("membership-attribute-service")

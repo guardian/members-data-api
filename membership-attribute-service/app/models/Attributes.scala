@@ -104,38 +104,6 @@ object ZuoraAttributes {
   )
 }
 
-case class DynamoAttributes(
-  // this is the dynamo READ model, the WRITE model is in ScanamoAttributeService
-  // if you update this you must make sure you are writing the relevant properties too!
-  UserId: String,
-  Tier: Option[String] = None,
-  RecurringContributionPaymentPlan: Option[String] = None,
-  MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
-  TTLTimestamp: Long) {
-  lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
-  lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
-  lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
-  lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
-  lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
-  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
-}
-
-object DynamoAttributes {
-  def asAttributes(dynamoAttributes: DynamoAttributes, oneOffContributionDate: Option[LocalDate] = None): Attributes = Attributes(
-    UserId = dynamoAttributes.UserId,
-    Tier = dynamoAttributes.Tier,
-    RecurringContributionPaymentPlan = dynamoAttributes.RecurringContributionPaymentPlan,
-    OneOffContributionDate = oneOffContributionDate,
-    MembershipJoinDate = dynamoAttributes.MembershipJoinDate,
-    DigitalSubscriptionExpiryDate = dynamoAttributes.DigitalSubscriptionExpiryDate,
-    PaperSubscriptionExpiryDate = dynamoAttributes.PaperSubscriptionExpiryDate,
-    GuardianWeeklySubscriptionExpiryDate = dynamoAttributes.GuardianWeeklySubscriptionExpiryDate
-  )
-}
-
 object Attributes {
 
   implicit val jsAttributesWrites: OWrites[Attributes] = (

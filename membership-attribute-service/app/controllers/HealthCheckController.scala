@@ -22,7 +22,6 @@ class HealthCheckController(touchPointBackends:TouchpointBackends,  override val
   private lazy val services = Set(
     touchpointComponents.salesforceService,
     touchpointComponents.featureToggleService,
-    touchpointComponents.attrService,
     touchpointComponents.zuoraService
   )
 
