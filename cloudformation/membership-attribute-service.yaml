@@ -45,8 +45,6 @@ Mappings:
       MinInstances: 3
       NotificationAlarmPeriod: 1200
       InstanceName: PROD:membership-attribute-service
-      DynamoDBTable: "Memb-Attributes-Tables-PROD-SupporterAttributesFallback"
-      DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-PROD
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-PROD
@@ -62,8 +60,6 @@ Mappings:
       MinInstances: 1
       NotificationAlarmPeriod: 1200
       InstanceName: CODE:membership-attribute-service
-      DynamoDBTable: "Memb-Attributes-Tables-DEV-SupporterAttributesFallback"
-      DynamoDBTableTestUsers: "Memb-Attributes-Tables-UAT-SupporterAttributesFallback"
       DynamoDBFeatureToggleTable: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-DEV
       DynamoDBFeatureToggleTableTestUsers: arn:aws:dynamodb:*:*:table/MembershipFeatureToggles-UAT
       DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-DEV
@@ -109,28 +105,6 @@ Resources:
             - autoscaling:DescribeAutoScalingInstances
             - autoscaling:DescribeAutoScalingGroups
             Resource: '*'
-            Effect: Allow
-          - Action:
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-            - dynamodb:BatchGetItem
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::ImportValue:
-                Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTable ]
-            Effect: Allow
-          - Action:
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-            - dynamodb:BatchGetItem
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::ImportValue:
-                Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBTableTestUsers ]
             Effect: Allow
           - Action:
             - dynamodb:GetItem
@@ -416,34 +390,6 @@ Resources:
       Threshold: 20
       TreatMissingData: notBreaching
 
-  ExpiredTtlAlarm:
-        Type: AWS::CloudWatch::Alarm
-        Condition: CreateProdMonitoring
-        Properties:
-          AlarmActions:
-          - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
-          AlarmName: !Join
-            - ' '
-            - - !Ref 'Stage'
-              - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
-              - 'Item with expired TTL found in Dynamo Table'
-          AlarmDescription: !Join
-            - ' '
-            - - "Impact - write-behind/fallback cache is not working properly"
-              - !FindInMap [ Constants, Alarm, Process ]
-          ComparisonOperator: GreaterThanOrEqualToThreshold
-          Dimensions:
-            - Name: Services
-              Value: ScanamoAttributeService
-            - Name: Stage
-              Value: !Sub ${Stage}
-          EvaluationPeriods: 1
-          MetricName: Old Dynamo Item
-          Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
-          Period: 60
-          Statistic: Sum
-          Threshold: 1
-
   4XXRatioAlarm:
     Type: 'AWS::CloudWatch::Alarm'
     Condition: CreateProdMonitoring
@@ -573,31 +519,6 @@ Resources:
           ReturnData: false
     DependsOn:
       - LoadBalancer
-  AttributesMismatchAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Condition: CreateProdMonitoring
-    Properties:
-      AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
-      AlarmName: !Join
-        - ' '
-        - - 'Non-urgent supporter-product-data attribute mismatch'
-          - !Ref 'Stage'
-      AlarmDescription: !Join
-        - ' '
-        - - 'There was a mismatch between attribute data returned from Zuora and data from the supporter-product-data DynamoDB table'
-      MetricName: AttributesMismatch
-      Namespace: members-data-api
-      Dimensions:
-        - Name: Services
-          Value: AttributesFromZuora
-        - Name: Stage
-          Value: !Sub ${Stage}
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 1
-      Period: 60
-      EvaluationPeriods: 1
-      Statistic: Sum
   SupporterProductDataDynamoErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateProdMonitoring
