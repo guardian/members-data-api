@@ -37,8 +37,6 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val digitalPackConf = environmentConf.getConfig(s"zuora.ratePlanIds.digitalpack")
   lazy val paperCatalogConf = environmentConf.getConfig(s"zuora.productIds.subscriptions")
   lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
-  lazy val dynamoAttributesTable = environmentConf.getString("dynamodb.table")
-  lazy val dynamoFeatureToggleTable = environmentConf.getString("featureToggles.dynamodb.table")
   lazy val supporterProductDataTable = environmentConf.getString("supporter-product-data.table")
   lazy val invoiceTemplatesConf = environmentConf.getConfig(s"zuora.invoiceTemplateIds")
 
