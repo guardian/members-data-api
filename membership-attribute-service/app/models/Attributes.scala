@@ -80,30 +80,6 @@ case class Attributes(
 
 }
 
-case class ZuoraAttributes(
-  UserId: String,
-  Tier: Option[String] = None,
-  RecurringContributionPaymentPlan: Option[String] = None,
-  MembershipJoinDate: Option[LocalDate] = None,
-  DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
-  PaperSubscriptionExpiryDate: Option[LocalDate] = None,
-  GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
-  AlertAvailableFor: Option[String] = None)
-
-object ZuoraAttributes {
-  def asAttributes(zuoraAttributes: ZuoraAttributes, oneOffContributionDate: Option[LocalDate] = None) = Attributes(
-    UserId = zuoraAttributes.UserId,
-    Tier = zuoraAttributes.Tier,
-    RecurringContributionPaymentPlan = zuoraAttributes.RecurringContributionPaymentPlan,
-    OneOffContributionDate = oneOffContributionDate,
-    MembershipJoinDate = zuoraAttributes.MembershipJoinDate,
-    DigitalSubscriptionExpiryDate = zuoraAttributes.DigitalSubscriptionExpiryDate,
-    PaperSubscriptionExpiryDate = zuoraAttributes.PaperSubscriptionExpiryDate,
-    GuardianWeeklySubscriptionExpiryDate = zuoraAttributes.GuardianWeeklySubscriptionExpiryDate,
-    AlertAvailableFor = zuoraAttributes.AlertAvailableFor
-  )
-}
-
 object Attributes {
 
   implicit val jsAttributesWrites: OWrites[Attributes] = (
