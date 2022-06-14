@@ -568,7 +568,7 @@ class AccountController(
         .map {
           case Right(subscriptionJSONs) =>
             logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-            Ok(Json.toJson(subscriptionJSONs.toList))
+            Ok(Json.toJson(subscriptionJSONs.getOrElse(Nil)))
           case Left(message) =>
             logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
             InternalServerError("Failed to retrieve payment details due to an internal error")

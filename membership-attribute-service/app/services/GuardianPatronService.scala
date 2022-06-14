@@ -29,7 +29,11 @@ object GuardianPatronService {
     case "year" => Year
     case _      => Month
   }
-  private def accountDetailsFromStripeSubscription(subscription: Stripe.Subscription, paymentDetails: Stripe.CustomersPaymentMethods) = {
+  private def accountDetailsFromStripeSubscription(
+      subscription: Stripe.Subscription,
+      paymentDetails: Stripe.CustomersPaymentMethods,
+      stripePublicKey: String
+  ) = {
     val price = Price(subscription.plan.amount.toFloat, subscription.plan.currency.getOrElse(GBP))
     AccountDetails(
       contactId = "Guardian Patrons don't have a Salesforce contactId",
@@ -40,10 +44,10 @@ object GuardianPatronService {
         id = Id(subscription.id),
         name = Name(subscription.id),
         accountId = AccountId(subscription.customer.id),
-        startDate = subscription.created.toLocalDate,
-        acceptanceDate = subscription.created.toLocalDate,
-        termStartDate = subscription.currentPeriodStart.toLocalDate,
-        termEndDate = subscription.currentPeriodEnd.toLocalDate,
+        startDate = subscription.created,
+        acceptanceDate = subscription.created,
+        termStartDate = subscription.currentPeriodStart,
+        termEndDate = subscription.currentPeriodEnd,
         casActivationDate = None,
         promoCode = None,
         isCancelled = subscription.isCancelled,
@@ -64,9 +68,9 @@ object GuardianPatronService {
               chargeId = ProductRatePlanChargeId(""),
               subRatePlanChargeId = SubscriptionRatePlanChargeId("")
             ),
-            chargedThrough = Some(subscription.currentPeriodEnd.toLocalDate),
-            start = subscription.currentPeriodStart.toLocalDate,
-            end = subscription.currentPeriodEnd.toLocalDate
+            chargedThrough = Some(subscription.currentPeriodEnd),
+            start = subscription.currentPeriodStart,
+            end = subscription.currentPeriodEnd
           ),
           tail = Nil
         ),
@@ -75,13 +79,13 @@ object GuardianPatronService {
         autoRenew = true
       ),
       paymentDetails = PaymentDetails(
-        subscriberId = subscription.customer.id,
-        startDate = subscription.currentPeriodStart.toLocalDate,
-        customerAcceptanceDate = subscription.created.toLocalDate,
-        chargedThroughDate = Some(subscription.currentPeriodEnd.toLocalDate),
-        termEndDate = subscription.currentPeriodEnd.toLocalDate,
+        subscriberId = subscription.id,
+        startDate = subscription.currentPeriodStart,
+        customerAcceptanceDate = subscription.created,
+        chargedThroughDate = Some(subscription.currentPeriodEnd),
+        termEndDate = subscription.currentPeriodEnd,
         nextPaymentPrice = Some(subscription.plan.amount),
-        lastPaymentDate = Some(subscription.currentPeriodStart.toLocalDate),
+        lastPaymentDate = Some(subscription.currentPeriodStart),
         nextPaymentDate = subscription.nextPaymentDate,
         remainingTrialLength = 0,
         pendingCancellation = subscription.isPastDue,
@@ -93,12 +97,12 @@ object GuardianPatronService {
             paymentCardDetails = Some(PaymentCardDetails(card.last4, card.exp_month, card.exp_year))
           )
         ),
-        plan = PersonalPlan(subscription.plan.id, price, subscription.plan.interval)
+        plan = PersonalPlan("guardianpatron", price, subscription.plan.interval)
       ),
       billingCountry = None,
-      stripePublicKey = "", // TODO: check whether payment updates work if this is present
+      stripePublicKey = stripePublicKey,
       accountHasMissedRecentPayments = subscription.isPastDue,
-      safeToUpdatePaymentMethod = false, // TODO
+      safeToUpdatePaymentMethod = true,
       isAutoRenew = true,
       alertText = None,
       accountId = subscription.customer.id,
@@ -108,10 +112,10 @@ object GuardianPatronService {
 
   private def getDetailsFromStripe(subscriptionId: String)(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = for {
     subscription <- tp.patronsStripeService.Subscription.read(subscriptionId)
-    _ = SafeLogger.info(s"Found subscription $subscription")
+    _ = System.out.println(s"Found subscription $subscription")
     paymentDetails <- tp.patronsStripeService.PaymentMethod.read(subscription.customer.id)
-    _ = SafeLogger.info(s"Found payment details $paymentDetails")
-  } yield accountDetailsFromStripeSubscription(subscription, paymentDetails)
+    _ = System.out.println(s"Found payment details $paymentDetails")
+  } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, tp.tpConfig.stripePatrons.stripeCredentials.publicKey)
 
   private def getListDetailsFromStripe(
       items: List[DynamoSupporterRatePlanItem]
@@ -121,17 +125,6 @@ object GuardianPatronService {
         .filter(_.productRatePlanId == guardianPatronProductRatePlanId)
         .map(item => getDetailsFromStripe(item.subscriptionName))
     )
-
-//  def getGuardianPatronAccountDetails(maybeIdentityId: Option[String])(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = {
-//    // TODO: filter
-//    maybeIdentityId.map { identityId =>
-//      for {
-//        supporterRatePlanItems <- tp.supporterProductDataService.getSupporterRatePlanItems(identityId)
-//        stripeDetails <- getListDetailsFromStripe(supporterRatePlanItems)
-//
-//      } yield stripeDetails
-//    }
-//  }
 
   def getGuardianPatronAccountDetails(maybeIdentityId: Option[String])(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = {
     // TODO: filter
