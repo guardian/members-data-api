@@ -470,95 +470,12 @@ class AccountController(
     ))
   }
 
-  def anyPaymentDetailsOld(filter: OptionalSubscriptionsFilter): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
-      implicit val tp: TouchpointComponents = request.touchpoint
-      def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
-      val maybeUserId = request.redirectAdvice.userId
-
-      logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
-      val blah: ListT[FutureEither, JsObject] = (for {
-        contactAndSubscription <- ListEither.fromOptionEither(
-          allCurrentSubscriptions(tp.contactRepo, tp.subService, tp.zuoraRestService)(maybeUserId, filter),
-        )
-        freeOrPaidSub = contactAndSubscription.subscription.plan.charges match {
-          case _: PaidChargeList => Right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
-          case _ => Left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
-        }
-        paymentDetails <- ListEither.liftList(
-          paymentDetailsForSub(contactAndSubscription.isGiftRedemption, freeOrPaidSub, tp.paymentService).map(Right(_)).recover { case x =>
-            Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
-          },
-        )
-        upToDatePaymentDetails <- ListEither.liftList(
-          getUpToDatePaymentDetailsFromStripe(contactAndSubscription.subscription.accountId, paymentDetails).map(Right(_)).recover { case x =>
-            Left(
-              s"error getting up-to-date card details for payment method of account: " +
-                s"${contactAndSubscription.subscription.accountId}. Reason: $x",
-            )
-          },
-        )
-        accountSummary <- ListEither.liftList(
-          tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).map(_.toEither).recover { case x =>
-            Left(
-              s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
-                s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
-            )
-          },
-        )
-        effectiveCancellationDate <- ListEither.liftList(
-          tp.zuoraRestService.getCancellationEffectiveDate(contactAndSubscription.subscription.name).map(_.toEither).recover { case x =>
-            Left(
-              s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
-                s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
-            )
-          },
-        )
-        stripeService = accountSummary.billToContact.country
-          .map(RegionalStripeGateways.getGatewayForCountry)
-          .flatMap(tp.stripeServicesByPaymentGateway.get)
-          .getOrElse(tp.ukStripeService)
-        alertText <- ListEither.liftEitherList(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
-        isAutoRenew = contactAndSubscription.subscription.autoRenew
-      } yield AccountDetails(
-        contactId = contactAndSubscription.contact.salesforceContactId,
-        regNumber = None,
-        email = accountSummary.billToContact.email,
-        deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
-        subscription = contactAndSubscription.subscription,
-        paymentDetails = upToDatePaymentDetails,
-        billingCountry = accountSummary.billToContact.country,
-        stripePublicKey = stripeService.publicKey,
-        accountHasMissedRecentPayments = freeOrPaidSub.isRight &&
-          accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
-        safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
-        isAutoRenew = isAutoRenew,
-        alertText = alertText,
-        accountId = accountSummary.id.get,
-        effectiveCancellationDate,
-      ).toJson)
-
-      blah.run.run.map(_.toEither).map {
-        case Right(subscriptionJSONs) =>
-          logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-          Ok(Json.toJson(subscriptionJSONs.toList))
-        case Left(message) =>
-          logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
-          InternalServerError("Failed to retrieve payment details due to an internal error")
-      }
-    }
-
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter): Action[AnyContent] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
       implicit val tp: TouchpointComponents = request.touchpoint
       val maybeUserId = request.redirectAdvice.userId
 
       logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
-      // ListT[FutureEither, AccountDetails] =>  ListT[EitherT[String, Future, X], AccountDetails]
-      // .run
-      // FutureEither[IList[AccountDetails]] => EitherT[String, Future, IList[AccountDetails]]
-      // .run
-      // Future[String \/ IList[AccountDetails]]
 
       (for {
         fromZuora <- OptionEither.liftOption(getAccountDetailsFromZuora(filter, maybeUserId).run.toEither)

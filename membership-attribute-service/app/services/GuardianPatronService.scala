@@ -102,7 +102,7 @@ object GuardianPatronService {
       billingCountry = None,
       stripePublicKey = stripePublicKey,
       accountHasMissedRecentPayments = subscription.isPastDue,
-      safeToUpdatePaymentMethod = true,
+      safeToUpdatePaymentMethod = false, // TODO, this will require quite a few changes so for now we won't allow it
       isAutoRenew = true,
       alertText = None,
       accountId = subscription.customer.id,
@@ -127,7 +127,6 @@ object GuardianPatronService {
     )
 
   def getGuardianPatronAccountDetails(maybeIdentityId: Option[String])(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = {
-    // TODO: filter
     for {
       identityId <- OptionEither.liftFutureEither(maybeIdentityId)
       supporterRatePlanItems <- OptionEither.liftOption(tp.supporterProductDataService.getSupporterRatePlanItems(identityId).value)
