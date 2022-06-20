@@ -8,10 +8,10 @@ import play.api.libs.json.Json
 import org.joda.time.LocalDate.now
 
 case class ExistingPaymentOption(
-  freshlySignedIn: Boolean,
-  objectAccount: ObjectAccount,
-  paymentMethodOption: Option[PaymentMethod],
-  subscriptions: List[Subscription[SubscriptionPlan.AnyPlan]]
+    freshlySignedIn: Boolean,
+    objectAccount: ObjectAccount,
+    paymentMethodOption: Option[PaymentMethod],
+    subscriptions: List[Subscription[SubscriptionPlan.AnyPlan]],
 )
 
 object ExistingPaymentOption {
@@ -28,35 +28,40 @@ object ExistingPaymentOption {
     }
 
     private val sensitivePaymentPart = paymentMethodOption match {
-      case Some(card: PaymentCard) => Json.obj(
-        "card" -> card.paymentCardDetails.map(_.lastFourDigits)
-      )
-      case Some(dd: GoCardless) => Json.obj(
-        "mandate" -> dd.accountNumber
-      )
+      case Some(card: PaymentCard) =>
+        Json.obj(
+          "card" -> card.paymentCardDetails.map(_.lastFourDigits),
+        )
+      case Some(dd: GoCardless) =>
+        Json.obj(
+          "mandate" -> dd.accountNumber,
+        )
       case _ => Json.obj()
     }
 
     private val sensitiveDetailIfApplicable = if (freshlySignedIn) {
       Json.obj(
         "billingAccountId" -> objectAccount.id.get,
-        "subscriptions" -> subscriptions.map(subscription => Json.obj(
-          "billingAccountId" -> subscription.accountId.get, // this could be different to the top level one due to consolidation
-          "isCancelled" -> subscription.isCancelled,
-          "isActive" -> (!subscription.isCancelled && !subscription.termEndDate.isBefore(now)),
-          "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName)
-        ))) ++ sensitivePaymentPart
+        "subscriptions" -> subscriptions.map(subscription =>
+          Json.obj(
+            "billingAccountId" -> subscription.accountId.get, // this could be different to the top level one due to consolidation
+            "isCancelled" -> subscription.isCancelled,
+            "isActive" -> (!subscription.isCancelled && !subscription.termEndDate.isBefore(now)),
+            "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName),
+          ),
+        ),
+      ) ++ sensitivePaymentPart
     } else {
       Json.obj()
     }
 
     def toJson = Json.obj(
-      "paymentType" ->  (paymentMethodOption match {
+      "paymentType" -> (paymentMethodOption match {
         case Some(_: PaymentCard) => "Card"
         case Some(_: GoCardless) => "DirectDebit"
         case Some(_: PayPalMethod) => "PayPal"
         case _ => null
-      })
+      }),
     ) ++ sensitiveDetailIfApplicable
   }
 }

@@ -23,7 +23,8 @@ object ContributionsStoreDatabaseService {
 }
 
 class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext)
-  extends ContributionsStoreDatabaseService with StrictLogging {
+    extends ContributionsStoreDatabaseService
+    with StrictLogging {
 
   private def executeQuery[R](statement: SimpleSql[Row], parser: ResultSetParser[R]): DatabaseGetResult[R] =
     Future(database.withConnection { implicit conn =>
@@ -71,9 +72,11 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
 
     executeQuery(statement, rowParser).map { result =>
       result.map {
-        case Some(SupportReminderDb(true, reminderCode)) => SupportReminders(recurringStatus=Cancelled, recurringReminderCode=Some(reminderCode.toString()))
-        case Some(SupportReminderDb(false, reminderCode)) => SupportReminders(recurringStatus=Active, recurringReminderCode=Some(reminderCode.toString()))
-        case None => SupportReminders(recurringStatus=NotSet, recurringReminderCode=None)
+        case Some(SupportReminderDb(true, reminderCode)) =>
+          SupportReminders(recurringStatus = Cancelled, recurringReminderCode = Some(reminderCode.toString()))
+        case Some(SupportReminderDb(false, reminderCode)) =>
+          SupportReminders(recurringStatus = Active, recurringReminderCode = Some(reminderCode.toString()))
+        case None => SupportReminders(recurringStatus = NotSet, recurringReminderCode = None)
       }
     }
   }
@@ -83,4 +86,3 @@ object PostgresDatabaseService {
   def fromDatabase(database: Database)(implicit ec: ExecutionContext): PostgresDatabaseService =
     new PostgresDatabaseService(database)
 }
-

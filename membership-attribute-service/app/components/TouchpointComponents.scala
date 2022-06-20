@@ -21,7 +21,12 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
 import scalaz.std.scalaFuture._
 import services._
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -29,7 +34,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
-class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executionContext: ExecutionContext) {
+class TouchpointComponents(stage: String)(implicit system: ActorSystem, executionContext: ExecutionContext) {
   implicit val ec: ExecutionContextExecutor = system.dispatcher
   lazy val conf = Config.config.getConfig("touchpoint.backend")
   lazy val environmentConf = conf.getConfig(s"environments.$stage")
@@ -53,16 +58,19 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val allStripeServices = Seq(ukStripeService, auStripeService)
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
-  lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] = InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
+  lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] =
+    InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
   lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
 
-  lazy val CredentialsProvider =  AwsCredentialsProviderChain.builder.credentialsProviders(
-    ProfileCredentialsProvider.builder.profileName(ProfileName).build,
-    InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
-    EnvironmentVariableCredentialsProvider.create()
-  ).build
+  lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
+    .credentialsProviders(
+      ProfileCredentialsProvider.builder.profileName(ProfileName).build,
+      InstanceProfileCredentialsProvider.builder.asyncCredentialUpdateEnabled(false).build,
+      EnvironmentVariableCredentialsProvider.create(),
+    )
+    .build
 
   lazy val dynamoClientBuilder: DynamoDbAsyncClientBuilder = DynamoDbAsyncClient.builder
     .credentialsProvider(CredentialsProvider)
@@ -78,7 +86,7 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
       apiConfig = tpConfig.zuoraSoap,
       httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
       extendedHttpClient = RequestRunners.futureRunner,
-      metrics = zuoraMetrics
+      metrics = zuoraMetrics,
     )
   lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
     override def checkHealth: Boolean = zuoraSoapClient.isReady
@@ -91,11 +99,10 @@ class TouchpointComponents(stage: String)(implicit  system: ActorSystem, executi
   lazy val catalogService = new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage)
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
-    .map(_.fold[CatalogMap](error => {println(s"error: ${error.list.toList.mkString}"); Map()}, _.map))
-    .recover {
-      case error =>
-        SafeLogger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
-        throw error
+    .map(_.fold[CatalogMap](error => { println(s"error: ${error.list.toList.mkString}"); Map() }, _.map))
+    .recover { case error =>
+      SafeLogger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
+      throw error
     }
 
   lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
