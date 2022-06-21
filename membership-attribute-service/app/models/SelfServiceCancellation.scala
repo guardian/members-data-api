@@ -4,13 +4,13 @@ import com.gu.i18n.Country
 import com.gu.memsub.Product
 
 /*
-* this file aims to model https://docs.google.com/spreadsheets/d/1GydjiURBMRk8S_xD4iwbbIBpuXXYI5h3_M87DtRDV8I
-* */
+ * this file aims to model https://docs.google.com/spreadsheets/d/1GydjiURBMRk8S_xD4iwbbIBpuXXYI5h3_M87DtRDV8I
+ * */
 
 case class SelfServiceCancellation(
-  isAllowed: Boolean,
-  shouldDisplayEmail: Boolean,
-  phoneRegionsToDisplay: List[String]
+    isAllowed: Boolean,
+    shouldDisplayEmail: Boolean,
+    phoneRegionsToDisplay: List[String],
 )
 
 object SelfServiceCancellation {
@@ -26,35 +26,35 @@ object SelfServiceCancellation {
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
-        phoneRegionsToDisplay = allPhones
+        phoneRegionsToDisplay = allPhones,
       )
 
     case (_, Some(Country.UK)) =>
       SelfServiceCancellation(
         isAllowed = false,
         shouldDisplayEmail = false,
-        phoneRegionsToDisplay = List(ukRowPhone)
+        phoneRegionsToDisplay = List(ukRowPhone),
       )
 
     case (_, Some(Country.US) | Some(Country.Canada)) =>
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
-        phoneRegionsToDisplay = List(usaPhone)
+        phoneRegionsToDisplay = List(usaPhone),
       )
 
     case (_, Some(Country.Australia) | Some(Country.NewZealand)) =>
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
-        phoneRegionsToDisplay = allPhones
+        phoneRegionsToDisplay = allPhones,
       )
 
     case _ => // ROW
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
-        phoneRegionsToDisplay = allPhones
+        phoneRegionsToDisplay = allPhones,
       )
 
   }

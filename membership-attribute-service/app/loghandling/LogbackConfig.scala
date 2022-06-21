@@ -13,13 +13,10 @@ object LogbackConfig {
   private lazy val logger = PlayLogger(getClass)
   lazy val loggingContext = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
 
-  case class KinesisAppenderConfig(stream: String,
-    region: String,
-    awsCredentialsProvider: AwsCredentialsProvider,
-    bufferSize: Int)
+  case class KinesisAppenderConfig(stream: String, region: String, awsCredentialsProvider: AwsCredentialsProvider, bufferSize: Int)
 
   def makeCustomFields(customFields: Map[String, String]): String = {
-    "{" + (for((k, v) <- customFields) yield s""""${k}":"${v}"""").mkString(",") + "}"
+    "{" + (for ((k, v) <- customFields) yield s""""${k}":"${v}"""").mkString(",") + "}"
   }
 
   def makeLayout(customFields: String) = {
@@ -61,8 +58,8 @@ object LogbackConfig {
                 config.stream,
                 config.region,
                 config.awsCredentialsProvider,
-                bufferSize
-              )
+                bufferSize,
+              ),
             )
             lb.addAppender(appender)
             lb.info("Kinesis logging - Configured Logback")
