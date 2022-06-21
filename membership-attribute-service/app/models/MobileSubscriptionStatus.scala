@@ -6,8 +6,8 @@ import play.api.libs.json._
 import scala.util.Try
 
 case class MobileSubscriptionStatus(
-  valid: Boolean,
-  to: DateTime
+    valid: Boolean,
+    to: DateTime,
 )
 
 object MobileSubscriptionStatus {

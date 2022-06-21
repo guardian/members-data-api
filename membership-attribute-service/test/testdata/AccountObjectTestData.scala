@@ -7,14 +7,15 @@ import com.gu.memsub.Subscription.{AccountId, AccountNumber}
 import com.gu.zuora.rest.ZuoraRestService._
 import org.joda.time.DateTime
 
-
 object AccountObjectTestData {
   private val testAccountId = AccountId("accountId")
   private val testPaymentMethodId = PaymentMethodId("testme")
   private val testIdentityId = "123"
   private val currency = GBP
-  val accountObjectWithBalanceAndOldInvoice = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(30)))
-  val accountObjectWithBalance = AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(3)))
+  val accountObjectWithBalanceAndOldInvoice =
+    AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(30)))
+  val accountObjectWithBalance =
+    AccountObject(testAccountId, 20.0, Some(currency), Some(testPaymentMethodId), Some(StripeUKMembershipGateway), Some(DateTime.now().minusDays(3)))
   val accountObjectWithZeroBalance = AccountObject(testAccountId, 0, Some(currency), Some(testPaymentMethodId), None, None)
 }
 
@@ -39,22 +40,24 @@ object AccountSummaryTestData {
         city = None,
         postCode = None,
         state = None,
-        country = None
+        country = None,
       ),
-      invoices = List(Invoice(
-        id = InvoiceId("someid"),
-        invoiceNumber = "INV123",
-        invoiceDate = DateTime.now().minusDays(14),
-        dueDate = DateTime.now().minusDays(7),
-        amount = 11.99,
-        balance = balance,
-        status = "Posted"
-      )),
+      invoices = List(
+        Invoice(
+          id = InvoiceId("someid"),
+          invoiceNumber = "INV123",
+          invoiceDate = DateTime.now().minusDays(14),
+          dueDate = DateTime.now().minusDays(7),
+          amount = 11.99,
+          balance = balance,
+          status = "Posted",
+        ),
+      ),
       payments = List(),
       currency = None,
       balance = balance,
       defaultPaymentMethod = Some(DefaultPaymentMethod(paymentMethodId)),
-      sfContactId = SalesforceContactId("foo")
+      sfContactId = SalesforceContactId("foo"),
     )
 
   val accountSummaryWithBalance = accountSummaryWith(20.0, testPaymentMethodId, testAccountId)
@@ -75,7 +78,7 @@ object InvoiceAndPaymentTestData {
     dueDate = DateTime.now().minusDays(32),
     amount = 0,
     balance = 0,
-    status = "Posted"
+    status = "Posted",
   )
 
   val oldUnpaidInvoice = Invoice(
@@ -85,7 +88,7 @@ object InvoiceAndPaymentTestData {
     dueDate = moreThanAMonthAgo,
     amount = 11.99,
     balance = 11.99,
-    status = "Posted"
+    status = "Posted",
   )
 
   val recentUnpaidInvoice = Invoice(
@@ -95,7 +98,7 @@ object InvoiceAndPaymentTestData {
     dueDate = lessThanAWeekAgo,
     amount = 11.99,
     balance = 11.99,
-    status = "Posted"
+    status = "Posted",
   )
 
   val paidInvoice = Invoice(
@@ -105,7 +108,7 @@ object InvoiceAndPaymentTestData {
     dueDate = moreThanAMonthAgo,
     amount = 11.99,
     balance = 0,
-    status = "Posted"
+    status = "Posted",
   )
 
   val failedPaymentForRecentUnpaidInvoice = Payment(status = "Failure", paidInvoices = List(PaidInvoice("INV111", 11.99)))
