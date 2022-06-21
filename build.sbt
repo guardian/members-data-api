@@ -5,18 +5,18 @@ val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
 
 def commitId(): String =
-  try { "git rev-parse HEAD".!!.trim } catch { case _: Exception => "unknown" }
+  try { "git rev-parse HEAD".!!.trim }
+  catch { case _: Exception => "unknown" }
 
 def buildInfoSettings = Seq(
   buildInfoKeys := Seq[BuildInfoKey](
     name,
     BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
     BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId",
-                          Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId()))
+    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId())),
   ),
   buildInfoPackage := "app",
-  buildInfoOptions += BuildInfoOption.ToMap
+  buildInfoOptions += BuildInfoOption.ToMap,
 )
 
 val commonSettings = Seq(
@@ -26,13 +26,13 @@ val commonSettings = Seq(
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
   ),
   Compile / doc / sources := Seq.empty,
   Compile / packageDoc / publishArtifact := false,
   Global / parallelExecution := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
-  Test / javaOptions += "-Dconfig.resource=TEST.public.conf"
+  Test / javaOptions += "-Dconfig.resource=TEST.public.conf",
 ) ++ buildInfoSettings
 
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
@@ -51,8 +51,8 @@ val buildDebSettings = Seq(
     "-J-XX:MaxMetaspaceSize=500m",
     "-J-XX:+PrintGCDetails",
     "-J-XX:+PrintGCDateStamps",
-    s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
-  )
+    s"-J-Xloggc:/var/log/${packageName.value}/gc.log",
+  ),
 )
 
 def lib(name: String) =
@@ -73,7 +73,7 @@ val api = app("membership-attribute-service")
   .settings(
     addCommandAlias("devrun", "run 9400"),
     addCommandAlias("batch-load", "runMain BatchLoader"),
-    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")
+    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity"),
   )
 
 val root = project.in(file(".")).aggregate(api)
