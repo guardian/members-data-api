@@ -8,6 +8,7 @@ object Headers {
   }
 
   implicit class EnrichedRequestHeader(header: mvc.RequestHeader) {
+
     /** Remote address, taking X-Forwarded-For into consideration */
     def realRemoteAddr = header.headers.forwardedFor.flatMap(_.headOption).getOrElse(header.remoteAddress)
   }
