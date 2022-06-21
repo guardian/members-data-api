@@ -27,12 +27,12 @@ import scala.concurrent.{ExecutionContext, Future}
 object GuardianPatronService {
   private def billingPeriodFromInterval(interval: String) = interval match {
     case "year" => Year
-    case _      => Month
+    case _ => Month
   }
   private def accountDetailsFromStripeSubscription(
       subscription: Stripe.Subscription,
       paymentDetails: Stripe.CustomersPaymentMethods,
-      stripePublicKey: String
+      stripePublicKey: String,
   ) = {
     val price = Price(subscription.plan.amount.toFloat, subscription.plan.currency.getOrElse(GBP))
     AccountDetails(
@@ -66,17 +66,17 @@ object GuardianPatronService {
               billingPeriod = billingPeriodFromInterval(subscription.plan.interval),
               price = PricingSummary(Map(subscription.plan.currency.getOrElse(GBP) -> price)),
               chargeId = ProductRatePlanChargeId(""),
-              subRatePlanChargeId = SubscriptionRatePlanChargeId("")
+              subRatePlanChargeId = SubscriptionRatePlanChargeId(""),
             ),
             chargedThrough = Some(subscription.currentPeriodEnd),
             start = subscription.currentPeriodStart,
-            end = subscription.currentPeriodEnd
+            end = subscription.currentPeriodEnd,
           ),
-          tail = Nil
+          tail = Nil,
         ),
         readerType = Direct,
         gifteeIdentityId = None,
-        autoRenew = true
+        autoRenew = true,
       ),
       paymentDetails = PaymentDetails(
         subscriberId = subscription.id,
@@ -94,10 +94,10 @@ object GuardianPatronService {
           PaymentCard(
             isReferenceTransaction = false,
             cardType = Some(card.`type`),
-            paymentCardDetails = Some(PaymentCardDetails(card.last4, card.exp_month, card.exp_year))
-          )
+            paymentCardDetails = Some(PaymentCardDetails(card.last4, card.exp_month, card.exp_year)),
+          ),
         ),
-        plan = PersonalPlan("guardianpatron", price, subscription.plan.interval)
+        plan = PersonalPlan("guardianpatron", price, subscription.plan.interval),
       ),
       billingCountry = None,
       stripePublicKey = stripePublicKey,
@@ -106,7 +106,7 @@ object GuardianPatronService {
       isAutoRenew = true,
       alertText = None,
       accountId = subscription.customer.id,
-      cancellationEffectiveDate = subscription.cancellationEffectiveDate.map(_.toString(DateTimeFormat.forPattern("yyyy-MM-dd")))
+      cancellationEffectiveDate = subscription.cancellationEffectiveDate.map(_.toString(DateTimeFormat.forPattern("yyyy-MM-dd"))),
     )
   }
 
@@ -118,12 +118,12 @@ object GuardianPatronService {
   } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, tp.tpConfig.stripePatrons.stripeCredentials.publicKey)
 
   private def getListDetailsFromStripe(
-      items: List[DynamoSupporterRatePlanItem]
+      items: List[DynamoSupporterRatePlanItem],
   )(implicit tp: TouchpointComponents, executionContext: ExecutionContext) =
     Future.sequence(
       items
         .filter(_.productRatePlanId == guardianPatronProductRatePlanId)
-        .map(item => getDetailsFromStripe(item.subscriptionName))
+        .map(item => getDetailsFromStripe(item.subscriptionName)),
     )
 
   def getGuardianPatronAccountDetails(maybeIdentityId: Option[String])(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = {
