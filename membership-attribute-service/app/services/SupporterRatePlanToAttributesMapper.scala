@@ -55,10 +55,11 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       GuardianPatronExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
+  val guardianPatronProductRatePlanId = "guardian_patron"
   val productRatePlanMappings: Map[Stage, Map[List[ProductRatePlanId], AttributeTransformer]] =
     Map(
       "PROD" -> Map(
-        List("guardian_patron") -> guardianPatronTransformer,
+        List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
         List(
           "2c92a0fb4edd70c8014edeaa4eae220a",
           "2c92a0fb4edd70c8014edeaa4e972204",
