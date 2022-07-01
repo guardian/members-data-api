@@ -7,19 +7,14 @@ import com.gu.memsub.Product.GuardianPatron
 import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.ReaderType.Direct
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
-import com.gu.memsub.{Benefit, PaymentCard, PaymentCardDetails, Price, PricingSummary}
-import com.gu.monitoring.SafeLogger
+import com.gu.memsub._
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
 import components.TouchpointComponents
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
-import scalaz.std.option._
 import scalaz.std.scalaFuture._
-import scalaz.syntax.monad._
-import scalaz.syntax.traverse._
-import scalaz.{EitherT, IList, ListT, OptionT, \/}
-import services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
+import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
 import utils.OptionEither
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,7 +29,7 @@ object GuardianPatronService {
       paymentDetails: Stripe.CustomersPaymentMethods,
       stripePublicKey: String,
   ) = {
-    val price = Price(subscription.plan.amount.toFloat, subscription.plan.currency.getOrElse(GBP))
+    val price = Price(subscription.plan.amount.toFloat, subscription.plan.currency)
     AccountDetails(
       contactId = "Guardian Patrons don't have a Salesforce contactId",
       regNumber = None,
@@ -64,7 +59,7 @@ object GuardianPatronService {
             charges = PaidCharge(
               benefit = Benefit.GuardianPatron,
               billingPeriod = billingPeriodFromInterval(subscription.plan.interval),
-              price = PricingSummary(Map(subscription.plan.currency.getOrElse(GBP) -> price)),
+              price = PricingSummary(Map(subscription.plan.currency -> price)),
               chargeId = ProductRatePlanChargeId(""),
               subRatePlanChargeId = SubscriptionRatePlanChargeId(""),
             ),
