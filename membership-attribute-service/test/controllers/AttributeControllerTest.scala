@@ -36,7 +36,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
     DigitalSubscriptionExpiryDate = Some(new LocalDate(2100, 1, 1)),
     PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
-    GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1))
+    GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
   )
 
   private val validUserCookie = Cookie("validUser", "true")
@@ -45,37 +45,36 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val validUser = User(
     primaryEmailAddress = "test@gu.com",
     id = validUserId,
-    statusFields = StatusFields(userEmailValidated = Some(true))
+    statusFields = StatusFields(userEmailValidated = Some(true)),
   )
   private val unvalidatedEmailUser = User(
     primaryEmailAddress = "unvalidatedEmail@gu.com",
     id = unvalidatedEmailUserId,
-    statusFields = StatusFields(userEmailValidated = Some(false))
+    statusFields = StatusFields(userEmailValidated = Some(false)),
   )
   private val userWithoutAttributes = User(
     primaryEmailAddress = "notcached@gu.com",
-    id = userWithoutAttributesUserId
+    id = userWithoutAttributesUserId,
   )
 
   private val guardianEmployeeUser = User(
     primaryEmailAddress = "foo@guardian.co.uk",
     id = "1234321",
-    statusFields = StatusFields(userEmailValidated = Some(true))
+    statusFields = StatusFields(userEmailValidated = Some(true)),
   )
   private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
 
   private val guardianEmployeeUserTheguardian = User(
     primaryEmailAddress = "foo@theguardian.com",
     id = "123theguardiancom",
-    statusFields = StatusFields(userEmailValidated = Some(true))
+    statusFields = StatusFields(userEmailValidated = Some(true)),
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
-
 
   private val validEmployeeUser = User(
     primaryEmailAddress = "bar@theguardian.com",
     id = "userWithRealProducts",
-    statusFields = StatusFields(userEmailValidated = Some(true))
+    statusFields = StatusFields(userEmailValidated = Some(true)),
   )
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
@@ -110,7 +109,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently,None,None,None,None)
+      val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
       Future(Right(new AuthAndBackendRequest[A](redirectAdviceResponse, components, request)))
     }
@@ -122,7 +121,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
     override val AuthAndBackendViaAuthLibAction = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
-    override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn)= NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
+    override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
+      NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
@@ -130,15 +130,18 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       Future.successful(Right(None))
   }
 
-  private val controller = new AttributeController(commonActions, Helpers.stubControllerComponents(), FakePostgresService(validUserId), FakeMobileSubscriptionService) {
-    override val executionContext = scala.concurrent.ExecutionContext.global
-    override def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
-      if (identityId == validUserId || identityId == validEmployeeUser.id)
-        ("Zuora", Some(testAttributes))
-      else
-        ("Zuora", None)
+  private val controller =
+    new AttributeController(commonActions, Helpers.stubControllerComponents(), FakePostgresService(validUserId), FakeMobileSubscriptionService) {
+      override val executionContext = scala.concurrent.ExecutionContext.global
+      override def getSupporterProductDataAttributes(
+          identityId: String,
+      )(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
+        if (identityId == validUserId || identityId == validEmployeeUser.id)
+          ("Zuora", Some(testAttributes))
+        else
+          ("Zuora", None)
+      }
     }
-  }
 
   private def verifyDefaultFeaturesResult(result: Future[Result]) = {
     status(result) shouldEqual OK
@@ -180,7 +183,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       """.stripMargin)
   }
 
-  private def verifyIdentityHeadersSet(result:Future[Result], expectedUserId:String, expectedTestUser:Boolean = false) = {
+  private def verifyIdentityHeadersSet(result: Future[Result], expectedUserId: String, expectedTestUser: Boolean = false) = {
     val resultHeaders = headers(result)
     resultHeaders.get("X-Gu-Identity-Id") should beSome(expectedUserId)
     resultHeaders.get("X-Gu-Membership-Test-User") should beSome(expectedTestUser.toString)
@@ -292,7 +295,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       verifyIdentityHeadersSet(result, validUser.id)
 
     }
-
 
     "retrieve membership attributes and set identity headers for user in cookie" in {
       val req = FakeRequest().withCookies(validUserCookie)

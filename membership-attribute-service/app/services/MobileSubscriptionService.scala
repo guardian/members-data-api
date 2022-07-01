@@ -23,7 +23,8 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
   }
 
   override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
-    val response = wsClient.url(s"$subscriptionURL/user/subscriptions/$identityId")
+    val response = wsClient
+      .url(s"$subscriptionURL/user/subscriptions/$identityId")
       .withHttpHeaders("Authorization" -> s"Bearer ${Config.Mobile.subscriptionApiKey}")
       .get()
 

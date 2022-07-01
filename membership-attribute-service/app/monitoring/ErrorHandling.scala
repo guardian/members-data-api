@@ -17,12 +17,14 @@ import services.IdentityAuthService
 import scala.concurrent._
 
 class ErrorHandler(
-                    env: Environment,
-                    config: Configuration,
-                    sourceMapper: Option[SourceMapper],
-                    router: => Option[Router],
-                    identityAuthService: IdentityAuthService
-                  )(implicit executionContext: ExecutionContext) extends DefaultHttpErrorHandler(env, config, sourceMapper, router) with LazyLogging{
+    env: Environment,
+    config: Configuration,
+    sourceMapper: Option[SourceMapper],
+    router: => Option[Router],
+    identityAuthService: IdentityAuthService,
+)(implicit executionContext: ExecutionContext)
+    extends DefaultHttpErrorHandler(env, config, sourceMapper, router)
+    with LazyLogging {
 
   override def onClientError(request: RequestHeader, statusCode: Int, message: String = ""): Future[Result] = {
     super.onClientError(request, statusCode, message).map(Cached(_))
@@ -30,10 +32,10 @@ class ErrorHandler(
 
   override protected def onNotFound(request: RequestHeader, message: String): Future[Result] = {
 
-        logger.debug(s"Handler not found for request: $request")
-        Future.successful(
-         Cached(NotFound(Json.toJson(notFound)))
-        )
+    logger.debug(s"Handler not found for request: $request")
+    Future.successful(
+      Cached(NotFound(Json.toJson(notFound))),
+    )
   }
 
   override protected def onProdServerError(request: RequestHeader, ex: UsefulException): Future[Result] = {
