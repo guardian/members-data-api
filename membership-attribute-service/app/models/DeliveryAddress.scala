@@ -11,7 +11,7 @@ case class DeliveryAddress(
     postcode: Option[String],
     country: Option[String],
     addressChangeInformation: Option[String],
-    instructions: Option[String]
+    instructions: Option[String],
 )
 
 object DeliveryAddress {
@@ -27,7 +27,7 @@ object DeliveryAddress {
       postcode = contact.mailingPostcode,
       country = contact.mailingCountry,
       addressChangeInformation = None,
-      instructions = contact.deliveryInstructions
+      instructions = contact.deliveryInstructions,
     )
   }
 
@@ -41,8 +41,8 @@ object DeliveryAddress {
   def mergeAddressLines(address: DeliveryAddress): Option[String] =
     (address.addressLine1, address.addressLine2) match {
       case (Some(line1), Some(line2)) => Some(s"${line1.trim},${line2.trim}")
-      case (Some(line1), None)        => Some(line1.trim)
-      case (None, Some(line2))        => Some(line2.trim)
-      case (None, None)               => None
+      case (Some(line1), None) => Some(line1.trim)
+      case (None, Some(line2)) => Some(line2.trim)
+      case (None, None) => None
     }
 }

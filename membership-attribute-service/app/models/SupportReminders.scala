@@ -5,7 +5,6 @@ import play.api.libs.json.{Json, Writes}
 
 sealed trait RecurringReminderStatus
 
-
 object RecurringReminderStatus {
   case object NotSet extends RecurringReminderStatus
   case object Active extends RecurringReminderStatus
@@ -20,18 +19,18 @@ object RecurringReminderStatus {
   }
 }
 
-case class SupportReminderDb (
-  is_cancelled: Boolean,
-  reminder_code: java.util.UUID,
+case class SupportReminderDb(
+    is_cancelled: Boolean,
+    reminder_code: java.util.UUID,
 )
 
 object SupportReminderDb {
   val supportReminderDbRowParser: RowParser[SupportReminderDb] = Macro.indexedParser[SupportReminderDb]
 }
 
-case class SupportReminders (
-  recurringStatus: RecurringReminderStatus,
-  recurringReminderCode: Option[String],
+case class SupportReminders(
+    recurringStatus: RecurringReminderStatus,
+    recurringReminderCode: Option[String],
 )
 
 object SupportReminders {
