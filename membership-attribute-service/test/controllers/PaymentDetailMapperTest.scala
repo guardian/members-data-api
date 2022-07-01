@@ -20,69 +20,72 @@ class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification w
   "PaymentDetailMapper" should {
     "recognise a giftee's gift subscription" in {
       val mockPaymentService = mock[PaymentService]
-      PaymentDetailMapper.paymentDetailsForSub(
-        isGiftRedemption = true,
-        Right(digipackGift),
-        mockPaymentService
-      ).map(
-        details => details mustEqual PaymentDetailMapper.getGiftPaymentDetails(digipackGift)
-      )
+      PaymentDetailMapper
+        .paymentDetailsForSub(
+          isGiftRedemption = true,
+          Right(digipackGift),
+          mockPaymentService,
+        )
+        .map(details => details mustEqual PaymentDetailMapper.getGiftPaymentDetails(digipackGift))
     }
 
     "recognise a gifter's gift subscription" in {
       val mockPaymentService = mock[PaymentService]
       val expectedPaymentDetails = PaymentDetails(digipackGift, None, None, None)
 
-      when(mockPaymentService.paymentDetails(
-        any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]](),
-        any[Option[String]]()
-      )).thenReturn(
-        Future.successful(expectedPaymentDetails)
+      when(
+        mockPaymentService.paymentDetails(
+          any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]](),
+          any[Option[String]](),
+        ),
+      ).thenReturn(
+        Future.successful(expectedPaymentDetails),
       )
 
-      PaymentDetailMapper.paymentDetailsForSub(
-        isGiftRedemption = false,
-        Right(digipack),
-        mockPaymentService
-      ).map(
-        details => details mustEqual expectedPaymentDetails
-      )
+      PaymentDetailMapper
+        .paymentDetailsForSub(
+          isGiftRedemption = false,
+          Right(digipack),
+          mockPaymentService,
+        )
+        .map(details => details mustEqual expectedPaymentDetails)
     }
 
     "recognise a regular digital subscription" in {
       val mockPaymentService = mock[PaymentService]
       val expectedPaymentDetails = PaymentDetails(digipack, None, None, None)
 
-      when(mockPaymentService.paymentDetails(
-        any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]](),
-        any[Option[String]]()
-      )).thenReturn(
-        Future.successful(expectedPaymentDetails)
+      when(
+        mockPaymentService.paymentDetails(
+          any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]](),
+          any[Option[String]](),
+        ),
+      ).thenReturn(
+        Future.successful(expectedPaymentDetails),
       )
 
-      PaymentDetailMapper.paymentDetailsForSub(
-        isGiftRedemption = false,
-        Right(digipack),
-        mockPaymentService
-      ).map(
-        details => details mustEqual expectedPaymentDetails
-      )
+      PaymentDetailMapper
+        .paymentDetailsForSub(
+          isGiftRedemption = false,
+          Right(digipack),
+          mockPaymentService,
+        )
+        .map(details => details mustEqual expectedPaymentDetails)
     }
 
     "recognise a free subscription" in {
       val mockPaymentService = mock[PaymentService]
       val expectedPaymentDetails = PaymentDetails(friend)
 
-      PaymentDetailMapper.paymentDetailsForSub(
-        isGiftRedemption = false,
-        Left(friend),
-        mockPaymentService
-      ).map(
-        details => details mustEqual expectedPaymentDetails
-      )
+      PaymentDetailMapper
+        .paymentDetailsForSub(
+          isGiftRedemption = false,
+          Left(friend),
+          mockPaymentService,
+        )
+        .map(details => details mustEqual expectedPaymentDetails)
     }
 
   }
-
 
 }
