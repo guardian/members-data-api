@@ -12,16 +12,17 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{PaidChargeList, Subscription, SubscriptionPlan}
-import com.gu.monitoring.{CloudWatch, SafeLogger}
+import com.gu.memsub.util.Timing
+import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.salesforce.{Contact, SimpleContactRepository}
 import com.gu.services.model.PaymentDetails
-import com.gu.stripe.{Stripe, StripeService}
 import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
+import configuration.Config
 import controllers.PaymentDetailMapper.paymentDetailsForSub
 import loghandling.DeprecatedRequestLogger
 import models.AccountDetails._
@@ -30,18 +31,12 @@ import models._
 import org.joda.time.LocalDate
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.libs.json.{Format, JsObject, Json}
+import play.api.libs.json.{Format, Json}
 import play.api.mvc._
-import scalaz.std.option._
 import scalaz.std.scalaFuture._
-import scalaz.syntax.monad._
-import scalaz.syntax.traverse._
 import scalaz.{EitherT, IList, ListT, OptionT, \/}
 import utils.OptionEither.FutureEither
 import utils.{ListEither, OptionEither}
-import SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
-import com.gu.memsub.util.Timing
-import configuration.Config
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -360,11 +355,55 @@ class AccountController(
     }
   }
 
+  def getAccountDetailsParallel(
+      contactAndSubscription: ContactAndSubscription,
+      freeOrPaidSub: Either[Subscription[SubscriptionPlan.Free], Subscription[SubscriptionPlan.Paid]],
+  )(implicit
+      tp: TouchpointComponents,
+  ): ListT[FutureEither, (PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
+    // Run all these api calls in parallel to improve response times
+    val paymentDetailsFuture =
+      paymentDetailsForSub(contactAndSubscription.isGiftRedemption, freeOrPaidSub, tp.paymentService)
+        .map(Right(_))
+        .recover { case x =>
+          Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
+        }
+
+    val accountSummaryFuture =
+      tp.zuoraRestService
+        .getAccount(contactAndSubscription.subscription.accountId)
+        .map(_.toEither)
+        .recover { case x =>
+          Left(
+            s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
+              s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
+          )
+        }
+
+    val effectiveCancellationDateFuture =
+      tp.zuoraRestService
+        .getCancellationEffectiveDate(contactAndSubscription.subscription.name)
+        .map(_.toEither)
+        .recover { case x =>
+          Left(
+            s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
+              s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
+          )
+        }
+
+    for {
+      paymentDetails <- ListEither.liftList(paymentDetailsFuture)
+      accountSummary <- ListEither.liftList(accountSummaryFuture)
+      effectiveCancellationDate <- ListEither.liftList(effectiveCancellationDateFuture)
+    } yield (paymentDetails, accountSummary, effectiveCancellationDate)
+  }
+
   def getAccountDetailsFromZuora(filter: OptionalSubscriptionsFilter, maybeUserId: Option[String])(implicit
       tp: TouchpointComponents,
   ): ListT[FutureEither, AccountDetails] = {
     def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
-    (for {
+
+    for {
       contactAndSubscription <- ListEither.fromOptionEither(
         allCurrentSubscriptions(tp.contactRepo, tp.subService, tp.zuoraRestService)(maybeUserId, filter),
       )
@@ -372,27 +411,8 @@ class AccountController(
         case _: PaidChargeList => Right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
         case _ => Left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
       }
-      paymentDetails <- ListEither.liftList(
-        paymentDetailsForSub(contactAndSubscription.isGiftRedemption, freeOrPaidSub, tp.paymentService).map(Right(_)).recover { case x =>
-          Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
-        },
-      )
-      accountSummary <- ListEither.liftList(
-        tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).map(_.toEither).recover { case x =>
-          Left(
-            s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
-              s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
-          )
-        },
-      )
-      effectiveCancellationDate <- ListEither.liftList(
-        tp.zuoraRestService.getCancellationEffectiveDate(contactAndSubscription.subscription.name).map(_.toEither).recover { case x =>
-          Left(
-            s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
-              s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
-          )
-        },
-      )
+      detailsResultsTuple <- getAccountDetailsParallel(contactAndSubscription, freeOrPaidSub)
+      (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTuple
       stripeService = accountSummary.billToContact.country
         .map(RegionalStripeGateways.getGatewayForCountry)
         .flatMap(tp.stripeServicesByPaymentGateway.get)
@@ -415,7 +435,7 @@ class AccountController(
       alertText = alertText,
       accountId = accountSummary.id.get,
       effectiveCancellationDate,
-    ))
+    )
   }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter): Action[AnyContent] =
