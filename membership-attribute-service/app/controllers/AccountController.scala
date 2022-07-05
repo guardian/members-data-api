@@ -173,7 +173,6 @@ class AccountController(
       val maybeUserId = request.user.map(_.id)
 
       (for {
-        identityId <- EitherT.fromEither(Future.successful(maybeUserId.toRight(unauthorized)))
         cancellationEffectiveDate <- tp.subService
           .decideCancellationEffectiveDate[P](subscriptionName)
           .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
@@ -190,48 +189,6 @@ class AccountController(
       }
     }
 
-  private def findStripeCustomer(customerId: String, likelyStripeService: StripeService)(implicit
-      tp: TouchpointComponents,
-  ): Future[Option[Stripe.Customer]] = {
-    val alternativeStripeService = if (likelyStripeService == tp.ukStripeService) tp.auStripeService else tp.ukStripeService
-    likelyStripeService.Customer.read(customerId).recoverWith { case _ =>
-      alternativeStripeService.Customer.read(customerId)
-    } map (Option(_)) recover { case _ =>
-      None
-    }
-  }
-
-  private def getUpToDatePaymentDetailsFromStripe(accountId: com.gu.memsub.Subscription.AccountId, paymentDetails: PaymentDetails)(implicit
-      tp: TouchpointComponents,
-  ): Future[PaymentDetails] = {
-    paymentDetails.paymentMethod
-      .map {
-        case card: PaymentCard =>
-          def liftFuture[A](m: Option[A]): OptionT[Future, A] = OptionT(Future.successful(m))
-          (for {
-            account <- tp.zuoraService.getAccount(accountId).liftM[OptionT]
-            defaultPaymentMethodId <- liftFuture(account.defaultPaymentMethodId.map(_.trim).filter(_.nonEmpty))
-            zuoraPaymentMethod <- tp.zuoraService.getPaymentMethod(defaultPaymentMethodId).liftM[OptionT]
-            customerId <- liftFuture(zuoraPaymentMethod.secondTokenId.map(_.trim).filter(_.startsWith("cus_")))
-            paymentGateway <- liftFuture(account.paymentGateway)
-            stripeService <- liftFuture(tp.stripeServicesByPaymentGateway.get(paymentGateway))
-            stripeCustomer <- OptionT(findStripeCustomer(customerId, stripeService))
-            stripeCard = stripeCustomer.card
-          } yield {
-            // TODO consider broadcasting to a queue somewhere iff the payment method in Zuora is out of date compared to Stripe
-            card.copy(
-              cardType = Some(stripeCard.`type`),
-              paymentCardDetails = Some(PaymentCardDetails(stripeCard.last4, stripeCard.exp_month, stripeCard.exp_year)),
-            )
-          }).run
-        case x => Future.successful(None) // not updated
-      }
-      .sequence
-      .map { maybeUpdatedPaymentCard =>
-        paymentDetails.copy(paymentMethod = maybeUpdatedPaymentCard.flatten orElse paymentDetails.paymentMethod)
-      }
-  }
-
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid: SubPlanReads, F <: SubscriptionPlan.Free: SubPlanReads] =
     AuthAndBackendViaAuthLibAction.async { implicit request =>
@@ -241,7 +198,7 @@ class AccountController(
       def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
       val maybeUserId = request.user.map(_.id)
 
-      logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
+      logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
       (for {
         user <- OptionEither.liftFutureEither(maybeUserId)
         contact <- OptionEither(tp.contactRepo.get(user))
@@ -253,9 +210,6 @@ class AccountController(
         sub: Subscription[AnyPlan] = freeOrPaidSub.fold(identity, identity)
         paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
           Left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x")
-        })
-        upToDatePaymentDetails <- OptionEither.liftOption(getUpToDatePaymentDetailsFromStripe(sub.accountId, paymentDetails).map(Right(_)).recover {
-          case x => Left(s"error getting up-to-date card details for payment method of account: ${sub.accountId}. Reason: $x")
         })
         accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
           Left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x")
@@ -273,7 +227,7 @@ class AccountController(
         email = accountSummary.billToContact.email,
         deliveryAddress = None,
         subscription = sub,
-        paymentDetails = upToDatePaymentDetails,
+        paymentDetails = paymentDetails,
         billingCountry = accountSummary.billToContact.country,
         stripePublicKey = stripeService.publicKey,
         accountHasMissedRecentPayments = false,
@@ -423,14 +377,6 @@ class AccountController(
           Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
         },
       )
-      upToDatePaymentDetails <- ListEither.liftList(
-        getUpToDatePaymentDetailsFromStripe(contactAndSubscription.subscription.accountId, paymentDetails).map(Right(_)).recover { case x =>
-          Left(
-            s"error getting up-to-date card details for payment method of account: " +
-              s"${contactAndSubscription.subscription.accountId}. Reason: $x",
-          )
-        },
-      )
       accountSummary <- ListEither.liftList(
         tp.zuoraRestService.getAccount(contactAndSubscription.subscription.accountId).map(_.toEither).recover { case x =>
           Left(
@@ -459,7 +405,7 @@ class AccountController(
       email = accountSummary.billToContact.email,
       deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
       subscription = contactAndSubscription.subscription,
-      paymentDetails = upToDatePaymentDetails,
+      paymentDetails = paymentDetails,
       billingCountry = accountSummary.billToContact.country,
       stripePublicKey = stripeService.publicKey,
       accountHasMissedRecentPayments = freeOrPaidSub.isRight &&
