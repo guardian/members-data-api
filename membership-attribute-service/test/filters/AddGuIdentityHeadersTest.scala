@@ -22,40 +22,42 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
     id = "testUserId",
     publicFields = PublicFields(
       username = Some("testUserName"),
-      displayName = Some("testUserName")
-    )
+      displayName = Some("testUserName"),
+    ),
   )
 
   val identityService = mock[IdentityAuthService]
-  val request =  mock[RequestHeader]
+  val request = mock[RequestHeader]
   when(identityService.user(request)).thenReturn(Future.successful(Some(user)))
-  
+
   val resultWithoutIdentityHeaders = Ok("testResult").withHeaders("previousHeader" -> "previousHeaderValue")
   val resultWithXGuIdentity = resultWithoutIdentityHeaders.withHeaders(XGuIdentityId -> "testUserId")
   val resultWithXGuMembershipTestUser = resultWithoutIdentityHeaders.withHeaders(XGuMembershipTestUser -> "false")
   val resultWithAllIdentityHeaders = resultWithXGuIdentity.withHeaders(XGuMembershipTestUser -> "false")
 
-  def assertHeadersSet(actualResult : Result, testUser:Boolean=false) ={
+  def assertHeadersSet(actualResult: Result, testUser: Boolean = false) = {
     val actualHeaders = actualResult.header.headers
     actualHeaders.get("previousHeader") should beEqualTo(Some("previousHeaderValue"))
     actualHeaders.get(XGuIdentityId) should beEqualTo(Some("testUserId"))
     actualHeaders.get(XGuMembershipTestUser) should beEqualTo(Some(testUser.toString))
     actualHeaders.size should beEqualTo(3)
   }
-  
+
   "AddGuIdentityHeaders" should {
-  
+
     "add headers for user " in {
       val actualResult = AddGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, user)
       assertHeadersSet(actualResult)
     }
-    
+
     "add headers for test user " in {
       val testUsername = testUsernames.generate();
-      val testUser = user.copy(publicFields = PublicFields(
-        username = Some(testUsername),
-        displayName = Some(testUsername)
-      ))
+      val testUser = user.copy(publicFields =
+        PublicFields(
+          username = Some(testUsername),
+          displayName = Some(testUsername),
+        ),
+      )
       val actualResult = AddGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, testUser)
       assertHeadersSet(actualResult, testUser = true)
     }
@@ -76,16 +78,16 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
     }
     "consider empty username as non test user" in {
       AddGuIdentityHeaders.isTestUser(None) should beFalse
-    }    
+    }
   }
-  
+
   "fromIdapiIfMissing should not change the headers or call idapi if the result already has identity headers" in {
     val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithAllIdentityHeaders, identityService)
     val actualResult = Await.result(futureActualResult, 5.seconds)
     verifyNoInteractions(identityService)
     assertHeadersSet(actualResult)
   }
-  
+
   "fromIdapiIfMissing should call idapi and set the headers if the result doesn't already have identity headers" in {
     val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders, identityService)
     val actualResult = Await.result(futureActualResult, 5.seconds)
@@ -103,5 +105,5 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
     actualResult.header.headers.size should beEqualTo(1)
     actualResult.header.headers.get("previousHeader") should beEqualTo(Some("previousHeaderValue"))
   }
-  
+
 }

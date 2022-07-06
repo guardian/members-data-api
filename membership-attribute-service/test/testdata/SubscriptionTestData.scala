@@ -16,26 +16,122 @@ trait SubscriptionTestData {
   def referenceDate: LocalDate
 
   val friendPlan = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Friend.type]](
-    RatePlanId("idFriend"), ProductRatePlanId("prpi"), "Friend", "desc", "Friend", Product.Membership,FreeCharge(Friend, Set(GBP)), referenceDate, referenceDate + 1.year
+    RatePlanId("idFriend"),
+    ProductRatePlanId("prpi"),
+    "Friend",
+    "desc",
+    "Friend",
+    Product.Membership,
+    FreeCharge(Friend, Set(GBP)),
+    referenceDate,
+    referenceDate + 1.year,
   )
-  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Supporter = PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]](
-    RatePlanId("idSupporter"), ProductRatePlanId("prpi"), "Supporter", "desc", "Supporter", Product.Membership, List.empty, PaidCharge(Supporter, BillingPeriod.Year, PricingSummary(Map(GBP -> Price(49.0f, GBP))), ProductRatePlanChargeId("bar"), SubscriptionRatePlanChargeId("nar")), None, startDate, endDate
-  )
-  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack = PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
-    RatePlanId("idDigipack"), ProductRatePlanId("prpi"), "Digipack", "desc", "Digital Pack", Product.Digipack, List.empty, PaidCharge(Digipack, BillingPeriod.Year, PricingSummary(Map(GBP -> Price(119.90f, GBP))), ProductRatePlanChargeId("baz"), SubscriptionRatePlanChargeId("naz")), None, startDate, endDate
-  )
+  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Supporter =
+    PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]](
+      RatePlanId("idSupporter"),
+      ProductRatePlanId("prpi"),
+      "Supporter",
+      "desc",
+      "Supporter",
+      Product.Membership,
+      List.empty,
+      PaidCharge(
+        Supporter,
+        BillingPeriod.Year,
+        PricingSummary(Map(GBP -> Price(49.0f, GBP))),
+        ProductRatePlanChargeId("bar"),
+        SubscriptionRatePlanChargeId("nar"),
+      ),
+      None,
+      startDate,
+      endDate,
+    )
+  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack =
+    PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
+      RatePlanId("idDigipack"),
+      ProductRatePlanId("prpi"),
+      "Digipack",
+      "desc",
+      "Digital Pack",
+      Product.Digipack,
+      List.empty,
+      PaidCharge(
+        Digipack,
+        BillingPeriod.Year,
+        PricingSummary(Map(GBP -> Price(119.90f, GBP))),
+        ProductRatePlanChargeId("baz"),
+        SubscriptionRatePlanChargeId("naz"),
+      ),
+      None,
+      startDate,
+      endDate,
+    )
   def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges](
-    RatePlanId("idPaperPlan"), ProductRatePlanId("prpi"), "Sunday", "desc", "Sunday", Product.Delivery, List.empty, PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, None), None, startDate, endDate
+    RatePlanId("idPaperPlan"),
+    ProductRatePlanId("prpi"),
+    "Sunday",
+    "desc",
+    "Sunday",
+    Product.Delivery,
+    List.empty,
+    PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, None),
+    None,
+    startDate,
+    endDate,
   )
   def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges](
-    RatePlanId("idPaperPlusPlan"), ProductRatePlanId("prpi"), "Sunday+", "desc", "Sunday+", Product.Delivery, List.empty, PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, Some(PricingSummary(Map(GBP -> Price(119.90f, GBP))))), None, startDate, endDate
+    RatePlanId("idPaperPlusPlan"),
+    ProductRatePlanId("prpi"),
+    "Sunday+",
+    "desc",
+    "Sunday+",
+    Product.Delivery,
+    List.empty,
+    PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, Some(PricingSummary(Map(GBP -> Price(119.90f, GBP))))),
+    None,
+    startDate,
+    endDate,
   )
-  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Contributor = PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
-    RatePlanId("idContributor"), ProductRatePlanId("prpi"), "Monthly Contribution", "desc", "Monthly Contribution", Product.Contribution, List.empty, PaidCharge(Contributor, BillingPeriod.Month, PricingSummary(Map(GBP -> Price(5.0f, GBP))), ProductRatePlanChargeId("bar"), SubscriptionRatePlanChargeId("nar")), None, startDate, endDate
-  )
-  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.WeeklyPlan = PaidSubscriptionPlan[Product.WeeklyDomestic, PaidCharge[Benefit.Weekly.type, BillingPeriod]](
-    RatePlanId("idGuardianWeeklyPlan"), ProductRatePlanId("prpi"), "Guardian Weekly", "desc", "Guardian Weekly", Product.WeeklyDomestic, List.empty, PaidCharge(Weekly, BillingPeriod.Quarter, PricingSummary(Map(GBP -> Price(37.50f, GBP))), ProductRatePlanChargeId("bar"), SubscriptionRatePlanChargeId("nar")), None, startDate, endDate
-  )
+  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Contributor =
+    PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
+      RatePlanId("idContributor"),
+      ProductRatePlanId("prpi"),
+      "Monthly Contribution",
+      "desc",
+      "Monthly Contribution",
+      Product.Contribution,
+      List.empty,
+      PaidCharge(
+        Contributor,
+        BillingPeriod.Month,
+        PricingSummary(Map(GBP -> Price(5.0f, GBP))),
+        ProductRatePlanChargeId("bar"),
+        SubscriptionRatePlanChargeId("nar"),
+      ),
+      None,
+      startDate,
+      endDate,
+    )
+  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.WeeklyPlan =
+    PaidSubscriptionPlan[Product.WeeklyDomestic, PaidCharge[Benefit.Weekly.type, BillingPeriod]](
+      RatePlanId("idGuardianWeeklyPlan"),
+      ProductRatePlanId("prpi"),
+      "Guardian Weekly",
+      "desc",
+      "Guardian Weekly",
+      Product.WeeklyDomestic,
+      List.empty,
+      PaidCharge(
+        Weekly,
+        BillingPeriod.Quarter,
+        PricingSummary(Map(GBP -> Price(37.50f, GBP))),
+        ProductRatePlanChargeId("bar"),
+        SubscriptionRatePlanChargeId("nar"),
+      ),
+      None,
+      startDate,
+      endDate,
+    )
 
   def toSubscription[P <: SubscriptionPlan.AnyPlan](isCancelled: Boolean)(plans: NonEmptyList[P]): Subscription[P] = {
     Subscription(
@@ -53,7 +149,7 @@ trait SubscriptionTestData {
       plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
       readerType = ReaderType.Direct,
       gifteeIdentityId = None,
-      autoRenew = true
+      autoRenew = true,
     )
   }
 

@@ -11,7 +11,7 @@ import scala.util.control.Exception
 
 class ContactController(
     commonActions: CommonActions,
-    override val controllerComponents: ControllerComponents
+    override val controllerComponents: ControllerComponents,
 ) extends BaseController
     with LazyLogging {
 
@@ -31,34 +31,34 @@ class ContactController(
 
           submitted match {
             case Left(parsingFailure) => Future.successful(BadRequest(parsingFailure.getMessage))
-            case Right(None)          => Future.successful(BadRequest(s"Not json: ${request.body}"))
+            case Right(None) => Future.successful(BadRequest(s"Not json: ${request.body}"))
             case Right(Some(address)) =>
               val contactRepo = request.touchpoint.contactRepo
               update(contactRepo, contactId, address) map { _ =>
                 NoContent
-              } recover {
-                case updateFailure => BadGateway(updateFailure.getMessage)
+              } recover { case updateFailure =>
+                BadGateway(updateFailure.getMessage)
               }
           }
         } else
           Future.successful(
             BadRequest(
-              s"Contact $contactId not related to current user ${request.redirectAdvice.userId}"
-            )
+              s"Contact $contactId not related to current user ${request.redirectAdvice.userId}",
+            ),
           )
       }
     }
 
   private def isContactOwnedByRequester(
       request: AuthAndBackendRequest[AnyContent],
-      contactId: String
+      contactId: String,
   ): Future[Boolean] = {
     val contactRepo = request.touchpoint.contactRepo
     request.redirectAdvice.userId match {
       case Some(userId) =>
         contactRepo.get(userId).map(_.toEither).map {
           case Right(Some(contact)) => contact.salesforceContactId == contactId
-          case _                  => false
+          case _ => false
         }
       case None => Future.successful(false)
     }
@@ -67,7 +67,7 @@ class ContactController(
   private def update(
       contactRepo: SimpleContactRepository,
       contactId: String,
-      address: DeliveryAddress
+      address: DeliveryAddress,
   ): Future[Unit] = {
     val contactFields = {
       def contactField(name: String, optValue: Option[String]): Map[String, String] =
