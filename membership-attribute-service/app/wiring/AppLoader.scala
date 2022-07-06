@@ -17,12 +17,11 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.CORSFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.{AttributesFromZuora, MobileSubscriptionServiceImpl, PostgresDatabaseService}
+import services.{MobileSubscriptionServiceImpl, PostgresDatabaseService}
 
 import scala.concurrent.ExecutionContext
 
-class AppLoader extends ApplicationLoader
-{
+class AppLoader extends ApplicationLoader {
   def load(context: Context) = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
@@ -34,14 +33,11 @@ class AppLoader extends ApplicationLoader
 }
 
 class MyComponents(context: Context)
-  extends BuiltInComponentsFromContext(context)
+    extends BuiltInComponentsFromContext(context)
     with AhcWSComponents
     with CSRFComponents
     with HikariCPComponents
-    with DBComponents
-{
-
-
+    with DBComponents {
 
   val touchPointBackends = new TouchpointBackends(actorSystem)
   val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
@@ -51,10 +47,9 @@ class MyComponents(context: Context)
       configuration,
       devContext.map(_.sourceMapper),
       Some(router),
-      touchPointBackends.normal.identityAuthService
+      touchPointBackends.normal.identityAuthService,
     )
   implicit val system: ActorSystem = actorSystem
-  val attributesFromZuora = new AttributesFromZuora()
 
   val dbService = {
     val db = dbApi.database("oneOffStore")
@@ -68,11 +63,11 @@ class MyComponents(context: Context)
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
-    new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService, mobileSubscriptionService),
+    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService),
     new ExistingPaymentOptionsController(commonActions, controllerComponents),
     new AccountController(commonActions, controllerComponents, dbService),
     new PaymentUpdateController(commonActions, controllerComponents),
-    new ContactController(commonActions, controllerComponents)
+    new ContactController(commonActions, controllerComponents),
   )
 
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
@@ -83,7 +78,7 @@ class MyComponents(context: Context)
     new AddEC2InstanceHeader(wsClient),
     new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService),
     CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = postPaths),
-    CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = Seq("/user-attributes"))
+    CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = Seq("/user-attributes")),
   )
 
 }
