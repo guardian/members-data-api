@@ -1,13 +1,9 @@
 package models
 
-import java.util.Date
-
-import anorm.{RowParser, Macro, Row, Success, ~}
+import anorm.{Macro, RowParser}
 import play.api.libs.json.{Json, Writes}
-import org.scalactic.Bool
 
-sealed trait RecurringReminderStatus 
-
+sealed trait RecurringReminderStatus
 
 object RecurringReminderStatus {
   case object NotSet extends RecurringReminderStatus
@@ -23,18 +19,18 @@ object RecurringReminderStatus {
   }
 }
 
-case class SupportReminderDb (
-  is_cancelled: Boolean,
-  reminder_code: java.util.UUID,
+case class SupportReminderDb(
+    is_cancelled: Boolean,
+    reminder_code: java.util.UUID,
 )
 
 object SupportReminderDb {
   val supportReminderDbRowParser: RowParser[SupportReminderDb] = Macro.indexedParser[SupportReminderDb]
 }
 
-case class SupportReminders (
-  recurringStatus: RecurringReminderStatus,
-  recurringReminderCode: Option[String],
+case class SupportReminders(
+    recurringStatus: RecurringReminderStatus,
+    recurringReminderCode: Option[String],
 )
 
 object SupportReminders {

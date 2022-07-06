@@ -7,5 +7,5 @@ import com.gu.salesforce.Contact
 case class ContactAndSubscription(
     contact: Contact,
     subscription: Subscription[AnyPlan],
-    isGiftRedemption: Boolean
+    isGiftRedemption: Boolean,
 )
