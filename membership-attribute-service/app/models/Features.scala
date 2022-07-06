@@ -18,7 +18,7 @@ object Features {
     Features(
       userId = Some(attributes.UserId),
       adblockMessage = !attributes.isPaidTier,
-      membershipJoinDate = attributes.MembershipJoinDate
+      membershipJoinDate = attributes.MembershipJoinDate,
     )
   }
 
@@ -26,7 +26,7 @@ object Features {
 }
 
 case class Features(
-  userId: Option[String],
-  adblockMessage: Boolean,
-  membershipJoinDate: Option[LocalDate]
+    userId: Option[String],
+    adblockMessage: Boolean,
+    membershipJoinDate: Option[LocalDate],
 )
