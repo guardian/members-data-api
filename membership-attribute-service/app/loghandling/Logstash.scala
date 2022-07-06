@@ -4,13 +4,20 @@ import com.amazonaws.util.EC2MetadataUtils
 import configuration.Config
 import com.gu.aws.ProfileName
 import com.typesafe.scalalogging.StrictLogging
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProvider,
+  AwsCredentialsProviderChain,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 
-case class LogStashConf(enabled: Boolean,
-  stream: String,
-  region: String,
-  awsCredentialsProvider: AwsCredentialsProvider,
-  customFields: Map[String, String])
+case class LogStashConf(
+    enabled: Boolean,
+    stream: String,
+    region: String,
+    awsCredentialsProvider: AwsCredentialsProvider,
+    customFields: Map[String, String],
+)
 
 object Logstash extends StrictLogging {
 
@@ -20,12 +27,12 @@ object Logstash extends StrictLogging {
     .build()
 
   def customFields(playConfig: Config.type) = Map(
-    "stack" -> "unknownStack",// all TODO
+    "stack" -> "unknownStack", // all TODO
     "app" -> playConfig.applicationName,
     "stage" -> playConfig.stage,
     "build" -> "unknownBuild",
     "revision" -> "unknownRevision",
-    "ec2_instance" -> Option(EC2MetadataUtils.getInstanceId).getOrElse("Not running on ec2")
+    "ec2_instance" -> Option(EC2MetadataUtils.getInstanceId).getOrElse("Not running on ec2"),
   )
 
   def config(playConfig: Config.type) = for {
@@ -37,7 +44,7 @@ object Logstash extends StrictLogging {
       stream,
       region,
       CredentialsProvider,
-      customFields(playConfig)
+      customFields(playConfig),
     )
   }
 
