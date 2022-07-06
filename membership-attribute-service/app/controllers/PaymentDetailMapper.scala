@@ -27,20 +27,20 @@ object PaymentDetailMapper extends LazyLogging {
     plan = PersonalPlan(
       name = giftSub.plan.productName,
       price = Price(0f, giftSub.plan.charges.currencies.head),
-      interval = BillingPeriod.Year.noun
+      interval = BillingPeriod.Year.noun,
     ),
     subscriberId = giftSub.name.get,
-    remainingTrialLength = 0
+    remainingTrialLength = 0,
   )
 
   def paymentDetailsForSub(
-    isGiftRedemption: Boolean,
-    freeOrPaidSub: Either[Subscription[SubscriptionPlan.Free],Subscription[SubscriptionPlan.Paid]],
-    paymentService: PaymentService
+      isGiftRedemption: Boolean,
+      freeOrPaidSub: Either[Subscription[SubscriptionPlan.Free], Subscription[SubscriptionPlan.Paid]],
+      paymentService: PaymentService,
   )(implicit ec: ExecutionContext): Future[PaymentDetails] = freeOrPaidSub match {
     case Right(giftSub) if isGiftRedemption =>
       Future.successful(getGiftPaymentDetails(giftSub))
-    case Right(paidSub)  =>
+    case Right(paidSub) =>
       val paymentDetails = paymentService.paymentDetails(\/.fromEither(freeOrPaidSub), defaultMandateIdIfApplicable = Some(""))
       paymentDetails.onComplete {
         case Failure(exception) => logger.error(s"Failed to get payment details for $paidSub: $exception")
