@@ -12,7 +12,7 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{PaidChargeList, Subscription, SubscriptionPlan}
-import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.{CloudWatch, SafeLogger}
 import com.gu.monitoring.SafeLogger._
 import com.gu.salesforce.{Contact, SimpleContactRepository}
 import com.gu.services.model.PaymentDetails
@@ -40,6 +40,8 @@ import scalaz.{EitherT, IList, ListT, OptionT, \/}
 import utils.OptionEither.FutureEither
 import utils.{ListEither, OptionEither}
 import SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
+import com.gu.memsub.util.Timing
+import configuration.Config
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -478,7 +480,9 @@ class AccountController(
       logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
 
       (for {
-        fromZuora <- OptionEither.liftOption(getAccountDetailsFromZuora(filter, maybeUserId).run.toEither)
+        fromZuora <- OptionEither.liftOption(Timing.record(new AccountControllerMetrics(Config.stage), "accountDetailsFromZuora") {
+          getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
+        })
         fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)
       } yield (fromZuora.toList ++ fromStripe).map(_.toJson)).run.run
         .map(_.toEither)
