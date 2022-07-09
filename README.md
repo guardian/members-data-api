@@ -3,21 +3,6 @@
 The members' data API is a Play app that manages and retrieves supporter attributes associated with a user.  
 It runs on https://members-data-api.theguardian.com/.
 
-
-## How do we handle Zuora 40 concurrent requests limit?
-
-When users visit dotcom a check is made for entitlements. For example, should ads be displayed. This results in high
-load on members-data-api which we need to manage. In particular Zuora does not provide a caching mechanism whilst
-at the same time having 40 concurrent requests limit. Note this limit applies globally across our systems, and Zuora
-does not provide segregation by a particular client. Hence, the onus is on us to manage the limit.
-
-There are few ways we try to manage the load 
-1. dotcom cookies that expire after 24 hours
-1. mem-data-api DynamoDB table with particular TTL
-1. mechanism to control number of concurrent Zuora requests each mem-data-api instance can make (currently there are 6)
-
-With current load management we hit Zuora around 1000 per minute.
-
 ### Dotcom
 theguardian.com website is the biggest single consumer of `members-data-api`, specifically the `/user-attributes/me` endpoint, which it uses to determine both ad-free (becuase user has digital subscription) and if we should hide 'support messaging/asks' (banner, epic, header/footer support buttons etc).
 
@@ -38,14 +23,12 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
   - [frontend/static/src/javascripts/projects/common/modules/commercial/user-features.ts](https://github.com/guardian/frontend/blob/main/static/src/javascripts/projects/common/modules/commercial/user-features.ts)
   - [frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js](https://github.com/guardian/frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js)
 
-### DynamoDB table
-
-1. Count Zuora concurrent requests (per instance)
-1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
-1. Calculate concurrency limit per instance
-1. If the count is greater than limit, then hit cache
-1. If the count is less than limit and Zuora is healthy, then hit Zuora
-1. If the count is less than limit and Zuora is unhealthy, then hit cache
+### User attributes data sources
+User attributes (which products a user currently holds) are served from three sources
+1. The `SupporterProductData-[STAGE]` DynamoDB table - This table is populated by a scheduled extract
+from Stripe (Guardian Patrons only) and Zuora (digital and print subscriptions & recurring contributions)
+2. The `contributions-store-[STAGE]` Postgres database (one off contributions only)
+3. The [mobile purchases api](https://github.com/guardian/mobile-purchases) (in-app purchases only)
 
 ### Limiting concurrent requests
 
@@ -116,7 +99,7 @@ Renew them by following the steps in [Identity frontend local sign in](#identity
 
 ## Running tests
 
-run sbt and then test.  It will download a dynamodb table from S3 and use that.  Tip: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
+run sbt and then test
 
 ### Identity Frontend
 
@@ -128,13 +111,6 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
     }
  
 ## API Docs
-
-The SupporterAttributesFallback Dynamo table has identity id as a primary key. Corresponding to each identity id in the table 
-we have information about that user's membership, subscriptions, and/or digital pack. 
-
-On each lookup call (i.e. /user-attributes/{me}), we derive this information from subscriptions via Zuora, 
-and then update the entry if it's out of date. If we can't get subscriptions from Zuora, we fall back to the 
-SupporterAttributesFallback table. There is a TTL on the SupporterAttributesFallback table. 
 
 ### GET /user-attributes/me
 
