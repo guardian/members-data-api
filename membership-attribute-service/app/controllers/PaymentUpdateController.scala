@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import com.gu.zuora.api.GoCardless
+import com.gu.zuora.api.GoCardlessZuoraInstance
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import play.api.data.Form
@@ -141,7 +141,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
       createPaymentMethod = CreatePaymentMethod(
         accountId = subscription.accountId,
         paymentMethod = bankTransferPaymentMethod,
-        paymentGateway = GoCardless,
+        paymentGateway = GoCardlessZuoraInstance,
         billtoContact = billToContact,
         invoiceTemplateOverride = None,
       )
