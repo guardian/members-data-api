@@ -16,6 +16,7 @@ case class ContentAccess(
     member: Boolean,
     paidMember: Boolean,
     recurringContributor: Boolean,
+    supporterPlus: Boolean,
     digitalPack: Boolean,
     paperSubscriber: Boolean,
     guardianWeeklySubscriber: Boolean,
@@ -33,6 +34,7 @@ case class Attributes(
     RecurringContributionPaymentPlan: Option[String] = None,
     OneOffContributionDate: Option[LocalDate] = None,
     MembershipJoinDate: Option[LocalDate] = None,
+    SupporterPlusExpiryDate: Option[LocalDate] = None,
     DigitalSubscriptionExpiryDate: Option[LocalDate] = None,
     PaperSubscriptionExpiryDate: Option[LocalDate] = None,
     GuardianWeeklySubscriptionExpiryDate: Option[LocalDate] = None,
@@ -48,6 +50,7 @@ case class Attributes(
   lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
   lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
   lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(3)))
+  lazy val isSupporterPlus = SupporterPlusExpiryDate.exists(_.isAfter(now))
   lazy val staffDigitalSubscriptionExpiryDate: Option[LocalDate] = Tier.exists(_.equalsIgnoreCase("staff")).option(now.plusDays(1))
   lazy val latestDigitalSubscriptionExpiryDate =
     Some(Set(staffDigitalSubscriptionExpiryDate, DigitalSubscriptionExpiryDate).flatten).filter(_.nonEmpty).map(_.max)
@@ -61,7 +64,8 @@ case class Attributes(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
     recurringContributor = isRecurringContributor,
-    digitalPack = digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianPatron,
+    supporterPlus = isSupporterPlus,
+    digitalPack = digitalSubscriberHasActivePlan || isPaperSubscriber || isGuardianPatron || isSupporterPlus,
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
@@ -90,6 +94,7 @@ object Attributes {
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
+      (__ \ "supporterPlusExpiryDate").writeNullable[LocalDate] and
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
