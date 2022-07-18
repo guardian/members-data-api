@@ -6,6 +6,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
+import com.gu.zuora.api.GoCardlessZuoraInstance
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import play.api.data.Form
@@ -137,21 +138,13 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
         lastName = billToContact.lastName,
         countryCode = "GB",
       )
-      createPaymentMethod <- EitherT.fromEither(Future.successful {
-        account.paymentGateway
-          .map(paymentGateway =>
-            CreatePaymentMethod(
-              accountId = subscription.accountId,
-              paymentMethod = bankTransferPaymentMethod,
-              paymentGateway = paymentGateway,
-              billtoContact = billToContact,
-              invoiceTemplateOverride = None,
-            ),
-          )
-          .toRight(
-            s"Unrecognised payment gateway for account ${subscription.accountId}",
-          )
-      })
+      createPaymentMethod = CreatePaymentMethod(
+        accountId = subscription.accountId,
+        paymentMethod = bankTransferPaymentMethod,
+        paymentGateway = GoCardlessZuoraInstance,
+        billtoContact = billToContact,
+        invoiceTemplateOverride = None,
+      )
       _ <- EitherT.fromEither(annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"))
       freshDefaultPaymentMethodOption <- EitherT.fromEither(
         annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),
