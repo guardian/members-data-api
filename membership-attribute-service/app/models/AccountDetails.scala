@@ -238,7 +238,7 @@ object CancelledSubscription {
               "subscriptionId" -> subscription.name.get,
               "cancellationEffectiveDate" -> subscription.termEndDate,
               "start" -> subscription.acceptanceDate,
-              "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
+              "end" -> subscription.termEndDate,
               "readerType" -> subscription.readerType.value,
               "accountId" -> subscription.accountId.get,
             ),
