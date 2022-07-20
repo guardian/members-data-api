@@ -43,6 +43,8 @@ object AccountDetails {
 
       val mmaCategory = mmaCategoryFrom(product)
 
+      val endDate = paymentDetails.chargedThroughDate.getOrElse(paymentDetails.termEndDate)
+
       val paymentMethod = paymentDetails.paymentMethod match {
         case Some(payPal: PayPalMethod) =>
           Json.obj(
@@ -138,7 +140,6 @@ object AccountDetails {
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 
       val startDate: LocalDate = sortedPlans.headOption.map(_.start).getOrElse(paymentDetails.customerAcceptanceDate)
-      val endDate: LocalDate = sortedPlans.headOption.map(_.end).getOrElse(paymentDetails.termEndDate)
 
       if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
