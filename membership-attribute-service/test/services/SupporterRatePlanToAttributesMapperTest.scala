@@ -320,6 +320,8 @@ object SupporterRatePlanToAttributesMapperTest {
   // This is a list of all active product rate plans from an extract taken
   // using the support-frontend/supporter-product-data project on 26th Feb 2021
   val allActiveProductRatePlans = List(
+    ("Supporter Plus Annual", "8a12865b8219d9b40182210618a464ba"),
+    ("Supporter Plus Monthly", "8a12865b8219d9b401822106192b64dc"),
     ("Annual Contribution", "2c92a0fc5e1dc084015e37f58c200eea"),
     ("Digital Pack Annual", "2c92a0fb4edd70c8014edeaa4e972204"),
     ("Digital Pack Monthly", "2c92a0fb4edd70c8014edeaa4eae220a"),

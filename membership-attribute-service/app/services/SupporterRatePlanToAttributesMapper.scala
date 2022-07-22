@@ -65,8 +65,8 @@ object SupporterRatePlanToAttributesMapper {
       "PROD" -> Map(
         List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
         List(
-          "todo",
-          "todo",
+          "8a12865b8219d9b401822106192b64dc",
+          "8a12865b8219d9b40182210618a464ba",
         ) -> supporterPlusTransformer,
         List(
           "2c92a0fb4edd70c8014edeaa4eae220a",
@@ -175,8 +175,8 @@ object SupporterRatePlanToAttributesMapper {
       "UAT" -> Map(
         List("guardian_patron") -> guardianPatronTransformer,
         List(
-          "todo",
-          "todo",
+          "8ad088718219a6b601822036a6c91f5c",
+          "8ad088718219a6b601822036a5801f34",
         ) -> supporterPlusTransformer,
         List(
           "2c92c0f94f2acf73014f2c908f671591",
