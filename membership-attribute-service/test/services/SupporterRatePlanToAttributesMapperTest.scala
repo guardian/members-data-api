@@ -261,6 +261,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           Some("Monthly Contribution"),
           None,
           None,
+          None,
           Some(termEndDate),
           Some(termEndDate),
           Some(termEndDate),
