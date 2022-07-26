@@ -37,9 +37,9 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
           ratePlanItem
         })
       } yield
-        if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty) {
+        if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
           Right(futureRatePlanItems)
-        } else
+        else
           Left(errorMessage(futureErrors)),
     )
   }

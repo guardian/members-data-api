@@ -269,7 +269,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                      |    "member": false,
                      |    "paidMember": false,
                      |    "recurringContributor": false,
-                     |    "supporterPlus":false,
+                     |    "supporterPlus" : false,
                      |    "digitalPack": false,
                      |    "paperSubscriber": false,
                      |    "guardianWeeklySubscriber": false,
