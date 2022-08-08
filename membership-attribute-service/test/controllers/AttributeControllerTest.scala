@@ -28,6 +28,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val validUserId = "123"
   private val userWithoutAttributesUserId = "456"
   private val unvalidatedEmailUserId = "789"
+  private val userWithRecurringContributionId = "987"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
@@ -38,10 +39,15 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
     GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
   )
+  private val userWithRecurringContributionAttributes = Attributes(
+    UserId = userWithRecurringContributionId,
+    RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+  )
 
   private val validUserCookie = Cookie("validUser", "true")
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
+  private val userWithRecurringContributionCookie = Cookie("userWithRecurringContribution", "true")
   private val validUser = User(
     primaryEmailAddress = "test@gu.com",
     id = validUserId,
@@ -55,6 +61,10 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithoutAttributes = User(
     primaryEmailAddress = "notcached@gu.com",
     id = userWithoutAttributesUserId,
+  )
+  private val userWithRecurringContribution = User(
+    primaryEmailAddress = "userWithRecurringContribution@gu.com",
+    id = userWithRecurringContributionId,
   )
 
   private val guardianEmployeeUser = User(
@@ -87,6 +97,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Some(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Some(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Some(validEmployeeUser))
+        case Some(c) if c == userWithRecurringContributionCookie => Future.successful(Some(userWithRecurringContribution))
         case _ => Future.successful(None)
       }
   }
@@ -138,6 +149,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       )(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
         if (identityId == validUserId || identityId == validEmployeeUser.id)
           ("Zuora", Some(testAttributes))
+        else if (identityId == userWithRecurringContributionId)
+          ("Zuora", Some(userWithRecurringContributionAttributes))
         else
           ("Zuora", None)
       }
@@ -360,6 +373,25 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val req = FakeRequest().withCookies(validEmployeeUserCookie)
       contentAsJson(controller.attributes(req)) shouldEqual
         Json.toJson(testAttributes.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
+    }
+
+    "allow SupporterPlus access for recurring contributors on apps" in {
+      val req = FakeRequest()
+        .withCookies(userWithRecurringContributionCookie)
+        .withHeaders(USER_AGENT -> "Guardian/18447 CFNetwork/1333.0.4 Darwin/21.5.0")
+
+      val attribsWithSupporterPlus =
+        userWithRecurringContributionAttributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
+
+      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(attribsWithSupporterPlus)
+    }
+
+    "do not allow SupporterPlus access for recurring contributors if not on apps" in {
+      val req = FakeRequest()
+        .withCookies(userWithRecurringContributionCookie)
+        .withHeaders(USER_AGENT -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:102.0) Gecko/20100101 Firefox/102.0")
+
+      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(userWithRecurringContributionAttributes)
     }
 
   }

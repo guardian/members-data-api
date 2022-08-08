@@ -89,6 +89,12 @@ class AttributeController(
       .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
+  private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
+  private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
+    if (attributes.isRecurringContributor && userAgent.exists(isLiveApp)) {
+      attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
+    } else attributes
+
   private def lookup(
       endpointDescription: String,
       onSuccessMember: Attributes => Result,
@@ -118,9 +124,9 @@ class AttributeController(
               supporterAttributes,
               user.id,
             )
-            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(
-              addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription),
-            )
+            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes
+              .map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
+              .map(upgradeRecurringContributorsOnApps(request.headers.get(USER_AGENT), _))
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(
