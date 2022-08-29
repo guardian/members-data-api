@@ -22,7 +22,7 @@ object Dependencies {
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.34"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
-  val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
+  val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
   val netty = "io.netty" % "netty-codec" % "4.1.74.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.74.Final"
 
