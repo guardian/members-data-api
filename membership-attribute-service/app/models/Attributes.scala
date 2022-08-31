@@ -59,6 +59,7 @@ case class Attributes(
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
+  lazy val isMonthlyRecurringContributor = RecurringContributionPaymentPlan.contains("Monthly Contribution")
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,

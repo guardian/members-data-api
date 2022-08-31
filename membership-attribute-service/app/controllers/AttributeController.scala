@@ -2,7 +2,9 @@ package controllers
 
 import actions._
 import akka.actor.ActorSystem
+import com.gu.i18n.Currency
 import com.gu.identity.model.User
+import com.gu.memsub.Price
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
@@ -90,6 +92,17 @@ class AttributeController(
   }
 
   private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
+  private def isHighContributor(price: Price, isMonthly: Boolean): Boolean = {
+    val threshold = price.currency match {
+      case Currency.GBP | Currency.USD | Currency.EUR =>
+        if (isMonthly) 10 else 95
+      case Currency.CAD =>
+        if (isMonthly) 13 else 120
+      case Currency.AUD | Currency.NZD =>
+        if (isMonthly) 15 else 140
+    }
+    price.amount >= threshold
+  }
   private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
     if (attributes.isRecurringContributor && userAgent.exists(isLiveApp)) {
       attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
