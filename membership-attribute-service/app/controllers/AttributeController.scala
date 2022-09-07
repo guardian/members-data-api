@@ -4,7 +4,6 @@ import actions._
 import akka.actor.ActorSystem
 import com.gu.i18n.Currency
 import com.gu.identity.model.User
-import com.gu.memsub.Price
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
@@ -92,8 +91,8 @@ class AttributeController(
   }
 
   private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
-  private def isHighContributor(price: Price, isMonthly: Boolean): Boolean = {
-    val threshold = price.currency match {
+  private def isHighContributor(contribution: ContributionAmount, isMonthly: Boolean): Boolean = {
+    val threshold = contribution.currency match {
       case Currency.GBP | Currency.USD | Currency.EUR =>
         if (isMonthly) 10 else 95
       case Currency.CAD =>
@@ -101,10 +100,14 @@ class AttributeController(
       case Currency.AUD | Currency.NZD =>
         if (isMonthly) 15 else 140
     }
-    price.amount >= threshold
+    contribution.amount >= threshold
   }
   private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
-    if (attributes.isRecurringContributor && userAgent.exists(isLiveApp)) {
+    if (
+      attributes.isRecurringContributor &&
+      userAgent.exists(isLiveApp) &&
+      attributes.RecurringContributionAmount.exists(amount => isHighContributor(amount, attributes.isMonthlyRecurringContributor))
+    ) {
       attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
     } else attributes
 
@@ -149,7 +152,7 @@ class AttributeController(
             )
 
             val result = allProductAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,

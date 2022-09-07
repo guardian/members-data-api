@@ -32,6 +32,7 @@ case class Attributes(
     UserId: String,
     Tier: Option[String] = None,
     RecurringContributionPaymentPlan: Option[String] = None,
+    RecurringContributionAmount: Option[ContributionAmount] = None,
     OneOffContributionDate: Option[LocalDate] = None,
     MembershipJoinDate: Option[LocalDate] = None,
     SupporterPlusExpiryDate: Option[LocalDate] = None,
@@ -89,10 +90,14 @@ case class Attributes(
 
 object Attributes {
 
+  import models.ContributionAmount._
+
   implicit val jsAttributesWrites: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
+//      (__ \ "recurringContributionAmount").writeNullable[ContributionAmount] and
+      JsPath.writeNullable[ContributionAmount].contramap[Option[ContributionAmount]](_ => None) and // do not serialize the amount
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "supporterPlusExpiryDate").writeNullable[LocalDate] and
