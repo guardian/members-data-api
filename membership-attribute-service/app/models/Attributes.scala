@@ -96,7 +96,6 @@ object Attributes {
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-//      (__ \ "recurringContributionAmount").writeNullable[ContributionAmount] and
       JsPath.writeNullable[ContributionAmount].contramap[Option[ContributionAmount]](_ => None) and // do not serialize the amount
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
