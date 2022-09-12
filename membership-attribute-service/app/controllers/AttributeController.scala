@@ -104,7 +104,6 @@ class AttributeController(
   }
   private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
     if (
-      attributes.isRecurringContributor &&
       userAgent.exists(isLiveApp) &&
       attributes.RecurringContributionAmount.exists(amount => isHighContributor(amount, attributes.isMonthlyRecurringContributor))
     ) {
