@@ -32,7 +32,7 @@ case class Attributes(
     UserId: String,
     Tier: Option[String] = None,
     RecurringContributionPaymentPlan: Option[String] = None,
-    RecurringContributionAmount: Option[ContributionAmount] = None,
+    HighContributor: Option[Boolean] = None,
     OneOffContributionDate: Option[LocalDate] = None,
     MembershipJoinDate: Option[LocalDate] = None,
     SupporterPlusExpiryDate: Option[LocalDate] = None,
@@ -60,7 +60,6 @@ case class Attributes(
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
-  lazy val isMonthlyRecurringContributor = RecurringContributionPaymentPlan.contains("Monthly Contribution")
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
@@ -90,13 +89,11 @@ case class Attributes(
 
 object Attributes {
 
-  import models.ContributionAmount._
-
   implicit val jsAttributesWrites: OWrites[Attributes] = (
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-      JsPath.writeNullable[ContributionAmount].contramap[Option[ContributionAmount]](_ => None) and // do not serialize the amount
+      JsPath.writeNullable[Boolean].contramap[Option[Boolean]](_ => None) and // do not serialize highContributor
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       (__ \ "supporterPlusExpiryDate").writeNullable[LocalDate] and

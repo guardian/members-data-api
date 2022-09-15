@@ -3,12 +3,11 @@ package controllers
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.gu.i18n.Currency
 import com.gu.identity.model.{StatusFields, User}
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{Attributes, ContributionAmount, MobileSubscriptionStatus}
+import models.{Attributes, MobileSubscriptionStatus}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -44,12 +43,14 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithHighRecurringContributionAttributes = Attributes(
     UserId = userWithHighRecurringContributionId,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    RecurringContributionAmount = Some(ContributionAmount(10, Currency.GBP))
+//    RecurringContributionAmount = Some(ContributionAmount(10, Currency.GBP))
+    HighContributor = Some(true)
   )
   private val userWithLowRecurringContributionAttributes = Attributes(
     UserId = userWithLowRecurringContributionId,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    RecurringContributionAmount = Some(ContributionAmount(9, Currency.GBP))
+//    RecurringContributionAmount = Some(ContributionAmount(9, Currency.GBP))
+    HighContributor = Some(false)
   )
 
   private val validUserCookie = Cookie("validUser", "true")

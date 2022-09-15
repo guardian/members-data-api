@@ -91,22 +91,8 @@ class AttributeController(
   }
 
   private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
-  private def isHighContributor(contribution: ContributionAmount, isMonthly: Boolean): Boolean = {
-    val threshold = contribution.currency match {
-      case Currency.GBP | Currency.USD | Currency.EUR =>
-        if (isMonthly) 10 else 95
-      case Currency.CAD =>
-        if (isMonthly) 13 else 120
-      case Currency.AUD | Currency.NZD =>
-        if (isMonthly) 15 else 140
-    }
-    contribution.amount >= threshold
-  }
   private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
-    if (
-      userAgent.exists(isLiveApp) &&
-      attributes.RecurringContributionAmount.exists(amount => isHighContributor(amount, attributes.isMonthlyRecurringContributor))
-    ) {
+    if (attributes.HighContributor.contains(true) && userAgent.exists(isLiveApp)) {
       attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
     } else attributes
 

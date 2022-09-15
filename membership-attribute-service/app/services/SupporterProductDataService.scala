@@ -3,7 +3,7 @@ package services
 import cats.data.EitherT
 import com.gu.i18n.Currency
 import com.typesafe.scalalogging.LazyLogging
-import models.{Attributes, ContributionAmount, DynamoSupporterRatePlanItem}
+import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.Metrics
 import org.joda.time.LocalDate
 import org.scanamo.DynamoReadError.describe
@@ -22,7 +22,6 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
   implicit val currencyFormat: DynamoFormat[Currency] = DynamoFormat.xmap[Currency,String](s => Currency.fromString(s).toRight(TypeCoercionError(new Throwable("Invalid currency"))), _.iso)
-  implicit val contributionAmountFormat: DynamoFormat[ContributionAmount] = deriveDynamoFormat
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
   def getAttributes(identityId: String): Future[Either[String, Option[Attributes]]] =
