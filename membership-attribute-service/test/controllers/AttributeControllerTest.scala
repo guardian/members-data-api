@@ -43,13 +43,11 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithHighRecurringContributionAttributes = Attributes(
     UserId = userWithHighRecurringContributionId,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-//    RecurringContributionAmount = Some(ContributionAmount(10, Currency.GBP))
     HighContributor = Some(true)
   )
   private val userWithLowRecurringContributionAttributes = Attributes(
     UserId = userWithLowRecurringContributionId,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-//    RecurringContributionAmount = Some(ContributionAmount(9, Currency.GBP))
     HighContributor = Some(false)
   )
 
