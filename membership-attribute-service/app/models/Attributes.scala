@@ -96,7 +96,7 @@ object Attributes {
       JsPath.writeNullable[Boolean].contramap[Option[Boolean]](_ => None) and // do not serialize highContributor
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
-      (__ \ "supporterPlusExpiryDate").writeNullable[LocalDate] and
+      JsPath.writeNullable[LocalDate].contramap[Option[LocalDate]](_ => None) and // do not serialize supporterPlusExpiryDate
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
