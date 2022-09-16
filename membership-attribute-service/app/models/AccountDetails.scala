@@ -90,7 +90,6 @@ object AccountDetails {
         case _ if accountHasMissedRecentPayments && safeToUpdatePaymentMethod =>
           Json.obj(
             "paymentMethod" -> "ResetRequired",
-            "stripePublicKeyForCardAddition" -> stripePublicKey,
           )
         case _ => Json.obj()
       }
@@ -187,6 +186,7 @@ object AccountDetails {
             "readerType" -> accountDetails.subscription.readerType.value,
             "accountId" -> accountDetails.accountId,
             "cancellationEffectiveDate" -> cancellationEffectiveDate,
+            "stripePublicKeyForCardAddition" -> stripePublicKey,
           )),
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
