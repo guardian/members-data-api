@@ -2,6 +2,7 @@ package controllers
 
 import actions._
 import akka.actor.ActorSystem
+import com.gu.i18n.Currency
 import com.gu.identity.model.User
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import filters.AddGuIdentityHeaders
@@ -89,6 +90,12 @@ class AttributeController(
       .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
+  private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
+  private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
+    if (attributes.HighContributor.contains(true) && userAgent.exists(isLiveApp)) {
+      attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
+    } else attributes
+
   private def lookup(
       endpointDescription: String,
       onSuccessMember: Attributes => Result,
@@ -118,9 +125,9 @@ class AttributeController(
               supporterAttributes,
               user.id,
             )
-            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(
-              addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription),
-            )
+            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes
+              .map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
+              .map(upgradeRecurringContributorsOnApps(request.headers.get(USER_AGENT), _))
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(
@@ -130,7 +137,7 @@ class AttributeController(
             )
 
             val result = allProductAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,

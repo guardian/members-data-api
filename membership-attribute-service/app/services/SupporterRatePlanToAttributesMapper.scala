@@ -1,5 +1,6 @@
 package services
 
+import com.gu.i18n.Currency
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import services.MembershipTier.{Friend, Partner, Patron, Staff, Supporter, getMostValuableTier}
@@ -28,6 +29,23 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
 
 object SupporterRatePlanToAttributesMapper {
 
+  private def isHighContributor(item: DynamoSupporterRatePlanItem, isMonthly: Boolean): Boolean = {
+    (item.contributionCurrency, item.contributionAmount) match {
+      case (Some(currency), Some(amount)) =>
+        val threshold = currency match {
+          case Currency.GBP | Currency.USD | Currency.EUR =>
+            if (isMonthly) 10 else 95
+          case Currency.CAD =>
+            if (isMonthly) 13 else 120
+          case Currency.AUD | Currency.NZD =>
+            if (isMonthly) 15 else 140
+        }
+        amount >= threshold
+
+      case _ => false
+    }
+  }
+
   type Stage = String
   type ProductRatePlanId = String
   val digitalSubTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
@@ -38,10 +56,10 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
-  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
+  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"), HighContributor = Some(isHighContributor(supporterRatePlanItem, isMonthly = true)))
+  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"), HighContributor = Some(isHighContributor(supporterRatePlanItem, isMonthly = false)))
   val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
