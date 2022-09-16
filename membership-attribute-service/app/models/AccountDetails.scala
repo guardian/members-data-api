@@ -153,14 +153,15 @@ object AccountDetails {
           "shouldDisplayEmail" -> selfServiceCancellation.shouldDisplayEmail,
           "phoneRegionsToDisplay" -> selfServiceCancellation.phoneRegionsToDisplay,
         ),
+        "billingCountry" -> billingCountry.iterator.mkString,
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
-        Json.obj(
+        billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name)}) ++
+      Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
           "subscription" -> (paymentMethod ++ Json.obj(
             "contactId" -> accountDetails.contactId,
-            "billingCountry" -> billingCountry.iterator.mkString,
             "deliveryAddress" -> accountDetails.deliveryAddress,
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
             "start" -> startDate,
