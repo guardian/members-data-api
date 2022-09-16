@@ -153,7 +153,6 @@ object AccountDetails {
           "shouldDisplayEmail" -> selfServiceCancellation.shouldDisplayEmail,
           "phoneRegionsToDisplay" -> selfServiceCancellation.phoneRegionsToDisplay,
         ),
-        "billingCountry" -> billingCountry.iterator.mkString,
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
         billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name)}) ++
