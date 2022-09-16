@@ -156,7 +156,7 @@ object AccountDetails {
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
         billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name)}) ++
-      Json.obj(
+        Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
           "subscription" -> (paymentMethod ++ Json.obj(
