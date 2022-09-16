@@ -160,6 +160,7 @@ object AccountDetails {
           "optIn" -> !paymentDetails.pendingCancellation,
           "subscription" -> (paymentMethod ++ Json.obj(
             "contactId" -> accountDetails.contactId,
+            "billingCountry" -> billingCountry.iterator.mkString,
             "deliveryAddress" -> accountDetails.deliveryAddress,
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
             "start" -> startDate,
