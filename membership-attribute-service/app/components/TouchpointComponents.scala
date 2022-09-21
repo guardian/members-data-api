@@ -5,6 +5,7 @@ import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.i18n.Country
 import com.gu.identity.IdapiService
+import com.gu.identity.auth.OktaTokenVerifierConfig
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
@@ -21,6 +22,7 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
 import scalaz.std.scalaFuture._
 import services._
+import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -110,6 +112,11 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
-  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi)
+  //todo maybe this should be initialized elsewhere
+  lazy val oktaTokenVerifierConfig =  OktaTokenVerifierConfig(
+    issuerUrl = Config.config.getString("okta.verifier.issuerUrl"),
+    audience = Config.config.getString("okta.verifier.audience")
+  )
+  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, oktaTokenVerifierConfig)
 
 }
