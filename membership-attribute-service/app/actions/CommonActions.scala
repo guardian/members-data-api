@@ -1,9 +1,9 @@
 package actions
 import akka.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
-import com.gu.identity.model.User
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
+import models.AccessClaims
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +30,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
 
 class AuthenticatedUserAndBackendRequest[A](
-    val user: Option[User],
+    val user: Option[AccessClaims],
     val touchpoint: TouchpointComponents,
     request: Request[A],
 ) extends WrappedRequest[A](request)

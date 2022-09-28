@@ -8,7 +8,9 @@ import com.gu.identity.model.{PublicFields, StatusFields, User}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
+import models.AccessClaims
 import org.http4s.Uri
+
 import scala.concurrent.{ExecutionContext, Future}
 
 case class MDAPIUserClaims(
@@ -45,7 +47,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
     IdentityPlayAuthService.unsafeInit(MDAPIUserClaimsParser,idapiConfig, oktaTokenVerifierConfig)
   }
 
-  def user(implicit requestHeader: RequestHeader): Future[Option[User]] = {
+  def user(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
     getUser(requestHeader)
       .handleError { err =>
         err match {
@@ -68,23 +70,17 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
       }
   }
 
-  private def getUser(requestHeader: RequestHeader): Future[Option[User]] = {
+  private def getUser(requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
     val scopes = List("profile", "email")
     identityPlayAuthService.getUserClaimsFromRequest(requestHeader, scopes)
       .map { case (_, claims) => {
-        Some(
-          User(
-            primaryEmailAddress = claims.primaryEmailAddress,
-            id = claims.identityId,
-            publicFields = PublicFields(
-              username = claims.username,
-              displayName = claims.username
-            ),
-            statusFields = StatusFields(
-              userEmailValidated = claims.emailValidated
-            )
-          )
-        )
+        Some(AccessClaims(
+          primaryEmailAddress = claims.primaryEmailAddress,
+          id = claims.identityId,
+          userName = claims.username.get, //this should be opti
+          hasValidatedEmail = claims.username.getOrElse(false)
+        ))
+
       }
       }.unsafeToFuture()
   }

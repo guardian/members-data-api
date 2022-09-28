@@ -3,11 +3,10 @@ package controllers
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.gu.identity.model.{StatusFields, User}
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{Attributes, MobileSubscriptionStatus}
+import models.{AccessClaims, Attributes, MobileSubscriptionStatus}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -43,12 +42,12 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithHighRecurringContributionAttributes = Attributes(
     UserId = userWithHighRecurringContributionId,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    HighContributor = Some(true)
+    HighContributor = Some(true),
   )
   private val userWithLowRecurringContributionAttributes = Attributes(
     UserId = userWithLowRecurringContributionId,
     RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    HighContributor = Some(false)
+    HighContributor = Some(false),
   )
 
   private val validUserCookie = Cookie("validUser", "true")
@@ -56,47 +55,58 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
   private val userWithHighRecurringContributionCookie = Cookie("userWithHighRecurringContribution", "true")
   private val userWithLowRecurringContributionCookie = Cookie("userWithLowRecurringContribution", "true")
-  private val validUser = User(
+  private val validUser = AccessClaims(
     primaryEmailAddress = "test@gu.com",
     id = validUserId,
-    statusFields = StatusFields(userEmailValidated = Some(true)),
+    userName = "u",
+    hasValidatedEmail = true,
   )
-  private val unvalidatedEmailUser = User(
+  private val unvalidatedEmailUser = AccessClaims(
     primaryEmailAddress = "unvalidatedEmail@gu.com",
     id = unvalidatedEmailUserId,
-    statusFields = StatusFields(userEmailValidated = Some(false)),
+    userName = "u",
+    hasValidatedEmail = false,
   )
-  private val userWithoutAttributes = User(
+  private val userWithoutAttributes = AccessClaims(
     primaryEmailAddress = "notcached@gu.com",
     id = userWithoutAttributesUserId,
+    userName = "u",
+    hasValidatedEmail = false,
   )
-  private val userWithHighRecurringContribution = User(
+  private val userWithHighRecurringContribution = AccessClaims(
     primaryEmailAddress = "userWithHighRecurringContribution@gu.com",
     id = userWithHighRecurringContributionId,
+    userName = "u",
+    hasValidatedEmail = false,
   )
-  private val userWithLowRecurringContribution = User(
+  private val userWithLowRecurringContribution = AccessClaims(
     primaryEmailAddress = "userWithLowRecurringContribution@gu.com",
     id = userWithLowRecurringContributionId,
+    userName = "u",
+    hasValidatedEmail = false,
   )
 
-  private val guardianEmployeeUser = User(
+  private val guardianEmployeeUser = AccessClaims(
     primaryEmailAddress = "foo@guardian.co.uk",
     id = "1234321",
-    statusFields = StatusFields(userEmailValidated = Some(true)),
+    userName = "u",
+    hasValidatedEmail = true,
   )
   private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
 
-  private val guardianEmployeeUserTheguardian = User(
+  private val guardianEmployeeUserTheguardian = AccessClaims(
     primaryEmailAddress = "foo@theguardian.com",
     id = "123theguardiancom",
-    statusFields = StatusFields(userEmailValidated = Some(true)),
+    userName = "u",
+    hasValidatedEmail = true,
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
 
-  private val validEmployeeUser = User(
+  private val validEmployeeUser = AccessClaims(
     primaryEmailAddress = "bar@theguardian.com",
     id = "userWithRealProducts",
-    statusFields = StatusFields(userEmailValidated = Some(true)),
+    userName = "u",
+    hasValidatedEmail = true,
   )
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
@@ -121,7 +131,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      fakeAuthService.user(request) map { user: Option[User] =>
+      fakeAuthService.user(request) map { user: Option[AccessClaims] =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
       }
     }
@@ -397,7 +407,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       val attribsWithSupporterPlus =
         userWithHighRecurringContributionAttributes.copy(
-          SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1))
+          SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)),
         )
 
       contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(attribsWithSupporterPlus)
