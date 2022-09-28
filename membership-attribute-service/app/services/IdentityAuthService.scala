@@ -1,14 +1,14 @@
 package services
 
 import _root_.play.api.mvc.RequestHeader
-import com.gu.identity.{IdapiConfig, play}
-import org.http4s.Uri
 import cats.implicits._
-import com.gu.identity.model.User
+import com.gu.identity.IdapiConfig
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
+import models.AccessClaims
+import org.http4s.Uri
+
 import scala.concurrent.{ExecutionContext, Future}
 
 class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext) extends AuthenticationService {
@@ -17,7 +17,7 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
 
   val identityPlayAuthService = IdentityPlayAuthService.unsafeInit(idApiUrl, apiConfig.token, Some("membership"))
 
-  def user(implicit requestHeader: RequestHeader): Future[Option[User]] = {
+  def user(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
     getUser(requestHeader)
       .map(user => Option(user))
       .handleError { err =>
@@ -32,10 +32,17 @@ class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext)
       }
   }
 
-  private def getUser(requestHeader: RequestHeader): Future[User] =
+  private def getUser(requestHeader: RequestHeader): Future[AccessClaims] =
     identityPlayAuthService
       .getUserFromRequest(requestHeader)
-      .map { case (_, user) => user }
+      .map { case (_, user) =>
+        AccessClaims(
+          primaryEmailAddress = user.primaryEmailAddress,
+          id = user.id,
+          userName = user.publicFields.username.getOrElse(""),
+          hasValidatedEmail = user.statusFields.isUserEmailValidated,
+        )
+      }
       .unsafeToFuture()
 
 }

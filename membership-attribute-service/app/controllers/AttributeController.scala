@@ -2,9 +2,6 @@ package controllers
 
 import actions._
 import akka.actor.ActorSystem
-import com.gu.i18n.Currency
-import com.gu.identity.model.User
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
@@ -19,7 +16,6 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 /** What benefits is the user entitled to?
@@ -37,13 +33,11 @@ class AttributeController(
   lazy val metrics = Metrics("AttributesController")
   lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
 
-  private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit
+  private def getLatestOneOffContributionDate(identityId: String, user: AccessClaims)(implicit
       executionContext: ExecutionContext,
   ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
-    val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
-
-    if (userHasValidatedEmail) {
+    if (user.hasValidatedEmail) {
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
         case Left(databaseError) =>
           // Failed to get one-off data, but this should not block the zuora request
@@ -216,7 +210,7 @@ class AttributeController(
 
   def oneOffContributions = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
-      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+      val userHasValidatedEmail = request.user.exists(_.hasValidatedEmail)
 
       val futureResult: Future[Result] = if (userHasValidatedEmail) {
         request.user.map(_.id) match {
@@ -242,7 +236,7 @@ class AttributeController(
   /** Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
     */
   private def maybeAllowAccessToDigipackForGuardianEmployees(
-      maybeUser: Option[User],
+      maybeUser: Option[AccessClaims],
       maybeAttributes: Option[Attributes],
       identityId: String,
   ): Option[Attributes] = {
@@ -251,7 +245,7 @@ class AttributeController(
       (for {
         user <- maybeUser
         email = user.primaryEmailAddress
-        userHasValidatedEmail <- user.statusFields.userEmailValidated
+        userHasValidatedEmail = user.hasValidatedEmail
         emailDomain <- email.split("@").lastOption
         userHasGuardianEmail = List("guardian.co.uk", "theguardian.com").contains(emailDomain)
       } yield {
