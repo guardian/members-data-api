@@ -4,47 +4,21 @@ import _root_.play.api.mvc.RequestHeader
 import cats.implicits._
 import com.gu.identity.IdapiConfig
 import com.gu.identity.auth._
-import com.gu.identity.model.{PublicFields, StatusFields, User}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
-import models.AccessClaims
+import models.{AccessClaims, AccessClaimsParser}
 import org.http4s.Uri
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class MDAPIUserClaims(
-  primaryEmailAddress: String,
-  identityId:String,
-  username: Option[String],
-  emailValidated: Option[Boolean]
-  ) extends UserClaims
-
-object MDAPIUserClaimsParser extends ClaimsParser[MDAPIUserClaims] {
-  override def fromUnparsed(unparsedClaims: UnparsedClaims): Either[ValidationError, MDAPIUserClaims] = DefaultClaimsParser.fromUnparsed(unparsedClaims).map(
-      defaultClaims =>
-        MDAPIUserClaims(
-          primaryEmailAddress = defaultClaims.primaryEmailAddress,
-          identityId = defaultClaims.identityId,
-          username = defaultClaims.username,
-          emailValidated = unparsedClaims.getOptional[Boolean]("email_validated")
-        )
-    )
-
-  override def fromUser(user: User): MDAPIUserClaims = MDAPIUserClaims(
-    primaryEmailAddress = user.primaryEmailAddress,
-    identityId = user.id,
-    username = user.publicFields.username,
-    emailValidated = user.statusFields.userEmailValidated
-  )
-}
 class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaTokenVerifierConfig)(implicit ec: ExecutionContext) extends AuthenticationService {
 
   val idApiUrl = Uri.unsafeFromString(apiConfig.url)
 
   val identityPlayAuthService = {
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
-    IdentityPlayAuthService.unsafeInit(MDAPIUserClaimsParser,idapiConfig, oktaTokenVerifierConfig)
+    IdentityPlayAuthService.unsafeInit(AccessClaimsParser,idapiConfig, oktaTokenVerifierConfig)
   }
 
   def user(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
@@ -73,15 +47,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
   private def getUser(requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
     val scopes = List("profile", "email")
     identityPlayAuthService.getUserClaimsFromRequest(requestHeader, scopes)
-      .map { case (_, claims) => {
-        Some(AccessClaims(
-          primaryEmailAddress = claims.primaryEmailAddress,
-          id = claims.identityId,
-          userName = claims.username.get, //this should be opti
-          hasValidatedEmail = claims.username.getOrElse(false)
-        ))
-
-      }
+      .map { case (_, claims) => Some(claims)
       }.unsafeToFuture()
   }
 }

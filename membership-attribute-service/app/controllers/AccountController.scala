@@ -85,7 +85,7 @@ class AccountController(
     AuthAndBackendViaAuthLibAction.async { implicit request =>
       val tp = request.touchpoint
       val cancelForm = Form { single("reason" -> nonEmptyText) }
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
 
       def handleInputBody(cancelForm: Form[String]): Future[Either[ApiError, String]] = Future.successful {
         cancelForm
@@ -165,7 +165,7 @@ class AccountController(
   private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
     AuthAndBackendViaAuthLibAction.async { implicit request =>
       val tp = request.touchpoint
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
 
       (for {
         cancellationEffectiveDate <- tp.subService
@@ -191,7 +191,7 @@ class AccountController(
 
       implicit val tp: TouchpointComponents = request.touchpoint
       def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
 
       logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
       (for {
@@ -486,7 +486,7 @@ class AccountController(
       }
 
       val tp = request.touchpoint
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
       logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
       (for {
         newPrice <- EitherT.fromEither(Future.successful(validateContributionAmountUpdateForm))

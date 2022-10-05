@@ -19,10 +19,10 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
   val XGuMembershipTestUser = "X-Gu-Membership-Test-User"
   val user = AccessClaims(
     primaryEmailAddress = "someUser@email.com",
-    id = "testUserId",
-    userName = "testUserName",
-    hasValidatedEmail = false,
-  )
+    identityId = "testUserId",
+    username = Some("testUserName"),
+    userEmailValidated = None
+    )
 
   val identityService = mock[IdentityAuthService]
   val request = mock[RequestHeader]
@@ -50,7 +50,7 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
 
     "add headers for test user " in {
       val testUsername = testUsernames.generate()
-      val testUser = user.copy(userName = testUsername)
+      val testUser = user.copy(username = Some(testUsername))
       val actualResult = AddGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, testUser)
       assertHeadersSet(actualResult, testUser = true)
     }

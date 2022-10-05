@@ -40,8 +40,8 @@ object AddGuIdentityHeaders {
   }
 
   def fromUser(result: Result, user: AccessClaims) = result.withHeaders(
-    xGuIdentityIdHeaderName -> user.id,
-    xGuMembershipTestUserHeaderName -> isTestUser(Some(user.userName)).toString,
+    xGuIdentityIdHeaderName -> user.identityId,
+    xGuMembershipTestUserHeaderName -> isTestUser(user.username).toString,
   )
 
   def hasIdentityHeaders(result: Result) = identityHeaderNames.forall(result.header.headers.contains)

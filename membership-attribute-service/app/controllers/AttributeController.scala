@@ -37,7 +37,7 @@ class AttributeController(
       executionContext: ExecutionContext,
   ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
-    if (user.hasValidatedEmail) {
+    if (user.userEmailValidated.contains(true)) {
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
         case Left(databaseError) =>
           // Failed to get one-off data, but this should not block the zuora request
@@ -105,9 +105,9 @@ class AttributeController(
       request.user match {
         case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureSupporterAttributes = getSupporterProductDataAttributes(user.id)
-          val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
-          val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
+          val futureSupporterAttributes = getSupporterProductDataAttributes(user.identityId)
+          val futureOneOffContribution = getLatestOneOffContributionDate(user.identityId, user)
+          val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.identityId)
 
           (for {
             // Fetch one-off data independently of zuora data so that we can handle users with no zuora record
@@ -117,7 +117,7 @@ class AttributeController(
             supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
               request.user,
               supporterAttributes,
-              user.id,
+              user.identityId,
             )
             allProductAttributes: Option[Attributes] = supporterOrStaffAttributes
               .map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
@@ -132,32 +132,32 @@ class AttributeController(
 
             val result = allProductAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
-                logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
+                logInfoWithCustomFields(s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
                   "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString,
                 )
               case Some(attrs) =>
                 attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a digital subscriber expiring $date", customFields("digital-subscriber"))
+                  logInfoWithCustomFields(s"${user.identityId} is a digital subscriber expiring $date", customFields("digital-subscriber"))
                 }
                 attrs.PaperSubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a paper subscriber expiring $date", customFields("paper-subscriber"))
+                  logInfoWithCustomFields(s"${user.identityId} is a paper subscriber expiring $date", customFields("paper-subscriber"))
                 }
                 attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
+                  logInfoWithCustomFields(s"${user.identityId} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
                 }
                 attrs.GuardianPatronExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a Guardian Patron expiring $date", customFields("guardian-patron"))
+                  logInfoWithCustomFields(s"${user.identityId} is a Guardian Patron expiring $date", customFields("guardian-patron"))
                 }
                 attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                  logInfoWithCustomFields(s"${user.id} is a regular $paymentPlan contributor", customFields("contributor"))
+                  logInfoWithCustomFields(s"${user.identityId} is a regular $paymentPlan contributor", customFields("contributor"))
                 }
-                logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+                logInfoWithCustomFields(s"${user.identityId} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                val attr = addOneOffAndMobile(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
-                log.logger.info(s"${user.id} does not have zuora attributes - $attr - found via $fromWhere")
+                val attr = addOneOffAndMobile(Attributes(user.identityId), latestOneOffDate, latestMobileSubscription)
+                log.logger.info(s"${user.identityId} does not have zuora attributes - $attr - found via $fromWhere")
                 Ok(Json.toJson(attr))
               case _ =>
                 onNotFound
@@ -210,10 +210,10 @@ class AttributeController(
 
   def oneOffContributions = {
     AuthAndBackendViaAuthLibAction.async { implicit request =>
-      val userHasValidatedEmail = request.user.exists(_.hasValidatedEmail)
+      val userHasValidatedEmail = request.user.flatMap(_.userEmailValidated).getOrElse(false)
 
       val futureResult: Future[Result] = if (userHasValidatedEmail) {
-        request.user.map(_.id) match {
+        request.user.map(_.identityId) match {
           case Some(identityId) =>
             contributionsStoreDatabaseService.getAllContributions(identityId).map {
               case Left(err) => Ok(err)
@@ -245,7 +245,7 @@ class AttributeController(
       (for {
         user <- maybeUser
         email = user.primaryEmailAddress
-        userHasValidatedEmail = user.hasValidatedEmail
+        userHasValidatedEmail <- user.userEmailValidated
         emailDomain <- email.split("@").lastOption
         userHasGuardianEmail = List("guardian.co.uk", "theguardian.com").contains(emailDomain)
       } yield {

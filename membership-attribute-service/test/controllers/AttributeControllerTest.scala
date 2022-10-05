@@ -57,56 +57,45 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithLowRecurringContributionCookie = Cookie("userWithLowRecurringContribution", "true")
   private val validUser = AccessClaims(
     primaryEmailAddress = "test@gu.com",
-    id = validUserId,
-    userName = "u",
-    hasValidatedEmail = true,
+    identityId = validUserId,
+    userEmailValidated = Some(true),
   )
   private val unvalidatedEmailUser = AccessClaims(
     primaryEmailAddress = "unvalidatedEmail@gu.com",
-    id = unvalidatedEmailUserId,
-    userName = "u",
-    hasValidatedEmail = false,
+    identityId = unvalidatedEmailUserId,
+    userEmailValidated = Some(false),
   )
   private val userWithoutAttributes = AccessClaims(
     primaryEmailAddress = "notcached@gu.com",
-    id = userWithoutAttributesUserId,
-    userName = "u",
-    hasValidatedEmail = false,
+    identityId = userWithoutAttributesUserId,
   )
   private val userWithHighRecurringContribution = AccessClaims(
     primaryEmailAddress = "userWithHighRecurringContribution@gu.com",
-    id = userWithHighRecurringContributionId,
-    userName = "u",
-    hasValidatedEmail = false,
+    identityId = userWithHighRecurringContributionId,
   )
   private val userWithLowRecurringContribution = AccessClaims(
     primaryEmailAddress = "userWithLowRecurringContribution@gu.com",
-    id = userWithLowRecurringContributionId,
-    userName = "u",
-    hasValidatedEmail = false,
+    identityId = userWithLowRecurringContributionId,
   )
 
   private val guardianEmployeeUser = AccessClaims(
     primaryEmailAddress = "foo@guardian.co.uk",
-    id = "1234321",
-    userName = "u",
-    hasValidatedEmail = true,
+    identityId = "1234321",
+    userEmailValidated = Some(true),
   )
   private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
 
   private val guardianEmployeeUserTheguardian = AccessClaims(
     primaryEmailAddress = "foo@theguardian.com",
-    id = "123theguardiancom",
-    userName = "u",
-    hasValidatedEmail = true,
+    identityId = "123theguardiancom",
+    userEmailValidated = Some(true),
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
 
   private val validEmployeeUser = AccessClaims(
     primaryEmailAddress = "bar@theguardian.com",
-    id = "userWithRealProducts",
-    userName = "u",
-    hasValidatedEmail = true,
+    identityId = "userWithRealProducts",
+    userEmailValidated = Some(true),
   )
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
@@ -170,7 +159,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       override def getSupporterProductDataAttributes(
           identityId: String,
       )(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
-        if (identityId == validUserId || identityId == validEmployeeUser.id)
+        if (identityId == validUserId || identityId == validEmployeeUser.identityId)
           ("Zuora", Some(testAttributes))
         else if (identityId == userWithHighRecurringContributionId)
           ("Zuora", Some(userWithHighRecurringContributionAttributes))
@@ -332,7 +321,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val result: Future[Result] = controller.features(req)
 
       verifySuccessfulFeaturesResult(result)
-      verifyIdentityHeadersSet(result, validUser.id)
+      verifyIdentityHeadersSet(result, validUser.identityId)
 
     }
 
@@ -341,7 +330,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val result: Future[Result] = controller.membership(req)
 
       verifySuccessfulMembershipResult(result)
-      verifyIdentityHeadersSet(result, validUser.id)
+      verifyIdentityHeadersSet(result, validUser.identityId)
 
     }
 
@@ -350,7 +339,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val result: Future[Result] = controller.attributes(req)
 
       verifySuccessfullAttributesResult(result)
-      verifyIdentityHeadersSet(result, validUser.id)
+      verifyIdentityHeadersSet(result, validUser.identityId)
 
     }
 
@@ -358,7 +347,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val req = FakeRequest().withCookies(validUnvalidatedEmailCookie)
       val result: Future[Result] = controller.oneOffContributions(req)
       status(result) shouldEqual 401
-      verifyIdentityHeadersSet(result, unvalidatedEmailUser.id)
+      verifyIdentityHeadersSet(result, unvalidatedEmailUser.identityId)
     }
 
     "return one off contributions and set identity headers for user with a validated email" in {
@@ -366,7 +355,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val result: Future[Result] = controller.oneOffContributions(req)
 
       verifySuccessfullOneOfContributionsResult(result)
-      verifyIdentityHeadersSet(result, validUser.id)
+      verifyIdentityHeadersSet(result, validUser.identityId)
     }
 
     "return unauthorised and set identity headers for user with a validated email but not contributions" in {
@@ -374,14 +363,14 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       val result: Future[Result] = controller.oneOffContributions(req)
 
       verifySuccessfullOneOfContributionsResult(result)
-      verifyIdentityHeadersSet(result, validUser.id)
+      verifyIdentityHeadersSet(result, validUser.identityId)
     }
 
     val digipackAllowEmployeeAccessDateHack = Some(new LocalDate(2999, 1, 1))
     "allow DigiPack access via hack to guardian employees with validated guardian.co.uk email" in {
       val req = FakeRequest().withCookies(guardianEmployeeCookie)
       val defaultAttribsWithDigipackOverride =
-        Attributes(guardianEmployeeUser.id)
+        Attributes(guardianEmployeeUser.identityId)
           .copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack)
       contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(defaultAttribsWithDigipackOverride)
     }
@@ -389,7 +378,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     "allow DigiPack access via hack to guardian employees with validated theguardian.com email" in {
       val req = FakeRequest().withCookies(guardianEmployeeCookieTheguardian)
       val defaultAttribsWithDigipackOverride =
-        Attributes(guardianEmployeeUserTheguardian.id)
+        Attributes(guardianEmployeeUserTheguardian.identityId)
           .copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack)
       contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(defaultAttribsWithDigipackOverride)
     }

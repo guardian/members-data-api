@@ -15,7 +15,7 @@ class AuthAndBackendViaAuthLibAction(touchpointBackends: TouchpointBackends)(imp
     // On each request via this action, we make a call to IDAPI and see if we can authenticate the user.
     // The test config and the normal config are the same for IDAPI.
     touchpointBackends.normal.identityAuthService.user(request) map { user: Option[AccessClaims] =>
-      val backendConf: TouchpointComponents = if (AddGuIdentityHeaders.isTestUser(user.map(_.userName))) {
+      val backendConf: TouchpointComponents = if (AddGuIdentityHeaders.isTestUser(user.flatMap(_.username))) {
         touchpointBackends.test
       } else {
         touchpointBackends.normal
