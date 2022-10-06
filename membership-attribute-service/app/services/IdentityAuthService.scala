@@ -46,7 +46,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
 
   private def getUser(requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
     val scopes = List("profile", "email")
-    identityPlayAuthService.getUserClaimsFromRequest(requestHeader, scopes)
+    identityPlayAuthService.getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, scopes)
       .map { case (_, claims) => Some(claims)
       }.unsafeToFuture()
   }
