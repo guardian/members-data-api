@@ -3,7 +3,7 @@ package models
 import com.gu.identity.auth._
 import com.gu.identity.model.User
 
-/** Claims that are used to determine which resources the user is authorised to access.
+/** Claims that are used to determine which resources the user is authorised to access.Ch
   *
   * @param primaryEmailAddress
   *   primary email address

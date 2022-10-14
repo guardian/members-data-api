@@ -12,17 +12,18 @@ import org.http4s.Uri
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaTokenVerifierConfig)(implicit ec: ExecutionContext) extends AuthenticationService {
+class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaTokenVerifierConfig)(implicit ec: ExecutionContext)
+    extends AuthenticationService {
 
   val idApiUrl = Uri.unsafeFromString(apiConfig.url)
 
   val identityPlayAuthService = {
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
-    IdentityPlayAuthService.unsafeInit(AccessClaimsParser,idapiConfig, oktaTokenVerifierConfig)
+    IdentityPlayAuthService.unsafeInit(AccessClaimsParser, idapiConfig, oktaTokenVerifierConfig)
   }
 
-  def user(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
-    getUser(requestHeader)
+  def user(requiredScopes: List[String])(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
+    getUser(requestHeader, requiredScopes)
       .handleError { err =>
         err match {
           case UserCredentialsMissingError(_) =>
@@ -30,13 +31,13 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
             // frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
             SafeLogger.info(s"unable to authorize user - no token or cookie provided")
 
-           case OktaVerifierException(validationError: ValidationError) =>
+          case OktaVerifierException(validationError: ValidationError) =>
             validationError match {
               case OktaValidationError(originalException) =>
                 SafeLogger.warn(s"could not validate okta token - $validationError", originalException)
               case _ =>
                 SafeLogger.warn(s"could not validate okta token - $validationError")
-             }
+            }
           case err =>
             SafeLogger.warn(s"valid request but expired token or cookie so user must log in again - $err")
         }
@@ -44,12 +45,9 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
       }
   }
 
-  private def getUser(requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
-    val scopes = List("profile", "email")
-    identityPlayAuthService.getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, scopes)
-      .map { case (_, claims) => Some(claims)
-      }.unsafeToFuture()
-  }
+  private def getUser(requestHeader: RequestHeader, requiredScopes: List[String]): Future[Option[AccessClaims]] =
+    identityPlayAuthService
+      .getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, requiredScopes)
+      .map { case (_, claims) => Some(claims) }
+      .unsafeToFuture()
 }
-
-

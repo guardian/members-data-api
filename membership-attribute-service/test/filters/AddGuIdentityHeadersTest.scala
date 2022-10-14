@@ -21,12 +21,12 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
     primaryEmailAddress = "someUser@email.com",
     identityId = "testUserId",
     username = Some("testUserName"),
-    userEmailValidated = None
-    )
+    userEmailValidated = None,
+  )
 
   val identityService = mock[IdentityAuthService]
   val request = mock[RequestHeader]
-  when(identityService.user(request)).thenReturn(Future.successful(Some(user)))
+  when(identityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Some(user)))
 
   val resultWithoutIdentityHeaders = Ok("testResult").withHeaders("previousHeader" -> "previousHeaderValue")
   val resultWithXGuIdentity = resultWithoutIdentityHeaders.withHeaders(XGuIdentityId -> "testUserId")
@@ -84,17 +84,17 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
   "fromIdapiIfMissing should call idapi and set the headers if the result doesn't already have identity headers" in {
     val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders, identityService)
     val actualResult = Await.result(futureActualResult, 5.seconds)
-    verify(identityService, times(1)).user(request)
+    verify(identityService, times(1)).user(requiredScopes = Nil)(request)
     assertHeadersSet(actualResult)
   }
 
   "fromIdapiIfMissing should not modify headers if no user is found in idapi when trying to add missing headers" in {
     val notFoundIdentityService = mock[IdentityAuthService]
-    when(notFoundIdentityService.user(request)).thenReturn(Future.successful(None))
+    when(notFoundIdentityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(None))
 
     val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders, notFoundIdentityService)
     val actualResult = Await.result(futureActualResult, 5.seconds)
-    verify(notFoundIdentityService, times(1)).user(request)
+    verify(notFoundIdentityService, times(1)).user(requiredScopes = Nil)(request)
     actualResult.header.headers.size should beEqualTo(1)
     actualResult.header.headers.get("previousHeader") should beSome("previousHeaderValue")
   }

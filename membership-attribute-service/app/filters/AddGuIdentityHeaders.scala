@@ -33,7 +33,7 @@ object AddGuIdentityHeaders {
     if (hasIdentityHeaders(result)) {
       Future.successful(result)
     } else
-      identityAuthService.user(request) map {
+      identityAuthService.user(requiredScopes = Nil)(request) map {
         case Some(user) => fromUser(result, user)
         case None => result
       }

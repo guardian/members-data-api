@@ -100,7 +100,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
   private val fakeAuthService = new AuthenticationService {
-    override def user(implicit request: RequestHeader) =
+    override def user(requiredScopes: List[String])(implicit request: RequestHeader) =
       request.cookies.headOption match {
         case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
         case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Some(unvalidatedEmailUser))
@@ -120,7 +120,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      fakeAuthService.user(request) map { user: Option[AccessClaims] =>
+      fakeAuthService.user(requiredScopes = Nil)(request) map { user: Option[AccessClaims] =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
       }
     }
