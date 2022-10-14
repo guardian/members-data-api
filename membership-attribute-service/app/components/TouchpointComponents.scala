@@ -5,7 +5,6 @@ import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.i18n.Country
 import com.gu.identity.IdapiService
-import com.gu.identity.auth.OktaTokenVerifierConfig
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
@@ -13,7 +12,7 @@ import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
-import com.gu.stripe.{BasicStripeService, StripeService, StripeServiceConfig}
+import com.gu.stripe.{BasicStripeService, StripeService}
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
@@ -22,13 +21,7 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
 import scalaz.std.scalaFuture._
 import services._
-import scala.jdk.CollectionConverters._
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
-  EnvironmentVariableCredentialsProvider,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -112,11 +105,5 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
-  //todo maybe this should be initialized elsewhere
-  lazy val oktaTokenVerifierConfig =  OktaTokenVerifierConfig(
-    issuerUrl = Config.config.getString("okta.verifier.issuerUrl"),
-    audience = Config.config.getString("okta.verifier.audience")
-  )
-  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, oktaTokenVerifierConfig)
-
+  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, Config.Okta.tokenVerifier)
 }
