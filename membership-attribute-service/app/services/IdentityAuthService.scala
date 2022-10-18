@@ -48,6 +48,13 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
   private def getUser(requestHeader: RequestHeader, requiredScopes: List[String]): Future[Option[AccessClaims]] =
     identityPlayAuthService
       .getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, requiredScopes)
-      .map { case (_, claims) => Some(claims) }
+      .map {
+        case (_: OktaUserCredentials, claims) =>
+          SafeLogger.warn("Authorised by Okta token")
+          Some(claims)
+        case (_: IdapiUserCredentials, claims) =>
+          SafeLogger.warn("Authorised by Idapi token")
+          Some(claims)
+      }
       .unsafeToFuture()
 }
