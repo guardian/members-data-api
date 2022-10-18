@@ -7,7 +7,7 @@ object Dependencies {
   val awsClientV2Version = "2.16.86"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.256.03-SNAPSHOT"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.256.04-SNAPSHOT"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
   val postgres = "org.postgresql" % "postgresql" % "42.3.3"
   val jdbc = PlayImport.jdbc
@@ -38,11 +38,11 @@ object Dependencies {
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion,
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonVersion,
-    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
   )
   val oktaJwtVerifier = Seq(
     "com.okta.jwt" % "okta-jwt-verifier" % oktaJwtVerifierVersion,
-    "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion
+    "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
 
   // projects
