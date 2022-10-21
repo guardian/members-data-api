@@ -1,6 +1,7 @@
 package controllers
 
 import actions._
+import com.gu.identity.auth.AccessScope.membersDataApi.{readSelf, sensitiveReadSelf, updateSelf}
 import com.gu.memsub
 import com.gu.memsub.Subscription.Name
 import services.PaymentFailureAlerter._
@@ -82,7 +83,7 @@ class AccountController(
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       val tp = request.touchpoint
       val cancelForm = Form { single("reason" -> nonEmptyText) }
       val maybeUserId = request.user.map(_.identityId)
@@ -163,7 +164,7 @@ class AccountController(
     }
 
   private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
       val tp = request.touchpoint
       val maybeUserId = request.user.map(_.identityId)
 
@@ -186,7 +187,7 @@ class AccountController(
 
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid: SubPlanReads, F <: SubscriptionPlan.Free: SubPlanReads] =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(sensitiveReadSelf)).async { implicit request =>
       DeprecatedRequestLogger.logDeprecatedRequest(request)
 
       implicit val tp: TouchpointComponents = request.touchpoint
@@ -479,8 +480,8 @@ class AccountController(
       }
     }
 
-  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = AuthAndBackendViaAuthLibAction.async {
-    implicit request =>
+  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) =
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       if (subscriptionNameOption.isEmpty) {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }

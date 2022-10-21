@@ -1,6 +1,7 @@
 package actions
 import akka.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
+import com.gu.identity.auth.AccessScope
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import models.AccessClaims
@@ -16,7 +17,8 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  val AuthAndBackendViaAuthLibAction = NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends)
+  def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) =
+    NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes)
   def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
     NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn)
 

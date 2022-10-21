@@ -2,6 +2,8 @@ package controllers
 
 import actions._
 import akka.actor.ActorSystem
+import com.gu.identity.auth.AccessScope
+import com.gu.identity.auth.AccessScope.membersDataApi.{readSelf, sensitiveReadSelf}
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
@@ -96,8 +98,9 @@ class AttributeController(
       onSuccessSupporter: Attributes => Result,
       onNotFound: Result,
       sendAttributesIfNotFound: Boolean = false,
+      requiredScopes: List[AccessScope],
   ) = {
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes).async { implicit request =>
       if (endpointDescription == "membership" || endpointDescription == "features") {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
@@ -132,7 +135,10 @@ class AttributeController(
 
             val result = allProductAttributes match {
               case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
-                logInfoWithCustomFields(s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
+                logInfoWithCustomFields(
+                  s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere",
+                  customFields("member"),
+                )
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
                   "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString,
@@ -145,7 +151,10 @@ class AttributeController(
                   logInfoWithCustomFields(s"${user.identityId} is a paper subscriber expiring $date", customFields("paper-subscriber"))
                 }
                 attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.identityId} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
+                  logInfoWithCustomFields(
+                    s"${user.identityId} is a Guardian Weekly subscriber expiring $date",
+                    customFields("guardian-weekly-subscriber"),
+                  )
                 }
                 attrs.GuardianPatronExpiryDate.foreach { date =>
                   logInfoWithCustomFields(s"${user.identityId} is a Guardian Patron expiring $date", customFields("guardian-patron"))
@@ -193,6 +202,7 @@ class AttributeController(
     onSuccessMember = membershipAttributesFromAttributes,
     onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
     onNotFound = notFound,
+    requiredScopes = List(sensitiveReadSelf),
   )
   def attributes = lookup(
     endpointDescription = "attributes",
@@ -200,16 +210,18 @@ class AttributeController(
     onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
     onNotFound = notFound,
     sendAttributesIfNotFound = true,
+    requiredScopes = List(readSelf),
   )
   def features = lookup(
     endpointDescription = "features",
     onSuccessMember = Features.fromAttributes,
     onSuccessSupporter = _ => Features.unauthenticated,
     onNotFound = Features.unauthenticated,
+    requiredScopes = List(sensitiveReadSelf),
   )
 
   def oneOffContributions = {
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
       val userHasValidatedEmail = request.user.flatMap(_.userEmailValidated).getOrElse(false)
 
       val futureResult: Future[Result] = if (userHasValidatedEmail) {

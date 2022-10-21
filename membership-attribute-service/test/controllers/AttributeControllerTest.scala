@@ -3,6 +3,7 @@ package controllers
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
@@ -100,7 +101,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
   private val fakeAuthService = new AuthenticationService {
-    override def user(requiredScopes: List[String])(implicit request: RequestHeader) =
+    override def user(requiredScopes: List[AccessScope])(implicit request: RequestHeader) =
       request.cookies.headOption match {
         case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
         case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Some(unvalidatedEmailUser))
@@ -143,7 +144,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
-    override val AuthAndBackendViaAuthLibAction = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
+    override def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
     override def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
       NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
   }

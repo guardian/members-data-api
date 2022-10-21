@@ -22,7 +22,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
     IdentityPlayAuthService.unsafeInit(AccessClaimsParser, idapiConfig, oktaTokenVerifierConfig)
   }
 
-  def user(requiredScopes: List[String])(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
+  def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
     getUser(requestHeader, requiredScopes)
       .handleError { err =>
         err match {
@@ -45,7 +45,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
       }
   }
 
-  private def getUser(requestHeader: RequestHeader, requiredScopes: List[String]): Future[Option[AccessClaims]] =
+  private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[AccessClaims]] =
     identityPlayAuthService
       .getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, requiredScopes)
       .map {
