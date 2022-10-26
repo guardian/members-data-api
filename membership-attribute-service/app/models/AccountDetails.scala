@@ -218,7 +218,7 @@ object AccountDetails {
   def mmaCategoryFrom(product: Product): String = product match {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
-    case _: Product.SupporterPlus => "subscriptions"
+    case _: Product.SupporterPlus => "contributions"
     case _: Product.GuardianPatron => "subscriptions"
     case _: Product.Contribution => "contributions"
     case _: Product.Membership => "membership"
