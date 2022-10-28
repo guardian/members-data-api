@@ -220,7 +220,7 @@ object AccountDetails {
     case _: Product.ZDigipack => "subscriptions"
     case _: Product.SupporterPlus => "recurringSupport"
     case _: Product.GuardianPatron => "subscriptions"
-    case _: Product.Contribution => "contributions"
+    case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"
     case _ => product.name // fallback
   }
