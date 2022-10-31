@@ -7,7 +7,7 @@ import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{AccessClaims, Attributes, MobileSubscriptionStatus}
+import models.{UserFromToken, Attributes, MobileSubscriptionStatus}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -56,44 +56,44 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
   private val userWithHighRecurringContributionCookie = Cookie("userWithHighRecurringContribution", "true")
   private val userWithLowRecurringContributionCookie = Cookie("userWithLowRecurringContribution", "true")
-  private val validUser = AccessClaims(
+  private val validUser = UserFromToken(
     primaryEmailAddress = "test@gu.com",
     identityId = validUserId,
     userEmailValidated = Some(true),
   )
-  private val unvalidatedEmailUser = AccessClaims(
+  private val unvalidatedEmailUser = UserFromToken(
     primaryEmailAddress = "unvalidatedEmail@gu.com",
     identityId = unvalidatedEmailUserId,
     userEmailValidated = Some(false),
   )
-  private val userWithoutAttributes = AccessClaims(
+  private val userWithoutAttributes = UserFromToken(
     primaryEmailAddress = "notcached@gu.com",
     identityId = userWithoutAttributesUserId,
   )
-  private val userWithHighRecurringContribution = AccessClaims(
+  private val userWithHighRecurringContribution = UserFromToken(
     primaryEmailAddress = "userWithHighRecurringContribution@gu.com",
     identityId = userWithHighRecurringContributionId,
   )
-  private val userWithLowRecurringContribution = AccessClaims(
+  private val userWithLowRecurringContribution = UserFromToken(
     primaryEmailAddress = "userWithLowRecurringContribution@gu.com",
     identityId = userWithLowRecurringContributionId,
   )
 
-  private val guardianEmployeeUser = AccessClaims(
+  private val guardianEmployeeUser = UserFromToken(
     primaryEmailAddress = "foo@guardian.co.uk",
     identityId = "1234321",
     userEmailValidated = Some(true),
   )
   private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
 
-  private val guardianEmployeeUserTheguardian = AccessClaims(
+  private val guardianEmployeeUserTheguardian = UserFromToken(
     primaryEmailAddress = "foo@theguardian.com",
     identityId = "123theguardiancom",
     userEmailValidated = Some(true),
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
 
-  private val validEmployeeUser = AccessClaims(
+  private val validEmployeeUser = UserFromToken(
     primaryEmailAddress = "bar@theguardian.com",
     identityId = "userWithRealProducts",
     userEmailValidated = Some(true),
@@ -121,7 +121,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      fakeAuthService.user(requiredScopes = Nil)(request) map { user: Option[AccessClaims] =>
+      fakeAuthService.user(requiredScopes = Nil)(request) map { user: Option[UserFromToken] =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
       }
     }

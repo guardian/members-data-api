@@ -3,7 +3,7 @@ package models
 import com.gu.identity.auth._
 import com.gu.identity.model.User
 
-/** Claims that are used to determine which resources the user is authorised to access.Ch
+/** Claims that are used to determine which resources the user is authorised to access.
   *
   * @param primaryEmailAddress
   *   primary email address
@@ -14,21 +14,21 @@ import com.gu.identity.model.User
   * @param userEmailValidated
   *   true iff the user has validated their email address
   */
-case class AccessClaims(
+case class UserFromToken(
     primaryEmailAddress: String,
     identityId: String,
     username: Option[String] = None,
     userEmailValidated: Option[Boolean] = None,
 ) extends UserClaims
 
-object AccessClaimsParser extends ClaimsParser[AccessClaims] {
+object UserFromTokenParser extends ClaimsParser[UserFromToken] {
 
   override def fromDefaultAndUnparsed(
       defaultClaims: DefaultUserClaims,
       unparsedClaims: UnparsedClaims,
-  ): Either[ValidationError, AccessClaims] =
+  ): Either[ValidationError, UserFromToken] =
     Right(
-      AccessClaims(
+      UserFromToken(
         primaryEmailAddress = defaultClaims.primaryEmailAddress,
         identityId = defaultClaims.identityId,
         username = defaultClaims.username,
@@ -36,7 +36,7 @@ object AccessClaimsParser extends ClaimsParser[AccessClaims] {
       ),
     )
 
-  override def fromUser(user: User): AccessClaims = AccessClaims(
+  override def fromUser(user: User): UserFromToken = UserFromToken(
     primaryEmailAddress = user.primaryEmailAddress,
     identityId = user.id,
     username = user.publicFields.username,

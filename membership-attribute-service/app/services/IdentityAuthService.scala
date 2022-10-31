@@ -7,7 +7,7 @@ import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
-import models.{AccessClaims, AccessClaimsParser}
+import models.{UserFromToken, UserFromTokenParser}
 import org.http4s.Uri
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,10 +19,10 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
 
   val identityPlayAuthService = {
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
-    IdentityPlayAuthService.unsafeInit(AccessClaimsParser, idapiConfig, oktaTokenVerifierConfig)
+    IdentityPlayAuthService.unsafeInit(UserFromTokenParser, idapiConfig, oktaTokenVerifierConfig)
   }
 
-  def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Option[AccessClaims]] = {
+  def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Option[UserFromToken]] = {
     getUser(requestHeader, requiredScopes)
       .handleError { err =>
         err match {
@@ -45,7 +45,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
       }
   }
 
-  private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[AccessClaims]] =
+  private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[UserFromToken]] =
     identityPlayAuthService
       .getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, requiredScopes)
       .map {

@@ -1,7 +1,7 @@
 package filters
 
 import configuration.Config.testUsernames
-import models.AccessClaims
+import models.UserFromToken
 import org.mockito.Mockito.{times, verify, verifyNoInteractions, when}
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -17,7 +17,7 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
 
   val XGuIdentityId = "X-Gu-Identity-Id"
   val XGuMembershipTestUser = "X-Gu-Membership-Test-User"
-  val user = AccessClaims(
+  val user = UserFromToken(
     primaryEmailAddress = "someUser@email.com",
     identityId = "testUserId",
     username = Some("testUserName"),

@@ -4,7 +4,7 @@ import com.gu.identity.auth.{MissingRequiredClaim, UnparsedClaims}
 import com.gu.identity.model.{PublicFields, StatusFields, User}
 import org.specs2.mutable.Specification
 
-class AccessClaimsTest extends Specification {
+class UserFromTokenTest extends Specification {
 
   val identityId = "someIdentityId"
   val username = "username"
@@ -17,7 +17,7 @@ class AccessClaimsTest extends Specification {
     "unused" -> "unusedValue"
   )
 
-  val parsedClaims = AccessClaims(
+  val parsedClaims = UserFromToken(
     identityId = identityId,
     username = Some(username),
     primaryEmailAddress = email,
@@ -28,7 +28,7 @@ class AccessClaimsTest extends Specification {
     "parse claims with emailvalidated" in {
       val unparsedClaims =  UnparsedClaims(rawClaims)
 
-      val Right(actual) = AccessClaimsParser.fromUnparsed(unparsedClaims)
+      val Right(actual) = UserFromTokenParser.fromUnparsed(unparsedClaims)
 
       actual shouldEqual(parsedClaims)
     }
@@ -36,7 +36,7 @@ class AccessClaimsTest extends Specification {
       val onlyRequiredRawClaims = rawClaims.removedAll(List("identity_username", "email_validated"))
       val onlyRequiredUnparsed =  UnparsedClaims(onlyRequiredRawClaims)
 
-      val Right(actual) = AccessClaimsParser.fromUnparsed(onlyRequiredUnparsed)
+      val Right(actual) = UserFromTokenParser.fromUnparsed(onlyRequiredUnparsed)
 
       val onlyRequiredAccessClaims = parsedClaims.copy(username = None, userEmailValidated = None)
       actual shouldEqual(onlyRequiredAccessClaims)
@@ -44,7 +44,7 @@ class AccessClaimsTest extends Specification {
 
     def assertErrorReturnedOnMissingRequiredClaim(requiredClaimName: String) = {
       val missingRequiredUnparsedClaims =  UnparsedClaims(rawClaims.removed(requiredClaimName))
-      AccessClaimsParser.fromUnparsed(missingRequiredUnparsedClaims) shouldEqual Left(MissingRequiredClaim(requiredClaimName))
+      UserFromTokenParser.fromUnparsed(missingRequiredUnparsedClaims) shouldEqual Left(MissingRequiredClaim(requiredClaimName))
     }
 
     "return error if missing identity id " in {
@@ -67,7 +67,7 @@ class AccessClaimsTest extends Specification {
         )
       )
 
-      AccessClaimsParser.fromUser(testUser) shouldEqual parsedClaims
+      UserFromTokenParser.fromUser(testUser) shouldEqual parsedClaims
 
     }
   }

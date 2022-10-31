@@ -2,7 +2,7 @@ package filters
 
 import akka.stream.Materializer
 import configuration.Config
-import models.AccessClaims
+import models.UserFromToken
 import play.api.mvc._
 import services.IdentityAuthService
 
@@ -39,7 +39,7 @@ object AddGuIdentityHeaders {
       }
   }
 
-  def fromUser(result: Result, user: AccessClaims) = result.withHeaders(
+  def fromUser(result: Result, user: UserFromToken) = result.withHeaders(
     xGuIdentityIdHeaderName -> user.identityId,
     xGuMembershipTestUserHeaderName -> isTestUser(user.username).toString,
   )
