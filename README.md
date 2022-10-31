@@ -83,8 +83,8 @@ drastic increase of load due to breaking news.**
 1. Ensure an `nginx` service is running locally. You can run `dev-nginx restart-nginx` to do this.
 
 ### Identity frontend local sign in
-As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you will need to sign in to the identity-frontend locally.
-1. Start up a local Identity service by running script `start-frontend.sh` in the [identity-frontend](https://github.com/guardian/identity-frontend) repo.
+As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you will need to sign in to the identity frontend locally.
+1. Start up a local Identity service by running script `make dev` in the [gateway](https://github.com/guardian/gateway) repo.
 1. Go to https://profile.thegulocal.com/signin.
 
 ### Starting the API
