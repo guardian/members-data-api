@@ -5,7 +5,7 @@ import org.joda.time.LocalDate
 import play.api.libs.json.{Writes, __}
 
 object DynamoSupporterRatePlanItem {
-    implicit val currencyWrite: Writes[Currency] = __.write[String].contramap(_.iso)
+  implicit val currencyWrite: Writes[Currency] = __.write[String].contramap(_.iso)
 }
 
 case class DynamoSupporterRatePlanItem(
@@ -15,5 +15,5 @@ case class DynamoSupporterRatePlanItem(
     termEndDate: LocalDate, // Date that this subscription term ends
     contractEffectiveDate: LocalDate, // Date that this subscription started
     contributionAmount: Option[BigDecimal],
-    contributionCurrency: Option[Currency]
+    contributionCurrency: Option[Currency],
 )

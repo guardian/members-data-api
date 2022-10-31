@@ -19,7 +19,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     termEndDate,
     LocalDate.now(),
     contributionCurrency = None,
-    contributionAmount = None
+    contributionAmount = None,
   )
 
   "SupporterRatePlanToAttributesMapper" should {

@@ -21,7 +21,8 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
-  implicit val currencyFormat: DynamoFormat[Currency] = DynamoFormat.xmap[Currency,String](s => Currency.fromString(s).toRight(TypeCoercionError(new Throwable("Invalid currency"))), _.iso)
+  implicit val currencyFormat: DynamoFormat[Currency] =
+    DynamoFormat.xmap[Currency, String](s => Currency.fromString(s).toRight(TypeCoercionError(new Throwable("Invalid currency"))), _.iso)
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
   def getAttributes(identityId: String): Future[Either[String, Option[Attributes]]] =

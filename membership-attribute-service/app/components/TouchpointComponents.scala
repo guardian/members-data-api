@@ -21,7 +21,12 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import configuration.Config
 import scalaz.std.scalaFuture._
 import services._
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 

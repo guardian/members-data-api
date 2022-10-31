@@ -521,7 +521,7 @@ class AccountController(
           logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
           Ok("Success")
       }
-  }
+    }
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1

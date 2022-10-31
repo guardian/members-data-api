@@ -36,7 +36,7 @@ class AttributeController(
   lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
 
   private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
-                                                                                       executionContext: ExecutionContext,
+      executionContext: ExecutionContext,
   ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
     if (user.userEmailValidated.contains(true)) {
@@ -248,9 +248,9 @@ class AttributeController(
   /** Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
     */
   private def maybeAllowAccessToDigipackForGuardianEmployees(
-                                                              maybeUser: Option[UserFromToken],
-                                                              maybeAttributes: Option[Attributes],
-                                                              identityId: String,
+      maybeUser: Option[UserFromToken],
+      maybeAttributes: Option[Attributes],
+      identityId: String,
   ): Option[Attributes] = {
 
     val allowDigiPackAccessToStaff =

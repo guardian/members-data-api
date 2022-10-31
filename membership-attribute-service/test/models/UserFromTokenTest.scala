@@ -14,36 +14,36 @@ class UserFromTokenTest extends Specification {
     "identity_username" -> username,
     "sub" -> email,
     "email_validated" -> Boolean.box(true),
-    "unused" -> "unusedValue"
+    "unused" -> "unusedValue",
   )
 
   val parsedClaims = UserFromToken(
     identityId = identityId,
     username = Some(username),
     primaryEmailAddress = email,
-    userEmailValidated = Some(true)
+    userEmailValidated = Some(true),
   )
 
   "UserFromTokenParser.fromUnparsed" should {
     "parse claims with emailvalidated" in {
-      val unparsedClaims =  UnparsedClaims(rawClaims)
+      val unparsedClaims = UnparsedClaims(rawClaims)
 
       val Right(actual) = UserFromTokenParser.fromUnparsed(unparsedClaims)
 
-      actual shouldEqual(parsedClaims)
+      actual shouldEqual (parsedClaims)
     }
     "parse claims without optional fields" in {
       val onlyRequiredRawClaims = rawClaims.removedAll(List("identity_username", "email_validated"))
-      val onlyRequiredUnparsed =  UnparsedClaims(onlyRequiredRawClaims)
+      val onlyRequiredUnparsed = UnparsedClaims(onlyRequiredRawClaims)
 
       val Right(actual) = UserFromTokenParser.fromUnparsed(onlyRequiredUnparsed)
 
       val onlyRequiredAccessClaims = parsedClaims.copy(username = None, userEmailValidated = None)
-      actual shouldEqual(onlyRequiredAccessClaims)
+      actual shouldEqual (onlyRequiredAccessClaims)
     }
 
     def assertErrorReturnedOnMissingRequiredClaim(requiredClaimName: String) = {
-      val missingRequiredUnparsedClaims =  UnparsedClaims(rawClaims.removed(requiredClaimName))
+      val missingRequiredUnparsedClaims = UnparsedClaims(rawClaims.removed(requiredClaimName))
       UserFromTokenParser.fromUnparsed(missingRequiredUnparsedClaims) shouldEqual Left(MissingRequiredClaim(requiredClaimName))
     }
 
@@ -60,11 +60,11 @@ class UserFromTokenTest extends Specification {
         primaryEmailAddress = email,
         id = identityId,
         publicFields = PublicFields(
-          username = Some(username)
+          username = Some(username),
         ),
         statusFields = StatusFields(
-          userEmailValidated = Some(true)
-        )
+          userEmailValidated = Some(true),
+        ),
       )
 
       UserFromTokenParser.fromUser(testUser) shouldEqual parsedClaims
