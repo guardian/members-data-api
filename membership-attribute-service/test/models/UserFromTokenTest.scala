@@ -24,7 +24,7 @@ class UserFromTokenTest extends Specification {
     userEmailValidated = Some(true)
   )
 
-  "AccessClaimsParser.fromUnparsed" should {
+  "UserFromTokenParser.fromUnparsed" should {
     "parse claims with emailvalidated" in {
       val unparsedClaims =  UnparsedClaims(rawClaims)
 
@@ -54,7 +54,7 @@ class UserFromTokenTest extends Specification {
       assertErrorReturnedOnMissingRequiredClaim("sub")
     }
   }
-  "AccessClaimsParser.fromUser" should {
+  "UserFromTokenParser.fromUser" should {
     "populate claims" in {
       val testUser = User(
         primaryEmailAddress = email,
