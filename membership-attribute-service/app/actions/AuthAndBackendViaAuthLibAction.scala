@@ -13,8 +13,6 @@ class AuthAndBackendViaAuthLibAction(touchpointBackends: TouchpointBackends, req
   override val executionContext = ex
 
   override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
-    // On each request via this action, we make a call to IDAPI and see if we can authenticate the user.
-    // The test config and the normal config are the same for IDAPI.
     touchpointBackends.normal.identityAuthService.user(requiredScopes)(request) map { user: Option[AccessClaims] =>
       val backendConf: TouchpointComponents = if (AddGuIdentityHeaders.isTestUser(user.flatMap(_.username))) {
         touchpointBackends.test
