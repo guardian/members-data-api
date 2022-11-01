@@ -29,7 +29,7 @@ object Dependencies {
   val jacksonVersion = "2.13.2"
   val jacksonDatabindVersion = "2.13.2.2"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
-  val oktaJwtVerifierVersion = "0.5.5"
+  val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
