@@ -221,6 +221,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                    |   "paperSubscriptionExpiryDate":"2099-01-01",
                    |   "guardianWeeklyExpiryDate":"2099-01-01",
                    |   "showSupportMessaging": false,
+                   |   "isRecurringSupporter": true,
                    |   "contentAccess": {
                    |     "member": true,
                    |     "paidMember": true,
@@ -282,6 +283,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                      |{
                      |  "userId": "456",
                      |  "showSupportMessaging": true,
+                     |  "isRecurringSupporter": false,
                      |  "contentAccess": {
                      |    "member": false,
                      |    "paidMember": false,

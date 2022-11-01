@@ -94,7 +94,7 @@ case class Attributes(
       || isGuardianWeeklySubscriber
       || isPremiumLiveAppSubscriber
       || isGuardianPatron
-    )
+  )
 
 }
 
