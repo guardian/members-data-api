@@ -85,6 +85,17 @@ case class Attributes(
       || isGuardianPatron
   )
 
+  lazy val isRecurringSupporter = (
+    isPaidTier
+      || isRecurringContributor
+      || digitalSubscriberHasActivePlan
+      || isSupporterPlus
+      || isPaperSubscriber
+      || isGuardianWeeklySubscriber
+      || isPremiumLiveAppSubscriber
+      || isGuardianPatron
+    )
+
 }
 
 object Attributes {
@@ -105,6 +116,7 @@ object Attributes {
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
+    .addField("isRecurringSupporter", _.isRecurringSupporter)
     .addField("contentAccess", _.contentAccess)
 }
 
