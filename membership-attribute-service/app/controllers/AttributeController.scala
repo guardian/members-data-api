@@ -3,10 +3,10 @@ package controllers
 import actions._
 import akka.actor.ActorSystem
 import com.gu.identity.auth.AccessScope
-import com.gu.identity.auth.AccessScope.membersDataApi.{readSelf, sensitiveReadSelf}
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
+import models.AccessScope.{completeReadSelf, readSelf}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
@@ -202,7 +202,7 @@ class AttributeController(
     onSuccessMember = membershipAttributesFromAttributes,
     onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
     onNotFound = notFound,
-    requiredScopes = List(sensitiveReadSelf),
+    requiredScopes = List(completeReadSelf),
   )
   def attributes = lookup(
     endpointDescription = "attributes",
@@ -217,7 +217,7 @@ class AttributeController(
     onSuccessMember = Features.fromAttributes,
     onSuccessSupporter = _ => Features.unauthenticated,
     onNotFound = Features.unauthenticated,
-    requiredScopes = List(sensitiveReadSelf),
+    requiredScopes = List(completeReadSelf),
   )
 
   def oneOffContributions = {
