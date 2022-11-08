@@ -1,7 +1,6 @@
 package controllers
 
 import actions._
-import com.gu.identity.auth.AccessScope.membersDataApi.{readSelf, sensitiveReadSelf, updateSelf}
 import com.gu.memsub
 import com.gu.memsub.Subscription.Name
 import services.PaymentFailureAlerter._
@@ -26,6 +25,7 @@ import components.TouchpointComponents
 import configuration.Config
 import controllers.PaymentDetailMapper.paymentDetailsForSub
 import loghandling.DeprecatedRequestLogger
+import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
 import models.AccountDetails._
 import models.ApiErrors._
 import models._
@@ -187,7 +187,7 @@ class AccountController(
 
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid: SubPlanReads, F <: SubscriptionPlan.Free: SubPlanReads] =
-    AuthAndBackendViaAuthLibAction(requiredScopes = List(sensitiveReadSelf)).async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(completeReadSelf)).async { implicit request =>
       DeprecatedRequestLogger.logDeprecatedRequest(request)
 
       implicit val tp: TouchpointComponents = request.touchpoint
