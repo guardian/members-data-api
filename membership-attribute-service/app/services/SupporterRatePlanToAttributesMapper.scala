@@ -1,5 +1,6 @@
 package services
 
+import com.gu.i18n.Currency
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import services.MembershipTier.{Friend, Partner, Patron, Staff, Supporter, getMostValuableTier}
@@ -28,16 +29,43 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
 
 object SupporterRatePlanToAttributesMapper {
 
+  private def isHighContributor(item: DynamoSupporterRatePlanItem, isMonthly: Boolean): Boolean = {
+    (item.contributionCurrency, item.contributionAmount) match {
+      case (Some(currency), Some(amount)) =>
+        val threshold = currency match {
+          case Currency.GBP | Currency.USD | Currency.EUR =>
+            if (isMonthly) 10 else 95
+          case Currency.CAD =>
+            if (isMonthly) 13 else 120
+          case Currency.AUD | Currency.NZD =>
+            if (isMonthly) 15 else 140
+        }
+        amount >= threshold
+
+      case _ => false
+    }
+  }
+
   type Stage = String
   type ProductRatePlanId = String
   val digitalSubTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
-  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
+  val supporterPlusTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
+    )
+  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+      HighContributor = Some(isHighContributor(supporterRatePlanItem, isMonthly = true)),
+    )
+  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Annual Contribution"),
+      HighContributor = Some(isHighContributor(supporterRatePlanItem, isMonthly = false)),
+    )
   val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
@@ -55,10 +83,15 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       GuardianPatronExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
+  val guardianPatronProductRatePlanId = "guardian_patron"
   val productRatePlanMappings: Map[Stage, Map[List[ProductRatePlanId], AttributeTransformer]] =
     Map(
       "PROD" -> Map(
-        List("guardian_patron") -> guardianPatronTransformer,
+        List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
+        List(
+          "8a12865b8219d9b401822106192b64dc",
+          "8a12865b8219d9b40182210618a464ba",
+        ) -> supporterPlusTransformer,
         List(
           "2c92a0fb4edd70c8014edeaa4eae220a",
           "2c92a0fb4edd70c8014edeaa4e972204",
@@ -166,6 +199,10 @@ object SupporterRatePlanToAttributesMapper {
       "UAT" -> Map(
         List("guardian_patron") -> guardianPatronTransformer,
         List(
+          "8ad088718219a6b601822036a6c91f5c",
+          "8ad088718219a6b601822036a5801f34",
+        ) -> supporterPlusTransformer,
+        List(
           "2c92c0f94f2acf73014f2c908f671591",
           "2c92c0f84f2ac59d014f2c94aea9199e",
           "2c92c0f971c65df50171dfabef87093d",
@@ -246,6 +283,10 @@ object SupporterRatePlanToAttributesMapper {
       ),
       "DEV" -> Map(
         List("guardian_patron") -> guardianPatronTransformer,
+        List(
+          "8ad09fc281de1ce70181de3b251736a4",
+          "8ad09fc281de1ce70181de3b28ee3783",
+        ) -> supporterPlusTransformer,
         List(
           "2c92c0f84bbfec8b014bc655f4852d9d",
           "2c92c0f94bbffaaa014bc6a4212e205b",

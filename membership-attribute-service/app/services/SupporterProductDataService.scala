@@ -1,5 +1,7 @@
 package services
 
+import cats.data.EitherT
+import com.gu.i18n.Currency
 import com.typesafe.scalalogging.LazyLogging
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.Metrics
@@ -19,29 +21,36 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
+  implicit val currencyFormat: DynamoFormat[Currency] =
+    DynamoFormat.xmap[Currency, String](s => Currency.fromString(s).toRight(TypeCoercionError(new Throwable("Invalid currency"))), _.iso)
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
   def getAttributes(identityId: String): Future[Either[String, Option[Attributes]]] =
-    for {
-      futureDynamoResult <- getSupporterRatePlanItems(identityId)
-      futureErrors = futureDynamoResult.collect { case Left(error) =>
-        error
-      }
-      _ = alertOnDynamoReadErrors(futureErrors)
-      futureRatePlanItems = futureDynamoResult.collect({ case Right(ratePlanItem) =>
-        ratePlanItem
-      })
-    } yield
-      if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
-        Right(mapper.attributesFromSupporterRatePlans(identityId, futureRatePlanItems))
-      else
-        Left(errorMessage(futureErrors))
+    getSupporterRatePlanItems(identityId).map(ratePlanItems => mapper.attributesFromSupporterRatePlans(identityId, ratePlanItems)).value
 
-  private def getSupporterRatePlanItems(identityId: String) =
+  def getSupporterRatePlanItems(identityId: String) = {
+    EitherT(
+      for {
+        futureDynamoResult <- getSupporterRatePlanItemsWithReadErrors(identityId)
+        futureErrors = futureDynamoResult.collect { case Left(error) =>
+          error
+        }
+        _ = alertOnDynamoReadErrors(futureErrors)
+        futureRatePlanItems = futureDynamoResult.collect({ case Right(ratePlanItem) =>
+          ratePlanItem
+        })
+      } yield
+        if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
+          Right(futureRatePlanItems)
+        else
+          Left(errorMessage(futureErrors)),
+    )
+  }
+
+  private def getSupporterRatePlanItemsWithReadErrors(identityId: String) =
     ScanamoAsync(client).exec {
       Table[DynamoSupporterRatePlanItem](table)
         .query("identityId" === identityId)
-
     }
 
 }
