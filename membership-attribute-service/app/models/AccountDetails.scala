@@ -166,6 +166,8 @@ object AccountDetails {
             "start" -> startDate,
             "end" -> endDate,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
+            "paymentCurrencyGlyph" -> paymentDetails.plan.price.currency.glyph,
+            "paymentCurrencyISO" -> paymentDetails.plan.price.currency.iso,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
