@@ -1,22 +1,16 @@
 import play.sbt.PlayImport
-<<<<<<< HEAD
-<<<<<<< HEAD
 import sbt._
-=======
 import sbt.Keys.dependencyOverrides
->>>>>>> 31b7aa0 (Revert "Revert "Upgrade SBT and dependencies."")
-=======
->>>>>>> 52ce6b0 (Revert "Revert "Revert "Upgrade SBT and dependencies.""")
 
 object Dependencies {
 
-  val awsClientVersion = "1.11.1022"
-  val awsClientV2Version = "2.16.86"
+  val awsClientVersion = "1.12.338"
+  val awsClientV2Version = "2.18.13"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.5"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
-  val postgres = "org.postgresql" % "postgresql" % "42.3.3"
+  val postgres = "org.postgresql" % "postgresql" % "42.5.0"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
@@ -36,10 +30,10 @@ object Dependencies {
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
 
-  val jacksonVersion = "2.13.2"
-  val jacksonDatabindVersion = "2.13.2.2"
-  val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
-  val oktaJwtVerifierVersion = "0.5.5"
+  val jacksonVersion = "2.14.0"
+  val jacksonDatabindVersion = "2.14.0"
+  val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.4.0"
+  val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
@@ -83,10 +77,9 @@ object Dependencies {
     kinesis,
     logstash,
     anorm,
-    "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
+    awsJavaSdkAutoscaling,
     netty,
     nettyHttp,
-    "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
     akkaHttpCore,
     akkaActorTyped,
     akkaProtobufV3,
@@ -96,6 +89,6 @@ object Dependencies {
     mockServer
   ) ++ jackson ++ oktaJwtVerifier
 
-  val depOverrides = jackson
+  val depOverrides = Seq(scalaXml)
 
 }
