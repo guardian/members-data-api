@@ -38,7 +38,7 @@ val commonSettings = Seq(
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 val buildDebSettings = Seq(
   Debian / serverLoading := Some(Systemd),
-  debianPackageDependencies := Seq("openjdk-8-jre-headless"),
+  debianPackageDependencies := Seq("openjdk-11-jre-headless"),
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
   packageDescription := """Members Data API""",
