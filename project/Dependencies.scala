@@ -24,8 +24,8 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.1.0"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "7.2"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
-  val netty = "io.netty" % "netty-codec" % "4.1.85.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.85.Final"
+  val netty = "io.netty" % "netty-codec" % "4.1.84.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.84.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
 
   val jacksonVersion = "2.14.0"
@@ -47,6 +47,7 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
   val awsJavaSdkAutoscaling = "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion
+
 
   // projects
 
