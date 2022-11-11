@@ -1,5 +1,9 @@
 import play.sbt.PlayImport
+<<<<<<< HEAD
 import sbt._
+=======
+import sbt.Keys.dependencyOverrides
+>>>>>>> 31b7aa0 (Revert "Revert "Upgrade SBT and dependencies."")
 
 object Dependencies {
 
@@ -14,13 +18,12 @@ object Dependencies {
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val guice = PlayImport.guice
-  val scalaGuice = "net.codingwell" %% "scala-guice" % "5.1.0"
   val specs2 = PlayImport.specs2 % Test
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.630"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.631"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.6"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.1.0"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "7.2"
@@ -55,7 +58,6 @@ object Dependencies {
   val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % "2.7.0"
 
   val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
-
 
   // projects
 
