@@ -4,7 +4,7 @@ import sbt.Keys.dependencyOverrides
 
 object Dependencies {
 
-  val awsClientVersion = "1.12.338"
+  val awsClientVersion = "1.12.340"
   val awsClientV2Version = "2.18.13"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
@@ -47,7 +47,6 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
   val awsJavaSdkAutoscaling = "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion
-
 
   // projects
 
