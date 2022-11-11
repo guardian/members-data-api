@@ -39,7 +39,7 @@ val commonSettings = Seq(
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 val buildDebSettings = Seq(
   Debian / serverLoading := Some(Systemd),
-  debianPackageDependencies := Seq("openjdk-8-jre-headless"),
+  debianPackageDependencies := Seq("openjdk-11-jre-headless"),
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
   packageDescription := """Members Data API""",
@@ -48,7 +48,7 @@ val buildDebSettings = Seq(
   Universal / javaOptions ++= Seq(
     "-Dpidfile.path=/dev/null",
     "-J-XX:MaxRAMFraction=2",
-    "-J-XX:InitialRAMFraction=2",
+    "-J-XX:InitialRAMFraction=2
     "-J-XX:MaxMetaspaceSize=500m",
     "-J-XX:+PrintGCDetails",
     "-J-XX:+PrintGCDateStamps",
