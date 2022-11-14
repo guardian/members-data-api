@@ -19,7 +19,7 @@ object Dependencies {
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.631"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.630"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.6"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.1.0"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "7.2"
@@ -47,6 +47,10 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
   val awsJavaSdkAutoscaling = "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion
+  val akkaActorTyped = "com.typesafe.akka" %% "akka-actor-typed" % "2.7.0"
+  val akkaProtobufV3 = "com.typesafe.akka" %% "akka-protobuf-v3" % "2.7.0"
+  val akkaStream = "com.typesafe.akka" %% "akka-stream" % "2.7.0"
+  val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % "2.7.0"
 
 
   // projects
@@ -73,6 +77,10 @@ object Dependencies {
     netty,
     nettyHttp,
     akkaHttpCore,
+    akkaActorTyped,
+    akkaProtobufV3,
+    akkaStream,
+    akkaSerializationJackson,
   ) ++ jackson ++ oktaJwtVerifier
 
   val depOverrides = Seq(scalaXml)
