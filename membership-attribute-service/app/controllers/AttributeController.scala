@@ -82,7 +82,7 @@ class AttributeController(
   protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
     request.touchpoint.supporterProductDataService
-      .getAttributes(identityId)
+      .getNonCancelledAttributes(identityId)
       .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
