@@ -31,8 +31,12 @@ class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: Stri
     DynamoFormat.xmap[Currency, String](s => Currency.fromString(s).toRight(TypeCoercionError(new Throwable("Invalid currency"))), _.iso)
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
-  def getAttributes(identityId: String): Future[Either[String, Option[Attributes]]] =
-    getSupporterRatePlanItems(identityId).map(ratePlanItems => mapper.attributesFromSupporterRatePlans(identityId, ratePlanItems)).value
+  def getNonCancelledAttributes(identityId: String): Future[Either[String, Option[Attributes]]] = {
+    getSupporterRatePlanItems(identityId).map { ratePlanItems =>
+      val nonCancelled = ratePlanItems.filter(_.cancellationDate.isEmpty)
+      mapper.attributesFromSupporterRatePlans(identityId, nonCancelled)
+    }.value
+  }
 
   def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]] = {
     EitherT(

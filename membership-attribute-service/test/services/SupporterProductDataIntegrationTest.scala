@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAs
 
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
-  val stage = "PROD" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
+  val stage = "DEV" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
     .credentialsProviders(
       ProfileCredentialsProvider.builder.profileName(ProfileName).build,
@@ -25,7 +25,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     .credentialsProvider(CredentialsProvider)
     .region(Region.EU_WEST_1)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
-  lazy val supporterProductDataTable = "SupporterProductData-PROD"
+  lazy val supporterProductDataTable = s"SupporterProductData-$stage"
   lazy val supporterProductDataService = new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
 
   implicit private val actorSystem: ActorSystem = ActorSystem()
@@ -34,7 +34,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
 
   "SupporterProductData" should {
     "get attributes by identity id" in {
-      supporterProductDataService.getAttributes("3355555").map {
+      supporterProductDataService.getNonCancelledAttributes("3355555").map {
         case Right(attributes) =>
           SafeLogger.info(attributes.toString)
           ok
