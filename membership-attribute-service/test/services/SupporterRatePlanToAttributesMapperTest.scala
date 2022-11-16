@@ -18,6 +18,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     ratePlanId,
     termEndDate,
     LocalDate.now(),
+    cancellationDate = None,
     contributionCurrency = None,
     contributionAmount = None,
   )
