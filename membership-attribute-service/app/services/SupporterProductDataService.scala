@@ -5,7 +5,7 @@ import com.gu.i18n.Currency
 import com.typesafe.scalalogging.LazyLogging
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.Metrics
-import org.joda.time.LocalDate
+import org.joda.time.{DateTimeZone, LocalDate}
 import org.scanamo.DynamoReadError.describe
 import org.scanamo.{DynamoReadError, _}
 import org.scanamo.generic.semiauto._
@@ -27,7 +27,7 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
 
   def getNonCancelledAttributes(identityId: String): Future[Either[String, Option[Attributes]]] = {
     getSupporterRatePlanItems(identityId).map { ratePlanItems =>
-      val nonCancelled = ratePlanItems.filter(_.cancellationDate.isEmpty)
+      val nonCancelled = ratePlanItems.filter(item => !item.cancellationDate.exists(_.isBefore(LocalDate.now(DateTimeZone.UTC))))
       mapper.attributesFromSupporterRatePlans(identityId, nonCancelled)
     }.value
   }
