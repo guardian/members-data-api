@@ -26,6 +26,8 @@ object Dependencies {
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
   val netty = "io.netty" % "netty-codec" % "4.1.85.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.85.Final"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
 
   val jacksonVersion = "2.14.1"
   val jacksonDatabindVersion = "2.14.1"
@@ -80,8 +82,10 @@ object Dependencies {
     akkaProtobufV3,
     akkaStream,
     akkaSerializationJackson,
+    unirest,
+    mockServer
   ) ++ jackson ++ oktaJwtVerifier
 
-  val depOverrides = jackson
+  val depOverrides = jackson ++ Seq(scalaXml)
 
 }
