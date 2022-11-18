@@ -5,6 +5,7 @@ import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.i18n.Country
 import com.gu.identity.IdapiService
+import com.gu.identity.auth.OktaTokenValidationConfig
 import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services._
@@ -18,15 +19,10 @@ import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
 import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
-import configuration.Config
+import com.typesafe.config.Config
 import scalaz.std.scalaFuture._
 import services._
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
-  EnvironmentVariableCredentialsProvider,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -34,23 +30,23 @@ import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
-class TouchpointComponents(stage: String)(implicit system: ActorSystem, executionContext: ExecutionContext) {
+class TouchpointComponents(stage: String, conf: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit system: ActorSystem, executionContext: ExecutionContext) {
   implicit val ec: ExecutionContextExecutor = system.dispatcher
-  lazy val conf = Config.config.getConfig("touchpoint.backend")
-  lazy val environmentConf = conf.getConfig(s"environments.$stage")
+  lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
+  lazy val environmentConfig = touchpointConfig.getConfig(s"environments.$stage")
 
-  lazy val digitalPackConf = environmentConf.getConfig(s"zuora.ratePlanIds.digitalpack")
-  lazy val paperCatalogConf = environmentConf.getConfig(s"zuora.productIds.subscriptions")
-  lazy val membershipConf = environmentConf.getConfig(s"zuora.ratePlanIds.membership")
-  lazy val supporterProductDataTable = environmentConf.getString("supporter-product-data.table")
-  lazy val invoiceTemplatesConf = environmentConf.getConfig(s"zuora.invoiceTemplateIds")
+  lazy val digitalPackConf = environmentConfig.getConfig(s"zuora.ratePlanIds.digitalpack")
+  lazy val paperCatalogConf = environmentConfig.getConfig(s"zuora.productIds.subscriptions")
+  lazy val membershipConf = environmentConfig.getConfig(s"zuora.ratePlanIds.membership")
+  lazy val supporterProductDataTable = environmentConfig.getString("supporter-product-data.table")
+  lazy val invoiceTemplatesConf = environmentConfig.getConfig(s"zuora.invoiceTemplateIds")
 
   lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
-  lazy val productIds = config.SubsV2ProductIds(environmentConf.getConfig("zuora.productIds"))
+  lazy val productIds = config.SubsV2ProductIds(environmentConfig.getConfig("zuora.productIds"))
   lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
-  lazy val tpConfig = TouchpointBackendConfig.byEnv(stage, conf)
+  lazy val tpConfig = TouchpointBackendConfig.byEnv(stage, touchpointConfig)
   implicit lazy val _bt: TouchpointBackendConfig = tpConfig
 
   lazy val patronsStripeService = new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner)
@@ -62,7 +58,7 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
   lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] =
     InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
-  lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, Config.applicationName)
+  lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.Config.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
@@ -78,9 +74,13 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
     .region(Region.EU_WEST_1)
 
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
-  lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
+  lazy val dynamoSupporterProductDataService =
+    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
+  lazy val supporterProductDataService: SupporterProductDataService =
+    supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
-  private val zuoraMetrics = new ZuoraMetrics(stage, Config.applicationName)
+
+  private val zuoraMetrics = new ZuoraMetrics(stage, configuration.Config.applicationName)
   private lazy val zuoraSoapClient =
     new ClientWithFeatureSupplier(
       featureCodes = Set.empty,
@@ -110,5 +110,9 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
-  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, Config.Okta.tokenValidation)
+  lazy val tokenVerifierConfig = OktaTokenValidationConfig(
+    issuerUrl = conf.getString("okta.verifier.issuerUrl"),
+    audience = conf.getString("okta.verifier.audience"),
+  )
+  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, tokenVerifierConfig)
 }
