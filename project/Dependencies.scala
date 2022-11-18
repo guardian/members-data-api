@@ -25,6 +25,8 @@ object Dependencies {
   val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
   val netty = "io.netty" % "netty-codec" % "4.1.85.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.85.Final"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
 
   val jacksonVersion = "2.14.1"
   val jacksonDatabindVersion = "2.14.1"
@@ -44,6 +46,8 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier" % oktaJwtVerifierVersion,
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
+  val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
+  val okHttp = "com.squareup.okhttp3" % "okhttp" % "5.0.0-alpha.10"
 
   // projects
 
@@ -70,8 +74,11 @@ object Dependencies {
     nettyHttp,
     "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
     akkaHttpCore,
+    unirest,
+    mockServer,
+    okHttp,
   ) ++ jackson ++ oktaJwtVerifier
 
-  val depOverrides = jackson
-
+  val dependencyOverrides = jackson ++ Seq(scalaXml, okHttp)
+  val excludeDependencies = Seq(ExclusionRule("com.squareup.okio", "okio"))
 }

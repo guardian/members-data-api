@@ -96,7 +96,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
 
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
+      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage, Config.config, None)
 
       fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
@@ -108,7 +108,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
 
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
+      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage, Config.config, None)
 
       val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
@@ -117,7 +117,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   private val actorSystem = ActorSystem()
-  private val touchpointBackends = new TouchpointBackends(actorSystem)
+  private val touchpointBackends = new TouchpointBackends(actorSystem, Config.config, None)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
