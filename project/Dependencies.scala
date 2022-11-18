@@ -15,6 +15,7 @@ object Dependencies {
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
+  val guice = PlayImport.guice % "test"
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
@@ -52,6 +53,8 @@ object Dependencies {
   val akkaStream = "com.typesafe.akka" %% "akka-stream" % "2.7.0"
   val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % "2.7.0"
 
+  val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % "test"
+
 
   // projects
 
@@ -70,6 +73,7 @@ object Dependencies {
     scalaz,
     membershipCommon,
     specs2,
+    guice,
     kinesis,
     logstash,
     anorm,
@@ -81,6 +85,7 @@ object Dependencies {
     akkaProtobufV3,
     akkaStream,
     akkaSerializationJackson,
+    unirest
   ) ++ jackson ++ oktaJwtVerifier
 
   val depOverrides = Seq(scalaXml)
