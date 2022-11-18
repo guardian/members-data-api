@@ -27,6 +27,7 @@ object Dependencies {
   val netty = "io.netty" % "netty-codec" % "4.1.84.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.84.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
 
   val jacksonVersion = "2.14.0"
   val jacksonDatabindVersion = "2.14.0"
@@ -81,6 +82,8 @@ object Dependencies {
     akkaProtobufV3,
     akkaStream,
     akkaSerializationJackson,
+    unirest,
+    mockServer
   ) ++ jackson ++ oktaJwtVerifier
 
   val depOverrides = Seq(scalaXml)
