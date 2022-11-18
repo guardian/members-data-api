@@ -7,17 +7,23 @@ import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.Metrics
 import org.joda.time.{DateTimeZone, LocalDate}
 import org.scanamo.DynamoReadError.describe
-import org.scanamo.{DynamoReadError, _}
+import org.scanamo._
 import org.scanamo.generic.semiauto._
 import org.scanamo.syntax._
-import services.SupporterProductDataService.{alertOnDynamoReadErrors, errorMessage}
+import services.DynamoSupporterProductDataService.{alertOnDynamoReadErrors, errorMessage}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)(implicit
-    executionContext: ExecutionContext,
-) {
+trait SupporterProductDataService {
+  def getAttributes(identityId: String): Future[Either[String, Option[Attributes]]]
+
+  def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]]
+}
+
+class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)(implicit
+                                                                                                                                 executionContext: ExecutionContext,
+) extends SupporterProductDataService {
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
@@ -32,7 +38,7 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
     }.value
   }
 
-  def getSupporterRatePlanItems(identityId: String) = {
+  def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]] = {
     EitherT(
       for {
         futureDynamoResult <- getSupporterRatePlanItemsWithReadErrors(identityId)
@@ -59,7 +65,7 @@ class SupporterProductDataService(client: DynamoDbAsyncClient, table: String, ma
 
 }
 
-object SupporterProductDataService extends LazyLogging {
+object DynamoSupporterProductDataService extends LazyLogging {
   val metrics = Metrics("SupporterProductDataService") // referenced in CloudFormation
 
   def errorMessage(errors: List[DynamoReadError]) =
