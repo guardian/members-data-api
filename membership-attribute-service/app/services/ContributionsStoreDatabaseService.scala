@@ -37,7 +37,7 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
 
   override def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] = {
     val statement = SQL"""
-      SELECT received_timestamp, currency, amount, status
+      SELECT received_timestamp as created, currency, amount, status, payment_provider, refund_timestamp as refunded
       FROM contributions
       WHERE identity_id = $identityId
     """
@@ -48,7 +48,7 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
 
   override def getLatestContribution(identityId: String): DatabaseGetResult[Option[ContributionData]] = {
     val statement = SQL"""
-      SELECT received_timestamp, currency, amount, status
+      SELECT received_timestamp as created, currency, amount, status, payment_provider, refund_timestamp as refunded
       FROM contributions
       WHERE identity_id = $identityId
       AND status = 'Paid'

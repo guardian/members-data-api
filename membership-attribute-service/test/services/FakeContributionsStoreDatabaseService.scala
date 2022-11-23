@@ -1,7 +1,8 @@
 package services
 
-import java.util.GregorianCalendar
+import com.gu.i18n.Currency
 
+import java.util.GregorianCalendar
 import scala.concurrent.Future
 import services.ContributionsStoreDatabaseService.DatabaseGetResult
 import models.{ContributionData, RecurringReminderStatus, SupportReminders}
@@ -9,9 +10,11 @@ import models.{ContributionData, RecurringReminderStatus, SupportReminders}
 case class FakePostgresService(validId: String) extends ContributionsStoreDatabaseService {
   val testContributionData = ContributionData(
     created = new GregorianCalendar(2021, 10, 28).getTime,
-    currency = "GBP",
+    currency = Currency.GBP.iso,
     amount = 11.0,
     status = "statusValue",
+    payment_provider = "Stripe",
+    refunded = None,
   )
   def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] =
     if (identityId == validId)

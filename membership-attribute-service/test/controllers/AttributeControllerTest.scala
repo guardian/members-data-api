@@ -254,8 +254,11 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                    | {
                    |   "created":1638057600000,
                    |   "currency":"GBP",
+                   |   "currencyIdentifier":"£",
                    |   "amount":11,
-                   |   "status":"statusValue"
+                   |   "status":"statusValue",
+                   |   "payment_provider":"Stripe",
+                   |   "refunded":null
                    | }
                    | ]
                  """.stripMargin)
