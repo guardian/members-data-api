@@ -6,12 +6,12 @@ import com.gu.i18n.Currency
 import play.api.libs.json.{JsValue, Json, Writes}
 
 case class ContributionData(
-   created: Date,
-   currency: String,
-   amount: BigDecimal,
-   status: String,
-   payment_provider: String,
-   refunded: Option[Date],
+    created: Date,
+    currency: String,
+    amount: BigDecimal,
+    status: String,
+    payment_provider: String,
+    refunded: Option[Date],
 ) {
   val currencyIdentifier = Currency.fromString(currency).map(_.identifier)
 }
@@ -25,7 +25,7 @@ object ContributionData {
       "amount" -> o.amount,
       "status" -> o.status,
       "payment_provider" -> o.payment_provider,
-      "refunded" -> o.refunded
+      "refunded" -> o.refunded,
     )
   }
 
