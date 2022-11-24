@@ -46,7 +46,7 @@ class AcceptanceTest extends Specification with Mockito with PlaySpecification {
       .load(Context(
         Environment.simple(),
         Configuration(
-          "http.playPort" -> playPort,
+          "http.port" -> playPort,
           "touchpoint.backend.environments.DEV.identity.apiUrl" -> "http://localhost:1080"
         )
           .withFallback(configuration),

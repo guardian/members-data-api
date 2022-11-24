@@ -15,6 +15,7 @@ object Dependencies {
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val guice = PlayImport.guice
+  val scalaGuice = "net.codingwell" %% "scala-guice" % "5.1.0"
   val specs2 = PlayImport.specs2 % Test
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
@@ -74,6 +75,7 @@ object Dependencies {
     membershipCommon,
     specs2,
     guice,
+    scalaGuice,
     kinesis,
     logstash,
     anorm,
