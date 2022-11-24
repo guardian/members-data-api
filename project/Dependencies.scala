@@ -1,6 +1,5 @@
-import sbt._
 import play.sbt.PlayImport
-import sbt.Keys.dependencyOverrides
+import sbt._
 
 object Dependencies {
 
@@ -14,8 +13,9 @@ object Dependencies {
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
-  val specs2 = PlayImport.specs2 % "test"
-  val guice = PlayImport.guice % "test"
+  val guice = PlayImport.guice
+  val scalaGuice = "net.codingwell" %% "scala-guice" % "5.1.0"
+  val specs2 = PlayImport.specs2 % Test
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
@@ -28,6 +28,7 @@ object Dependencies {
   val netty = "io.netty" % "netty-codec" % "4.1.84.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.84.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
 
   val jacksonVersion = "2.14.0"
   val jacksonDatabindVersion = "2.14.0"
@@ -53,7 +54,7 @@ object Dependencies {
   val akkaStream = "com.typesafe.akka" %% "akka-stream" % "2.7.0"
   val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % "2.7.0"
 
-  val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % "test"
+  val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
 
 
   // projects
@@ -74,6 +75,7 @@ object Dependencies {
     membershipCommon,
     specs2,
     guice,
+    scalaGuice,
     kinesis,
     logstash,
     anorm,
@@ -85,7 +87,8 @@ object Dependencies {
     akkaProtobufV3,
     akkaStream,
     akkaSerializationJackson,
-    unirest
+    unirest,
+    mockServer
   ) ++ jackson ++ oktaJwtVerifier
 
   val depOverrides = Seq(scalaXml)
