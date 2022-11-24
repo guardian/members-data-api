@@ -258,7 +258,8 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
                    |   "amount":11,
                    |   "status":"statusValue",
                    |   "payment_provider":"Stripe",
-                   |   "refunded":null
+                   |   "refunded":null,
+                   |   "payment_id":"ch_123456789abc"
                    | }
                    | ]
                  """.stripMargin)

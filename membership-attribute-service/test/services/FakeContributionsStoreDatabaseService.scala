@@ -15,6 +15,7 @@ case class FakePostgresService(validId: String) extends ContributionsStoreDataba
     status = "statusValue",
     payment_provider = "Stripe",
     refunded = None,
+    payment_id = "ch_123456789abc",
   )
   def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] =
     if (identityId == validId)

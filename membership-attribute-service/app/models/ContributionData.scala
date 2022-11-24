@@ -12,20 +12,20 @@ case class ContributionData(
     status: String,
     payment_provider: String,
     refunded: Option[Date],
-) {
-  val currencyIdentifier = Currency.fromString(currency).map(_.identifier)
-}
+    payment_id: String,
+)
 
 object ContributionData {
   implicit val contributionDataWrites = new Writes[ContributionData] {
     override def writes(o: ContributionData): JsValue = Json.obj(
       "created" -> o.created,
       "currency" -> o.currency,
-      "currencyIdentifier" -> o.currencyIdentifier,
+      "currencyIdentifier" -> Currency.fromString(o.currency).map(_.identifier),
       "amount" -> o.amount,
       "status" -> o.status,
       "payment_provider" -> o.payment_provider,
       "refunded" -> o.refunded,
+      "payment_id" -> o.payment_id,
     )
   }
 
