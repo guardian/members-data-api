@@ -25,8 +25,9 @@ import scala.concurrent.Future
 class AcceptanceTest extends Specification with Mockito with PlaySpecification {
 
   "Server" should {
-    val port = 8081
-    val clientAndServer = new ClientAndServer(1080)
+    val playPort = 8081
+    val identityPort = 1080
+    val clientAndServer = new ClientAndServer(identityPort)
 
     val databaseServiceMock = mock[ContributionsStoreDatabaseService]
     val supporterProductDataService = mock[SupporterProductDataService]
@@ -45,7 +46,7 @@ class AcceptanceTest extends Specification with Mockito with PlaySpecification {
       .load(Context(
         Environment.simple(),
         Configuration(
-          "http.port" -> port,
+          "http.playPort" -> playPort,
           "touchpoint.backend.environments.DEV.identity.apiUrl" -> "http://localhost:1080"
         )
           .withFallback(configuration),
@@ -53,9 +54,9 @@ class AcceptanceTest extends Specification with Mockito with PlaySpecification {
         None
       ))
 
-    val server = AkkaHttpServer.fromApplication(application, ServerConfig(port = Some(port)))
+    val server = AkkaHttpServer.fromApplication(application, ServerConfig(port = Some(playPort)))
 
-    val serverAddress = "http://localhost:" + port
+    val serverAddress = "http://localhost:" + playPort
     val userAttributesUrl = serverAddress + "/user-attributes/me"
 
     "work" in {
@@ -90,6 +91,8 @@ class AcceptanceTest extends Specification with Mockito with PlaySpecification {
         .header("Cookie", "consentUUID=cc457984-4282-49ca-9831-0649017aa0c9_13; _ga=GA1.2.1716429135.1668613133; GU_U=WyIyMDAwNjczODgiLCIiLCJ1c2VyIiwiIiwxNjc2NDU3MTE5ODk3LDEsMTY2ODYxMzI0ODAwMCx0cnVlXQ.MCwCFHUQjxr9nm5gk15jmWID6lYYVE5NAhR11ko5vRIjNwqGprB8gCzIEPz4Rg; SC_GU_LA=WyJMQSIsIjIwMDA2NzM4OCIsMTY2ODY4MTExOTg5N10.MCwCFG4nWLgEx96EJjNxwtqKbQBNBaXDAhRYtlpkPp8s_Ysl70rkySriLUKZaw; SC_GU_U=WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI")
         .asString
 
+      server.stop()
+
       httpResponse.getStatus shouldEqual 200
 
       val body = httpResponse.getBody
@@ -98,6 +101,7 @@ class AcceptanceTest extends Specification with Mockito with PlaySpecification {
       val json = Json.parse(body)
 
       clientAndServer.verify(identityRequest)
+      clientAndServer.stop()
 
       (json \ "userId").as[String] shouldEqual "200067388"
       (json \ "digitalSubscriptionExpiryDate").as[String] shouldEqual "2999-01-01"
