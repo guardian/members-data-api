@@ -7,7 +7,7 @@ import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{UserFromToken, Attributes, MobileSubscriptionStatus}
+import models.{Attributes, MobileSubscriptionStatus, UserFromToken}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -16,6 +16,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
+import services.AuthenticationFailure.Unauthorised
 import services.{AuthenticationService, FakePostgresService, MobileSubscriptionService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -103,15 +104,15 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val fakeAuthService = new AuthenticationService {
     override def user(requiredScopes: List[AccessScope])(implicit request: RequestHeader) =
       request.cookies.headOption match {
-        case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
-        case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Some(unvalidatedEmailUser))
-        case Some(c) if c == userWithoutAttributesCookie => Future.successful(Some(userWithoutAttributes))
-        case Some(c) if c == guardianEmployeeCookie => Future.successful(Some(guardianEmployeeUser))
-        case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Some(guardianEmployeeUserTheguardian))
-        case Some(c) if c == validEmployeeUserCookie => Future.successful(Some(validEmployeeUser))
-        case Some(c) if c == userWithHighRecurringContributionCookie => Future.successful(Some(userWithHighRecurringContribution))
-        case Some(c) if c == userWithLowRecurringContributionCookie => Future.successful(Some(userWithLowRecurringContribution))
-        case _ => Future.successful(None)
+        case Some(c) if c == validUserCookie => Future.successful(Right(validUser))
+        case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Right(unvalidatedEmailUser))
+        case Some(c) if c == userWithoutAttributesCookie => Future.successful(Right(userWithoutAttributes))
+        case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
+        case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
+        case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
+        case Some(c) if c == userWithHighRecurringContributionCookie => Future.successful(Right(userWithHighRecurringContribution))
+        case Some(c) if c == userWithLowRecurringContributionCookie => Future.successful(Right(userWithLowRecurringContribution))
+        case _ => Future.successful(Left(Unauthorised))
       }
   }
 
@@ -121,7 +122,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
 
       object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
 
-      fakeAuthService.user(requiredScopes = Nil)(request) map { user: Option[UserFromToken] =>
+      fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
       }
     }

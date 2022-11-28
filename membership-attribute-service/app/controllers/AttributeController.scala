@@ -106,7 +106,7 @@ class AttributeController(
       }
 
       request.user match {
-        case Some(user) =>
+        case Right(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
           val futureSupporterAttributes = getSupporterProductDataAttributes(user.identityId)
           val futureOneOffContribution = getLatestOneOffContributionDate(user.identityId, user)
@@ -118,7 +118,7 @@ class AttributeController(
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
             supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
-              request.user,
+              request.user.toOption,
               supporterAttributes,
               user.identityId,
             )
@@ -181,9 +181,14 @@ class AttributeController(
             log.error(errMsg, e)
             InternalServerError(errMsg)
           }
-        case None =>
+
+        case Left(AuthenticationFailure.Unauthorised) =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
+
+        case Left(AuthenticationFailure.Forbidden) =>
+          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
+          Future(forbidden)
       }
     }
   }
@@ -222,24 +227,31 @@ class AttributeController(
 
   def oneOffContributions = {
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
-      val userHasValidatedEmail = request.user.flatMap(_.userEmailValidated).getOrElse(false)
+      val userHasValidatedEmail = request.user.map(_.userEmailValidated.getOrElse(false))
 
-      val futureResult: Future[Result] = if (userHasValidatedEmail) {
-        request.user.map(_.identityId) match {
-          case Some(identityId) =>
-            contributionsStoreDatabaseService.getAllContributions(identityId).map {
-              case Left(err) => Ok(err)
-              case Right(result) => Ok(Json.toJson(result).toString)
-            }
-          case None => Future(unauthorized)
-        }
-      } else
-        Future(unauthorized)
+      val futureResult: Future[Result] = userHasValidatedEmail match {
+        case Right(true) =>
+          request.user.map(_.identityId) match {
+            case Right(identityId) =>
+              contributionsStoreDatabaseService.getAllContributions(identityId).map {
+                case Left(err) => Ok(err)
+                case Right(result) => Ok(Json.toJson(result).toString)
+              }
+            case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
+            case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+          }
+
+        case Right(false) => Future(unauthorized)
+
+        case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
+
+        case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+      }
 
       futureResult.map { result =>
         request.user match {
-          case Some(user) => AddGuIdentityHeaders.fromUser(result, user)
-          case None => result
+          case Right(user) => AddGuIdentityHeaders.fromUser(result, user)
+          case Left(_) => result
         }
       }
     }
