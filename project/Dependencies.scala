@@ -26,7 +26,7 @@ object Dependencies {
   val netty = "io.netty" % "netty-codec" % "4.1.74.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.74.Final"
 
-  val jacksonVersion = "2.13.2"
+  val jacksonVersion = "2.13.4"
   val jacksonDatabindVersion = "2.13.2.2"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
