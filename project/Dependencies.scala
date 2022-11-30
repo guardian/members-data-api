@@ -7,9 +7,9 @@ object Dependencies {
   val awsClientV2Version = "2.16.86"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "3.255"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.5"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
-  val postgres = "org.postgresql" % "postgresql" % "42.3.3"
+  val postgres = "org.postgresql" % "postgresql" % "42.5.1"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
@@ -26,10 +26,10 @@ object Dependencies {
   val netty = "io.netty" % "netty-codec" % "4.1.74.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.74.Final"
 
-  val jacksonVersion = "2.13.2"
+  val jacksonVersion = "2.13.4"
   val jacksonDatabindVersion = "2.13.2.2"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
-
+  val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
@@ -39,6 +39,10 @@ object Dependencies {
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonVersion,
     "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
+  )
+  val oktaJwtVerifier = Seq(
+    "com.okta.jwt" % "okta-jwt-verifier" % oktaJwtVerifierVersion,
+    "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
 
   // projects
@@ -66,7 +70,7 @@ object Dependencies {
     nettyHttp,
     "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
     akkaHttpCore,
-  ) ++ jackson
+  ) ++ jackson ++ oktaJwtVerifier
 
   val depOverrides = jackson
 

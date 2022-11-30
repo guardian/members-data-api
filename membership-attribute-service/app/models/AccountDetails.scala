@@ -155,7 +155,7 @@ object AccountDetails {
         ),
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
-        billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name)}) ++
+        billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name) }) ++
         Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
@@ -218,9 +218,9 @@ object AccountDetails {
   def mmaCategoryFrom(product: Product): String = product match {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
-    case _: Product.SupporterPlus => "subscriptions"
+    case _: Product.SupporterPlus => "recurringSupport"
     case _: Product.GuardianPatron => "subscriptions"
-    case _: Product.Contribution => "contributions"
+    case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"
     case _ => product.name // fallback
   }

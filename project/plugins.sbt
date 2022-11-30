@@ -11,6 +11,6 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.25")
 
 addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "1.0.0")
 
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.6")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 
 libraryDependencies += "org.vafer" % "jdeb" % "1.3" artifacts (Artifact("jdeb", "jar", "jar"))
