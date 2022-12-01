@@ -12,14 +12,14 @@ import org.http4s.Uri
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaTokenVerifierConfig)(implicit ec: ExecutionContext)
+class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: OktaTokenValidationConfig)(implicit ec: ExecutionContext)
     extends AuthenticationService {
 
   val idApiUrl = Uri.unsafeFromString(apiConfig.url)
 
   val identityPlayAuthService = {
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
-    IdentityPlayAuthService.unsafeInit(UserFromTokenParser, idapiConfig, oktaTokenVerifierConfig)
+    IdentityPlayAuthService.unsafeInit(UserFromTokenParser, idapiConfig, oktaTokenValidationConfig)
   }
 
   def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Option[UserFromToken]] = {
@@ -31,13 +31,14 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
             // frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
             SafeLogger.info(s"unable to authorize user - no token or cookie provided")
 
-          case OktaVerifierException(validationError: ValidationError) =>
+          case OktaValidationException(validationError: ValidationError) =>
             validationError match {
               case OktaValidationError(originalException) =>
                 SafeLogger.warn(s"could not validate okta token - $validationError", originalException)
               case _ =>
                 SafeLogger.warn(s"could not validate okta token - $validationError")
             }
+
           case err =>
             SafeLogger.warn(s"valid request but expired token or cookie so user must log in again - $err")
         }
@@ -47,7 +48,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenVerifierConfig: OktaT
 
   private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[UserFromToken]] =
     identityPlayAuthService
-      .getUserClaimsFromRequestLocallyOrWithIdapi(requestHeader, requiredScopes)
+      .getUserClaimsFromRequestOrWithIdapi(requestHeader, requiredScopes)
       .map {
         case (_: OktaUserCredentials, claims) =>
           SafeLogger.warn("Authorised by Okta token")

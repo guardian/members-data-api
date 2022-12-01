@@ -3,7 +3,7 @@ package configuration
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.sqs.AmazonSQSAsyncClientBuilder
 import com.gu.aws.CredentialsProvider
-import com.gu.identity.auth.OktaTokenVerifierConfig
+import com.gu.identity.auth.OktaTokenValidationConfig
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
 import play.api.Configuration
@@ -54,7 +54,7 @@ object Config {
   }
 
   object Okta {
-    lazy val tokenVerifier = OktaTokenVerifierConfig(
+    lazy val tokenValidation = OktaTokenValidationConfig(
       issuerUrl = config.getString("okta.verifier.issuerUrl"),
       audience = config.getString("okta.verifier.audience"),
     )
