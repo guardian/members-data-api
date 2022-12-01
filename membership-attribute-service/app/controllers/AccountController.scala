@@ -25,6 +25,7 @@ import components.TouchpointComponents
 import configuration.Config
 import controllers.PaymentDetailMapper.paymentDetailsForSub
 import loghandling.DeprecatedRequestLogger
+import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
 import models.AccountDetails._
 import models.ApiErrors._
 import models._
@@ -82,10 +83,10 @@ class AccountController(
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       val tp = request.touchpoint
       val cancelForm = Form { single("reason" -> nonEmptyText) }
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
 
       def handleInputBody(cancelForm: Form[String]): Future[Either[ApiError, String]] = Future.successful {
         cancelForm
@@ -163,9 +164,9 @@ class AccountController(
     }
 
   private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
       val tp = request.touchpoint
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
 
       (for {
         cancellationEffectiveDate <- tp.subService
@@ -186,12 +187,12 @@ class AccountController(
 
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid: SubPlanReads, F <: SubscriptionPlan.Free: SubPlanReads] =
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(completeReadSelf)).async { implicit request =>
       DeprecatedRequestLogger.logDeprecatedRequest(request)
 
       implicit val tp: TouchpointComponents = request.touchpoint
       def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
 
       logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
       (for {
@@ -479,14 +480,14 @@ class AccountController(
       }
     }
 
-  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) = AuthAndBackendViaAuthLibAction.async {
-    implicit request =>
+  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) =
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       if (subscriptionNameOption.isEmpty) {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
       val tp = request.touchpoint
-      val maybeUserId = request.user.map(_.id)
+      val maybeUserId = request.user.map(_.identityId)
       logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
       (for {
         newPrice <- EitherT.fromEither(Future.successful(validateContributionAmountUpdateForm))
@@ -520,7 +521,7 @@ class AccountController(
           logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
           Ok("Success")
       }
-  }
+    }
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1
