@@ -12,7 +12,7 @@ import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
-import com.gu.stripe.{BasicStripeService, StripeService, StripeServiceConfig}
+import com.gu.stripe.{BasicStripeService, StripeService}
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
@@ -110,6 +110,5 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
-  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi)
-
+  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, Config.Okta.tokenValidation)
 }

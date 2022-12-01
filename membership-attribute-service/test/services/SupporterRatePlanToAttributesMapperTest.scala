@@ -1,5 +1,6 @@
 package services
 
+import com.gu.i18n.Currency
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
@@ -17,6 +18,9 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     ratePlanId,
     termEndDate,
     LocalDate.now(),
+    cancellationDate = None,
+    contributionCurrency = None,
+    contributionAmount = None,
   )
 
   "SupporterRatePlanToAttributesMapper" should {
@@ -39,6 +43,20 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
         identityId,
         List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea")),
       ) should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution"))
+    }
+
+    "identify a high monthly contribution" in {
+      mapper.attributesFromSupporterRatePlans(
+        identityId,
+        List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97").copy(contributionAmount = Some(15), contributionCurrency = Some(Currency.GBP))),
+      ) should beSome.which(_.HighContributor should beSome(true))
+    }
+
+    "identify a low monthly contribution" in {
+      mapper.attributesFromSupporterRatePlans(
+        identityId,
+        List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97").copy(contributionAmount = Some(5), contributionCurrency = Some(Currency.GBP))),
+      ) should beSome.which(_.HighContributor should beSome(false))
     }
 
     "identify a Digital Subscription" in {
@@ -259,6 +277,8 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           identityId,
           Some("Supporter"),
           Some("Monthly Contribution"),
+          Some(false),
+          None,
           None,
           None,
           Some(termEndDate),
@@ -320,6 +340,8 @@ object SupporterRatePlanToAttributesMapperTest {
   // This is a list of all active product rate plans from an extract taken
   // using the support-frontend/supporter-product-data project on 26th Feb 2021
   val allActiveProductRatePlans = List(
+    ("Supporter Plus Annual", "8a12865b8219d9b40182210618a464ba"),
+    ("Supporter Plus Monthly", "8a12865b8219d9b401822106192b64dc"),
     ("Annual Contribution", "2c92a0fc5e1dc084015e37f58c200eea"),
     ("Digital Pack Annual", "2c92a0fb4edd70c8014edeaa4e972204"),
     ("Digital Pack Monthly", "2c92a0fb4edd70c8014edeaa4eae220a"),

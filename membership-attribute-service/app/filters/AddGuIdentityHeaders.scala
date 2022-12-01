@@ -1,8 +1,8 @@
 package filters
 
 import akka.stream.Materializer
-import com.gu.identity.model.User
 import configuration.Config
+import models.UserFromToken
 import play.api.mvc._
 import services.IdentityAuthService
 
@@ -33,15 +33,15 @@ object AddGuIdentityHeaders {
     if (hasIdentityHeaders(result)) {
       Future.successful(result)
     } else
-      identityAuthService.user(request) map {
+      identityAuthService.user(requiredScopes = Nil)(request) map {
         case Some(user) => fromUser(result, user)
         case None => result
       }
   }
 
-  def fromUser(result: Result, user: User) = result.withHeaders(
-    xGuIdentityIdHeaderName -> user.id,
-    xGuMembershipTestUserHeaderName -> isTestUser(user.publicFields.displayName).toString,
+  def fromUser(result: Result, user: UserFromToken) = result.withHeaders(
+    xGuIdentityIdHeaderName -> user.identityId,
+    xGuMembershipTestUserHeaderName -> isTestUser(user.username).toString,
   )
 
   def hasIdentityHeaders(result: Result) = identityHeaderNames.forall(result.header.headers.contains)
