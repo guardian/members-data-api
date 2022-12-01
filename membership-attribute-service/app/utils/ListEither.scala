@@ -1,7 +1,7 @@
 package utils
 
-import scalaz.{EitherT, IList, ListT, OptionT, \/}
 import scalaz.std.scalaFuture._
+import scalaz.{EitherT, IList, ListT, OptionT, \/}
 
 import scala.concurrent.{ExecutionContext, Future}
 

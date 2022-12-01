@@ -19,12 +19,12 @@ case class UserFromToken(
     identityId: String,
     username: Option[String] = None,
     userEmailValidated: Option[Boolean] = None,
-) extends UserClaims
+) extends AccessClaims
 
-object UserFromTokenParser extends ClaimsParser[UserFromToken] {
+object UserFromTokenParser extends AccessClaimsParser[UserFromToken] {
 
   override def fromDefaultAndUnparsed(
-      defaultClaims: DefaultUserClaims,
+      defaultClaims: DefaultAccessClaims,
       unparsedClaims: UnparsedClaims,
   ): Either[ValidationError, UserFromToken] =
     Right(
