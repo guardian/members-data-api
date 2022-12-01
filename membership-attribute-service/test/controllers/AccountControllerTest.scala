@@ -14,12 +14,11 @@ class AccountControllerTest extends Specification with Mockito {
 
     val subName = "s1"
     val commonActions = mock[CommonActions]
-    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService)
+    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"))
     val request = FakeRequest("POST", s"/api/update/amount/contributions/$subName")
 
     "succeed when given value is valid" in {
-      val result = controller.validateContributionAmountUpdateForm(
-        request.withFormUrlEncodedBody("newPaymentAmount" -> "1"))
+      val result = controller.validateContributionAmountUpdateForm(request.withFormUrlEncodedBody("newPaymentAmount" -> "1"))
       result must beRight(1)
     }
 
@@ -29,8 +28,7 @@ class AccountControllerTest extends Specification with Mockito {
     }
 
     "fail when given value is zero" in {
-      val result = controller.validateContributionAmountUpdateForm(
-        request.withFormUrlEncodedBody("newPaymentAmount" -> "0"))
+      val result = controller.validateContributionAmountUpdateForm(request.withFormUrlEncodedBody("newPaymentAmount" -> "0"))
       result must beLeft("New payment amount '0.00' is too small")
     }
   }

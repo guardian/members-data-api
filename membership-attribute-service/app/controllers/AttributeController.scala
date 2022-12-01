@@ -2,258 +2,262 @@ package controllers
 
 import actions._
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.identity.auth.AccessScope
+import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
+import models.AccessScope.{completeReadSelf, readSelf}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.{ExpensiveMetrics, Metrics}
+import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-import com.gu.identity.model.User
-import limit.ZuoraRequestCounter
-import org.joda.time.LocalDate
-import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Random, Success, Try}
-import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
-/**
- *  What benefits is the user entitled to?
- */
+/** What benefits is the user entitled to?
+  */
 class AttributeController(
-  attributesFromZuora: AttributesFromZuora,
-  commonActions: CommonActions,
-  override val controllerComponents: ControllerComponents,
-  contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
-  mobileSubscriptionService: MobileSubscriptionService
-)(implicit system: ActorSystem) extends BaseController with LoggingWithLogstashFields {
-  import attributesFromZuora._
+    commonActions: CommonActions,
+    override val controllerComponents: ControllerComponents,
+    contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
+    mobileSubscriptionService: MobileSubscriptionService,
+)(implicit system: ActorSystem)
+    extends BaseController
+    with LoggingWithLogstashFields {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = Metrics("AttributesController")
   lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
 
-  /**
-   * Zuora enforces 40 concurrent requests limit, without providing caching mechanisms.
-   * So the following custom workaround logic is attempted:
-   *
-   * 1. Count Zuora concurrent requests
-   * 1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
-   * 1. Calculate concurrency limit per instance
-   * 1. If the count is greater than limit, then hit cache
-   * 1. If the count is less than limit and Zuora is healthy, then hit Zuora
-   * 1. If the count is less than limit and Zuora is unhealthy, then hit cache
-   */
-  def getAttributesWithConcurrencyLimitHandling(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = {
-    val dynamoService = request.touchpoint.attrService
-
-    if (ZuoraRequestCounter.isZuoraConcurrentRequestLimitNotReached) {
-      expensiveMetrics.countRequest(s"zuora-hit")
-      getAttributesFromZuoraWithCacheFallback(
-        identityId = identityId,
-        identityIdToAccounts = request.touchpoint.zuoraRestService.getAccounts,
-        subscriptionsForAccountId = accountId => reads => request.touchpoint.subService.subscriptionsForAccountId[AnyPlan](accountId)(reads),
-        giftSubscriptionsForIdentityId = request.touchpoint.zuoraRestService.getGiftSubscriptionRecordsFromIdentityId,
-        dynamoAttributeService = dynamoService,
-        paymentMethodForPaymentMethodId = paymentMethodId => request.touchpoint.zuoraRestService.getPaymentMethod(paymentMethodId.get),
-        supporterProductDataService = request.touchpoint.supporterProductDataService
-      )
-    } else {
-      expensiveMetrics.countRequest(s"cache-hit")
-      dynamoService
-        .get(identityId)
-        .map(maybeDynamoAttributes => maybeDynamoAttributes.map(DynamoAttributes.asAttributes(_, None)))(executionContext)
-        .map(("Dynamo - too many concurrent calls to Zuora", _))(executionContext)
-    }
-  }
-
-  private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit executionContext: ExecutionContext): Future[Option[LocalDate]] = {
+  private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
+      executionContext: ExecutionContext,
+  ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
-    val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
-
-    if (userHasValidatedEmail) {
+    if (user.userEmailValidated.contains(true)) {
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
-        case -\/(databaseError) =>
-          //Failed to get one-off data, but this should not block the zuora request
+        case Left(databaseError) =>
+          // Failed to get one-off data, but this should not block the zuora request
           log.error(databaseError)
           None
-        case \/-(maybeOneOff) =>
+        case Right(maybeOneOff) =>
           maybeOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli))
       }
-    }
-    else Future.successful(None)
+    } else Future.successful(None)
   }
 
-  private def getLatestMobileSubscription(identityId: String)(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
+  private def getLatestMobileSubscription(
+      identityId: String,
+  )(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
-      case Failure(NonFatal(error)) =>
+      case Failure(error) =>
         metrics.put(s"mobile-subscription-fetch-exception", 1)
         log.warn("Exception while fetching mobile subscription, assuming none", error)
         Success(None)
-      case Success(-\/(error)) =>
+      case Success(Left(error)) =>
         metrics.put(s"mobile-subscription-fetch-error-non-http-200", 1)
         log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
         Success(None)
-      case Success(\/-(status)) => Success(status)
+      case Success(Right(status)) => Success(status)
     }
   }
 
-  private def enrichZuoraAttributes(zuoraAttributes: Attributes, latestOneOffDate: Option[LocalDate], mobileSubscriptionStatus: Option[MobileSubscriptionStatus]): Attributes = {
+  private def addOneOffAndMobile(
+      attributes: Attributes,
+      latestOneOffDate: Option[LocalDate],
+      mobileSubscriptionStatus: Option[MobileSubscriptionStatus],
+  ): Attributes = {
     val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
-    zuoraAttributes.copy(
+    attributes.copy(
       OneOffContributionDate = latestOneOffDate,
       LiveAppSubscriptionExpiryDate = mobileExpiryDate,
-
     )
   }
 
-  private lazy val random = new Random
-
-  private def getZuoraAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
-    if(random.nextInt(100) >= 5) {
-      log.info(s"Fetching attributes from Zuora for user $identityId")
-      getAttributesWithConcurrencyLimitHandling(identityId)
-    } else {
-      log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
-      request.touchpoint.supporterProductDataService.getAttributes(identityId).map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
-    }
-
+  protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
+    log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
+    request.touchpoint.supporterProductDataService
+      .getNonCancelledAttributes(identityId)
+      .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
-  private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessSupporter: Attributes => Result, onNotFound: Result, sendAttributesIfNotFound: Boolean = false) = {
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+  private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
+  private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
+    if (attributes.HighContributor.contains(true) && userAgent.exists(isLiveApp)) {
+      attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
+    } else attributes
 
-      if(endpointDescription == "membership" || endpointDescription == "features") {
+  private def lookup(
+      endpointDescription: String,
+      onSuccessMember: Attributes => Result,
+      onSuccessSupporter: Attributes => Result,
+      onNotFound: Result,
+      sendAttributesIfNotFound: Boolean = false,
+      requiredScopes: List[AccessScope],
+  ) = {
+    AuthAndBackendViaAuthLibAction(requiredScopes).async { implicit request =>
+      if (endpointDescription == "membership" || endpointDescription == "features") {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
       request.user match {
         case Some(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureAttributes = getZuoraAttributes(user.id)
-          val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
-          val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
+          val futureSupporterAttributes = getSupporterProductDataAttributes(user.identityId)
+          val futureOneOffContribution = getLatestOneOffContributionDate(user.identityId, user)
+          val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.identityId)
 
           (for {
-            //Fetch one-off data independently of zuora data so that we can handle users with no zuora record
-            (fromWhere: String, zuoraAttributes: Option[Attributes]) <- futureAttributes
+            // Fetch one-off data independently of zuora data so that we can handle users with no zuora record
+            (fromWhere: String, supporterAttributes: Option[Attributes]) <- futureSupporterAttributes
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
-            combinedAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(request.user, zuoraAttributes, user.id)
-            enrichedZuoraAttributes: Option[Attributes] = combinedAttributes.map(enrichZuoraAttributes(_, latestOneOffDate, latestMobileSubscription))
+            supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
+              request.user,
+              supporterAttributes,
+              user.identityId,
+            )
+            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes
+              .map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
+              .map(upgradeRecurringContributorsOnApps(request.headers.get(USER_AGENT), _))
           } yield {
 
-            def customFields(supporterType: String): List[LogField] = List(LogFieldString("lookup-endpoint-description", endpointDescription), LogFieldString("supporter-type", supporterType), LogFieldString("data-source", fromWhere))
+            def customFields(supporterType: String): List[LogField] = List(
+              LogFieldString("lookup-endpoint-description", endpointDescription),
+              LogFieldString("supporter-type", supporterType),
+              LogFieldString("data-source", fromWhere),
+            )
 
-            enrichedZuoraAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _)) =>
-                logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
+            val result = allProductAttributes match {
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
+                logInfoWithCustomFields(
+                  s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere",
+                  customFields("member"),
+                )
                 onSuccessMember(attrs).withHeaders(
                   "X-Gu-Membership-Tier" -> tier,
-                  "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
+                  "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString,
                 )
               case Some(attrs) =>
                 attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a digital subscriber expiring $date", customFields("digital-subscriber"))
+                  logInfoWithCustomFields(s"${user.identityId} is a digital subscriber expiring $date", customFields("digital-subscriber"))
                 }
-                attrs.PaperSubscriptionExpiryDate.foreach {date =>
-                  logInfoWithCustomFields(s"${user.id} is a paper subscriber expiring $date", customFields("paper-subscriber"))
+                attrs.PaperSubscriptionExpiryDate.foreach { date =>
+                  logInfoWithCustomFields(s"${user.identityId} is a paper subscriber expiring $date", customFields("paper-subscriber"))
                 }
-                attrs.GuardianWeeklySubscriptionExpiryDate.foreach {date =>
-                  logInfoWithCustomFields(s"${user.id} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
+                attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
+                  logInfoWithCustomFields(
+                    s"${user.identityId} is a Guardian Weekly subscriber expiring $date",
+                    customFields("guardian-weekly-subscriber"),
+                  )
+                }
+                attrs.GuardianPatronExpiryDate.foreach { date =>
+                  logInfoWithCustomFields(s"${user.identityId} is a Guardian Patron expiring $date", customFields("guardian-patron"))
                 }
                 attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                  logInfoWithCustomFields(s"${user.id} is a regular $paymentPlan contributor", customFields("contributor"))
+                  logInfoWithCustomFields(s"${user.identityId} is a regular $paymentPlan contributor", customFields("contributor"))
                 }
-                logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+                logInfoWithCustomFields(s"${user.identityId} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
                 onSuccessSupporter(attrs)
               case None if sendAttributesIfNotFound =>
-                val attr = enrichZuoraAttributes(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
-                log.logger.info(s"${user.id} does not have zuora attributes - $attr - found via $fromWhere")
+                val attr = addOneOffAndMobile(Attributes(user.identityId), latestOneOffDate, latestMobileSubscription)
+                log.logger.info(s"${user.identityId} does not have zuora attributes - $attr - found via $fromWhere")
                 Ok(Json.toJson(attr))
               case _ =>
                 onNotFound
             }
+            AddGuIdentityHeaders.fromUser(result, user)
+
           }).recover { case e =>
-              // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
-              // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
-              val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Supporter Experience team: $e"
-              metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
-              log.error(errMsg, e)
-              InternalServerError(errMsg)
-            }
+            // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
+            // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
+            val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
+            metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
+            log.error(errMsg, e)
+            InternalServerError(errMsg)
+          }
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
-        }
       }
+    }
   }
 
   private val notFound = ApiError("Not found", "Could not find user in the database", 404)
 
   private def membershipAttributesFromAttributes(attributes: Attributes): Result = {
-     MembershipAttributes.fromAttributes(attributes)
-       .map(member => Ok(Json.toJson(member)))
-       .getOrElse(notFound)
+    MembershipAttributes
+      .fromAttributes(attributes)
+      .map(member => Ok(Json.toJson(member)))
+      .getOrElse(notFound)
   }
 
   def membership = lookup(
     endpointDescription = "membership",
     onSuccessMember = membershipAttributesFromAttributes,
     onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
-    onNotFound = notFound
+    onNotFound = notFound,
+    requiredScopes = List(completeReadSelf),
   )
   def attributes = lookup(
     endpointDescription = "attributes",
     onSuccessMember = attrs => Ok(Json.toJson(attrs)),
     onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
     onNotFound = notFound,
-    sendAttributesIfNotFound = true
+    sendAttributesIfNotFound = true,
+    requiredScopes = List(readSelf),
   )
   def features = lookup(
     endpointDescription = "features",
     onSuccessMember = Features.fromAttributes,
     onSuccessSupporter = _ => Features.unauthenticated,
-    onNotFound = Features.unauthenticated
+    onNotFound = Features.unauthenticated,
+    requiredScopes = List(completeReadSelf),
   )
 
   def oneOffContributions = {
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
+      val userHasValidatedEmail = request.user.flatMap(_.userEmailValidated).getOrElse(false)
 
-      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
-
-      if (userHasValidatedEmail) {
-        request.user.map(_.id) match {
+      val futureResult: Future[Result] = if (userHasValidatedEmail) {
+        request.user.map(_.identityId) match {
           case Some(identityId) =>
             contributionsStoreDatabaseService.getAllContributions(identityId).map {
-              case -\/(err) => Ok(err)
-              case \/-(result) => Ok(Json.toJson(result).toString)
+              case Left(err) => Ok(err)
+              case Right(result) => Ok(Json.toJson(result).toString)
             }
           case None => Future(unauthorized)
         }
-      } else Future(unauthorized)
+      } else
+        Future(unauthorized)
+
+      futureResult.map { result =>
+        request.user match {
+          case Some(user) => AddGuIdentityHeaders.fromUser(result, user)
+          case None => result
+        }
+      }
     }
   }
 
-  /**
-   * Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
-   */
+  /** Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
+    */
   private def maybeAllowAccessToDigipackForGuardianEmployees(
-    maybeUser: Option[User],
-    maybeAttributes: Option[Attributes],
-    identityId: String,
+      maybeUser: Option[UserFromToken],
+      maybeAttributes: Option[Attributes],
+      identityId: String,
   ): Option[Attributes] = {
 
     val allowDigiPackAccessToStaff =
       (for {
         user <- maybeUser
         email = user.primaryEmailAddress
-        userHasValidatedEmail <- user.statusFields.userEmailValidated
+        userHasValidatedEmail <- user.userEmailValidated
         emailDomain <- email.split("@").lastOption
         userHasGuardianEmail = List("guardian.co.uk", "theguardian.com").contains(emailDomain)
       } yield {

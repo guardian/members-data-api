@@ -1,4 +1,4 @@
-GET         /healthcheck                                                        controllers.HealthCheckController.healthCheck
+GET         /healthcheck                                                        controllers.HealthCheckController.healthCheck()
 
 GET         /user-attributes/me                                                 controllers.AttributeController.attributes
 

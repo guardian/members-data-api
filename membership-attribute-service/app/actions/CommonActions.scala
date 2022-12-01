@@ -1,9 +1,10 @@
 package actions
 import akka.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
-import com.gu.identity.model.User
+import com.gu.identity.auth.AccessScope
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
+import models.UserFromToken
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -12,11 +13,12 @@ sealed trait HowToHandleRecencyOfSignedIn
 case object Return401IfNotSignedInRecently extends HowToHandleRecencyOfSignedIn
 case object ContinueRegardlessOfSignInRecency extends HowToHandleRecencyOfSignedIn
 
-class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent])(implicit ex: ExecutionContext, mat:Materializer) {
+class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent])(implicit ex: ExecutionContext, mat: Materializer) {
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  val AuthAndBackendViaAuthLibAction = NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends)
+  def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) =
+    NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes)
   def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
     NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn)
 
@@ -30,13 +32,13 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
 
 class AuthenticatedUserAndBackendRequest[A](
-  val user: Option[User],
-  val touchpoint: TouchpointComponents,
-  request: Request[A]
+    val user: Option[UserFromToken],
+    val touchpoint: TouchpointComponents,
+    request: Request[A],
 ) extends WrappedRequest[A](request)
 
 class AuthAndBackendRequest[A](
-  val redirectAdvice: RedirectAdviceResponse,
-  val touchpoint: TouchpointComponents,
-  request: Request[A]
+    val redirectAdvice: RedirectAdviceResponse,
+    val touchpoint: TouchpointComponents,
+    request: Request[A],
 ) extends WrappedRequest[A](request)

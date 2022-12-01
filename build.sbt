@@ -5,62 +5,54 @@ val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
 
 def commitId(): String =
-  try { "git rev-parse HEAD".!!.trim } catch { case _: Exception => "unknown" }
+  try { "git rev-parse HEAD".!!.trim }
+  catch { case _: Exception => "unknown" }
 
 def buildInfoSettings = Seq(
   buildInfoKeys := Seq[BuildInfoKey](
     name,
     BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
     BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId",
-                          Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId()))
+    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId())),
   ),
   buildInfoPackage := "app",
-  buildInfoOptions += BuildInfoOption.ToMap
+  buildInfoOptions += BuildInfoOption.ToMap,
 )
 
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.12.11",
+  scalaVersion := "2.13.10",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
   ),
-  sources in (Compile, doc) := Seq.empty,
-  publishArtifact in (Compile, packageDoc) := false,
-  parallelExecution in Global := false,
+  Compile / doc / sources := Seq.empty,
+  Compile / packageDoc / publishArtifact := false,
+  Global / parallelExecution := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
-  javaOptions in Test += "-Dconfig.resource=TEST.public.conf"
+  Test / javaOptions += "-Dconfig.resource=TEST.public.conf",
 ) ++ buildInfoSettings
-
-lazy val dynamoDBLocalSettings = Seq(
-  dynamoDBLocalDownloadDir := file("dynamodb-local"),
-  startDynamoDBLocal := (startDynamoDBLocal.dependsOn(compile in Test)).value,
-  test in Test := (test in Test).dependsOn(startDynamoDBLocal).value,
-  testOnly in Test := ((testOnly in Test).dependsOn(startDynamoDBLocal)).evaluated,
-  testOptions in Test += (dynamoDBLocalTestCleanup).value
-)
 
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 val buildDebSettings = Seq(
-  serverLoading in Debian := Some(Systemd),
+  Debian / serverLoading := Some(Systemd),
   debianPackageDependencies := Seq("openjdk-8-jre-headless"),
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
   packageDescription := """Members Data API""",
-  riffRaffPackageType := (packageBin in Debian).value,
+  riffRaffPackageType := (Debian / packageBin).value,
   riffRaffArtifactResources += (file("cloudformation/membership-attribute-service.yaml") -> "cloudformation/membership-attribute-service.yaml"),
-  javaOptions in Universal ++= Seq(
+  Universal / javaOptions ++= Seq(
     "-Dpidfile.path=/dev/null",
     "-J-XX:MaxRAMFraction=2",
     "-J-XX:InitialRAMFraction=2",
     "-J-XX:MaxMetaspaceSize=500m",
     "-J-XX:+PrintGCDetails",
     "-J-XX:+PrintGCDateStamps",
-    s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
-  )
+    s"-J-Xloggc:/var/log/${packageName.value}/gc.log",
+  ),
 )
 
 def lib(name: String) =
@@ -70,17 +62,18 @@ def lib(name: String) =
 
 def app(name: String) =
   lib(name)
-    .settings(dynamoDBLocalSettings)
     .settings(buildDebSettings)
 
 val api = app("membership-attribute-service")
-  .settings(libraryDependencies ++= apiDependencies)
+  .settings(
+    libraryDependencies ++= apiDependencies,
+    dependencyOverrides ++= depOverrides,
+  )
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(
-    scalacOptions += "-Ypartial-unification",
     addCommandAlias("devrun", "run 9400"),
     addCommandAlias("batch-load", "runMain BatchLoader"),
-    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")
+    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity"),
   )
 
 val root = project.in(file(".")).aggregate(api)

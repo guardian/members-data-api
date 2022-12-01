@@ -1,40 +1,61 @@
 package services
 
 import _root_.play.api.mvc.RequestHeader
-import com.gu.identity.{IdapiConfig, play}
-import org.http4s.Uri
 import cats.implicits._
-import com.gu.identity.model.User
+import com.gu.identity.IdapiConfig
+import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
+import models.{UserFromToken, UserFromTokenParser}
+import org.http4s.Uri
+
 import scala.concurrent.{ExecutionContext, Future}
 
-class IdentityAuthService(apiConfig: IdapiConfig)(implicit ec: ExecutionContext) extends AuthenticationService {
+class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: OktaTokenValidationConfig)(implicit ec: ExecutionContext)
+    extends AuthenticationService {
 
   val idApiUrl = Uri.unsafeFromString(apiConfig.url)
 
-  val identityPlayAuthService = IdentityPlayAuthService.unsafeInit(idApiUrl, apiConfig.token, Some("membership"))
+  val identityPlayAuthService = {
+    val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
+    IdentityPlayAuthService.unsafeInit(UserFromTokenParser, idapiConfig, oktaTokenValidationConfig)
+  }
 
-  def user(implicit requestHeader: RequestHeader): Future[Option[User]] = {
-    getUser(requestHeader)
-      .map(user => Option(user))
+  def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Option[UserFromToken]] = {
+    getUser(requestHeader, requiredScopes)
       .handleError { err =>
-        if(err.isInstanceOf[UserCredentialsMissingError])
-          //IdentityPlayAuthService throws an error if there is no SC_GU_U cookie or crypto auth token
-          //frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
-          SafeLogger.info(s"unable to authorize user - no token or cookie provided")
-        else
-          SafeLogger.warn(s"valid request but expired token or cookie so user must log in again - $err")
+        err match {
+          case UserCredentialsMissingError(_) =>
+            // IdentityPlayAuthService throws an error if there is no SC_GU_U cookie or crypto auth token
+            // frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
+            SafeLogger.info(s"unable to authorize user - no token or cookie provided")
 
+          case OktaValidationException(validationError: ValidationError) =>
+            validationError match {
+              case OktaValidationError(originalException) =>
+                SafeLogger.warn(s"could not validate okta token - $validationError", originalException)
+              case _ =>
+                SafeLogger.warn(s"could not validate okta token - $validationError")
+            }
+
+          case err =>
+            SafeLogger.warn(s"valid request but expired token or cookie so user must log in again - $err")
+        }
         None
       }
   }
 
-  private def getUser(requestHeader: RequestHeader): Future[User] =
-    identityPlayAuthService.getUserFromRequest(requestHeader)
-      .map { case (_, user) => user }
+  private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[UserFromToken]] =
+    identityPlayAuthService
+      .getUserClaimsFromRequestOrWithIdapi(requestHeader, requiredScopes)
+      .map {
+        case (_: OktaUserCredentials, claims) =>
+          SafeLogger.warn("Authorised by Okta token")
+          Some(claims)
+        case (_: IdapiUserCredentials, claims) =>
+          SafeLogger.warn("Authorised by Idapi token")
+          Some(claims)
+      }
       .unsafeToFuture()
-
 }
