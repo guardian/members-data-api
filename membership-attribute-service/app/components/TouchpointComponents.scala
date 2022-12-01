@@ -110,5 +110,5 @@ class TouchpointComponents(stage: String)(implicit system: ActorSystem, executio
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
-  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, Config.Okta.tokenVerifier)
+  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, Config.Okta.tokenValidation)
 }
