@@ -344,18 +344,19 @@ class AccountController(
     }
   } yield filteredIfApplicable
 
-  def reminders: Action[AnyContent] = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
-    request.redirectAdvice.userId match {
-      case Some(userId) =>
-        contributionsStoreDatabaseService.getSupportReminders(userId).map {
-          case Left(databaseError) =>
-            log.error(databaseError)
-            InternalServerError
-          case Right(supportReminders) =>
-            Ok(Json.toJson(supportReminders))
-        }
-      case None => Future.successful(InternalServerError)
-    }
+  def reminders: Action[AnyContent] = AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async {
+    implicit request =>
+      request.redirectAdvice.userId match {
+        case Some(userId) =>
+          contributionsStoreDatabaseService.getSupportReminders(userId).map {
+            case Left(databaseError) =>
+              log.error(databaseError)
+              InternalServerError
+            case Right(supportReminders) =>
+              Ok(Json.toJson(supportReminders))
+          }
+        case None => Future.successful(InternalServerError)
+      }
   }
 
   def getAccountDetailsParallel(
@@ -442,7 +443,7 @@ class AccountController(
   }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       implicit val tp: TouchpointComponents = request.touchpoint
       val maybeUserId = request.redirectAdvice.userId
 
@@ -466,7 +467,7 @@ class AccountController(
     }
 
   def cancelledSubscriptionsImpl(): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       implicit val tp: TouchpointComponents = request.touchpoint
       val emptyResponse = Ok("[]")
       request.redirectAdvice.userId match {

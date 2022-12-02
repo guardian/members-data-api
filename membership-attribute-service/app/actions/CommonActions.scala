@@ -20,8 +20,8 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   val NoCacheAction = resultModifier(noCache)
   def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) =
     NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes)
-  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
-    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn)
+  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, requiredScopes: List[AccessScope]) =
+    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, requiredScopes)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser

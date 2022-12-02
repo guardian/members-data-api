@@ -3,6 +3,7 @@ package controllers
 import actions.{AuthAndBackendRequest, CommonActions, Return401IfNotSignedInRecently}
 import com.gu.salesforce.{SFContactId, SimpleContactRepository}
 import com.typesafe.scalalogging.LazyLogging
+import models.AccessScope.updateSelf
 import models.DeliveryAddress
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 
@@ -20,7 +21,7 @@ class ContactController(
   private implicit val ec: ExecutionContext = controllerComponents.executionContext
 
   def updateDeliveryAddress(contactId: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { request =>
       logger.info(s"Updating delivery address for contact $contactId")
 
       isContactOwnedByRequester(request, contactId) flatMap { valid =>

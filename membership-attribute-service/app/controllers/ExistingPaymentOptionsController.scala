@@ -10,17 +10,17 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.SimpleContactRepository
-import com.gu.zuora.rest.ZuoraRestService
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
+import models.AccessScope.completeReadSelf
 import models.ExistingPaymentOption
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
+import scalaz.OptionT
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
-import scalaz.OptionT
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -71,7 +71,7 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
   def existingPaymentOptions(currencyFilter: Option[String]): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
+    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency, requiredScopes = List(completeReadSelf)).async { implicit request =>
       implicit val tp: TouchpointComponents = request.touchpoint
       val maybeUserId = request.redirectAdvice.userId
       val isSignedInRecently = request.redirectAdvice.signInStatus == SignedInRecently
