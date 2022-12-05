@@ -118,6 +118,7 @@ class AttributeController(
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
             supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
+              // transforming to Option here because type of failure is no longer relevant at this point
               request.user.toOption,
               supporterAttributes,
               user.identityId,

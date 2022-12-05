@@ -86,6 +86,7 @@ class AccountController(
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       val tp = request.touchpoint
       val cancelForm = Form { single("reason" -> nonEmptyText) }
+      // transforming to Option here because type of failure is no longer relevant at this point
       val maybeUserId = request.user.toOption.map(_.identityId)
 
       def handleInputBody(cancelForm: Form[String]): Future[Either[ApiError, String]] = Future.successful {
@@ -192,6 +193,7 @@ class AccountController(
 
       implicit val tp: TouchpointComponents = request.touchpoint
       def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
+      // transforming to Option here because type of failure is no longer relevant at this point
       val maybeUserId = request.user.toOption.map(_.identityId)
 
       logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
@@ -487,6 +489,7 @@ class AccountController(
       }
 
       val tp = request.touchpoint
+      // transforming to Option here because type of failure is no longer relevant at this point
       val maybeUserId = request.user.toOption.map(_.identityId)
       logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
       (for {
