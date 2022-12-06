@@ -32,7 +32,6 @@ case class Attributes(
     UserId: String,
     Tier: Option[String] = None,
     RecurringContributionPaymentPlan: Option[String] = None,
-    HighContributor: Option[Boolean] = None,
     OneOffContributionDate: Option[LocalDate] = None,
     MembershipJoinDate: Option[LocalDate] = None,
     SupporterPlusExpiryDate: Option[LocalDate] = None,
@@ -93,7 +92,6 @@ object Attributes {
     (__ \ "userId").write[String] and
       (__ \ "tier").writeNullable[String] and
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
-      JsPath.writeNullable[Boolean].contramap[Option[Boolean]](_ => None) and // do not serialize highContributor
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
       JsPath.writeNullable[LocalDate].contramap[Option[LocalDate]](_ => None) and // do not serialize supporterPlusExpiryDate
