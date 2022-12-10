@@ -1,6 +1,6 @@
 import play.sbt.PlayImport
 import sbt._
-import sbt.Keys.dependencyOverrides
+
 
 object Dependencies {
 
@@ -53,6 +53,7 @@ object Dependencies {
   val akkaStream = "com.typesafe.akka" %% "akka-stream" % "2.7.0"
   val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % "2.7.0"
   val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
+  val okHttp = "com.squareup.okhttp3" % "okhttp" % "5.0.0-alpha.10"
 
   // projects
 
@@ -83,9 +84,10 @@ object Dependencies {
     akkaStream,
     akkaSerializationJackson,
     unirest,
-    mockServer
+    mockServer,
+    okHttp,
   ) ++ jackson ++ oktaJwtVerifier
 
-  val depOverrides = jackson ++ Seq(scalaXml)
-
+  val dependencyOverrides = jackson ++ Seq(scalaXml, okHttp)
+  val excludeDependencies = Seq(ExclusionRule("com.squareup.okio", "okio"))
 }

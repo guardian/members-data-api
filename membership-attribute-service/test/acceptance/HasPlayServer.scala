@@ -42,8 +42,12 @@ trait HasPlayServer {
   }
 
   def stopPlayServer() = {
-    application.stop()
-    server.stop()
+    if (application != null) {
+      application.stop()
+    }
+    if (server != null) {
+      server.stop()
+    }
   }
 
   val lifecycle: ApplicationLifecycle = new ApplicationLifecycle {

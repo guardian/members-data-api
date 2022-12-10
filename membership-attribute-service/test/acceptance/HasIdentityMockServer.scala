@@ -7,7 +7,13 @@ trait HasIdentityMockServer {
   val identityServerUrl = s"http://localhost:$identityPort"
   protected var identityMockClientAndServer: ClientAndServer = _
 
-  def startIdentityMockServer(): Unit = identityMockClientAndServer = new ClientAndServer(identityPort)
+  def startIdentityMockServer(): Unit = {
+    identityMockClientAndServer = new ClientAndServer(identityPort)
+  }
 
-  def stopIdentityMockServer(): Unit = identityMockClientAndServer.stop()
+  def stopIdentityMockServer(): Unit = {
+    if (identityMockClientAndServer != null) {
+      identityMockClientAndServer.stop()
+    }
+  }
 }

@@ -25,7 +25,7 @@ import scala.concurrent.Future
 
 trait AcceptanceTest extends Specification with Mockito with PlaySpecification
   with HasIdentityMockServer with HasPlayServer with BeforeAfterEach {
-  protected def before = {
+  protected def before: Unit = {
     startPlayServer()
     startIdentityMockServer()
   }
