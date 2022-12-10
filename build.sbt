@@ -33,7 +33,6 @@ val commonSettings = Seq(
   Global / parallelExecution := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
   Test / javaOptions += "-Dconfig.resource=TEST.public.conf",
-  Test / fork := true
 ) ++ buildInfoSettings
 
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
