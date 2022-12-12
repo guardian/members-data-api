@@ -55,16 +55,10 @@ val buildDebSettings = Seq(
   ),
 )
 
-def lib(name: String) =
-  Project(name, file(name))
-    .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging)
-    .settings(commonSettings)
-
-def app(name: String) =
-  lib(name)
-    .settings(buildDebSettings)
-
-val api = app("membership-attribute-service")
+val api = Project("membership-attribute-service", file("membership-attribute-service"))
+  .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging)
+  .settings(commonSettings)
+  .settings(buildDebSettings)
   .settings(
     libraryDependencies ++= Dependencies.apiDependencies,
     dependencyOverrides ++= Dependencies.dependencyOverrides,
