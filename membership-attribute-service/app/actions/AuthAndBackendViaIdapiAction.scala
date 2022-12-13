@@ -5,6 +5,7 @@ import com.gu.identity.{IdapiService, RedirectAdviceResponse, SignedInRecently}
 import components.TouchpointBackends
 import filters.AddGuIdentityHeaders
 import play.api.mvc.{ActionRefiner, Request, Result, Results}
+import services.AuthenticationFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,27 +19,36 @@ class AuthAndBackendViaIdapiAction(
 
   override protected val executionContext: ExecutionContext = ex
 
-  private def hasAuthHeader[A](request: Request[A]): Boolean = request.headers.hasHeader("Authorization")
-
   override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] =
-    if (hasAuthHeader(request)) {
-      // Authenticate with Okta instead of Idapi, using the AuthAndBackendViaAuthLibAction
-      AuthAndBackendViaAuthLibAction.refine(touchpointBackends, requiredScopes, request) { case (backendConf, authenticatedUser) =>
-        new AuthAndBackendRequest(
-          redirectAdvice = RedirectAdviceResponse(
-            // Okta token lifecycle is managed elsewhere so can safely consider sign-in status always to be recent
-            signInStatus = SignedInRecently,
-            userId = Some(authenticatedUser.identityId),
-            displayName = authenticatedUser.username,
-            emailValidated = authenticatedUser.userEmailValidated,
-            // Okta token lifecycle is managed elsewhere so never any need to redirect away here
-            redirect = None,
+    oktaRefine(request).fallbackTo(idapiRefine(request))
+
+  private def oktaRefine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
+    val eventualUser = touchpointBackends.normal.identityAuthService.fetchUserFromOktaToken(request, requiredScopes)
+    eventualUser map {
+      case Left(AuthenticationFailure.Unauthorised) => Left(Results.Unauthorized)
+      case Left(AuthenticationFailure.Forbidden) => Left(Results.Forbidden)
+      case Right(authenticatedUser) =>
+        Right(
+          new AuthAndBackendRequest(
+            redirectAdvice = RedirectAdviceResponse(
+              // Okta token lifecycle is managed elsewhere so can safely consider sign-in status always to be recent
+              signInStatus = SignedInRecently,
+              userId = Some(authenticatedUser.identityId),
+              displayName = authenticatedUser.username,
+              emailValidated = authenticatedUser.userEmailValidated,
+              // Okta token lifecycle is managed elsewhere so never any need to redirect away here
+              redirect = None,
+            ),
+            touchpoint = if (AddGuIdentityHeaders.isTestUser(authenticatedUser.username)) {
+              touchpointBackends.test
+            } else {
+              touchpointBackends.normal
+            },
+            request,
           ),
-          touchpoint = backendConf,
-          request,
         )
-      }
-    } else idapiRefine(request)
+    }
+  }
 
   private def idapiRefine[A](request: Request[A])(implicit ex: ExecutionContext): Future[Either[Result, AuthAndBackendRequest[A]]] =
     touchpointBackends.normal.idapiService.RedirectAdvice

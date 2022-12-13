@@ -6,8 +6,7 @@ import models.UserFromToken
 import org.mockito.Mockito.when
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
-import play.api.mvc.Results.{Forbidden, Unauthorized}
-import play.api.mvc.{AnyContent, WrappedRequest}
+import play.api.mvc.{AnyContent, Results}
 import play.api.test.FakeRequest
 import services.{AuthenticationFailure, IdentityAuthService}
 
@@ -30,9 +29,9 @@ class AuthAndBackendViaAuthLibActionTest extends Specification with Mockito {
       when(components.identityAuthService).thenReturn(authService)
       val backends = mock[TouchpointBackends]
       when(backends.normal).thenReturn(components)
-      val wrappedRequest = new WrappedRequest(request)
-      val result = AuthAndBackendViaAuthLibAction.refine[AnyContent, WrappedRequest](backends, requiredScopes, request)((_, _) => wrappedRequest)
-      Await.result(result, Duration.Inf) should beRight(wrappedRequest)
+      val action = new AuthAndBackendViaAuthLibAction(backends, requiredScopes)
+      val result = action.invokeBlock(request, { _: AuthenticatedUserAndBackendRequest[AnyContent] => Future.successful(Results.Ok) })
+      Await.result(result, Duration.Inf) shouldEqual Results.Ok
     }
 
     "give an unauthorized result when authentication fails" in {
@@ -46,9 +45,9 @@ class AuthAndBackendViaAuthLibActionTest extends Specification with Mockito {
       when(components.identityAuthService).thenReturn(authService)
       val backends = mock[TouchpointBackends]
       when(backends.normal).thenReturn(components)
-      val wrappedRequest = new WrappedRequest(request)
-      val result = AuthAndBackendViaAuthLibAction.refine[AnyContent, WrappedRequest](backends, requiredScopes, request)((_, _) => wrappedRequest)
-      Await.result(result, Duration.Inf) should beLeft(Unauthorized)
+      val action = new AuthAndBackendViaAuthLibAction(backends, requiredScopes)
+      val result = action.invokeBlock(request, { _: AuthenticatedUserAndBackendRequest[AnyContent] => Future.successful(Results.Ok) })
+      Await.result(result, Duration.Inf) shouldEqual Results.Unauthorized
     }
 
     "give a forbidden result when authorisation fails" in {
@@ -62,9 +61,9 @@ class AuthAndBackendViaAuthLibActionTest extends Specification with Mockito {
       when(components.identityAuthService).thenReturn(authService)
       val backends = mock[TouchpointBackends]
       when(backends.normal).thenReturn(components)
-      val wrappedRequest = new WrappedRequest(request)
-      val result = AuthAndBackendViaAuthLibAction.refine[AnyContent, WrappedRequest](backends, requiredScopes, request)((_, _) => wrappedRequest)
-      Await.result(result, Duration.Inf) should beLeft(Forbidden)
+      val action = new AuthAndBackendViaAuthLibAction(backends, requiredScopes)
+      val result = action.invokeBlock(request, { _: AuthenticatedUserAndBackendRequest[AnyContent] => Future.successful(Results.Ok) })
+      Await.result(result, Duration.Inf) shouldEqual Results.Forbidden
     }
   }
 }

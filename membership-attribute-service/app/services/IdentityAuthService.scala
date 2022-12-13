@@ -1,6 +1,7 @@
 package services
 
 import _root_.play.api.mvc.RequestHeader
+import cats.effect.IO
 import cats.implicits._
 import com.gu.identity.IdapiConfig
 import com.gu.identity.auth._
@@ -67,4 +68,8 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: Okt
           Some(claims)
       }
       .unsafeToFuture()
+
+  def fetchUserFromOktaToken(request:RequestHeader, requiredScopes: List[AccessScope]): Future[Either[AuthenticationFailure, UserFromToken]] =
+    // fetchUserFromOktaToken(request:RequestHeader, requiredScopes: List[AccessScope]): Future[Either[ValidationError, UserFromToken]]
+    ???
 }

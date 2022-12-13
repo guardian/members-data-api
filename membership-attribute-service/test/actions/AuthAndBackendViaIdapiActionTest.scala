@@ -24,14 +24,13 @@ class AuthAndBackendViaIdapiActionTest extends Specification with Mockito {
       val user = mock[UserFromToken]
       when(user.username).thenReturn(None)
       val authService = mock[IdentityAuthService]
-      when(authService.user(requiredScopes)(request)).thenReturn(Future.successful(Right(user)))
+      when(authService.fetchUserFromOktaToken(request, requiredScopes)).thenReturn(Future.successful(Right(user)))
       val components = mock[TouchpointComponents]
       when(components.identityAuthService).thenReturn(authService)
       val backends = mock[TouchpointBackends]
       when(backends.normal).thenReturn(components)
       val action = new AuthAndBackendViaIdapiAction(backends, Return401IfNotSignedInRecently, requiredScopes)
-      val block = { _: AuthAndBackendRequest[AnyContent] => Future.successful(Results.Ok) }
-      val result = action.invokeBlock(request, block)
+      val result = action.invokeBlock(request, { _: AuthAndBackendRequest[AnyContent] => Future.successful(Results.Ok) })
       Await.result(result, Duration.Inf) shouldEqual Results.Ok
     }
   }
