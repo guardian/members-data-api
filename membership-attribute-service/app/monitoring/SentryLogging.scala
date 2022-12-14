@@ -5,22 +5,22 @@ import ch.qos.logback.core.filter.Filter
 import ch.qos.logback.core.spi.FilterReply
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import configuration.Config
+import configuration.SentryConfig
 import io.sentry.Sentry
 
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 object SentryLogging {
-  def init(): Unit = {
-    Config.sentryDsn match {
+  def init(config: SentryConfig): Unit = {
+    config.sentryDsn match {
       case None => SafeLogger.warn("No Sentry logging configured (OK for dev)")
       case Some(sentryDSN) =>
         SafeLogger.info(s"Initialising Sentry logging")
         Try {
           val sentryClient = Sentry.init(sentryDSN)
           val buildInfo: Map[String, String] = app.BuildInfo.toMap.view.mapValues(_.toString).toMap
-          val tags = Map("stage" -> Config.stage) ++ buildInfo
+          val tags = Map("stage" -> config.stage) ++ buildInfo
           sentryClient.setTags(tags.asJava)
         } match {
           case Success(_) => SafeLogger.debug("Sentry logging configured.")

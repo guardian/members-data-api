@@ -38,7 +38,7 @@ class AttributeControllerAcceptanceTest extends AcceptanceTest {
       val identityRequest = request()
         .withMethod("GET")
         .withPath("/user/me")
-        .withHeader("X-GU-ID-Client-Access-Token", "Bearer b843c3d8c4a8027b664c30c57bd80450")
+        .withHeader("X-GU-ID-Client-Access-Token", "Bearer db5e969d58bf6ad42f904f56191f88a0")
         .withHeader("X-GU-ID-FOWARDED-SC-GU-U", "WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI")
 
       identityMockClientAndServer.when(
