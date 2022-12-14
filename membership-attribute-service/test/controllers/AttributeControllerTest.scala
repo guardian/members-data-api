@@ -5,6 +5,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
+import com.typesafe.config.ConfigFactory
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
 import models.{Attributes, MobileSubscriptionStatus, UserFromToken}
@@ -92,11 +93,12 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       }
   }
 
+  val config = ConfigFactory.load()
+
   private object FakeAuthAndBackendViaAuthLibAction extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
-
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage, Config.config, None)
+      object components extends TouchpointComponents(config.getString("touchpoint.backend.default"), config, None)
 
       fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
@@ -108,7 +110,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
 
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage, Config.config, None)
+      object components extends TouchpointComponents(config.getString("touchpoint.backend.default"), config, None)
 
       val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
