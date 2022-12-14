@@ -35,12 +35,17 @@ trait HasPlayServer {
           "http.port" -> playPort,
           "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl
         ) ++ Configuration(ConfigFactory.parseString(
-          """
+          s"""
             |okta.verifier.issuerUrl = ""
             |okta.verifier.audience = ""
             |
             |touchpoint.backend.environments {
             |   DEV {
+            |   identity {
+            |      apiUrl="$identityServerUrl"
+            |      apiToken=""
+            |      marketingToken=""
+            |    }
             |     paypal {
             |        paypal-environment = "sandbox"
             |        nvp-version = "1"
