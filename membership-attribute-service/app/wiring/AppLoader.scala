@@ -3,7 +3,7 @@ package wiring
 import actions.CommonActions
 import akka.actor.ActorSystem
 import components.TouchpointBackends
-import configuration.Config
+import configuration.{Config, SentryConfig}
 import controllers._
 import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
 import loghandling.Logstash
@@ -25,8 +25,9 @@ class AppLoader extends ApplicationLoader {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
-    SentryLogging.init()
-    Logstash.init(configuration.Config)
+    val config = context.initialConfiguration.underlying
+    SentryLogging.init(new SentryConfig(config))
+    Logstash.init(config)
     createMyComponents(context).application
   }
 
@@ -62,7 +63,7 @@ class MyComponents(context: Context)
     PostgresDatabaseService.fromDatabase(db)(jdbcExecutionContext)
   }
 
-  lazy val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient)
+  lazy val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient, config)
 
   lazy val router: Routes = new Routes(
     httpErrorHandler,

@@ -1,15 +1,11 @@
 package loghandling
 
 import com.amazonaws.util.EC2MetadataUtils
-import configuration.Config
+import configuration.{Config, LogstashConfig}
 import com.gu.aws.ProfileName
+import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProvider,
-  AwsCredentialsProviderChain,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 
 case class LogStashConf(
     enabled: Boolean,
@@ -26,30 +22,31 @@ object Logstash extends StrictLogging {
     .addCredentialsProvider(InstanceProfileCredentialsProvider.builder.build)
     .build()
 
-  def customFields(playConfig: Config.type) = Map(
+  def customFields(config: LogstashConfig) = Map(
     "stack" -> "unknownStack", // all TODO
-    "app" -> playConfig.applicationName,
-    "stage" -> playConfig.stage,
+    "app" -> configuration.Config.applicationName,
+    "stage" -> config.stage,
     "build" -> "unknownBuild",
     "revision" -> "unknownRevision",
     "ec2_instance" -> Option(EC2MetadataUtils.getInstanceId).getOrElse("Not running on ec2"),
   )
 
-  def config(playConfig: Config.type) = for {
-    stream <- playConfig.Logstash.stream
-    region <- playConfig.Logstash.streamRegion
+  def config(config: LogstashConfig) = for {
+    stream <- config.stream
+    region <- config.streamRegion
   } yield {
     LogStashConf(
-      playConfig.Logstash.enabled,
+      config.enabled,
       stream,
       region,
       CredentialsProvider,
-      customFields(playConfig),
+      customFields(config),
     )
   }
 
-  def init(playConfig: Config.type): Unit = {
-    config(playConfig).fold(logger.info("Logstash config is missing"))(LogbackConfig.init)
+  def init(playConfig: Config): Unit = {
+    val logstashConfig = new LogstashConfig(playConfig)
+    config(logstashConfig).fold(logger.info("Logstash config is missing"))(LogbackConfig.init)
   }
 
 }
