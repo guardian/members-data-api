@@ -41,11 +41,6 @@ trait HasPlayServer {
             |
             |touchpoint.backend.environments {
             |   DEV {
-            |   identity {
-            |      apiUrl="https://idapi.code.dev-theguardian.com"
-            |      apiToken=""
-            |      marketingToken=""
-            |    }
             |     paypal {
             |        paypal-environment = "sandbox"
             |        nvp-version = "1"
