@@ -36,6 +36,9 @@ trait HasPlayServer {
           "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl
         ) ++ Configuration(ConfigFactory.parseString(
           """
+            |okta.verifier.issuerUrl = ""
+            |okta.verifier.audience = ""
+            |
             |touchpoint.backend.environments {
             |   DEV {
             |   identity {
@@ -43,8 +46,6 @@ trait HasPlayServer {
             |      apiToken=""
             |      marketingToken=""
             |    }
-            |    okta.verifier.issuerUrl = ""
-            |    okta.verifier.audience = ""
             |     paypal {
             |        paypal-environment = "sandbox"
             |        nvp-version = "1"
