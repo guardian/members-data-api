@@ -23,20 +23,7 @@ import java.util.GregorianCalendar
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-trait AcceptanceTest extends Specification with Mockito with PlaySpecification
-  with HasIdentityMockServer with HasPlayServer with BeforeAfterEach {
-  protected def before: Unit = {
-    startPlayServer()
-    startIdentityMockServer()
-  }
-
-  protected def after: Unit = {
-    stopIdentityMockServer()
-    stopPlayServer()
-  }
-}
-
-class AnAcceptanceTest extends AcceptanceTest {
+class AttributesServiceAcceptanceTest extends AcceptanceTest {
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var supporterProductDataService: SupporterProductDataService = _
 
