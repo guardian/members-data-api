@@ -1,5 +1,6 @@
 package acceptance
 
+import com.typesafe.config.ConfigFactory
 import play.api.ApplicationLoader.Context
 import play.api.inject.ApplicationLifecycle
 import play.api.{Application, Configuration, Environment, Mode}
@@ -33,7 +34,21 @@ trait HasPlayServer {
         Configuration(
           "http.port" -> playPort,
           "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl
-        )
+        ) ++ Configuration(ConfigFactory.parseString(
+          """
+            |touchpoint.backend.environments {
+            |   DEV {
+            |     paypal {
+            |        paypal-environment = "sandbox"
+            |        nvp-version = "1"
+            |        url="https://api-3t.sandbox.paypal.com/nvp"
+            |        user=""
+            |        password=""
+            |        signature=""
+            |     }
+            |   }
+            |}
+            |""".stripMargin))
           .withFallback(configuration),
         lifecycle,
         None
