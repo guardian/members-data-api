@@ -43,6 +43,8 @@ trait HasPlayServer {
             |      apiToken=""
             |      marketingToken=""
             |    }
+            |    okta.verifier.issuerUrl = ""
+            |    okta.verifier.audience = ""
             |     paypal {
             |        paypal-environment = "sandbox"
             |        nvp-version = "1"
