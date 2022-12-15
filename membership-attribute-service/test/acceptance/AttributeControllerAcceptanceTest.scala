@@ -39,31 +39,47 @@ class AttributeControllerAcceptanceTest extends AcceptanceTest {
         .withMethod("GET")
         .withPath("/user/me")
         .withHeader("X-GU-ID-Client-Access-Token", "Bearer db5e969d58bf6ad42f904f56191f88a0")
-        .withHeader("X-GU-ID-FOWARDED-SC-GU-U", "WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI")
+        .withHeader(
+          "X-GU-ID-FOWARDED-SC-GU-U",
+          "WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI",
+        )
 
-      identityMockClientAndServer.when(
-        identityRequest
-      ).respond(
-        response()
-          .withBody(identityResponse)
+      identityMockClientAndServer
+        .when(
+          identityRequest,
+        )
+        .respond(
+          response()
+            .withBody(identityResponse),
+        )
+
+      when(databaseServiceMock.getLatestContribution("200067388")) thenReturn Future(
+        Right(
+          Some(
+            ContributionData(
+              created = new GregorianCalendar(2999, 1, 1).getTime,
+              currency = "GBP",
+              amount = 11.0,
+              status = "statusValue",
+            ),
+          ),
+        ),
       )
 
-      when(databaseServiceMock.getLatestContribution("200067388")) thenReturn Future(Right(Some(
-        ContributionData(
-          created = new GregorianCalendar(2999, 1, 1).getTime,
-          currency = "GBP",
-          amount = 11.0,
-          status = "statusValue",
-        )))
+      when(supporterProductDataService.getNonCancelledAttributes("200067388")) thenReturn Future(
+        Right(
+          Some(
+            Attributes("200067388"),
+          ),
+        ),
       )
-
-      when(supporterProductDataService.getNonCancelledAttributes("200067388")) thenReturn Future(Right(Some(
-        Attributes("200067388")
-      )))
 
       val httpResponse = Unirest
         .get(userAttributesUrl)
-        .header("Cookie", "consentUUID=cc457984-4282-49ca-9831-0649017aa0c9_13; _ga=GA1.2.1716429135.1668613133; GU_U=WyIyMDAwNjczODgiLCIiLCJ1c2VyIiwiIiwxNjc2NDU3MTE5ODk3LDEsMTY2ODYxMzI0ODAwMCx0cnVlXQ.MCwCFHUQjxr9nm5gk15jmWID6lYYVE5NAhR11ko5vRIjNwqGprB8gCzIEPz4Rg; SC_GU_LA=WyJMQSIsIjIwMDA2NzM4OCIsMTY2ODY4MTExOTg5N10.MCwCFG4nWLgEx96EJjNxwtqKbQBNBaXDAhRYtlpkPp8s_Ysl70rkySriLUKZaw; SC_GU_U=WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI")
+        .header(
+          "Cookie",
+          "consentUUID=cc457984-4282-49ca-9831-0649017aa0c9_13; _ga=GA1.2.1716429135.1668613133; GU_U=WyIyMDAwNjczODgiLCIiLCJ1c2VyIiwiIiwxNjc2NDU3MTE5ODk3LDEsMTY2ODYxMzI0ODAwMCx0cnVlXQ.MCwCFHUQjxr9nm5gk15jmWID6lYYVE5NAhR11ko5vRIjNwqGprB8gCzIEPz4Rg; SC_GU_LA=WyJMQSIsIjIwMDA2NzM4OCIsMTY2ODY4MTExOTg5N10.MCwCFG4nWLgEx96EJjNxwtqKbQBNBaXDAhRYtlpkPp8s_Ysl70rkySriLUKZaw; SC_GU_U=WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI",
+        )
         .asString
 
       httpResponse.getStatus shouldEqual 200

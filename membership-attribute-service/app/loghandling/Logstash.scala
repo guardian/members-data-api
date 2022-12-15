@@ -1,11 +1,16 @@
 package loghandling
 
 import com.amazonaws.util.EC2MetadataUtils
-import configuration.{Config, LogstashConfig}
 import com.gu.aws.ProfileName
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import configuration.LogstashConfig
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProvider,
+  AwsCredentialsProviderChain,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 
 case class LogStashConf(
     enabled: Boolean,

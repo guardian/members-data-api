@@ -26,10 +26,18 @@ object Config {
 }
 
 class LogstashConfig(private val config: Config) {
-  private val param = Try {config.getConfig("param.logstash") }.toOption
-  val stream = Try { param.map(_.getString("stream")) }.toOption.flatten
-  val streamRegion = Try { param.map(_.getString("streamRegion")) }.toOption.flatten
-  val enabled = Try { config.getBoolean("logstash.enabled") }.toOption.contains(true)
+  private val param = Try {
+    config.getConfig("param.logstash")
+  }.toOption
+  val stream = Try {
+    param.map(_.getString("stream"))
+  }.toOption.flatten
+  val streamRegion = Try {
+    param.map(_.getString("streamRegion"))
+  }.toOption.flatten
+  val enabled = Try {
+    config.getBoolean("logstash.enabled")
+  }.toOption.contains(true)
   val stage = config.getString("stage")
 }
 
