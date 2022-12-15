@@ -21,43 +21,26 @@ trait HasPlayServer {
 
   def createMyComponents(context: Context) = new MyComponents(context)
 
-  def startPlayServer() = {
+  def startPlayServer(): Unit = {
     val appLoader = new AppLoader {
       override protected def createMyComponents(context: Context): MyComponents =
         HasPlayServer.this.createMyComponents(context)
     }
     val configuration = Configuration
       .load(Environment(new File("."), Configuration.getClass.getClassLoader, Mode.Prod))
+    val devPublicConf = Configuration(ConfigFactory.load("DEV.public.conf"))
+    val effectiveConfiguration = Configuration(
+      "http.port" -> playPort,
+      "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl,
+      "touchpoint.backend.environments.DEV.identity.apiToken" -> "db5e969d58bf6ad42f904f56191f88a0",
+    )
+      .withFallback(devPublicConf)
+      .withFallback(configuration)
+
     application = appLoader
       .load(Context(
         Environment.simple(),
-        Configuration(
-          "http.port" -> playPort,
-          "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl
-        ) ++ Configuration(ConfigFactory.parseString(
-          s"""
-            |okta.verifier.issuerUrl = ""
-            |okta.verifier.audience = ""
-            |
-            |touchpoint.backend.environments {
-            |   DEV {
-            |   identity {
-            |      apiUrl="$identityServerUrl"
-            |      apiToken=""
-            |      marketingToken=""
-            |    }
-            |     paypal {
-            |        paypal-environment = "sandbox"
-            |        nvp-version = "1"
-            |        url="https://api-3t.sandbox.paypal.com/nvp"
-            |        user=""
-            |        password=""
-            |        signature=""
-            |     }
-            |   }
-            |}
-            |""".stripMargin))
-          .withFallback(configuration),
+        effectiveConfiguration,
         lifecycle,
         None
       ))
@@ -79,3 +62,5 @@ trait HasPlayServer {
     override def stop(): Future[_] = Future.unit
   }
 }
+
+

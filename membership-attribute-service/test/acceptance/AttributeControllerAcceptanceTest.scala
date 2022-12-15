@@ -3,27 +3,18 @@ package acceptance
 import kong.unirest.Unirest
 import models.{Attributes, ContributionData}
 import org.mockito.Mockito.when
-import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
-import org.specs2.mock.Mockito
-import org.specs2.mutable.{BeforeAfter, Specification}
-import org.specs2.specification.BeforeAfterEach
 import play.api.ApplicationLoader.Context
-import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.Json
-import play.api.test.PlaySpecification
-import play.api.{Application, Configuration, Environment, Mode}
-import play.core.server.{AkkaHttpServer, ServerConfig}
 import services.{ContributionsStoreDatabaseService, SupporterProductDataService}
-import wiring.{AppLoader, MyComponents}
+import wiring.MyComponents
 
-import java.io.File
 import java.util.GregorianCalendar
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class AttributesServiceAcceptanceTest extends AcceptanceTest {
+class AttributeServiceAcceptanceTest extends AcceptanceTest {
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var supporterProductDataService: SupporterProductDataService = _
 
@@ -47,7 +38,7 @@ class AttributesServiceAcceptanceTest extends AcceptanceTest {
       val identityRequest = request()
         .withMethod("GET")
         .withPath("/user/me")
-        .withHeader("X-GU-ID-Client-Access-Token", "Bearer b843c3d8c4a8027b664c30c57bd80450")
+        .withHeader("X-GU-ID-Client-Access-Token", "Bearer db5e969d58bf6ad42f904f56191f88a0")
         .withHeader("X-GU-ID-FOWARDED-SC-GU-U", "WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI")
 
       identityMockClientAndServer.when(
