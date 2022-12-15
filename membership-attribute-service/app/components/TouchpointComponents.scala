@@ -22,7 +22,12 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
 import scalaz.std.scalaFuture._
 import services._
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -30,7 +35,10 @@ import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
-class TouchpointComponents(stage: String, conf: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit system: ActorSystem, executionContext: ExecutionContext) {
+class TouchpointComponents(stage: String, conf: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit
+    system: ActorSystem,
+    executionContext: ExecutionContext,
+) {
   implicit val ec: ExecutionContextExecutor = system.dispatcher
   lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
   lazy val environmentConfig = touchpointConfig.getConfig(s"environments.$stage")
@@ -58,7 +66,8 @@ class TouchpointComponents(stage: String, conf: Config, supporterProductDataServ
   lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] =
     InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
-  lazy val contactRepo: SimpleContactRepository = new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.Config.applicationName)
+  lazy val contactRepo: SimpleContactRepository =
+    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.Config.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
@@ -78,7 +87,6 @@ class TouchpointComponents(stage: String, conf: Config, supporterProductDataServ
     new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
-
 
   private val zuoraMetrics = new ZuoraMetrics(stage, configuration.Config.applicationName)
   private lazy val zuoraSoapClient =
