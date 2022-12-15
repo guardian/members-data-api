@@ -38,12 +38,14 @@ trait HasPlayServer {
       .withFallback(configuration)
 
     application = appLoader
-      .load(Context(
-        Environment.simple(),
-        effectiveConfiguration,
-        lifecycle,
-        None
-      ))
+      .load(
+        Context(
+          Environment.simple(),
+          effectiveConfiguration,
+          lifecycle,
+          None,
+        ),
+      )
     server = AkkaHttpServer.fromApplication(application, ServerConfig(port = Some(playPort)))
   }
 
@@ -62,5 +64,3 @@ trait HasPlayServer {
     override def stop(): Future[_] = Future.unit
   }
 }
-
-

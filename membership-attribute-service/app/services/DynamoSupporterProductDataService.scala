@@ -21,11 +21,9 @@ trait SupporterProductDataService {
   def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]]
 }
 
-class DynamoSupporterProductDataService(client: DynamoDbAsyncClient,
-                                        table: String,
-                                        mapper: SupporterRatePlanToAttributesMapper)
-                                       (implicit executionContext: ExecutionContext)
-  extends SupporterProductDataService {
+class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)(implicit
+    executionContext: ExecutionContext,
+) extends SupporterProductDataService {
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
