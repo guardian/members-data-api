@@ -23,4 +23,8 @@ object AuthenticationFailure {
   /** Client has valid credentials but not enough privileges to perform the action. Should give a 403 response.
     */
   case object Forbidden extends AuthenticationFailure
+
+  /** Token is badly formed, eg. claims don't match scopes. Should give a 400 response.
+    */
+  case object BadlyFormedToken extends AuthenticationFailure
 }

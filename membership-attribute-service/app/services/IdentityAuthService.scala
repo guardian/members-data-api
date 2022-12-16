@@ -4,10 +4,11 @@ import _root_.play.api.mvc.RequestHeader
 import cats.effect.IO
 import cats.implicits._
 import com.gu.identity.IdapiConfig
-import com.gu.identity.auth._
+import com.gu.identity.auth.{ValidationError, _}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
+import com.okta.jwt.JwtVerificationException
 import models.{UserFromToken, UserFromTokenParser}
 import org.http4s.Uri
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
@@ -69,7 +70,14 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: Okt
       }
       .unsafeToFuture()
 
-  def fetchUserFromOktaToken(request:RequestHeader, requiredScopes: List[AccessScope]): Future[Either[AuthenticationFailure, UserFromToken]] =
-    // fetchUserFromOktaToken(request:RequestHeader, requiredScopes: List[AccessScope]): Future[Either[ValidationError, UserFromToken]]
-    ???
+  def fetchUserFromOktaToken(request: RequestHeader, requiredScopes: List[AccessScope]): Future[Either[AuthenticationFailure, UserFromToken]] =
+    getOktaClaimsFromRequest[UserFromToken](request, requiredScopes).map {
+      _.left.map {
+        case MissingRequiredScope(_) => AuthenticationFailure.Forbidden
+        case MissingRequiredClaim(_) | InvalidRequiredClaim(_, _) => AuthenticationFailure.BadlyFormedToken
+        case _ => AuthenticationFailure.Unauthorised
+      }
+    }
+
+  def getOktaClaimsFromRequest[A](request: RequestHeader, requiredScopes: List[AccessScope]): Future[Either[ValidationError, A]] = ???
 }
