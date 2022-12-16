@@ -47,7 +47,6 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
   val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
-  val okHttp = "com.squareup.okhttp3" % "okhttp" % "5.0.0-alpha.10"
 
   // projects
 
@@ -76,9 +75,8 @@ object Dependencies {
     akkaHttpCore,
     unirest,
     mockServer,
-    okHttp,
   ) ++ jackson ++ oktaJwtVerifier
 
-  val dependencyOverrides = jackson ++ Seq(scalaXml, okHttp)
+  val dependencyOverrides = jackson ++ Seq(scalaXml)
   val excludeDependencies = Seq(ExclusionRule("com.squareup.okio", "okio"))
 }
