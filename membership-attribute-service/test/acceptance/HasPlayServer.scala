@@ -32,7 +32,7 @@ trait HasPlayServer {
     val effectiveConfiguration = Configuration(
       "http.port" -> playPort,
       "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl,
-      "touchpoint.backend.environments.DEV.identity.apiToken" -> "db5e969d58bf6ad42f904f56191f88a0",
+      "touchpoint.backend.environments.DEV.identity.apiToken" -> identityApiToken,
     )
       .withFallback(devPublicConf)
       .withFallback(configuration)
