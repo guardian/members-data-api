@@ -3,6 +3,7 @@ package services
 import cats.data.EitherT
 import com.gu.i18n.Currency
 import com.typesafe.scalalogging.LazyLogging
+import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.Metrics
 import org.joda.time.{DateTimeZone, LocalDate}
@@ -10,7 +11,7 @@ import org.scanamo.DynamoReadError.describe
 import org.scanamo._
 import org.scanamo.generic.semiauto._
 import org.scanamo.syntax._
-import services.DynamoSupporterProductDataService.{alertOnDynamoReadErrors, errorMessage}
+import services.DynamoSupporterProductDataService.errorMessage
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,9 +22,11 @@ trait SupporterProductDataService {
   def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]]
 }
 
-class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper)(implicit
-    executionContext: ExecutionContext,
-) extends SupporterProductDataService {
+class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper, stage: Stage)(
+    implicit executionContext: ExecutionContext,
+) extends SupporterProductDataService
+    with LazyLogging {
+  val metrics = Metrics("SupporterProductDataService", stage.value) // referenced in CloudFormation
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
@@ -63,17 +66,14 @@ class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: Stri
         .query("identityId" === identityId)
     }
 
-}
-
-object DynamoSupporterProductDataService extends LazyLogging {
-  val metrics = Metrics("SupporterProductDataService") // referenced in CloudFormation
-
-  def errorMessage(errors: List[DynamoReadError]) =
-    s"There were read errors while reading from the SupporterProductData DynamoDB table\n ${errors.map(describe).mkString("\n")}"
-
-  def alertOnDynamoReadErrors(errors: List[DynamoReadError]) =
+  private def alertOnDynamoReadErrors(errors: List[DynamoReadError]) =
     if (errors.nonEmpty) {
       logger.error(errorMessage(errors))
       metrics.put("SupporterProductDataDynamoError", 1) // referenced in CloudFormation
     }
+}
+
+object DynamoSupporterProductDataService {
+  def errorMessage(errors: List[DynamoReadError]) =
+    s"There were read errors while reading from the SupporterProductData DynamoDB table\n ${errors.map(describe).mkString("\n")}"
 }

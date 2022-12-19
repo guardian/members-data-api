@@ -3,9 +3,9 @@ package wiring
 import actions.CommonActions
 import akka.actor.ActorSystem
 import components.TouchpointBackends
-import configuration.{Config, LogstashConfig, SentryConfig}
+import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
-import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
+import filters._
 import loghandling.Logstash
 import monitoring.{ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
@@ -13,7 +13,7 @@ import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.EssentialFilter
-import play.filters.cors.CORSFilter
+import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
 import services.{ContributionsStoreDatabaseService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
@@ -21,7 +21,7 @@ import services.{ContributionsStoreDatabaseService, MobileSubscriptionServiceImp
 import scala.concurrent.ExecutionContext
 
 class AppLoader extends ApplicationLoader {
-  def load(context: Context) = {
+  def load(context: Context): Application = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
@@ -43,9 +43,12 @@ class MyComponents(context: Context)
     with DBComponents {
 
   lazy val config = context.initialConfiguration.underlying
+  lazy val stage = Stage(config.getString("stage"))
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
   lazy val touchPointBackends = new TouchpointBackends(actorSystem, config, supporterProductDataServiceOverride)
-  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
+  private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
+  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
+  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, isTestUser)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(
       environment,
@@ -53,6 +56,7 @@ class MyComponents(context: Context)
       devContext.map(_.sourceMapper),
       Some(router),
       touchPointBackends.normal.identityAuthService,
+      addGuIdentityHeaders,
     )
   implicit val system: ActorSystem = actorSystem
 
@@ -68,22 +72,32 @@ class MyComponents(context: Context)
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
-    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService),
+    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, stage),
     new ExistingPaymentOptionsController(commonActions, controllerComponents),
-    new AccountController(commonActions, controllerComponents, dbService),
+    new AccountController(commonActions, controllerComponents, dbService, stage),
     new PaymentUpdateController(commonActions, controllerComponents),
     new ContactController(commonActions, controllerComponents),
   )
 
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
 
+  lazy val corsConfig = new CorsConfig(configuration)
+
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
     new CheckCacheHeadersFilter(),
     csrfFilter,
     new AddEC2InstanceHeader(wsClient),
-    new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService),
-    CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = postPaths),
-    CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = Seq("/user-attributes")),
+    new AddGuIdentityHeadersFilter(addGuIdentityHeaders),
+    CORSFilter(corsConfig = corsConfig.mmaUpdateCorsConfig, pathPrefixes = postPaths),
+    CORSFilter(corsConfig = corsConfig.corsConfig, pathPrefixes = Seq("/user-attributes")),
   )
+}
 
+class CorsConfig(val configuration: Configuration) {
+  lazy val corsConfig = CORSConfig.fromConfiguration(configuration)
+
+  lazy val mmaUpdateCorsConfig = corsConfig.copy(
+    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
+    isHttpMethodAllowed = Seq("POST", "OPTIONS").contains(_),
+  )
 }

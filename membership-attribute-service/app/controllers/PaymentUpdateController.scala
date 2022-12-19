@@ -13,8 +13,8 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
 import play.api.mvc.{BaseController, ControllerComponents}
-import scalaz.std.scalaFuture._
 import scalaz.EitherT
+import scalaz.std.scalaFuture._
 
 import scala.concurrent.{ExecutionContext, Future}
 

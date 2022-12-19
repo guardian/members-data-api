@@ -28,7 +28,7 @@ object Logstash extends StrictLogging {
 
   def customFields(config: LogstashConfig) = Map(
     "stack" -> "unknownStack", // all TODO
-    "app" -> configuration.Config.applicationName,
+    "app" -> configuration.ApplicationName.applicationName,
     "stage" -> config.stage,
     "build" -> "unknownBuild",
     "revision" -> "unknownRevision",

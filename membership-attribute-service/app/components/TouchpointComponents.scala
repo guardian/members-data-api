@@ -20,6 +20,7 @@ import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
 import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
+import configuration.Stage
 import scalaz.std.scalaFuture._
 import services._
 import software.amazon.awssdk.auth.credentials.{
@@ -35,13 +36,13 @@ import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
-class TouchpointComponents(stage: String, conf: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit
+class TouchpointComponents(stage: Stage, conf: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
 ) {
   implicit val ec: ExecutionContextExecutor = system.dispatcher
   lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
-  lazy val environmentConfig = touchpointConfig.getConfig(s"environments.$stage")
+  lazy val environmentConfig = touchpointConfig.getConfig(s"environments." + stage.value)
 
   lazy val digitalPackConf = environmentConfig.getConfig(s"zuora.ratePlanIds.digitalpack")
   lazy val paperCatalogConf = environmentConfig.getConfig(s"zuora.productIds.subscriptions")
@@ -54,7 +55,7 @@ class TouchpointComponents(stage: String, conf: Config, supporterProductDataServ
   lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
-  lazy val tpConfig = TouchpointBackendConfig.byEnv(stage, touchpointConfig)
+  lazy val tpConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
   implicit lazy val _bt: TouchpointBackendConfig = tpConfig
 
   lazy val patronsStripeService = new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner)
@@ -67,7 +68,7 @@ class TouchpointComponents(stage: String, conf: Config, supporterProductDataServ
     InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
   lazy val contactRepo: SimpleContactRepository =
-    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.Config.applicationName)
+    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
@@ -84,11 +85,11 @@ class TouchpointComponents(stage: String, conf: Config, supporterProductDataServ
 
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val dynamoSupporterProductDataService =
-    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
+    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, stage)
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
-  private val zuoraMetrics = new ZuoraMetrics(stage, configuration.Config.applicationName)
+  private val zuoraMetrics = new ZuoraMetrics(stage.value, configuration.ApplicationName.applicationName)
   private lazy val zuoraSoapClient =
     new ClientWithFeatureSupplier(
       featureCodes = Set.empty,
@@ -105,7 +106,8 @@ class TouchpointComponents(stage: String, conf: Config, supporterProductDataServ
   lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
 
   lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
-  lazy val catalogService = new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage)
+  lazy val catalogService =
+    new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value)
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
     .map(_.fold[CatalogMap](error => { println(s"error: ${error.list.toList.mkString}"); Map() }, _.map))

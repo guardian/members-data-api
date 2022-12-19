@@ -22,7 +22,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
-import configuration.Config
+import configuration.Stage
 import controllers.PaymentDetailMapper.paymentDetailsForSub
 import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
@@ -35,7 +35,7 @@ import play.api.data.Forms._
 import play.api.libs.json.{Format, Json}
 import play.api.mvc._
 import scalaz.std.scalaFuture._
-import scalaz.{EitherT, IList, ListT, OptionT, \/}
+import scalaz._
 import utils.OptionEither.FutureEither
 import utils.{ListEither, OptionEither}
 
@@ -74,6 +74,7 @@ class AccountController(
     commonActions: CommonActions,
     override val controllerComponents: ControllerComponents,
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
+    stage: Stage,
 ) extends BaseController
     with LazyLogging {
   import AccountHelpers._
@@ -449,7 +450,7 @@ class AccountController(
       logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
 
       (for {
-        fromZuora <- OptionEither.liftOption(Timing.record(new AccountControllerMetrics(Config.stage), "accountDetailsFromZuora") {
+        fromZuora <- OptionEither.liftOption(Timing.record(new AccountControllerMetrics(stage.value), "accountDetailsFromZuora") {
           getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
         })
         fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)

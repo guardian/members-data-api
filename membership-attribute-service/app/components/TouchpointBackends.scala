@@ -2,7 +2,7 @@ package components
 
 import akka.actor.ActorSystem
 import com.typesafe.config.Config
-import configuration.Config.config
+import configuration.Stage
 import services.SupporterProductDataService
 
 import scala.concurrent.ExecutionContext
@@ -10,10 +10,12 @@ import scala.concurrent.ExecutionContext
 class TouchpointBackends(actorSystem: ActorSystem, config: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit
     executionContext: ExecutionContext,
 ) {
-  val normal = new TouchpointComponents(config.getString("touchpoint.backend.default"), config, supporterProductDataServiceOverride)(
+  private val defaultStage = Stage(config.getString("touchpoint.backend.default"))
+  val normal = new TouchpointComponents(defaultStage, config, supporterProductDataServiceOverride)(
     actorSystem,
     executionContext,
   )
+  private val testStage = Stage(config.getString("touchpoint.backend.test"))
   val test =
-    new TouchpointComponents(config.getString("touchpoint.backend.test"), config, supporterProductDataServiceOverride)(actorSystem, executionContext)
+    new TouchpointComponents(testStage, config, supporterProductDataServiceOverride)(actorSystem, executionContext)
 }
