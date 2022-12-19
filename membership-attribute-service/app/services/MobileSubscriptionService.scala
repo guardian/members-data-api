@@ -1,9 +1,9 @@
 package services
 
-import configuration.Config
 import models.MobileSubscriptionStatus
 import com.github.nscala_time.time.OrderingImplicits._
 import com.gu.monitoring.SafeLogger
+import com.typesafe.config.Config
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.libs.ws.WSClient
 
@@ -15,9 +15,10 @@ trait MobileSubscriptionService {
 
 }
 
-class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionContext) extends MobileSubscriptionService {
+class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit ec: ExecutionContext) extends MobileSubscriptionService {
+  val mobileSubscriptionApiKey = config.getString("mobile.subscription.apiKey")
 
-  private val subscriptionURL = Config.stage match {
+  private val subscriptionURL = config.getString("stage") match {
     case "PROD" => "https://mobile-purchases.mobile-aws.guardianapis.com"
     case _ => "https://mobile-purchases.mobile-aws.code.dev-guardianapis.com"
   }
@@ -25,7 +26,7 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient)(implicit ec: ExecutionCo
   override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
     val response = wsClient
       .url(s"$subscriptionURL/user/subscriptions/$identityId")
-      .withHttpHeaders("Authorization" -> s"Bearer ${Config.Mobile.subscriptionApiKey}")
+      .withHttpHeaders("Authorization" -> s"Bearer $mobileSubscriptionApiKey")
       .get()
 
     response.map { resp =>

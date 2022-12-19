@@ -4,10 +4,7 @@ import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
 import com.gu.monitoring.SafeLogger
 import com.typesafe.scalalogging.LazyLogging
-import components.TouchpointComponents
 import org.specs2.concurrent.ExecutionEnv
-import org.specs2.execute.Success
-import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
@@ -34,7 +31,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     .region(Region.EU_WEST_1)
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val supporterProductDataTable = s"SupporterProductData-$stage"
-  lazy val supporterProductDataService = new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
+  lazy val supporterProductDataService = new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper)
 
   implicit private val actorSystem: ActorSystem = ActorSystem()
 

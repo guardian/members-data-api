@@ -1,4 +1,3 @@
-import Dependencies._
 import scala.sys.process._
 
 val appVersion = "1.0-SNAPSHOT"
@@ -33,6 +32,7 @@ val commonSettings = Seq(
   Global / parallelExecution := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
   Test / javaOptions += "-Dconfig.resource=TEST.public.conf",
+  Test / fork := true,
 ) ++ buildInfoSettings
 
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
@@ -60,8 +60,9 @@ val api = Project("membership-attribute-service", file("membership-attribute-ser
   .settings(commonSettings)
   .settings(buildDebSettings)
   .settings(
-    libraryDependencies ++= apiDependencies,
-    dependencyOverrides ++= depOverrides,
+    libraryDependencies ++= Dependencies.apiDependencies,
+    dependencyOverrides ++= Dependencies.dependencyOverrides,
+    excludeDependencies ++= Dependencies.excludeDependencies,
   )
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(

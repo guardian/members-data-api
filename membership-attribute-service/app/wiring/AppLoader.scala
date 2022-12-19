@@ -3,21 +3,20 @@ package wiring
 import actions.CommonActions
 import akka.actor.ActorSystem
 import components.TouchpointBackends
-import configuration.Config
+import configuration.{Config, LogstashConfig, SentryConfig}
 import controllers._
 import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
 import loghandling.Logstash
 import monitoring.{ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
-import play.api.{db, _}
-import play.api.db.{ConnectionPool, DBComponents, HikariCPComponents}
-import play.api.http.DefaultHttpErrorHandler
+import play.api._
+import play.api.db.{DBComponents, HikariCPComponents}
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.EssentialFilter
 import play.filters.cors.CORSFilter
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.{MobileSubscriptionServiceImpl, PostgresDatabaseService}
+import services.{ContributionsStoreDatabaseService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
 
 import scala.concurrent.ExecutionContext
 
@@ -26,10 +25,14 @@ class AppLoader extends ApplicationLoader {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
-    SentryLogging.init()
-    Logstash.init(Config)
-    new MyComponents(context).application
+    val config = context.initialConfiguration.underlying
+    SentryLogging.init(new SentryConfig(config))
+    Logstash.init(new LogstashConfig(config))
+    createMyComponents(context).application
   }
+
+  protected def createMyComponents(context: Context) =
+    new MyComponents(context)
 }
 
 class MyComponents(context: Context)
@@ -39,8 +42,10 @@ class MyComponents(context: Context)
     with HikariCPComponents
     with DBComponents {
 
-  val touchPointBackends = new TouchpointBackends(actorSystem)
-  val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
+  lazy val config = context.initialConfiguration.underlying
+  lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
+  lazy val touchPointBackends = new TouchpointBackends(actorSystem, config, supporterProductDataServiceOverride)
+  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(
       environment,
@@ -51,14 +56,14 @@ class MyComponents(context: Context)
     )
   implicit val system: ActorSystem = actorSystem
 
-  val dbService = {
+  lazy val dbService: ContributionsStoreDatabaseService = {
     val db = dbApi.database("oneOffStore")
     val jdbcExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("contexts.jdbc-context")
 
     PostgresDatabaseService.fromDatabase(db)(jdbcExecutionContext)
   }
 
-  val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient)
+  lazy val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient, config)
 
   lazy val router: Routes = new Routes(
     httpErrorHandler,
