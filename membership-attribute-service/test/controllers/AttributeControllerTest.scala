@@ -5,9 +5,10 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
+import com.typesafe.config.ConfigFactory
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.Config
-import models.{UserFromToken, Attributes, MobileSubscriptionStatus}
+import models.{Attributes, MobileSubscriptionStatus, UserFromToken}
 import org.joda.time.LocalDate
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
@@ -16,6 +17,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
+import services.AuthenticationFailure.Unauthorised
 import services.{AuthenticationService, FakePostgresService, MobileSubscriptionService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -28,8 +30,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val validUserId = "123"
   private val userWithoutAttributesUserId = "456"
   private val unvalidatedEmailUserId = "789"
-  private val userWithHighRecurringContributionId = "987"
-  private val userWithLowRecurringContributionId = "654"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
@@ -40,22 +40,10 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
     GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
   )
-  private val userWithHighRecurringContributionAttributes = Attributes(
-    UserId = userWithHighRecurringContributionId,
-    RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    HighContributor = Some(true),
-  )
-  private val userWithLowRecurringContributionAttributes = Attributes(
-    UserId = userWithLowRecurringContributionId,
-    RecurringContributionPaymentPlan = Some("Monthly Contribution"),
-    HighContributor = Some(false),
-  )
 
   private val validUserCookie = Cookie("validUser", "true")
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
-  private val userWithHighRecurringContributionCookie = Cookie("userWithHighRecurringContribution", "true")
-  private val userWithLowRecurringContributionCookie = Cookie("userWithLowRecurringContribution", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@gu.com",
     identityId = validUserId,
@@ -69,14 +57,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val userWithoutAttributes = UserFromToken(
     primaryEmailAddress = "notcached@gu.com",
     identityId = userWithoutAttributesUserId,
-  )
-  private val userWithHighRecurringContribution = UserFromToken(
-    primaryEmailAddress = "userWithHighRecurringContribution@gu.com",
-    identityId = userWithHighRecurringContributionId,
-  )
-  private val userWithLowRecurringContribution = UserFromToken(
-    primaryEmailAddress = "userWithLowRecurringContribution@gu.com",
-    identityId = userWithLowRecurringContributionId,
   )
 
   private val guardianEmployeeUser = UserFromToken(
@@ -103,25 +83,24 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private val fakeAuthService = new AuthenticationService {
     override def user(requiredScopes: List[AccessScope])(implicit request: RequestHeader) =
       request.cookies.headOption match {
-        case Some(c) if c == validUserCookie => Future.successful(Some(validUser))
-        case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Some(unvalidatedEmailUser))
-        case Some(c) if c == userWithoutAttributesCookie => Future.successful(Some(userWithoutAttributes))
-        case Some(c) if c == guardianEmployeeCookie => Future.successful(Some(guardianEmployeeUser))
-        case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Some(guardianEmployeeUserTheguardian))
-        case Some(c) if c == validEmployeeUserCookie => Future.successful(Some(validEmployeeUser))
-        case Some(c) if c == userWithHighRecurringContributionCookie => Future.successful(Some(userWithHighRecurringContribution))
-        case Some(c) if c == userWithLowRecurringContributionCookie => Future.successful(Some(userWithLowRecurringContribution))
-        case _ => Future.successful(None)
+        case Some(c) if c == validUserCookie => Future.successful(Right(validUser))
+        case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Right(unvalidatedEmailUser))
+        case Some(c) if c == userWithoutAttributesCookie => Future.successful(Right(userWithoutAttributes))
+        case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
+        case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
+        case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
+        case _ => Future.successful(Left(Unauthorised))
       }
   }
+
+  val config = ConfigFactory.load()
 
   private object FakeAuthAndBackendViaAuthLibAction extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
+      object components extends TouchpointComponents(config.getString("touchpoint.backend.default"), config, None)
 
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
-
-      fakeAuthService.user(requiredScopes = Nil)(request) map { user: Option[UserFromToken] =>
+      fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
       }
     }
@@ -131,7 +110,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
 
-      object components extends TouchpointComponents(Config.defaultTouchpointBackendStage)
+      object components extends TouchpointComponents(config.getString("touchpoint.backend.default"), config, None)
 
       val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
@@ -140,7 +119,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   private val actorSystem = ActorSystem()
-  private val touchpointBackends = new TouchpointBackends(actorSystem)
+  private val touchpointBackends = new TouchpointBackends(actorSystem, Config.config, None)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val commonActions = new CommonActions(touchpointBackends, stubParser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
@@ -162,10 +141,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       )(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]): Future[(String, Option[Attributes])] = Future {
         if (identityId == validUserId || identityId == validEmployeeUser.identityId)
           ("Zuora", Some(testAttributes))
-        else if (identityId == userWithHighRecurringContributionId)
-          ("Zuora", Some(userWithHighRecurringContributionAttributes))
-        else if (identityId == userWithLowRecurringContributionId)
-          ("Zuora", Some(userWithLowRecurringContributionAttributes))
         else
           ("Zuora", None)
       }
@@ -389,36 +364,6 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       contentAsJson(controller.attributes(req)) shouldEqual
         Json.toJson(testAttributes.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
     }
-
-    "allow SupporterPlus access for recurring contributors on apps if amount >=£10" in {
-      val req = FakeRequest()
-        .withCookies(userWithHighRecurringContributionCookie)
-        .withHeaders(USER_AGENT -> "Guardian/18447 CFNetwork/1333.0.4 Darwin/21.5.0")
-
-      val attribsWithSupporterPlus =
-        userWithHighRecurringContributionAttributes.copy(
-          SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)),
-        )
-
-      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(attribsWithSupporterPlus)
-    }
-
-    "do not allow SupporterPlus access for recurring contributors on apps if amount <£10" in {
-      val req = FakeRequest()
-        .withCookies(userWithLowRecurringContributionCookie)
-        .withHeaders(USER_AGENT -> "Guardian/18447 CFNetwork/1333.0.4 Darwin/21.5.0")
-
-      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(userWithLowRecurringContributionAttributes)
-    }
-
-    "do not allow SupporterPlus access for recurring contributors if not on apps" in {
-      val req = FakeRequest()
-        .withCookies(userWithHighRecurringContributionCookie)
-        .withHeaders(USER_AGENT -> "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:102.0) Gecko/20100101 Firefox/102.0")
-
-      contentAsJson(controller.attributes(req)) shouldEqual Json.toJson(userWithHighRecurringContributionAttributes)
-    }
-
   }
 
   override def afterAll(): Unit = as.terminate()

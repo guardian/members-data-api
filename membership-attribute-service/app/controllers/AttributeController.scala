@@ -82,15 +82,9 @@ class AttributeController(
   protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
     request.touchpoint.supporterProductDataService
-      .getAttributes(identityId)
+      .getNonCancelledAttributes(identityId)
       .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
-
-  private def isLiveApp(ua: String): Boolean = ua.matches("""^Guardian(News)?\/.*""")
-  private def upgradeRecurringContributorsOnApps(userAgent: Option[String], attributes: Attributes): Attributes =
-    if (attributes.HighContributor.contains(true) && userAgent.exists(isLiveApp)) {
-      attributes.copy(SupporterPlusExpiryDate = Some(LocalDate.now().plusDays(1)))
-    } else attributes
 
   private def lookup(
       endpointDescription: String,
@@ -106,7 +100,7 @@ class AttributeController(
       }
 
       request.user match {
-        case Some(user) =>
+        case Right(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
           val futureSupporterAttributes = getSupporterProductDataAttributes(user.identityId)
           val futureOneOffContribution = getLatestOneOffContributionDate(user.identityId, user)
@@ -118,13 +112,14 @@ class AttributeController(
             latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
             latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
             supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
-              request.user,
+              // transforming to Option here because type of failure is no longer relevant at this point
+              request.user.toOption,
               supporterAttributes,
               user.identityId,
             )
-            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes
-              .map(addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription))
-              .map(upgradeRecurringContributorsOnApps(request.headers.get(USER_AGENT), _))
+            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(
+              addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription),
+            )
           } yield {
 
             def customFields(supporterType: String): List[LogField] = List(
@@ -134,7 +129,7 @@ class AttributeController(
             )
 
             val result = allProductAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
+              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _)) =>
                 logInfoWithCustomFields(
                   s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere",
                   customFields("member"),
@@ -181,9 +176,14 @@ class AttributeController(
             log.error(errMsg, e)
             InternalServerError(errMsg)
           }
-        case None =>
+
+        case Left(AuthenticationFailure.Unauthorised) =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
+
+        case Left(AuthenticationFailure.Forbidden) =>
+          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
+          Future(forbidden)
       }
     }
   }
@@ -222,24 +222,31 @@ class AttributeController(
 
   def oneOffContributions = {
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
-      val userHasValidatedEmail = request.user.flatMap(_.userEmailValidated).getOrElse(false)
+      val userHasValidatedEmail = request.user.map(_.userEmailValidated.getOrElse(false))
 
-      val futureResult: Future[Result] = if (userHasValidatedEmail) {
-        request.user.map(_.identityId) match {
-          case Some(identityId) =>
-            contributionsStoreDatabaseService.getAllContributions(identityId).map {
-              case Left(err) => Ok(err)
-              case Right(result) => Ok(Json.toJson(result).toString)
-            }
-          case None => Future(unauthorized)
-        }
-      } else
-        Future(unauthorized)
+      val futureResult: Future[Result] = userHasValidatedEmail match {
+        case Right(true) =>
+          request.user.map(_.identityId) match {
+            case Right(identityId) =>
+              contributionsStoreDatabaseService.getAllContributions(identityId).map {
+                case Left(err) => Ok(err)
+                case Right(result) => Ok(Json.toJson(result).toString)
+              }
+            case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
+            case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+          }
+
+        case Right(false) => Future(unauthorized)
+
+        case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
+
+        case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+      }
 
       futureResult.map { result =>
         request.user match {
-          case Some(user) => AddGuIdentityHeaders.fromUser(result, user)
-          case None => result
+          case Right(user) => AddGuIdentityHeaders.fromUser(result, user)
+          case Left(_) => result
         }
       }
     }

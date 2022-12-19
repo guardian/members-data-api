@@ -7,6 +7,7 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import play.api.mvc.Results.Ok
 import play.api.mvc.{RequestHeader, Result}
+import services.AuthenticationFailure.Unauthorised
 import services.IdentityAuthService
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,7 +27,7 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
 
   val identityService = mock[IdentityAuthService]
   val request = mock[RequestHeader]
-  when(identityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Some(user)))
+  when(identityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Right(user)))
 
   val resultWithoutIdentityHeaders = Ok("testResult").withHeaders("previousHeader" -> "previousHeaderValue")
   val resultWithXGuIdentity = resultWithoutIdentityHeaders.withHeaders(XGuIdentityId -> "testUserId")
@@ -90,7 +91,7 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
 
   "fromIdapiIfMissing should not modify headers if no user is found in idapi when trying to add missing headers" in {
     val notFoundIdentityService = mock[IdentityAuthService]
-    when(notFoundIdentityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(None))
+    when(notFoundIdentityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Left(Unauthorised)))
 
     val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders, notFoundIdentityService)
     val actualResult = Await.result(futureActualResult, 5.seconds)

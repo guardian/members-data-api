@@ -6,6 +6,7 @@ import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import models.UserFromToken
 import play.api.mvc._
+import services.AuthenticationFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,7 +33,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
 
 class AuthenticatedUserAndBackendRequest[A](
-    val user: Option[UserFromToken],
+    val user: Either[AuthenticationFailure, UserFromToken],
     val touchpoint: TouchpointComponents,
     request: Request[A],
 ) extends WrappedRequest[A](request)

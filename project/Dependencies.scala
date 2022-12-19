@@ -7,29 +7,31 @@ object Dependencies {
   val awsClientV2Version = "2.16.86"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.5"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.7"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
-  val postgres = "org.postgresql" % "postgresql" % "42.3.3"
+  val postgres = "org.postgresql" % "postgresql" % "42.5.1"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
-  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M15"
+  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.622"
-  val scalaz = "org.scalaz" %% "scalaz-core" % "7.2.34"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.634"
+  val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
-  val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
-  val netty = "io.netty" % "netty-codec" % "4.1.74.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.74.Final"
+  val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
+  val netty = "io.netty" % "netty-codec" % "4.1.85.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.85.Final"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
 
-  val jacksonVersion = "2.13.2"
-  val jacksonDatabindVersion = "2.13.2.2"
+  val jacksonVersion = "2.14.1"
+  val jacksonDatabindVersion = "2.14.1"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
-  val oktaJwtVerifierVersion = "0.5.5"
+  val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
@@ -44,6 +46,7 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier" % oktaJwtVerifierVersion,
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
+  val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
 
   // projects
 
@@ -70,8 +73,10 @@ object Dependencies {
     nettyHttp,
     "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
     akkaHttpCore,
+    unirest,
+    mockServer,
   ) ++ jackson ++ oktaJwtVerifier
 
-  val depOverrides = jackson
-
+  val dependencyOverrides = jackson ++ Seq(scalaXml)
+  val excludeDependencies = Seq(ExclusionRule("com.squareup.okio", "okio"))
 }
