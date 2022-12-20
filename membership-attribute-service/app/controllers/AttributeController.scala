@@ -3,6 +3,7 @@ package controllers
 import actions._
 import akka.actor.ActorSystem
 import com.gu.identity.auth.AccessScope
+import configuration.Stage
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
@@ -27,13 +28,15 @@ class AttributeController(
     override val controllerComponents: ControllerComponents,
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
     mobileSubscriptionService: MobileSubscriptionService,
+    addGuIdentityHeaders: AddGuIdentityHeaders,
+    stage: Stage,
 )(implicit system: ActorSystem)
     extends BaseController
     with LoggingWithLogstashFields {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
-  lazy val metrics = Metrics("AttributesController")
-  lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
+  lazy val metrics = Metrics("AttributesController", stage.value)
+  lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController", stage.value)
 
   private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
       executionContext: ExecutionContext,
@@ -166,7 +169,7 @@ class AttributeController(
               case _ =>
                 onNotFound
             }
-            AddGuIdentityHeaders.fromUser(result, user)
+            addGuIdentityHeaders.fromUser(result, user)
 
           }).recover { case e =>
             // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
@@ -245,7 +248,7 @@ class AttributeController(
 
       futureResult.map { result =>
         request.user match {
-          case Right(user) => AddGuIdentityHeaders.fromUser(result, user)
+          case Right(user) => addGuIdentityHeaders.fromUser(result, user)
           case Left(_) => result
         }
       }

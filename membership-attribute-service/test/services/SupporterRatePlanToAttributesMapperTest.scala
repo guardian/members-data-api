@@ -1,5 +1,6 @@
 package services
 
+import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
@@ -7,7 +8,7 @@ import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 import services.SupporterRatePlanToAttributesMapperTest.allActiveProductRatePlans
 
 class SupporterRatePlanToAttributesMapperTest extends Specification {
-  val mapper = new SupporterRatePlanToAttributesMapper("PROD")
+  val mapper = new SupporterRatePlanToAttributesMapper(Stage("PROD"))
   val identityId = "999"
   val termEndDate = LocalDate.now().plusDays(5)
 
