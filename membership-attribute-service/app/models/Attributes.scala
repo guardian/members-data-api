@@ -75,6 +75,7 @@ case class Attributes(
   // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
   lazy val showSupportMessaging = !(
     isPaidTier
+      || isSupporterPlus
       || isRecurringContributor
       || isRecentOneOffContributor
       || digitalSubscriberHasActivePlan
