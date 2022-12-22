@@ -20,6 +20,7 @@ import play.api.test.Helpers._
 import play.api.test._
 import services.AuthenticationFailure.Unauthorised
 import services.{AuthenticationService, FakePostgresService, MobileSubscriptionService}
+import util.CreateNoopMetrics
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -99,7 +100,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private object FakeAuthAndBackendViaAuthLibAction extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
-      object components extends TouchpointComponents(Stage("PROD"), config, None)
+      object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config, None)
 
       fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
@@ -111,7 +112,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
 
-      object components extends TouchpointComponents(Stage("PROD"), config, None)
+      object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config, None)
 
       val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
@@ -120,7 +121,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   private val actorSystem = ActorSystem()
-  private val touchpointBackends = new TouchpointBackends(actorSystem, ConfigFactory.load(), None)
+  private val touchpointBackends = new TouchpointBackends(actorSystem, ConfigFactory.load(), CreateNoopMetrics, None)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val testUsers = CreateTestUsernames.from(config)
@@ -146,7 +147,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
       FakePostgresService(validUserId),
       FakeMobileSubscriptionService,
       addGuIdentityHeaders,
-      Stage("PROD"),
+      CreateNoopMetrics,
     ) {
       override val executionContext = scala.concurrent.ExecutionContext.global
       override def getSupporterProductDataAttributes(

@@ -7,7 +7,7 @@ import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
 import filters._
 import loghandling.Logstash
-import monitoring.{ErrorHandler, SentryLogging}
+import monitoring.{CreateMetrics, ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -44,8 +44,10 @@ class MyComponents(context: Context)
 
   lazy val config = context.initialConfiguration.underlying
   lazy val stage = Stage(config.getString("stage"))
+  lazy val createMetrics = new CreateMetrics(stage)
+
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
-  lazy val touchPointBackends = new TouchpointBackends(actorSystem, config, supporterProductDataServiceOverride)
+  lazy val touchPointBackends = new TouchpointBackends(actorSystem, config, createMetrics, supporterProductDataServiceOverride)
   private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
   private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
   lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, isTestUser)
@@ -72,11 +74,11 @@ class MyComponents(context: Context)
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
-    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, stage),
-    new ExistingPaymentOptionsController(commonActions, controllerComponents),
-    new AccountController(commonActions, controllerComponents, dbService, stage),
-    new PaymentUpdateController(commonActions, controllerComponents),
-    new ContactController(commonActions, controllerComponents),
+    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, createMetrics),
+    new ExistingPaymentOptionsController(commonActions, controllerComponents, createMetrics),
+    new AccountController(commonActions, controllerComponents, dbService, createMetrics),
+    new PaymentUpdateController(commonActions, controllerComponents, createMetrics),
+    new ContactController(commonActions, controllerComponents, createMetrics),
   )
 
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
