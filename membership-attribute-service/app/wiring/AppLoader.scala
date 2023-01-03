@@ -2,6 +2,9 @@ package wiring
 
 import actions.CommonActions
 import akka.actor.ActorSystem
+import com.gu.salesforce.ContactRepository
+import com.gu.zuora.ZuoraSoapService
+import com.gu.zuora.rest.ZuoraRestService
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
@@ -16,9 +19,17 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.{ContributionsStoreDatabaseService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
+import services.{
+  CatalogService,
+  ContributionsStoreDatabaseService,
+  HealthCheckableService,
+  MobileSubscriptionServiceImpl,
+  PostgresDatabaseService,
+  SubscriptionService,
+  SupporterProductDataService,
+}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class AppLoader extends ApplicationLoader {
   def load(context: Context): Application = {
@@ -47,7 +58,22 @@ class MyComponents(context: Context)
   lazy val createMetrics = new CreateMetrics(stage)
 
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
-  lazy val touchPointBackends = new TouchpointBackends(actorSystem, config, createMetrics, supporterProductDataServiceOverride)
+  lazy val contactRepositoryOverride: Option[ContactRepository] = None
+  lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
+  lazy val zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None
+  lazy val catalogServiceOverride: Option[CatalogService] = None
+  lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
+  lazy val touchPointBackends = new TouchpointBackends(
+    actorSystem,
+    config,
+    createMetrics,
+    supporterProductDataServiceOverride,
+    contactRepositoryOverride,
+    subscriptionServiceOverride,
+    zuoraRestServiceOverride,
+    catalogServiceOverride,
+    zuoraSoapServiceOverride,
+  )
   private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
   private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
   lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, isTestUser)

@@ -7,12 +7,10 @@ import com.gu.i18n.Country
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.OktaTokenValidationConfig
 import com.gu.memsub.services.PaymentService
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services._
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
-import com.gu.salesforce.SimpleContactRepository
+import com.gu.salesforce.{ContactRepository, SimpleContactRepository}
 import com.gu.stripe.{BasicStripeService, StripeService}
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.ZuoraSoapService
@@ -23,6 +21,7 @@ import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
 import scalaz.std.scalaFuture._
+import services.ZuoraSubscriptionService.CatalogMap
 import services._
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
@@ -41,7 +40,12 @@ class TouchpointComponents(
     stage: Stage,
     createMetrics: CreateMetrics,
     conf: Config,
-    supporterProductDataServiceOverride: Option[SupporterProductDataService],
+    supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
+    contactRepositoryOverride: Option[ContactRepository] = None,
+    subscriptionServiceOverride: Option[SubscriptionService] = None,
+    zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
+    catalogServiceOverride: Option[CatalogService] = None,
+    zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
 )(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
@@ -73,8 +77,9 @@ class TouchpointComponents(
   lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] =
     InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
-  lazy val contactRepo: SimpleContactRepository =
-    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
+  lazy val contactRepo: ContactRepository = contactRepositoryOverride.getOrElse(
+    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName),
+  )
   lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
@@ -85,13 +90,14 @@ class TouchpointComponents(
     )
     .build
 
-  lazy val dynamoClientBuilder: DynamoDbAsyncClientBuilder = DynamoDbAsyncClient.builder
+  private lazy val dynamoClientBuilder: DynamoDbAsyncClientBuilder = DynamoDbAsyncClient.builder
     .credentialsProvider(CredentialsProvider)
     .region(Region.EU_WEST_1)
 
-  lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
-  lazy val dynamoSupporterProductDataService =
+  private lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
+  private lazy val dynamoSupporterProductDataService =
     new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, createMetrics)
+
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
@@ -104,16 +110,19 @@ class TouchpointComponents(
       extendedHttpClient = RequestRunners.futureRunner,
       metrics = zuoraMetrics,
     )
-  lazy val zuoraService = new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
-    override def checkHealth: Boolean = zuoraSoapClient.isReady
-  }
+  lazy val zuoraService = zuoraServiceOverride.getOrElse(
+    new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
+      override def checkHealth: Boolean = zuoraSoapClient.isReady
+    },
+  )
 
   private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
-  lazy val zuoraRestService = new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient)
+  lazy val zuoraRestService = zuoraRestServiceOverride.getOrElse(new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient))
 
   lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
-  lazy val catalogService =
-    new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value)
+  lazy val catalogService = catalogServiceOverride.getOrElse(
+    new CatalogService(productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
+  )
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
     .map(_.fold[CatalogMap](error => { println(s"error: ${error.list.toList.mkString}"); Map() }, _.map))
@@ -122,7 +131,9 @@ class TouchpointComponents(
       throw error
     }
 
-  lazy val subService = new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
+  lazy val subscriptionService: SubscriptionService = subscriptionServiceOverride.getOrElse(
+    new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds),
+  )
   lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)

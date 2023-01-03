@@ -4,16 +4,17 @@ import com.gu.memsub.services.PaymentService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.services.model.PaymentDetails
 import org.joda.time.LocalDate
+import org.mockito.ArgumentMatchers.any
+import org.mockito.IdiomaticMockito
 import org.mockito.Mockito.when
 import org.specs2.concurrent.ExecutionEnv
-import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import scalaz.\/
 import testdata.SubscriptionTestData
 
 import scala.concurrent.Future
 
-class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with Mockito {
+class PaymentDetailMapperTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with IdiomaticMockito {
 
   override def referenceDate = LocalDate.now()
 

@@ -1,7 +1,7 @@
 package controllers
 
 import actions.{AuthAndBackendRequest, CommonActions, Return401IfNotSignedInRecently}
-import com.gu.salesforce.{SFContactId, SimpleContactRepository}
+import com.gu.salesforce.{ContactRepository, SFContactId, SimpleContactRepository}
 import com.typesafe.scalalogging.LazyLogging
 import models.DeliveryAddress
 import monitoring.CreateMetrics
@@ -70,7 +70,7 @@ class ContactController(
   }
 
   private def update(
-      contactRepo: SimpleContactRepository,
+      contactRepo: ContactRepository,
       contactId: String,
       address: DeliveryAddress,
   ): Future[Unit] = {

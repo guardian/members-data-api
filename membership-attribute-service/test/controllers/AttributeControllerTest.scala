@@ -11,7 +11,7 @@ import configuration.{CreateTestUsernames, Stage}
 import filters.{AddGuIdentityHeaders, IsTestUser}
 import models.{Attributes, MobileSubscriptionStatus, UserFromToken}
 import org.joda.time.LocalDate
-import org.specs2.mock.Mockito
+import org.mockito.IdiomaticMockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
 import play.api.libs.json.Json
@@ -25,7 +25,7 @@ import util.CreateNoopMetrics
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class AttributeControllerTest extends Specification with AfterAll with Mockito {
+class AttributeControllerTest extends Specification with AfterAll with IdiomaticMockito {
 
   implicit val as: ActorSystem = ActorSystem("test")
 
@@ -100,7 +100,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   private object FakeAuthAndBackendViaAuthLibAction extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
-      object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config, None)
+      object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config)
 
       fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
         Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
@@ -112,7 +112,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
     override val executionContext = scala.concurrent.ExecutionContext.global
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] = {
 
-      object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config, None)
+      object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config)
 
       val redirectAdviceResponse = RedirectAdviceResponse(SignedInRecently, None, None, None, None)
 
@@ -121,7 +121,7 @@ class AttributeControllerTest extends Specification with AfterAll with Mockito {
   }
 
   private val actorSystem = ActorSystem()
-  private val touchpointBackends = new TouchpointBackends(actorSystem, ConfigFactory.load(), CreateNoopMetrics, None)
+  private val touchpointBackends = new TouchpointBackends(actorSystem, ConfigFactory.load(), CreateNoopMetrics)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val testUsers = CreateTestUsernames.from(config)

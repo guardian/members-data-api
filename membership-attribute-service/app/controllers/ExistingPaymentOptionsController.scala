@@ -4,12 +4,11 @@ import actions._
 import com.gu.i18n.Currency
 import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.salesforce.SimpleContactRepository
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
+import com.gu.salesforce.ContactRepository
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import models.ExistingPaymentOption
@@ -23,7 +22,7 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
 import utils.{ListEither, OptionEither}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class ExistingPaymentOptionsController(
     commonActions: CommonActions,
@@ -38,14 +37,14 @@ class ExistingPaymentOptionsController(
   def allSubscriptionsSince(
       date: LocalDate,
   )(
-      contactRepo: SimpleContactRepository,
-      subService: SubscriptionService[Future],
+      contactRepo: ContactRepository,
+      subService: services.SubscriptionService,
   )(
       maybeUserId: Option[String],
   ): OptionT[OptionEither.FutureEither, List[(AccountId, List[Subscription[SubscriptionPlan.AnyPlan]])]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
-    subscriptions <- OptionEither.liftEitherOption(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
+    subscriptions <- OptionEither.liftEitherOption(subService.since(date)(contact))
   } yield subscriptions.groupBy(_.accountId).toList
 
   def consolidatePaymentMethod(existingPaymentOptions: List[ExistingPaymentOption]): Iterable[ExistingPaymentOption] = {
@@ -107,7 +106,7 @@ class ExistingPaymentOptionsController(
 
         logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
         (for {
-          groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
+          groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subscriptionService)(maybeUserId))
           (accountId, subscriptions) = groupedSubsList
           objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x =>
             Left(s"error receiving OBJECT account with account id $accountId. Reason: $x")

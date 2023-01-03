@@ -10,11 +10,10 @@ import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{PaidChargeList, Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import com.gu.salesforce.{Contact, SimpleContactRepository}
+import com.gu.salesforce.{Contact, ContactRepository}
 import com.gu.services.model.PaymentDetails
 import com.gu.zuora.api.RegionalStripeGateways
 import com.gu.zuora.rest.ZuoraRestService
@@ -84,7 +83,7 @@ class AccountController(
 
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
+  def cancelSubscription(subscriptionName: memsub.Subscription.Name)(implicit reads: SubPlanReads[AnyPlan]): Action[AnyContent] =
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
         val tp = request.touchpoint
@@ -114,7 +113,7 @@ class AccountController(
         def disableAutoPayOnlyIfAccountHasOneSubscription(
             accountId: memsub.Subscription.AccountId,
         ): EitherT[String, Future, Future[Either[String, Unit]]] = {
-          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).map { currentSubscriptions =>
+          EitherT(tp.subscriptionService.subscriptionsForAccountId[AnyPlan](accountId)).map { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
               tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither)
             else // do not disable auto pay
@@ -147,7 +146,9 @@ class AccountController(
             .leftMap(CancelError(_, 404))
           sfSub <- EitherT
             .fromEither(
-              tp.subService.current[P](sfContact).map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
+              tp.subscriptionService
+                .current[AnyPlan](sfContact)
+                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
             )
             .leftMap(CancelError(_, 404))
           accountId <- EitherT.fromEither(
@@ -156,7 +157,7 @@ class AccountController(
               else Left(CancelError(s"$subscriptionName does not belong to $identityId", 503)),
             ),
           )
-          cancellationEffectiveDate <- tp.subService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
+          cancellationEffectiveDate <- tp.subscriptionService.decideCancellationEffectiveDate(subscriptionName).leftMap(CancelError(_, 500))
           _ <- EitherT.fromEither(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, sfSub.termEndDate))
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
@@ -170,15 +171,15 @@ class AccountController(
       }
     }
 
-  private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
+  private def getCancellationEffectiveDate(subscriptionName: memsub.Subscription.Name)(implicit reads: SubPlanReads[AnyPlan]) =
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
         val tp = request.touchpoint
         val maybeUserId = request.user.map(_.identityId)
 
         (for {
-          cancellationEffectiveDate <- tp.subService
-            .decideCancellationEffectiveDate[P](subscriptionName)
+          cancellationEffectiveDate <- tp.subscriptionService
+            .decideCancellationEffectiveDate(subscriptionName)
             .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
@@ -212,7 +213,7 @@ class AccountController(
           user <- OptionEither.liftFutureEither(maybeUserId)
           contact <- OptionEither(tp.contactRepo.get(user))
           freeOrPaidSub <- OptionEither(
-            tp.subService
+            tp.subscriptionService
               .either[F, P](contact)
               .map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")),
           ).map(_.toEither)
@@ -278,7 +279,7 @@ class AccountController(
 
   def checkForGiftSubscription(
       userId: String,
-      subscriptionService: SubscriptionService[Future],
+      subscriptionService: SubscriptionService,
       zuoraRestService: ZuoraRestService[Future],
       nonGiftSubs: List[ContactAndSubscription],
       contact: Contact,
@@ -299,7 +300,7 @@ class AccountController(
   def reuseAlreadyFetchedSubscriptionIfAvailable(
       giftRecords: List[ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord],
       nonGiftSubs: List[ContactAndSubscription],
-      subscriptionService: SubscriptionService[Future],
+      subscriptionService: SubscriptionService,
   ): ListT[FutureEither, Subscription[AnyPlan]] = ListEither.liftFutureList {
     val all = giftRecords.map { giftRecord =>
       val subscriptionName = Name(giftRecord.Name)
@@ -309,52 +310,59 @@ class AccountController(
         case Some(contactAndSubscription) => Future.successful(Some(contactAndSubscription.subscription))
         case _ =>
           subscriptionService
-            .get[AnyPlan](subscriptionName, isActiveToday = false) // set isActiveToday to false so that we find digisub plans with a one time charge
+            .get(subscriptionName, isActiveToday = false) // set isActiveToday to false so that we find digisub plans with a one time charge
       }
     }
     Future.sequence(all).map(_.flatten) // failures turn to None, and are logged, so just ignore them
   }
 
   def allCurrentSubscriptions(
-      contactRepo: SimpleContactRepository,
-      subService: SubscriptionService[Future],
+      contactRepo: ContactRepository,
+      subService: SubscriptionService,
       zuoraRestService: ZuoraRestService[Future],
   )(
       maybeUserId: Option[String],
       filter: OptionalSubscriptionsFilter,
-  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = for {
-    userId <- OptionEither.liftFutureEither(maybeUserId)
-    contact <- OptionEither(contactRepo.get(userId))
-    nonGiftContactAndSubscriptions <-
-      OptionEither.liftEitherOption(
-        subService.current[SubscriptionPlan.AnyPlan](contact) map {
-          _ map { subscription =>
-            ContactAndSubscription(contact, subscription, isGiftRedemption = false)
-          }
-        },
-      )
-
-    contactAndSubscriptions <- checkForGiftSubscription(
-      userId,
-      subService,
-      zuoraRestService,
-      nonGiftContactAndSubscriptions,
-      contact,
-    )
-    filteredIfApplicable = filter match {
-      case FilterBySubName(subscriptionName) =>
-        contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
-      case FilterByProductType(productType) =>
-        contactAndSubscriptions.filter(contactAndSubscription =>
-          productIsInstanceOfProductType(
-            contactAndSubscription.subscription.plan.product,
-            productType,
-          ),
-        )
-      case NoFilter =>
-        contactAndSubscriptions
+  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = {
+    def nonGiftContactAndSubscriptionsFor(contact: Contact): OptionT[FutureEither, List[ContactAndSubscription]] = {
+      val future = subService.current(contact)
+      OptionEither.liftEitherOption(future map {
+        _ map { subscription =>
+          ContactAndSubscription(contact, subscription, isGiftRedemption = false)
+        }
+      })
     }
-  } yield filteredIfApplicable
+
+    def applyFilter(filter: OptionalSubscriptionsFilter, contactAndSubscriptions: List[ContactAndSubscription]) = {
+      filter match {
+        case FilterBySubName(subscriptionName) =>
+          contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
+        case FilterByProductType(productType) =>
+          contactAndSubscriptions.filter(contactAndSubscription =>
+            productIsInstanceOfProductType(
+              contactAndSubscription.subscription.plan.product,
+              productType,
+            ),
+          )
+        case NoFilter =>
+          contactAndSubscriptions
+      }
+    }
+
+    for {
+      userId <- OptionEither.liftFutureEither(maybeUserId)
+      contact <- OptionEither(contactRepo.get(userId))
+      nonGiftContactAndSubscriptions <- nonGiftContactAndSubscriptionsFor(contact)
+      contactAndSubscriptions <- checkForGiftSubscription(
+        userId,
+        subService,
+        zuoraRestService,
+        nonGiftContactAndSubscriptions,
+        contact,
+      )
+      filtered = applyFilter(filter, contactAndSubscriptions)
+    } yield filtered
+  }
 
   def reminders: Action[AnyContent] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
@@ -419,11 +427,12 @@ class AccountController(
   def getAccountDetailsFromZuora(filter: OptionalSubscriptionsFilter, maybeUserId: Option[String])(implicit
       tp: TouchpointComponents,
   ): ListT[FutureEither, AccountDetails] = {
-    def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
+    def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
+      tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
     for {
       contactAndSubscription <- ListEither.fromOptionEither(
-        allCurrentSubscriptions(tp.contactRepo, tp.subService, tp.zuoraRestService)(maybeUserId, filter),
+        allCurrentSubscriptions(tp.contactRepo, tp.subscriptionService, tp.zuoraRestService)(maybeUserId, filter),
       )
       freeOrPaidSub = contactAndSubscription.subscription.plan.charges match {
         case _: PaidChargeList => Right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
@@ -457,29 +466,30 @@ class AccountController(
   }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
-      metrics.measureDuration(metricName) {
-        implicit val tp: TouchpointComponents = request.touchpoint
-        val maybeUserId = request.redirectAdvice.userId
+    AuthAndBackendViaBothAction(howToHandleRecencyOfSignedIn = Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async {
+      implicit request: AuthenticatedUserAndBackendRequest[AnyContent] =>
+        metrics.measureDuration(metricName) {
+          implicit val tp: TouchpointComponents = request.touchpoint
+          val maybeUserId = request.request.asInstanceOf[AuthAndBackendRequest[AnyContent]].redirectAdvice.userId
 
-        logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
+          logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
 
-        (for {
-          fromZuora <- OptionEither.liftOption(metrics.measureDuration("accountDetailsFromZuora") {
-            getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
-          })
-          fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)
-        } yield (fromZuora.toList ++ fromStripe).map(_.toJson)).run.run
-          .map(_.toEither)
-          .map {
-            case Right(subscriptionJSONs) =>
-              logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-              Ok(Json.toJson(subscriptionJSONs.getOrElse(Nil)))
-            case Left(message) =>
-              logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
-              InternalServerError("Failed to retrieve payment details due to an internal error")
-          }
-      }
+          (for {
+            fromZuora <- OptionEither.liftOption(metrics.measureDuration("accountDetailsFromZuora") {
+              getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
+            })
+            fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)
+          } yield (fromZuora.toList ++ fromStripe).map(_.toJson)).run.run
+            .map(_.toEither)
+            .map {
+              case Right(subscriptionJSONs) =>
+                logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
+                Ok(Json.toJson(subscriptionJSONs.getOrElse(Nil)))
+              case Left(message) =>
+                logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
+                InternalServerError("Failed to retrieve payment details due to an internal error")
+            }
+        }
     }
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
@@ -491,7 +501,7 @@ class AccountController(
           case Some(identityId) =>
             (for {
               contact <- OptionT(EitherT(tp.contactRepo.get(identityId)))
-              subs <- OptionT(EitherT(tp.subService.recentlyCancelled(contact)).map(Option(_)))
+              subs <- OptionT(EitherT(tp.subscriptionService.recentlyCancelled(contact)).map(Option(_)))
             } yield {
               Ok(Json.toJson(subs.map(CancelledSubscription(_))))
             }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
@@ -517,7 +527,7 @@ class AccountController(
           user <- EitherT.fromEither(Future.successful(maybeUserId.toRight("no identity cookie for user")))
           sfUser <- EitherT.fromEither(tp.contactRepo.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
           subscription <- EitherT.fromEither(
-            tp.subService
+            tp.subscriptionService
               .current[SubscriptionPlan.Contributor](sfUser)
               .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")(subs)),
           )
@@ -556,10 +566,10 @@ class AccountController(
   }
 
   def cancelSpecificSub(subscriptionName: String): Action[AnyContent] =
-    cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+    cancelSubscription(memsub.Subscription.Name(subscriptionName))
 
   def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
-    getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+    getCancellationEffectiveDate(memsub.Subscription.Name(subscriptionName))
 
   def cancelledSubscriptions(): Action[AnyContent] = fetchCancelledSubscriptions()
 
