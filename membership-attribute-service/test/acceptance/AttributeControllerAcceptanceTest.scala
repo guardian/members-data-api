@@ -1,5 +1,6 @@
 package acceptance
 
+import acceptance.data.IdentityResponse
 import kong.unirest.Unirest
 import models.{Attributes, ContributionData}
 import org.mockito.Mockito.when
@@ -32,7 +33,7 @@ class AttributeControllerAcceptanceTest extends AcceptanceTest {
   }
 
   "AttributeController" should {
-    val userAttributesUrl = playServerAddress + "/user-attributes/me"
+    val userAttributesUrl = endpointUrl("/user-attributes/me")
 
     "serve current user's attributes" in {
       val identityRequest = request()
@@ -50,7 +51,7 @@ class AttributeControllerAcceptanceTest extends AcceptanceTest {
         )
         .respond(
           response()
-            .withBody(identityResponse),
+            .withBody(IdentityResponse(userId = 200067388)),
         )
 
       when(databaseServiceMock.getLatestContribution("200067388")) thenReturn Future(
@@ -102,180 +103,4 @@ class AttributeControllerAcceptanceTest extends AcceptanceTest {
       (json \ "contentAccess" \ "guardianPatron").as[Boolean] shouldEqual false
     }
   }
-
-  val identityResponse =
-    """{
-      |   "status":"ok",
-      |   "user":{
-      |      "primaryEmailAddress":"pawel.krupinski.casual+bla@guardian.co.uk",
-      |      "id":"200067388",
-      |      "publicFields":{
-      |         "displayName":"user"
-      |      },
-      |      "privateFields":{
-      |         "puzzleUuid":"2e1579841179722ecebb113d7417b7665da7beda0583a196dde89967aeeeb9b7",
-      |         "googleTagId":"4a7e4b119ee6ffa4626936c09620bce1e257e846f3ea170a3c4476b68ff533d0",
-      |         "legacyPackages":"RCO,CRE",
-      |         "legacyProducts":"RCO,CRE"
-      |      },
-      |      "statusFields":{
-      |         "userEmailValidated":true
-      |      },
-      |      "dates":{
-      |         "accountCreatedDate":"2022-11-16T15:40:48Z"
-      |      },
-      |      "userGroups":[
-      |         {
-      |            "path":"/sys/policies/basic-community",
-      |            "packageCode":"RCO"
-      |         },
-      |         {
-      |            "path":"/sys/policies/basic-identity",
-      |            "packageCode":"CRE"
-      |         }
-      |      ],
-      |      "adData":{
-      |
-      |      },
-      |      "consents":[
-      |         {
-      |            "actor":"user",
-      |            "id":"your_support_onboarding",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"personalised_advertising",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"sms",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"digital_subscriber_preview",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"offers",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"supporter_newsletter",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"events",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"similar_guardian_products",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"holidays",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"market_research_optout",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"post_optout",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"profiling_optout",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"phone_optout",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"supporter",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"jobs",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"guardian_weekly_newsletter",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         },
-      |         {
-      |            "actor":"user",
-      |            "id":"subscriber_preview",
-      |            "version":0,
-      |            "consented":false,
-      |            "timestamp":"2022-11-16T15:40:48Z",
-      |            "privacyPolicyVersion":1
-      |         }
-      |      ],
-      |      "hasPassword":true
-      |   }
-      |}""".stripMargin
 }

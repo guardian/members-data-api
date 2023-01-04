@@ -13,8 +13,9 @@ import scala.concurrent.Future
 trait HasPlayServer {
   this: HasIdentityMockServer =>
 
-  val playPort = 8081
-  val playServerAddress = "http://localhost:" + playPort
+  private val playPort = 8081
+  private val playServerAddress = "http://localhost:" + playPort
+  protected def endpointUrl(path: String) = playServerAddress + path
 
   var application: Application = _
   var server: AkkaHttpServer = _
