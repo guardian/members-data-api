@@ -22,10 +22,18 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) =
+  def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
     NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
-  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
+  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn): ActionBuilder[AuthAndBackendRequest, AnyContent] =
     NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser)
+
+  def AuthAndBackendViaBothAction(
+      howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
+      requiredScopes: List[AccessScope],
+  ): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
+    NoCacheAction andThen
+      new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser) andThen
+      new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser
@@ -34,12 +42,10 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   }
 }
 
-class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
-
 class AuthenticatedUserAndBackendRequest[A](
     val user: Either[AuthenticationFailure, UserFromToken],
     val touchpoint: TouchpointComponents,
-    request: Request[A],
+    val request: Request[A],
 ) extends WrappedRequest[A](request)
 
 class AuthAndBackendRequest[A](
