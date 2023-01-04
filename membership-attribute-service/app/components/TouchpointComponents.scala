@@ -21,6 +21,7 @@ import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
 import configuration.Stage
+import monitoring.CreateMetrics
 import scalaz.std.scalaFuture._
 import services._
 import software.amazon.awssdk.auth.credentials.{
@@ -36,7 +37,12 @@ import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
-class TouchpointComponents(stage: Stage, conf: Config, supporterProductDataServiceOverride: Option[SupporterProductDataService])(implicit
+class TouchpointComponents(
+    stage: Stage,
+    createMetrics: CreateMetrics,
+    conf: Config,
+    supporterProductDataServiceOverride: Option[SupporterProductDataService],
+)(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
 ) {
@@ -85,7 +91,7 @@ class TouchpointComponents(stage: Stage, conf: Config, supporterProductDataServi
 
   lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   lazy val dynamoSupporterProductDataService =
-    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, stage)
+    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, createMetrics)
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 

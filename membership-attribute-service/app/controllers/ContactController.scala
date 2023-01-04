@@ -4,6 +4,7 @@ import actions.{AuthAndBackendRequest, CommonActions, Return401IfNotSignedInRece
 import com.gu.salesforce.{SFContactId, SimpleContactRepository}
 import com.typesafe.scalalogging.LazyLogging
 import models.DeliveryAddress
+import monitoring.CreateMetrics
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -12,40 +13,44 @@ import scala.util.control.Exception
 class ContactController(
     commonActions: CommonActions,
     override val controllerComponents: ControllerComponents,
+    createMetrics: CreateMetrics,
 ) extends BaseController
     with LazyLogging {
 
   import commonActions._
 
   private implicit val ec: ExecutionContext = controllerComponents.executionContext
+  val metrics = createMetrics.forService(classOf[ContactController])
 
   def updateDeliveryAddress(contactId: String): Action[AnyContent] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { request =>
-      logger.info(s"Updating delivery address for contact $contactId")
+      metrics.measureDuration("PUT /user-attributes/me/delivery-address/:contactId") {
+        logger.info(s"Updating delivery address for contact $contactId")
 
-      isContactOwnedByRequester(request, contactId) flatMap { valid =>
-        if (valid) {
-          val submitted = Exception.allCatch.either {
-            request.body.asJson map (_.as[DeliveryAddress])
-          }
+        isContactOwnedByRequester(request, contactId) flatMap { valid =>
+          if (valid) {
+            val submitted = Exception.allCatch.either {
+              request.body.asJson map (_.as[DeliveryAddress])
+            }
 
-          submitted match {
-            case Left(parsingFailure) => Future.successful(BadRequest(parsingFailure.getMessage))
-            case Right(None) => Future.successful(BadRequest(s"Not json: ${request.body}"))
-            case Right(Some(address)) =>
-              val contactRepo = request.touchpoint.contactRepo
-              update(contactRepo, contactId, address) map { _ =>
-                NoContent
-              } recover { case updateFailure =>
-                BadGateway(updateFailure.getMessage)
-              }
-          }
-        } else
-          Future.successful(
-            BadRequest(
-              s"Contact $contactId not related to current user ${request.redirectAdvice.userId}",
-            ),
-          )
+            submitted match {
+              case Left(parsingFailure) => Future.successful(BadRequest(parsingFailure.getMessage))
+              case Right(None) => Future.successful(BadRequest(s"Not json: ${request.body}"))
+              case Right(Some(address)) =>
+                val contactRepo = request.touchpoint.contactRepo
+                update(contactRepo, contactId, address) map { _ =>
+                  NoContent
+                } recover { case updateFailure =>
+                  BadGateway(updateFailure.getMessage)
+                }
+            }
+          } else
+            Future.successful(
+              BadRequest(
+                s"Contact $contactId not related to current user ${request.redirectAdvice.userId}",
+              ),
+            )
+        }
       }
     }
 

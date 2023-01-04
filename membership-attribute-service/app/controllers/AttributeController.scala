@@ -3,7 +3,6 @@ package controllers
 import actions._
 import akka.actor.ActorSystem
 import com.gu.identity.auth.AccessScope
-import configuration.Stage
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
@@ -12,7 +11,7 @@ import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
-import monitoring.{ExpensiveMetrics, Metrics}
+import monitoring.CreateMetrics
 import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -29,14 +28,13 @@ class AttributeController(
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
     mobileSubscriptionService: MobileSubscriptionService,
     addGuIdentityHeaders: AddGuIdentityHeaders,
-    stage: Stage,
+    createMetrics: CreateMetrics,
 )(implicit system: ActorSystem)
     extends BaseController
     with LoggingWithLogstashFields {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
-  lazy val metrics = Metrics("AttributesController", stage.value)
-  lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController", stage.value)
+  lazy val metrics = createMetrics.forService(classOf[AttributeController])
 
   private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
       executionContext: ExecutionContext,
@@ -96,13 +94,14 @@ class AttributeController(
       onNotFound: Result,
       sendAttributesIfNotFound: Boolean = false,
       requiredScopes: List[AccessScope],
+      metricName: String,
   ) = {
     AuthAndBackendViaAuthLibAction(requiredScopes).async { implicit request =>
       if (endpointDescription == "membership" || endpointDescription == "features") {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
       }
 
-      request.user match {
+      metrics.measureDuration(metricName)(request.user match {
         case Right(user) =>
           // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
           val futureSupporterAttributes = getSupporterProductDataAttributes(user.identityId)
@@ -187,7 +186,7 @@ class AttributeController(
         case Left(AuthenticationFailure.Forbidden) =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(forbidden)
-      }
+      })
     }
   }
 
@@ -200,60 +199,69 @@ class AttributeController(
       .getOrElse(notFound)
   }
 
-  def membership = lookup(
-    endpointDescription = "membership",
-    onSuccessMember = membershipAttributesFromAttributes,
-    onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
-    onNotFound = notFound,
-    requiredScopes = List(completeReadSelf),
-  )
-  def attributes = lookup(
-    endpointDescription = "attributes",
-    onSuccessMember = attrs => Ok(Json.toJson(attrs)),
-    onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
-    onNotFound = notFound,
-    sendAttributesIfNotFound = true,
-    requiredScopes = List(readSelf),
-  )
-  def features = lookup(
-    endpointDescription = "features",
-    onSuccessMember = Features.fromAttributes,
-    onSuccessSupporter = _ => Features.unauthenticated,
-    onNotFound = Features.unauthenticated,
-    requiredScopes = List(completeReadSelf),
-  )
+  def membership =
+    lookup(
+      endpointDescription = "membership",
+      onSuccessMember = membershipAttributesFromAttributes,
+      onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
+      onNotFound = notFound,
+      requiredScopes = List(completeReadSelf),
+      metricName = "GET /user-attributes/me/membership",
+    )
 
-  def oneOffContributions = {
+  def attributes =
+    lookup(
+      endpointDescription = "attributes",
+      onSuccessMember = attrs => Ok(Json.toJson(attrs)),
+      onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
+      onNotFound = notFound,
+      sendAttributesIfNotFound = true,
+      requiredScopes = List(readSelf),
+      metricName = "GET /user-attributes/me",
+    )
+
+  def features =
+    lookup(
+      endpointDescription = "features",
+      onSuccessMember = Features.fromAttributes,
+      onSuccessSupporter = _ => Features.unauthenticated,
+      onNotFound = Features.unauthenticated,
+      requiredScopes = List(completeReadSelf),
+      metricName = "GET /user-attributes/me/features",
+    )
+
+  def oneOffContributions =
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
-      val userHasValidatedEmail = request.user.map(_.userEmailValidated.getOrElse(false))
+      metrics.measureDuration("GET /user-attributes/me/one-off-contributions") {
+        val userHasValidatedEmail = request.user.map(_.userEmailValidated.getOrElse(false))
 
-      val futureResult: Future[Result] = userHasValidatedEmail match {
-        case Right(true) =>
-          request.user.map(_.identityId) match {
-            case Right(identityId) =>
-              contributionsStoreDatabaseService.getAllContributions(identityId).map {
-                case Left(err) => Ok(err)
-                case Right(result) => Ok(Json.toJson(result).toString)
-              }
-            case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
-            case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+        val futureResult: Future[Result] = userHasValidatedEmail match {
+          case Right(true) =>
+            request.user.map(_.identityId) match {
+              case Right(identityId) =>
+                contributionsStoreDatabaseService.getAllContributions(identityId).map {
+                  case Left(err) => Ok(err)
+                  case Right(result) => Ok(Json.toJson(result).toString)
+                }
+              case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
+              case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+            }
+
+          case Right(false) => Future(unauthorized)
+
+          case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
+
+          case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
+        }
+
+        futureResult.map { result =>
+          request.user match {
+            case Right(user) => addGuIdentityHeaders.fromUser(result, user)
+            case Left(_) => result
           }
-
-        case Right(false) => Future(unauthorized)
-
-        case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
-
-        case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
-      }
-
-      futureResult.map { result =>
-        request.user match {
-          case Right(user) => addGuIdentityHeaders.fromUser(result, user)
-          case Left(_) => result
         }
       }
     }
-  }
 
   /** Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
     */
@@ -281,7 +289,5 @@ class AttributeController(
       (maybeAttributes orElse mockedZuoraAttribs).map(_.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
     else
       maybeAttributes
-
   }
-
 }

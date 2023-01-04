@@ -7,6 +7,7 @@ import org.specs2.mutable.Specification
 import play.api.test.Helpers._
 import play.api.test._
 import services.FakePostgresService
+import util.CreateNoopMetrics
 
 class AccountControllerTest extends Specification with Mockito {
 
@@ -14,7 +15,7 @@ class AccountControllerTest extends Specification with Mockito {
 
     val subName = "s1"
     val commonActions = mock[CommonActions]
-    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"), Stage("PROD"))
+    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"), CreateNoopMetrics)
     val request = FakeRequest("POST", s"/api/update/amount/contributions/$subName")
 
     "succeed when given value is valid" in {

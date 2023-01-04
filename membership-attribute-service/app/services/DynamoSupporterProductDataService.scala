@@ -5,7 +5,7 @@ import com.gu.i18n.Currency
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
-import monitoring.Metrics
+import monitoring.{CreateMetrics, Metrics}
 import org.joda.time.{DateTimeZone, LocalDate}
 import org.scanamo.DynamoReadError.describe
 import org.scanamo._
@@ -22,11 +22,16 @@ trait SupporterProductDataService {
   def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]]
 }
 
-class DynamoSupporterProductDataService(client: DynamoDbAsyncClient, table: String, mapper: SupporterRatePlanToAttributesMapper, stage: Stage)(
-    implicit executionContext: ExecutionContext,
+class DynamoSupporterProductDataService(
+    client: DynamoDbAsyncClient,
+    table: String,
+    mapper: SupporterRatePlanToAttributesMapper,
+    createMetrics: CreateMetrics,
+)(implicit
+    executionContext: ExecutionContext,
 ) extends SupporterProductDataService
     with LazyLogging {
-  val metrics = Metrics("SupporterProductDataService", stage.value) // referenced in CloudFormation
+  val metrics = createMetrics.forService(classOf[SupporterProductDataService]) // referenced in CloudFormation
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)

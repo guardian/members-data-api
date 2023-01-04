@@ -15,6 +15,7 @@ import software.amazon.awssdk.auth.credentials.{
 }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
+import util.CreateNoopMetrics
 
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
@@ -33,7 +34,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
   lazy val mapper = new SupporterRatePlanToAttributesMapper(Stage(stage))
   lazy val supporterProductDataTable = s"SupporterProductData-$stage"
   lazy val supporterProductDataService =
-    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, Stage("PROD"))
+    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, CreateNoopMetrics)
 
   implicit private val actorSystem: ActorSystem = ActorSystem()
 

@@ -10,26 +10,30 @@ import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.SimpleContactRepository
-import com.gu.zuora.rest.ZuoraRestService
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import models.ExistingPaymentOption
+import monitoring.CreateMetrics
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
+import scalaz.OptionT
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
-import scalaz.OptionT
 import utils.{ListEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ExistingPaymentOptionsController(commonActions: CommonActions, override val controllerComponents: ControllerComponents)
-    extends BaseController
+class ExistingPaymentOptionsController(
+    commonActions: CommonActions,
+    override val controllerComponents: ControllerComponents,
+    createMetrics: CreateMetrics,
+) extends BaseController
     with LazyLogging {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
+  val metrics = createMetrics.forService(classOf[ExistingPaymentOptionsController])
 
   def allSubscriptionsSince(
       date: LocalDate,
@@ -72,60 +76,61 @@ class ExistingPaymentOptionsController(commonActions: CommonActions, override va
 
   def existingPaymentOptions(currencyFilter: Option[String]): Action[AnyContent] =
     AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency).async { implicit request =>
-      implicit val tp: TouchpointComponents = request.touchpoint
-      val maybeUserId = request.redirectAdvice.userId
-      val isSignedInRecently = request.redirectAdvice.signInStatus == SignedInRecently
+      metrics.measureDuration("GET /user-attributes/me/existing-payment-options") {
+        implicit val tp: TouchpointComponents = request.touchpoint
+        val maybeUserId = request.redirectAdvice.userId
+        val isSignedInRecently = request.redirectAdvice.signInStatus == SignedInRecently
 
-      val eligibilityDate = now.minusMonths(3)
+        val eligibilityDate = now.minusMonths(3)
 
-      val defaultMandateIdIfApplicable = "CLEARED"
+        val defaultMandateIdIfApplicable = "CLEARED"
 
-      def paymentMethodStillValid(paymentMethodOption: Option[PaymentMethod]) = paymentMethodOption match {
-        case Some(card: PaymentCard) => card.isReferenceTransaction && card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
-        case Some(dd: GoCardless) =>
-          dd.mandateId != defaultMandateIdIfApplicable // i.e. mandateId a real reference and hasn't been cleared in Zuora because of mandate failure
-        case _ => false
-      }
-
-      def paymentMethodHasNoFailures(paymentMethodOption: Option[PaymentMethod]) =
-        !paymentMethodOption.flatMap(_.numConsecutiveFailures).exists(_ > 0)
-
-      def paymentMethodIsActive(paymentMethodOption: Option[PaymentMethod]) =
-        !paymentMethodOption.flatMap(_.paymentMethodStatus).contains("Closed")
-
-      def currencyMatchesFilter(accountCurrency: Option[Currency]) =
-        (accountCurrency.map(_.iso), currencyFilter) match {
-          case (Some(accountCurrencyISO), Some(currencyFilterValue)) => accountCurrencyISO == currencyFilterValue
-          case (None, Some(_)) => false // if the account has no currency but there is filter the account is not eligible
-          case _ => true
+        def paymentMethodStillValid(paymentMethodOption: Option[PaymentMethod]) = paymentMethodOption match {
+          case Some(card: PaymentCard) => card.isReferenceTransaction && card.paymentCardDetails.exists(cardThatWontBeExpiredOnFirstTransaction)
+          case Some(dd: GoCardless) =>
+            dd.mandateId != defaultMandateIdIfApplicable // i.e. mandateId a real reference and hasn't been cleared in Zuora because of mandate failure
+          case _ => false
         }
 
-      logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
-      (for {
-        groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
-        (accountId, subscriptions) = groupedSubsList
-        objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x =>
-          Left(s"error receiving OBJECT account with account id $accountId. Reason: $x")
-        })
-        if currencyMatchesFilter(objectAccount.currency) &&
-          objectAccount.defaultPaymentMethodId.isDefined
-        paymentMethodOption <- ListEither.liftList(
-          tp.paymentService
-            .getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable))
-            .map(Right(_))
-            .recover { case x => Left(s"error retrieving payment method for account: $accountId. Reason: $x") },
-        )
-        if paymentMethodStillValid(paymentMethodOption) &&
-          paymentMethodHasNoFailures(paymentMethodOption) &&
-          paymentMethodIsActive(paymentMethodOption)
-      } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map(_.toEither).map {
-        case Right(existingPaymentOptions) =>
-          logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
-          Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson)))
-        case Left(message) =>
-          logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
-          InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
+        def paymentMethodHasNoFailures(paymentMethodOption: Option[PaymentMethod]) =
+          !paymentMethodOption.flatMap(_.numConsecutiveFailures).exists(_ > 0)
+
+        def paymentMethodIsActive(paymentMethodOption: Option[PaymentMethod]) =
+          !paymentMethodOption.flatMap(_.paymentMethodStatus).contains("Closed")
+
+        def currencyMatchesFilter(accountCurrency: Option[Currency]) =
+          (accountCurrency.map(_.iso), currencyFilter) match {
+            case (Some(accountCurrencyISO), Some(currencyFilterValue)) => accountCurrencyISO == currencyFilterValue
+            case (None, Some(_)) => false // if the account has no currency but there is filter the account is not eligible
+            case _ => true
+          }
+
+        logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
+        (for {
+          groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
+          (accountId, subscriptions) = groupedSubsList
+          objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x =>
+            Left(s"error receiving OBJECT account with account id $accountId. Reason: $x")
+          })
+          if currencyMatchesFilter(objectAccount.currency) &&
+            objectAccount.defaultPaymentMethodId.isDefined
+          paymentMethodOption <- ListEither.liftList(
+            tp.paymentService
+              .getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable))
+              .map(Right(_))
+              .recover { case x => Left(s"error retrieving payment method for account: $accountId. Reason: $x") },
+          )
+          if paymentMethodStillValid(paymentMethodOption) &&
+            paymentMethodHasNoFailures(paymentMethodOption) &&
+            paymentMethodIsActive(paymentMethodOption)
+        } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map(_.toEither).map {
+          case Right(existingPaymentOptions) =>
+            logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
+            Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson)))
+          case Left(message) =>
+            logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
+            InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
+        }
       }
     }
-
 }
