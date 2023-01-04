@@ -54,7 +54,6 @@ object AccountHelpers {
     failableFuture.map(Right(_)).recover { case exception =>
       Left(s"failed to $action. Exception : $exception")
     }
-
 }
 
 case class CancellationEffectiveDate(cancellationEffectiveDate: String)
@@ -268,26 +267,23 @@ class AccountController(
     }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently).async { implicit request =>
-      metrics.measureDuration(metricName) {
-        implicit val tp: TouchpointComponents = request.touchpoint
-        val maybeUserId = request.redirectAdvice.userId
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async {
+      implicit request: AuthenticatedUserAndBackendRequest[AnyContent] =>
+        metrics.measureDuration(metricName) {
+          implicit val tp: TouchpointComponents = request.touchpoint
+          val user = request.user
+          val userId = user.identityId
 
-        logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
-
-        maybeUserId
-          .map(paymentDetails(_, filter, tp))
-          .getOrElse(EitherT.right[String, Future, List[AccountDetails]](Nil))
-          .toEither
-          .map {
-            case Right(subscriptionList) =>
-              logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-              Ok(Json.toJson(subscriptionList.map(_.toJson)))
-            case Left(message) =>
-              logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
-              InternalServerError("Failed to retrieve payment details due to an internal error")
-          }
-      }
+          paymentDetails(userId, filter, tp).toEither
+            .map {
+              case Right(subscriptionList) =>
+                logger.info(s"Successfully retrieved payment details result for identity user: $userId")
+                Ok(Json.toJson(subscriptionList.map(_.toJson)))
+              case Left(message) =>
+                logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
+                InternalServerError("Failed to retrieve payment details due to an internal error")
+            }
+        }
     }
 
   private def paymentDetails(
