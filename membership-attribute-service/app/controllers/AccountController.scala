@@ -322,39 +322,46 @@ class AccountController(
   )(
       maybeUserId: Option[String],
       filter: OptionalSubscriptionsFilter,
-  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = for {
-    userId <- OptionEither.liftFutureEither(maybeUserId)
-    contact <- OptionEither(contactRepo.get(userId))
-    nonGiftContactAndSubscriptions <-
-      OptionEither.liftEitherOption(
-        subService.current[SubscriptionPlan.AnyPlan](contact) map {
-          _ map { subscription =>
-            ContactAndSubscription(contact, subscription, isGiftRedemption = false)
-          }
-        },
-      )
-
-    contactAndSubscriptions <- checkForGiftSubscription(
-      userId,
-      subService,
-      zuoraRestService,
-      nonGiftContactAndSubscriptions,
-      contact,
-    )
-    filteredIfApplicable = filter match {
-      case FilterBySubName(subscriptionName) =>
-        contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
-      case FilterByProductType(productType) =>
-        contactAndSubscriptions.filter(contactAndSubscription =>
-          productIsInstanceOfProductType(
-            contactAndSubscription.subscription.plan.product,
-            productType,
-          ),
-        )
-      case NoFilter =>
-        contactAndSubscriptions
+  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = {
+    def nonGiftContactAndSubscriptionsFor(contact: Contact): OptionT[FutureEither, List[ContactAndSubscription]] = {
+      val future = subService.current(contact)
+      OptionEither.liftEitherOption(future map {
+        _ map { subscription =>
+          ContactAndSubscription(contact, subscription, isGiftRedemption = false)
+        }
+      })
     }
-  } yield filteredIfApplicable
+
+    def applyFilter(filter: OptionalSubscriptionsFilter, contactAndSubscriptions: List[ContactAndSubscription]) = {
+      filter match {
+        case FilterBySubName(subscriptionName) =>
+          contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
+        case FilterByProductType(productType) =>
+          contactAndSubscriptions.filter(contactAndSubscription =>
+            productIsInstanceOfProductType(
+              contactAndSubscription.subscription.plan.product,
+              productType,
+            ),
+          )
+        case NoFilter =>
+          contactAndSubscriptions
+      }
+    }
+
+    for {
+      userId <- OptionEither.liftFutureEither(maybeUserId)
+      contact <- OptionEither(contactRepo.get(userId))
+      nonGiftContactAndSubscriptions <- nonGiftContactAndSubscriptionsFor(contact)
+      contactAndSubscriptions <- checkForGiftSubscription(
+        userId,
+        subService,
+        zuoraRestService,
+        nonGiftContactAndSubscriptions,
+        contact,
+      )
+      filtered = applyFilter(filter, contactAndSubscriptions)
+    } yield filtered
+  }
 
   def reminders: Action[AnyContent] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
@@ -419,7 +426,8 @@ class AccountController(
   def getAccountDetailsFromZuora(filter: OptionalSubscriptionsFilter, maybeUserId: Option[String])(implicit
       tp: TouchpointComponents,
   ): ListT[FutureEither, AccountDetails] = {
-    def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
+    def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
+      tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
     for {
       contactAndSubscription <- ListEither.fromOptionEither(
@@ -457,29 +465,30 @@ class AccountController(
   }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
-      metrics.measureDuration(metricName) {
-        implicit val tp: TouchpointComponents = request.touchpoint
-        val maybeUserId = request.redirectAdvice.userId
+    AuthAndBackendViaBothAction(howToHandleRecencyOfSignedIn = Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async {
+      implicit request: AuthenticatedUserAndBackendRequest[AnyContent] =>
+        metrics.measureDuration(metricName) {
+          implicit val tp: TouchpointComponents = request.touchpoint
+          val maybeUserId = request.request.asInstanceOf[AuthAndBackendRequest[AnyContent]].redirectAdvice.userId
 
-        logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
+          logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
 
-        (for {
-          fromZuora <- OptionEither.liftOption(metrics.measureDuration("accountDetailsFromZuora") {
-            getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
-          })
-          fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)
-        } yield (fromZuora.toList ++ fromStripe).map(_.toJson)).run.run
-          .map(_.toEither)
-          .map {
-            case Right(subscriptionJSONs) =>
-              logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-              Ok(Json.toJson(subscriptionJSONs.getOrElse(Nil)))
-            case Left(message) =>
-              logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
-              InternalServerError("Failed to retrieve payment details due to an internal error")
-          }
-      }
+          (for {
+            fromZuora <- OptionEither.liftOption(metrics.measureDuration("accountDetailsFromZuora") {
+              getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
+            })
+            fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)
+          } yield (fromZuora.toList ++ fromStripe).map(_.toJson)).run.run
+            .map(_.toEither)
+            .map {
+              case Right(subscriptionJSONs) =>
+                logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
+                Ok(Json.toJson(subscriptionJSONs.getOrElse(Nil)))
+              case Left(message) =>
+                logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
+                InternalServerError("Failed to retrieve payment details due to an internal error")
+            }
+        }
     }
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
