@@ -53,7 +53,7 @@ class DynamoSupporterProductDataService(
         futureErrors = futureDynamoResult.collect { case Left(error) =>
           error
         }
-        _ = alertOnDynamoReadErrors(futureErrors)
+        _ = alertOnDynamoReadErrors(identityId, futureErrors)
         futureRatePlanItems = futureDynamoResult.collect({ case Right(ratePlanItem) =>
           ratePlanItem
         })
@@ -61,7 +61,7 @@ class DynamoSupporterProductDataService(
         if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
           Right(futureRatePlanItems)
         else
-          Left(errorMessage(futureErrors)),
+          Left(errorMessage(identityId, futureErrors)),
     )
   }
 
@@ -71,14 +71,15 @@ class DynamoSupporterProductDataService(
         .query("identityId" === identityId)
     }
 
-  private def alertOnDynamoReadErrors(errors: List[DynamoReadError]) =
+  private def alertOnDynamoReadErrors(identityId: String, errors: List[DynamoReadError]) =
     if (errors.nonEmpty) {
-      logger.error(errorMessage(errors))
+      logger.error(errorMessage(identityId, errors))
       metrics.put("SupporterProductDataDynamoError", 1) // referenced in CloudFormation
     }
 }
 
 object DynamoSupporterProductDataService {
-  def errorMessage(errors: List[DynamoReadError]) =
-    s"There were read errors while reading from the SupporterProductData DynamoDB table\n ${errors.map(describe).mkString("\n")}"
+  def errorMessage(identityId: String, errors: List[DynamoReadError]) =
+    s"There were read errors while reading from the SupporterProductData DynamoDB table " +
+      s"for user $identityId\n ${errors.map(describe).mkString("\n")}"
 }
