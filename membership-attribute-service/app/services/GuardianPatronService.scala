@@ -1,21 +1,21 @@
 package services
 
+import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
 import com.github.nscala_time.time.Imports.DateTimeFormat
-import com.gu.i18n.Currency.GBP
 import com.gu.memsub.BillingPeriod.{Month, Year}
 import com.gu.memsub.Product.GuardianPatron
 import com.gu.memsub.Subscription._
+import com.gu.memsub._
 import com.gu.memsub.subsv2.ReaderType.Direct
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
-import com.gu.memsub._
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
 import components.TouchpointComponents
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
+import scalaz.EitherT
 import scalaz.std.scalaFuture._
-import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
-import utils.OptionEither
+import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -114,18 +114,19 @@ object GuardianPatronService {
 
   private def getListDetailsFromStripe(
       items: List[DynamoSupporterRatePlanItem],
-  )(implicit tp: TouchpointComponents, executionContext: ExecutionContext) =
+  )(implicit tp: TouchpointComponents, executionContext: ExecutionContext): Future[List[AccountDetails]] =
     Future.sequence(
       items
         .filter(_.productRatePlanId == guardianPatronProductRatePlanId)
         .map(item => getDetailsFromStripe(item.subscriptionName)),
     )
 
-  def getGuardianPatronAccountDetails(maybeIdentityId: Option[String])(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = {
+  def getGuardianPatronAccountDetails(
+      userId: String,
+  )(implicit tp: TouchpointComponents, executionContext: ExecutionContext): SimpleEitherT[List[AccountDetails]] = {
     for {
-      identityId <- OptionEither.liftFutureEither(maybeIdentityId)
-      supporterRatePlanItems <- OptionEither.liftOption(tp.supporterProductDataService.getSupporterRatePlanItems(identityId).value)
-      stripeDetails <- OptionEither.liftEitherOption(getListDetailsFromStripe(supporterRatePlanItems))
+      supporterRatePlanItems <- tp.supporterProductDataService.getSupporterRatePlanItems(userId)
+      stripeDetails <- EitherT.rightT(getListDetailsFromStripe(supporterRatePlanItems))
     } yield stripeDetails
   }
 }

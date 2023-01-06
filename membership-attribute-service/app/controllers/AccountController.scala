@@ -6,7 +6,7 @@ import com.gu.memsub.Subscription.Name
 import services.PaymentFailureAlerter._
 import services._
 import com.gu.memsub._
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.SubscriptionPlan.{AnyPlan, Contributor}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -35,8 +35,10 @@ import play.api.libs.json.{Format, Json}
 import play.api.mvc._
 import scalaz._
 import scalaz.std.scalaFuture._
+import utils.ListTEither.ListTEither
 import utils.OptionEither.FutureEither
-import utils.{ListEither, OptionEither}
+import utils.SimpleEitherT.SimpleEitherT
+import utils.{ListTEither, OptionEither, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -282,25 +284,25 @@ class AccountController(
       zuoraRestService: ZuoraRestService[Future],
       nonGiftSubs: List[ContactAndSubscription],
       contact: Contact,
-  ): OptionT[FutureEither, List[ContactAndSubscription]] = {
+  ): EitherT[String, Future, List[ContactAndSubscription]] = {
     val giftSub = for {
       records <- ListT(EitherT(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId).map(_.map(IList(_)))))
       result <-
         if (records.isEmpty)
-          ListEither.liftFutureEither[Subscription[AnyPlan]](Nil)
+          ListTEither.fromList[Subscription[AnyPlan]](Nil)
         else
           reuseAlreadyFetchedSubscriptionIfAvailable(records, nonGiftSubs, subscriptionService)
     } yield result
     val fullList = giftSub
-      .map(sub => ContactAndSubscription(contact, sub, isGiftRedemption = true))
-    OptionEither.liftOption(fullList.run.map(_ ++ IList.fromList(nonGiftSubs)).run.map(_.toEither)).map(_.toList)
+      .map(ContactAndSubscription(contact, _, isGiftRedemption = true))
+    EitherT(fullList.run.map(_.toList).map(_ ++ nonGiftSubs).run)
   }
 
   def reuseAlreadyFetchedSubscriptionIfAvailable(
       giftRecords: List[ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord],
       nonGiftSubs: List[ContactAndSubscription],
       subscriptionService: SubscriptionService[Future],
-  ): ListT[FutureEither, Subscription[AnyPlan]] = ListEither.liftFutureList {
+  ): ListT[FutureEither, Subscription[AnyPlan]] = ListTEither.fromFutureList {
     val all = giftRecords.map { giftRecord =>
       val subscriptionName = Name(giftRecord.Name)
       // If the current user is both the gifter and the giftee we will have already retrieved their
@@ -320,16 +322,17 @@ class AccountController(
       subService: SubscriptionService[Future],
       zuoraRestService: ZuoraRestService[Future],
   )(
-      maybeUserId: Option[String],
+      userId: String,
       filter: OptionalSubscriptionsFilter,
-  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = {
-    def nonGiftContactAndSubscriptionsFor(contact: Contact): OptionT[FutureEither, List[ContactAndSubscription]] = {
-      val future = subService.current[SubscriptionPlan.AnyPlan](contact)
-      OptionEither.liftEitherOption(future map {
-        _ map { subscription =>
-          ContactAndSubscription(contact, subscription, isGiftRedemption = false)
+  ): Future[\/[String, List[ContactAndSubscription]]] = {
+    def nonGiftContactAndSubscriptionsFor(contact: Contact): Future[List[ContactAndSubscription]] = {
+      subService
+        .current[SubscriptionPlan.AnyPlan](contact)
+        .map {
+          _ map { subscription =>
+            ContactAndSubscription(contact, subscription, isGiftRedemption = false)
+          }
         }
-      })
     }
 
     def applyFilter(filter: OptionalSubscriptionsFilter, contactAndSubscriptions: List[ContactAndSubscription]) = {
@@ -348,19 +351,24 @@ class AccountController(
       }
     }
 
-    for {
-      userId <- OptionEither.liftFutureEither(maybeUserId)
-      contact <- OptionEither(contactRepo.get(userId))
-      nonGiftContactAndSubscriptions <- nonGiftContactAndSubscriptionsFor(contact)
-      contactAndSubscriptions <- checkForGiftSubscription(
-        userId,
-        subService,
-        zuoraRestService,
-        nonGiftContactAndSubscriptions,
-        contact,
-      )
-      filtered = applyFilter(filter, contactAndSubscriptions)
-    } yield filtered
+    def subscriptionsFor(contact: Contact): EitherT[String, Future, List[ContactAndSubscription]] = {
+      for {
+        nonGiftContactAndSubscriptions <- EitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
+        contactAndSubscriptions <- checkForGiftSubscription(
+          userId,
+          subService,
+          zuoraRestService,
+          nonGiftContactAndSubscriptions,
+          contact,
+        )
+        filtered = applyFilter(filter, contactAndSubscriptions)
+      } yield filtered
+    }
+
+    SimpleEitherT(contactRepo.get(userId)).flatMap {
+      case Some(contact) => subscriptionsFor(contact)
+      case _ => EitherT.right[String, Future, List[ContactAndSubscription]](Nil)
+    }.run
   }
 
   def reminders: Action[AnyContent] =
@@ -385,7 +393,7 @@ class AccountController(
       freeOrPaidSub: Either[Subscription[SubscriptionPlan.Free], Subscription[SubscriptionPlan.Paid]],
   )(implicit
       tp: TouchpointComponents,
-  ): ListT[FutureEither, (PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
+  ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
     // Run all these api calls in parallel to improve response times
     val paymentDetailsFuture =
       paymentDetailsForSub(contactAndSubscription.isGiftRedemption, freeOrPaidSub, tp.paymentService)
@@ -417,51 +425,53 @@ class AccountController(
         }
 
     for {
-      paymentDetails <- ListEither.liftList(paymentDetailsFuture)
-      accountSummary <- ListEither.liftList(accountSummaryFuture)
-      effectiveCancellationDate <- ListEither.liftList(effectiveCancellationDateFuture)
+      paymentDetails <- SimpleEitherT(paymentDetailsFuture)
+      accountSummary <- SimpleEitherT(accountSummaryFuture)
+      effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
     } yield (paymentDetails, accountSummary, effectiveCancellationDate)
   }
 
-  def getAccountDetailsFromZuora(filter: OptionalSubscriptionsFilter, maybeUserId: Option[String])(implicit
+  def getAccountDetailsFromZuora(filter: OptionalSubscriptionsFilter, userId: String)(implicit
       tp: TouchpointComponents,
-  ): ListT[FutureEither, AccountDetails] = {
+  ): ListTEither[AccountDetails] = {
     def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
       tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
-    for {
-      contactAndSubscription <- ListEither.fromOptionEither(
-        allCurrentSubscriptions(tp.contactRepo, tp.subService, tp.zuoraRestService)(maybeUserId, filter),
-      )
-      freeOrPaidSub = contactAndSubscription.subscription.plan.charges match {
-        case _: PaidChargeList => Right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
-        case _ => Left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
-      }
-      detailsResultsTuple <- getAccountDetailsParallel(contactAndSubscription, freeOrPaidSub)
-      (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTuple
-      stripeService = accountSummary.billToContact.country
-        .map(RegionalStripeGateways.getGatewayForCountry)
-        .flatMap(tp.stripeServicesByPaymentGateway.get)
-        .getOrElse(tp.ukStripeService)
-      alertText <- ListEither.liftEitherList(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
-      isAutoRenew = contactAndSubscription.subscription.autoRenew
-    } yield AccountDetails(
-      contactId = contactAndSubscription.contact.salesforceContactId,
-      regNumber = None,
-      email = accountSummary.billToContact.email,
-      deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
-      subscription = contactAndSubscription.subscription,
-      paymentDetails = paymentDetails,
-      billingCountry = accountSummary.billToContact.country,
-      stripePublicKey = stripeService.publicKey,
-      accountHasMissedRecentPayments = freeOrPaidSub.isRight &&
-        accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
-      safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
-      isAutoRenew = isAutoRenew,
-      alertText = alertText,
-      accountId = accountSummary.id.get,
-      effectiveCancellationDate,
-    )
+    ListTEither(metrics.measureDuration("accountDetailsFromZuora") {
+      (for {
+        contactAndSubscription <- ListTEither(
+          allCurrentSubscriptions(tp.contactRepo, tp.subService, tp.zuoraRestService)(userId, filter),
+        )
+        freeOrPaidSub = contactAndSubscription.subscription.plan.charges match {
+          case _: PaidChargeList => Right(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Paid]])
+          case _ => Left(contactAndSubscription.subscription.asInstanceOf[Subscription[SubscriptionPlan.Free]])
+        }
+        detailsResultsTuple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription, freeOrPaidSub))
+        (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTuple
+        stripeService = accountSummary.billToContact.country
+          .map(RegionalStripeGateways.getGatewayForCountry)
+          .flatMap(tp.stripeServicesByPaymentGateway.get)
+          .getOrElse(tp.ukStripeService)
+        alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
+        isAutoRenew = contactAndSubscription.subscription.autoRenew
+      } yield AccountDetails(
+        contactId = contactAndSubscription.contact.salesforceContactId,
+        regNumber = None,
+        email = accountSummary.billToContact.email,
+        deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
+        subscription = contactAndSubscription.subscription,
+        paymentDetails = paymentDetails,
+        billingCountry = accountSummary.billToContact.country,
+        stripePublicKey = stripeService.publicKey,
+        accountHasMissedRecentPayments = freeOrPaidSub.isRight &&
+          accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
+        safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
+        isAutoRenew = isAutoRenew,
+        alertText = alertText,
+        accountId = accountSummary.id.get,
+        effectiveCancellationDate,
+      )).run.run
+    })
   }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
@@ -472,23 +482,31 @@ class AccountController(
 
         logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
 
-        (for {
-          fromZuora <- OptionEither.liftOption(metrics.measureDuration("accountDetailsFromZuora") {
-            getAccountDetailsFromZuora(filter, maybeUserId).run.toEither
-          })
-          fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(maybeUserId)
-        } yield (fromZuora.toList ++ fromStripe).map(_.toJson)).run.run
-          .map(_.toEither)
+        maybeUserId
+          .map(paymentDetails(_, filter, tp))
+          .getOrElse(EitherT.right[String, Future, List[AccountDetails]](Nil))
+          .toEither
           .map {
-            case Right(subscriptionJSONs) =>
+            case Right(subscriptionList) =>
               logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-              Ok(Json.toJson(subscriptionJSONs.getOrElse(Nil)))
+              Ok(Json.toJson(subscriptionList.map(_.toJson)))
             case Left(message) =>
               logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
               InternalServerError("Failed to retrieve payment details due to an internal error")
           }
       }
     }
+
+  private def paymentDetails(
+      userId: String,
+      filter: OptionalSubscriptionsFilter,
+      touchpointComponents: TouchpointComponents,
+  ): SimpleEitherT[List[AccountDetails]] = {
+    for {
+      fromZuora <- getAccountDetailsFromZuora(filter, userId)(touchpointComponents).run
+      fromStripe <- GuardianPatronService.getGuardianPatronAccountDetails(userId)(touchpointComponents, implicitly[ExecutionContext])
+    } yield fromZuora.toList ++ fromStripe
+  }
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>

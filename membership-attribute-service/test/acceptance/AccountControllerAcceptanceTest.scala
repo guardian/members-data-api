@@ -31,6 +31,7 @@ import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
 import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
+import utils.SimpleEitherT
 import wiring.MyComponents
 
 import scala.concurrent.Future
@@ -156,7 +157,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) returns Future(TestQueriesAccount())
 
       supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") returns
-        EitherT[Future, String, List[DynamoSupporterRatePlanItem]](Future(Right(Nil)))
+        SimpleEitherT.right(Nil)
 
       val httpResponse = Unirest
         .get(endpointUrl("/user-attributes/me/mma"))

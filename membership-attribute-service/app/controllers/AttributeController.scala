@@ -1,6 +1,6 @@
 package controllers
 
-import actions._
+import actions.{AuthenticatedUserAndBackendRequest, CommonActions}
 import akka.actor.ActorSystem
 import com.gu.identity.auth.AccessScope
 import filters.AddGuIdentityHeaders
@@ -16,6 +16,7 @@ import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
+import utils.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
