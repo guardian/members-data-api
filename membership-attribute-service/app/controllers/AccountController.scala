@@ -267,23 +267,24 @@ class AccountController(
     }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async {
-      implicit request: AuthenticatedUserAndBackendRequest[AnyContent] =>
-        metrics.measureDuration(metricName) {
-          implicit val tp: TouchpointComponents = request.touchpoint
-          val user = request.user
-          val userId = user.identityId
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
+      metrics.measureDuration(metricName) {
+        val user = request.user
+        val userId = user.identityId
 
-          paymentDetails(userId, filter, tp).toEither
-            .map {
-              case Right(subscriptionList) =>
-                logger.info(s"Successfully retrieved payment details result for identity user: $userId")
-                Ok(Json.toJson(subscriptionList.map(_.toJson)))
-              case Left(message) =>
-                logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
-                InternalServerError("Failed to retrieve payment details due to an internal error")
-            }
-        }
+        logger.info(s"Attempting to retrieve payment details for identity user: $userId")
+
+        paymentDetails(userId, filter, request.touchpoint).toEither
+          .map {
+            case Right(subscriptionList) =>
+              logger.info(s"Successfully retrieved payment details result for identity user: $userId")
+              val response = ProductsResponse.from(user, subscriptionList)
+              Ok(Json.toJson(response))
+            case Left(message) =>
+              logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
+              InternalServerError("Failed to retrieve payment details due to an internal error")
+          }
+      }
     }
 
   private def paymentDetails(
