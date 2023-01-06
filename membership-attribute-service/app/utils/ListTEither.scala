@@ -15,6 +15,9 @@ object ListTEither {
   def apply[A](m: Future[\/[String, List[A]]])(implicit ex: ExecutionContext): ListTEither[A] =
     ListT[SimpleEitherT, A](EitherT[String, Future, List[A]](m).map(IList.fromList))
 
+  def fromEitherT[A](eitherT: SimpleEitherT[List[A]])(implicit ex: ExecutionContext): ListTEither[A] =
+    apply[A](eitherT.run)
+
   def fromOptionEither[A](value: OptionT[SimpleEitherT, List[A]])(implicit ex: ExecutionContext): ListTEither[A] =
     ListT[SimpleEitherT, A](value.map(IList.fromList).run.map(x => IList.fromOption(x).flatten))
 

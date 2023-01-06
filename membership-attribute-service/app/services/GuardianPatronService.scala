@@ -2,7 +2,7 @@ package services
 
 import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
 import com.github.nscala_time.time.Imports.DateTimeFormat
-import com.gu.memsub.BillingPeriod.{Month, Year}
+import com.gu.memsub.BillingPeriod.{Month, RecurringPeriod, Year}
 import com.gu.memsub.Product.GuardianPatron
 import com.gu.memsub.Subscription._
 import com.gu.memsub._
@@ -10,8 +10,7 @@ import com.gu.memsub.subsv2.ReaderType.Direct
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
-import com.gu.stripe.Stripe
-import components.TouchpointComponents
+import com.gu.stripe.{BasicStripeService, Stripe}
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
@@ -19,16 +18,46 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object GuardianPatronService {
-  private def billingPeriodFromInterval(interval: String) = interval match {
+class GuardianPatronService(
+    supporterProductDataService: SupporterProductDataService,
+    patronsStripeService: BasicStripeService,
+    stripePatronsPublicKey: String,
+)(implicit executionContext: ExecutionContext) {
+
+  def getGuardianPatronAccountDetails(userId: String): SimpleEitherT[List[AccountDetails]] = {
+    for {
+      supporterRatePlanItems <- supporterProductDataService.getSupporterRatePlanItems(userId)
+      stripeDetails <- EitherT.rightT(getListDetailsFromStripe(supporterRatePlanItems))
+    } yield stripeDetails
+  }
+
+  private def getListDetailsFromStripe(items: List[DynamoSupporterRatePlanItem]): Future[List[AccountDetails]] = {
+    Future.sequence(
+      items
+        .filter(isGuardianPatronProduct)
+        .map(_.subscriptionName)
+        .map(fetchAccountDetailsFromStripe),
+    )
+  }
+
+  private def isGuardianPatronProduct(item: DynamoSupporterRatePlanItem) =
+    item.productRatePlanId == guardianPatronProductRatePlanId
+
+  private def fetchAccountDetailsFromStripe(subscriptionId: String): Future[AccountDetails] = for {
+    subscription <- patronsStripeService.Subscription.read(subscriptionId)
+    paymentDetails <- patronsStripeService.PaymentMethod.read(subscription.customer.id)
+  } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, stripePatronsPublicKey)
+
+  private def billingPeriodFromInterval(interval: String): RecurringPeriod = interval match {
     case "year" => Year
     case _ => Month
   }
+
   private def accountDetailsFromStripeSubscription(
       subscription: Stripe.Subscription,
       paymentDetails: Stripe.CustomersPaymentMethods,
       stripePublicKey: String,
-  ) = {
+  ): AccountDetails = {
     val price = Price(subscription.plan.amount.toFloat, subscription.plan.currency)
     AccountDetails(
       contactId = "Guardian Patrons don't have a Salesforce contactId",
@@ -103,30 +132,5 @@ object GuardianPatronService {
       accountId = subscription.customer.id,
       cancellationEffectiveDate = subscription.cancellationEffectiveDate.map(_.toString(DateTimeFormat.forPattern("yyyy-MM-dd"))),
     )
-  }
-
-  private def getDetailsFromStripe(subscriptionId: String)(implicit tp: TouchpointComponents, executionContext: ExecutionContext) = for {
-    subscription <- tp.patronsStripeService.Subscription.read(subscriptionId)
-    _ = System.out.println(s"Found subscription $subscription")
-    paymentDetails <- tp.patronsStripeService.PaymentMethod.read(subscription.customer.id)
-    _ = System.out.println(s"Found payment details $paymentDetails")
-  } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, tp.tpConfig.stripePatrons.stripeCredentials.publicKey)
-
-  private def getListDetailsFromStripe(
-      items: List[DynamoSupporterRatePlanItem],
-  )(implicit tp: TouchpointComponents, executionContext: ExecutionContext): Future[List[AccountDetails]] =
-    Future.sequence(
-      items
-        .filter(_.productRatePlanId == guardianPatronProductRatePlanId)
-        .map(item => getDetailsFromStripe(item.subscriptionName)),
-    )
-
-  def getGuardianPatronAccountDetails(
-      userId: String,
-  )(implicit tp: TouchpointComponents, executionContext: ExecutionContext): SimpleEitherT[List[AccountDetails]] = {
-    for {
-      supporterRatePlanItems <- tp.supporterProductDataService.getSupporterRatePlanItems(userId)
-      stripeDetails <- EitherT.rightT(getListDetailsFromStripe(supporterRatePlanItems))
-    } yield stripeDetails
   }
 }

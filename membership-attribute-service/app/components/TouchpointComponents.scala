@@ -69,10 +69,10 @@ class TouchpointComponents(
   lazy val tpConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
   implicit lazy val _bt: TouchpointBackendConfig = tpConfig
 
-  lazy val patronsStripeService = new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner)
-  lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
-  lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
-  lazy val allStripeServices = Seq(ukStripeService, auStripeService)
+  lazy val patronsStripeService: BasicStripeService = new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner)
+  lazy val ukStripeService: StripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
+  lazy val auStripeService: StripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
+  lazy val allStripeServices: Seq[StripeService] = Seq(ukStripeService, auStripeService)
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
   lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] =
@@ -135,7 +135,7 @@ class TouchpointComponents(
   lazy val subService: SubscriptionService[Future] = subscriptionServiceOverride.getOrElse(
     new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds),
   )
-  lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
@@ -143,4 +143,10 @@ class TouchpointComponents(
     audience = conf.getString("okta.verifier.audience"),
   )
   lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, tokenVerifierConfig)
+
+  lazy val guardianPatronService =
+    new GuardianPatronService(supporterProductDataService, patronsStripeService, tpConfig.stripePatrons.stripeCredentials.publicKey)
+
+  lazy val accountDetailsFromZuora: AccountDetailsFromZuora =
+    new AccountDetailsFromZuora(createMetrics, zuoraRestService, contactRepo, subService, stripeServicesByPaymentGateway, ukStripeService, paymentService)
 }
