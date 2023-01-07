@@ -61,11 +61,11 @@ class DynamoSupporterProductDataService(
         if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
           \/.right(futureRatePlanItems)
         else
-          \/.left(errorMessage(identityId, futureErrors))
+          \/.left(errorMessage(identityId, futureErrors)),
     )
   }
 
-  private def getSupporterRatePlanItemsWithReadErrors(identityId: String) =
+  private def getSupporterRatePlanItemsWithReadErrors(identityId: String): Future[List[Either[DynamoReadError, DynamoSupporterRatePlanItem]]] =
     ScanamoAsync(client).exec {
       Table[DynamoSupporterRatePlanItem](table)
         .query("identityId" === identityId)
