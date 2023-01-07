@@ -21,6 +21,9 @@ object ListTEither {
   def fromOptionEither[A](value: OptionT[SimpleEitherT, List[A]])(implicit ex: ExecutionContext): ListTEither[A] =
     ListT[SimpleEitherT, A](value.map(IList.fromList).run.map(x => IList.fromOption(x).flatten))
 
+  def fromOptionT[A](value: Future[String \/ Option[A]])(implicit ex: ExecutionContext): ListTEither[A] =
+    apply[A](SimpleEitherT(value).map(_.toList).run)
+
   def singleDisjunction[A](x: Future[\/[String, A]])(implicit ex: ExecutionContext): ListTEither[A] =
     apply(x.map(_.map[IList[A]](a => IList(a))))
 

@@ -147,6 +147,17 @@ class TouchpointComponents(
   lazy val guardianPatronService =
     new GuardianPatronService(supporterProductDataService, patronsStripeService, tpConfig.stripePatrons.stripeCredentials.publicKey)
 
+  lazy val chooseStripeService: ChooseStripeService = new ChooseStripeService(stripeServicesByPaymentGateway, ukStripeService)
+
+  lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
+
   lazy val accountDetailsFromZuora: AccountDetailsFromZuora =
-    new AccountDetailsFromZuora(createMetrics, zuoraRestService, contactRepo, subService, stripeServicesByPaymentGateway, ukStripeService, paymentService)
+    new AccountDetailsFromZuora(
+      createMetrics,
+      zuoraRestService,
+      contactRepo,
+      subService,
+      chooseStripeService,
+      paymentDetailsForSubscription,
+    )
 }

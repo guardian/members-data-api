@@ -2,27 +2,17 @@ package controllers
 
 import actions._
 import com.gu.memsub
-import com.gu.memsub.Subscription.Name
-import services.PaymentFailureAlerter._
-import services._
-import com.gu.memsub._
-import com.gu.memsub.subsv2.SubscriptionPlan.{AnyPlan, Contributor}
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.services.SubscriptionService
-import com.gu.memsub.subsv2.{PaidChargeList, Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import com.gu.salesforce.{Contact, SimpleContactRepository}
-import com.gu.services.model.PaymentDetails
 import com.gu.zuora.api.RegionalStripeGateways
-import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
-import controllers.AccountHelpers.OptionalSubscriptionsFilter
-import controllers.PaymentDetailMapper.paymentDetailsForSub
 import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
 import models.AccountDetails._
@@ -36,10 +26,10 @@ import play.api.libs.json.{Format, Json}
 import play.api.mvc._
 import scalaz._
 import scalaz.std.scalaFuture._
-import utils.ListTEither.ListTEither
-import utils.OptionEither.FutureEither
+import services.PaymentFailureAlerter._
+import services._
+import utils.OptionEither
 import utils.SimpleEitherT.SimpleEitherT
-import utils.{ListTEither, OptionEither, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -308,7 +298,7 @@ class AccountController(
       touchpointComponents: TouchpointComponents,
   ): SimpleEitherT[List[AccountDetails]] = {
     for {
-      fromZuora <- touchpointComponents.accountDetailsFromZuora.get(userId, filter)
+      fromZuora <- touchpointComponents.accountDetailsFromZuora.fetch(userId, filter)
       fromStripe <- touchpointComponents.guardianPatronService.getGuardianPatronAccountDetails(userId)
     } yield fromZuora ++ fromStripe
   }

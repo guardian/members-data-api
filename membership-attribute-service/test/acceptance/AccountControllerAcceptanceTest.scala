@@ -179,8 +179,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraRestServiceMock.getCancellationEffectiveDate(giftSubscriptionFromSubscriptionService.name) was called
       zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.name) was called
 
-      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) was called
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) was called
+      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) was called
 
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
