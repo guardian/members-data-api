@@ -2,21 +2,21 @@ package services
 
 import com.gu.memsub.Product
 import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.services.SubscriptionService
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.{Contact, SimpleContactRepository}
 import com.gu.services.model.PaymentDetails
 import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
-import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
 import controllers.AccountController
+import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
 import models.{AccountDetails, ContactAndSubscription, DeliveryAddress}
 import monitoring.CreateMetrics
 import scalaz.std.scalaFuture._
-import scalaz.{EitherT, \/}
 import services.DifferentiateSubscription.differentiateSubscription
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
+import utils.ListTEither.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 import utils.{ListTEither, SimpleEitherT}
 
@@ -35,7 +35,7 @@ class AccountDetailsFromZuora(
   def fetch(userId: String, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[AccountDetails]] = {
     SimpleEitherT(metrics.measureDuration("accountDetailsFromZuora") {
       (for {
-        contactAndSubscription <- ListTEither(allCurrentSubscriptions(userId, filter))
+        contactAndSubscription <- allCurrentSubscriptions(userId, filter)
         freeOrPaidSub = differentiateSubscription(contactAndSubscription)
         detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
         (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
@@ -99,11 +99,11 @@ class AccountDetailsFromZuora(
   private def allCurrentSubscriptions(
       userId: String,
       filter: OptionalSubscriptionsFilter,
-  ): Future[\/[String, List[ContactAndSubscription]]] = {
-    SimpleEitherT(contactRepository.get(userId)).flatMap {
-      case Some(contact) => subscriptionsFor(userId, contact, filter)
-      case _ => EitherT.right[String, Future, List[ContactAndSubscription]](Nil)
-    }.run
+  ): ListTEither[ContactAndSubscription] = {
+    for {
+      contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
+      subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
+    } yield subscription
   }
 
   private def getAccountDetailsParallel(
