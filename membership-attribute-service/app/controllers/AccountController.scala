@@ -580,14 +580,20 @@ class AccountController(
   @Deprecated def membershipDetails: Action[AnyContent] =
     paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]("GET /user-attributes/me/mma-membership")
 
-  @Deprecated def monthlyContributionDetails: Action[AnyContent] =
+  @Deprecated def monthlyContributionDetails: Action[AnyContent] = {
+    implicit val nothingReads = SubPlanReads.nothingReads
     paymentDetails[SubscriptionPlan.Contributor, Nothing]("GET /user-attributes/me/mma-monthlycontribution")
+  }
 
-  @Deprecated def digitalPackDetails: Action[AnyContent] =
+  @Deprecated def digitalPackDetails: Action[AnyContent] = {
+    implicit val nothingReads = SubPlanReads.nothingReads
     paymentDetails[SubscriptionPlan.Digipack, Nothing]("GET /user-attributes/me/mma-digitalpack")
+  }
 
-  @Deprecated def paperDetails: Action[AnyContent] =
+  @Deprecated def paperDetails: Action[AnyContent] = {
+    implicit val nothingReads = SubPlanReads.nothingReads
     paymentDetails[SubscriptionPlan.PaperPlan, Nothing]("GET /user-attributes/me/mma-paper")
+  }
 
   def allPaymentDetails(productType: Option[String]): Action[AnyContent] =
     anyPaymentDetails(
