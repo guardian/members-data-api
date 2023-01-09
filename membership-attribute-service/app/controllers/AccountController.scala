@@ -322,39 +322,46 @@ class AccountController(
   )(
       maybeUserId: Option[String],
       filter: OptionalSubscriptionsFilter,
-  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = for {
-    userId <- OptionEither.liftFutureEither(maybeUserId)
-    contact <- OptionEither(contactRepo.get(userId))
-    nonGiftContactAndSubscriptions <-
-      OptionEither.liftEitherOption(
-        subService.current[SubscriptionPlan.AnyPlan](contact) map {
-          _ map { subscription =>
-            ContactAndSubscription(contact, subscription, isGiftRedemption = false)
-          }
-        },
-      )
-
-    contactAndSubscriptions <- checkForGiftSubscription(
-      userId,
-      subService,
-      zuoraRestService,
-      nonGiftContactAndSubscriptions,
-      contact,
-    )
-    filteredIfApplicable = filter match {
-      case FilterBySubName(subscriptionName) =>
-        contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
-      case FilterByProductType(productType) =>
-        contactAndSubscriptions.filter(contactAndSubscription =>
-          productIsInstanceOfProductType(
-            contactAndSubscription.subscription.plan.product,
-            productType,
-          ),
-        )
-      case NoFilter =>
-        contactAndSubscriptions
+  ): OptionT[OptionEither.FutureEither, List[ContactAndSubscription]] = {
+    def nonGiftContactAndSubscriptionsFor(contact: Contact): OptionT[FutureEither, List[ContactAndSubscription]] = {
+      val future = subService.current[SubscriptionPlan.AnyPlan](contact)
+      OptionEither.liftEitherOption(future map {
+        _ map { subscription =>
+          ContactAndSubscription(contact, subscription, isGiftRedemption = false)
+        }
+      })
     }
-  } yield filteredIfApplicable
+
+    def applyFilter(filter: OptionalSubscriptionsFilter, contactAndSubscriptions: List[ContactAndSubscription]) = {
+      filter match {
+        case FilterBySubName(subscriptionName) =>
+          contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
+        case FilterByProductType(productType) =>
+          contactAndSubscriptions.filter(contactAndSubscription =>
+            productIsInstanceOfProductType(
+              contactAndSubscription.subscription.plan.product,
+              productType,
+            ),
+          )
+        case NoFilter =>
+          contactAndSubscriptions
+      }
+    }
+
+    for {
+      userId <- OptionEither.liftFutureEither(maybeUserId)
+      contact <- OptionEither(contactRepo.get(userId))
+      nonGiftContactAndSubscriptions <- nonGiftContactAndSubscriptionsFor(contact)
+      contactAndSubscriptions <- checkForGiftSubscription(
+        userId,
+        subService,
+        zuoraRestService,
+        nonGiftContactAndSubscriptions,
+        contact,
+      )
+      filtered = applyFilter(filter, contactAndSubscriptions)
+    } yield filtered
+  }
 
   def reminders: Action[AnyContent] =
     AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
@@ -419,7 +426,8 @@ class AccountController(
   def getAccountDetailsFromZuora(filter: OptionalSubscriptionsFilter, maybeUserId: Option[String])(implicit
       tp: TouchpointComponents,
   ): ListT[FutureEither, AccountDetails] = {
-    def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
+    def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
+      tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
     for {
       contactAndSubscription <- ListEither.fromOptionEither(
@@ -572,14 +580,20 @@ class AccountController(
   @Deprecated def membershipDetails: Action[AnyContent] =
     paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]("GET /user-attributes/me/mma-membership")
 
-  @Deprecated def monthlyContributionDetails: Action[AnyContent] =
+  @Deprecated def monthlyContributionDetails: Action[AnyContent] = {
+    implicit val nothingReads = SubPlanReads.nothingReads
     paymentDetails[SubscriptionPlan.Contributor, Nothing]("GET /user-attributes/me/mma-monthlycontribution")
+  }
 
-  @Deprecated def digitalPackDetails: Action[AnyContent] =
+  @Deprecated def digitalPackDetails: Action[AnyContent] = {
+    implicit val nothingReads = SubPlanReads.nothingReads
     paymentDetails[SubscriptionPlan.Digipack, Nothing]("GET /user-attributes/me/mma-digitalpack")
+  }
 
-  @Deprecated def paperDetails: Action[AnyContent] =
+  @Deprecated def paperDetails: Action[AnyContent] = {
+    implicit val nothingReads = SubPlanReads.nothingReads
     paymentDetails[SubscriptionPlan.PaperPlan, Nothing]("GET /user-attributes/me/mma-paper")
+  }
 
   def allPaymentDetails(productType: Option[String]): Action[AnyContent] =
     anyPaymentDetails(

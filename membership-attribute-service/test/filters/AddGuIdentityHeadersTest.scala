@@ -3,8 +3,8 @@ package filters
 import com.typesafe.config.ConfigFactory
 import configuration.CreateTestUsernames
 import models.UserFromToken
+import org.mockito.IdiomaticMockito
 import org.mockito.Mockito.{times, verify, verifyNoInteractions, when}
-import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import play.api.mvc.Results.Ok
 import play.api.mvc.{RequestHeader, Result}
@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class AddGuIdentityHeadersTest extends Specification with Mockito {
+class AddGuIdentityHeadersTest extends Specification with IdiomaticMockito {
 
   val XGuIdentityId = "X-Gu-Identity-Id"
   val XGuMembershipTestUser = "X-Gu-Membership-Test-User"

@@ -18,7 +18,7 @@ object Dependencies {
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.634"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.635"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
@@ -27,6 +27,7 @@ object Dependencies {
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.85.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
+  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.7" % Test
 
   val jacksonVersion = "2.14.1"
   val jacksonDatabindVersion = "2.14.1"
@@ -64,7 +65,7 @@ object Dependencies {
     awsCloudWatch,
     scalaz,
     membershipCommon,
-    specs2,
+    specs2.exclude("org.specs2", "specs2-mock_2.13"),
     kinesis,
     logstash,
     anorm,
@@ -75,8 +76,11 @@ object Dependencies {
     akkaHttpCore,
     unirest,
     mockServer,
+    mockitoScala,
   ) ++ jackson ++ oktaJwtVerifier
 
   val dependencyOverrides = jackson ++ Seq(scalaXml)
-  val excludeDependencies = Seq(ExclusionRule("com.squareup.okio", "okio"))
+  val excludeDependencies = Seq(
+    ExclusionRule("com.squareup.okio", "okio"),
+  )
 }

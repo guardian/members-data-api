@@ -1,5 +1,6 @@
 package acceptance
 
+import acceptance.util.AvailablePort
 import com.typesafe.config.ConfigFactory
 import play.api.ApplicationLoader.Context
 import play.api.inject.ApplicationLifecycle
@@ -13,8 +14,9 @@ import scala.concurrent.Future
 trait HasPlayServer {
   this: HasIdentityMockServer =>
 
-  val playPort = 8081
-  val playServerAddress = "http://localhost:" + playPort
+  private val playPort = AvailablePort.find()
+  private val playServerAddress = "http://localhost:" + playPort
+  protected def endpointUrl(path: String) = playServerAddress + path
 
   var application: Application = _
   var server: AkkaHttpServer = _
