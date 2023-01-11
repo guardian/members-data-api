@@ -1,6 +1,7 @@
 package acceptance
 
 import acceptance.data.Randoms.randomId
+import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
 import acceptance.data.{
   IdentityResponse,
   TestAccountSummary,
@@ -11,17 +12,15 @@ import acceptance.data.{
   TestQueriesAccount,
   TestSubscription,
 }
-import cats.data.EitherT
 import com.gu.i18n.Currency
+import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
 import com.gu.salesforce.SimpleContactRepository
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.rest.ZuoraRestService
 import com.gu.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import kong.unirest.Unirest
-import models.DynamoSupporterRatePlanItem
 import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any
 import org.mockserver.model.Cookie
@@ -30,12 +29,18 @@ import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
-import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
+import services.{
+  BasicStripeService,
+  ContributionsStoreDatabaseService,
+  HealthCheckableService,
+  SupporterProductDataService,
+  SupporterRatePlanToAttributesMapper,
+}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: SimpleContactRepository = _
@@ -45,6 +50,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
+  var patronsStripeServiceMock: BasicStripeService = _
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[SimpleContactRepository]
@@ -54,6 +60,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
+    patronsStripeServiceMock = mock[BasicStripeService]
     super.before
   }
 
@@ -66,6 +73,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       override lazy val catalogServiceOverride = Some(catalogServiceMock)
       override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
       override lazy val dbService = databaseServiceMock
+      override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
     }
   }
 
@@ -156,8 +164,20 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) returns Future(TestPaymentSummary())
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) returns Future(TestQueriesAccount())
 
+      val patronSubscription = TestDynamoSupporterRatePlanItem(
+        identityId = "200067388",
+        productRatePlanId = SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId,
+      )
       supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") returns
-        SimpleEitherT.right(Nil)
+        SimpleEitherT.right(List(patronSubscription))
+
+      val stripeSubscription = TestStripeSubscription(id = patronSubscription.subscriptionName)
+
+      patronsStripeServiceMock.fetchSubscription(patronSubscription.subscriptionName) returns
+        Future.successful(stripeSubscription)
+
+      patronsStripeServiceMock.fetchPaymentMethod(stripeSubscription.customer.id) returns
+        Future.successful(TestCustomersPaymentMethods())
 
       val httpResponse = Unirest
         .get(endpointUrl("/user-attributes/me/mma"))
@@ -168,6 +188,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         .asString
 
       contactRepositoryMock.get("200067388") was called
+      supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") was called
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) was called
       zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388") was called
       subscriptionServiceMock.get[SubscriptionPlan.AnyPlan](Subscription.Name(giftSubscription.Name), isActiveToday = false)(any) was called
@@ -182,6 +203,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) was called
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) was called
 
+      supporterProductDataServiceMock wasNever calledAgain
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
@@ -199,21 +221,32 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       identityMockClientAndServer.verify(identityRequest)
 
       val productsArray = json.as[JsArray].value
-      productsArray.size shouldEqual 2
+      productsArray.size shouldEqual 3
+
       val membershipProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "membership").get
       val supporterPlusProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "recurringSupport").get
+      val patronProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "subscriptions").get
 
       (supporterPlusProduct \ "tier").as[String] shouldEqual giftSubscriptionFromSubscriptionService.plans.head.productName
+      (supporterPlusProduct \ "isPaidTier").as[Boolean] shouldEqual false
       (supporterPlusProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
       (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.name.get
       (supporterPlusProduct \ "subscription" \ "accountId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.accountId.get
       (supporterPlusProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual giftSubscriptionFromSubscriptionService.plan.productName
 
       (membershipProduct \ "tier").as[String] shouldEqual nonGiftSubscription.plans.head.productName
+      (membershipProduct \ "isPaidTier").as[Boolean] shouldEqual true
       (membershipProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
       (membershipProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.name.get
       (membershipProduct \ "subscription" \ "accountId").as[String] shouldEqual nonGiftSubscription.accountId.get
       (membershipProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual nonGiftSubscription.plan.productName
+
+      (patronProduct \ "tier").as[String] shouldEqual "guardianpatron"
+      (patronProduct \ "isPaidTier").as[Boolean] shouldEqual true
+      (patronProduct \ "subscription" \ "contactId").as[String] shouldEqual "Guardian Patrons don't have a Salesforce contactId"
+      (patronProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual stripeSubscription.id
+      (patronProduct \ "subscription" \ "accountId").as[String] shouldEqual stripeSubscription.customer.id
+      (patronProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual "guardianpatron"
     }
   }
 }

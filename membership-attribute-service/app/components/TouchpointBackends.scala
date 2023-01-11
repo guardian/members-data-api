@@ -8,7 +8,7 @@ import com.gu.zuora.rest.ZuoraRestService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
-import services.{HealthCheckableService, SupporterProductDataService}
+import services.{BasicStripeService, HealthCheckableService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,6 +22,7 @@ class TouchpointBackends(
     zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
+    patronsStripeServiceOverride: Option[BasicStripeService] = None,
 )(implicit
     executionContext: ExecutionContext,
 ) {
@@ -36,6 +37,7 @@ class TouchpointBackends(
     zuoraRestServiceOverride,
     catalogServiceOverride,
     zuoraServiceOverride,
+    patronsStripeServiceOverride,
   )(
     actorSystem,
     executionContext,

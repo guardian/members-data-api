@@ -10,7 +10,7 @@ import com.gu.memsub.subsv2.ReaderType.Direct
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
-import com.gu.stripe.{BasicStripeService, Stripe}
+import com.gu.stripe.Stripe
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
@@ -44,8 +44,8 @@ class GuardianPatronService(
     item.productRatePlanId == guardianPatronProductRatePlanId
 
   private def fetchAccountDetailsFromStripe(subscriptionId: String): Future[AccountDetails] = for {
-    subscription <- patronsStripeService.Subscription.read(subscriptionId)
-    paymentDetails <- patronsStripeService.PaymentMethod.read(subscription.customer.id)
+    subscription <- patronsStripeService.fetchSubscription(subscriptionId)
+    paymentDetails <- patronsStripeService.fetchPaymentMethod(subscription.customer.id)
   } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, stripePatronsPublicKey)
 
   private def billingPeriodFromInterval(interval: String): RecurringPeriod = interval match {
