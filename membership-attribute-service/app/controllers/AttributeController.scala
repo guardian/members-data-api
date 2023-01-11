@@ -177,6 +177,10 @@ class AttributeController(
             InternalServerError(errMsg)
           }
 
+        case Left(AuthenticationFailure.BadlyFormedToken) =>
+          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
+          Future(badRequest("Badly-formed access token"))
+
         case Left(AuthenticationFailure.Unauthorised) =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
           Future(unauthorized)
@@ -232,11 +236,14 @@ class AttributeController(
                 case Left(err) => Ok(err)
                 case Right(result) => Ok(Json.toJson(result).toString)
               }
+            case Left(AuthenticationFailure.BadlyFormedToken) => Future(badRequest("Badly-formed access token"))
             case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
             case Left(AuthenticationFailure.Forbidden) => Future(forbidden)
           }
 
         case Right(false) => Future(unauthorized)
+
+        case Left(AuthenticationFailure.BadlyFormedToken) => Future(badRequest("Badly-formed access token"))
 
         case Left(AuthenticationFailure.Unauthorised) => Future(unauthorized)
 

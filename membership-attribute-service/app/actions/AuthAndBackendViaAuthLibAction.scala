@@ -14,6 +14,7 @@ class AuthAndBackendViaAuthLibAction(touchpointBackends: TouchpointBackends, req
 
   override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
     touchpointBackends.normal.identityAuthService.user(requiredScopes)(request) map {
+      case Left(AuthenticationFailure.BadlyFormedToken) => Left(Results.BadRequest)
       case Left(AuthenticationFailure.Unauthorised) => Left(Results.Unauthorized)
       case Left(AuthenticationFailure.Forbidden) => Left(Results.Forbidden)
       case Right(authenticatedUser) =>
