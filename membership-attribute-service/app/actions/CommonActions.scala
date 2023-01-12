@@ -37,7 +37,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
 
 class AuthenticatedUserAndBackendRequest[A](
-    val user: Either[AuthenticationFailure, UserFromToken],
+    val user: UserFromToken,
     val touchpoint: TouchpointComponents,
     request: Request[A],
 ) extends WrappedRequest[A](request)

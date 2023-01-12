@@ -19,7 +19,7 @@ import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
 import services.AuthenticationFailure.Unauthorised
-import services.{AuthenticationService, FakePostgresService, MobileSubscriptionService}
+import services.{AuthenticationFailure, AuthenticationService, FakePostgresService, MobileSubscriptionService}
 import util.CreateNoopMetrics
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -89,7 +89,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
   private val fakeAuthService = new AuthenticationService {
-    override def user(requiredScopes: List[AccessScope])(implicit request: RequestHeader) =
+    override def user(requiredScopes: List[AccessScope])(implicit request: RequestHeader): Future[Either[AuthenticationFailure, UserFromToken]] =
       request.cookies.headOption match {
         case Some(c) if c == validUserCookie => Future.successful(Right(validUser))
         case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Right(unvalidatedEmailUser))
@@ -108,9 +108,10 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
       object components extends TouchpointComponents(Stage("PROD"), CreateNoopMetrics, config)
 
-      fakeAuthService.user(requiredScopes = Nil)(request) map { user =>
-        Right(new AuthenticatedUserAndBackendRequest[A](user, components, request))
-      }
+      fakeAuthService
+        .user(requiredScopes = Nil)(request)
+        .map(_.map(new AuthenticatedUserAndBackendRequest[A](_, components, request)).left.map(_ => Results.Unauthorized))
+
     }
   }
 

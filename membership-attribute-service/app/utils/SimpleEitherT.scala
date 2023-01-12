@@ -3,6 +3,7 @@ package utils
 import scalaz.{EitherT, \/}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scalaz.std.scalaFuture._
 
 object SimpleEitherT {
   type SimpleEitherT[A] = EitherT[String, Future, A]
@@ -13,9 +14,26 @@ object SimpleEitherT {
     SimpleEitherT(f.map(\/.fromEither))
 
   def rightT[T](x: Future[T])(implicit ec: ExecutionContext): SimpleEitherT[T] = {
-    apply[T](x.map(\/.right[String, T]))
+    SimpleEitherT[T](x.map(\/.right[String, T]))
+  }
+
+  def leftT[T](x: Future[String])(implicit ec: ExecutionContext): SimpleEitherT[T] = {
+    SimpleEitherT[T](x.map(\/.left[String, T]))
   }
 
   def right[T](x: T)(implicit ec: ExecutionContext): SimpleEitherT[T] =
     rightT(Future.successful(x))
+
+  def left[T](x: String)(implicit ec: ExecutionContext): SimpleEitherT[T] =
+    leftT[T](Future.successful(x))
+
+  def fromFutureOption[T](f: Future[\/[String, Option[T]]], errorMessage: String)(implicit ec: ExecutionContext): SimpleEitherT[T] =
+    SimpleEitherT(f).flatMap {
+      case Some(value) => right(value)
+      case _ => left(errorMessage)
+    }
+
+  def fromEither[T](either: Either[String, T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
+    apply(Future.successful(either))
+
 }

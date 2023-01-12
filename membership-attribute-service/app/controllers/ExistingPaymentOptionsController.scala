@@ -1,14 +1,14 @@
 package controllers
 
-import actions._
+import actions.{CommonActions, ContinueRegardlessOfSignInRecency}
 import com.gu.i18n.Currency
 import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
 import com.gu.salesforce.SimpleContactRepository
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
@@ -18,9 +18,9 @@ import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
-import scalaz.OptionT
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
+import utils.OptionEither.OptionTEither
 import utils.{ListTEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -42,7 +42,7 @@ class ExistingPaymentOptionsController(
       subService: SubscriptionService[Future],
   )(
       maybeUserId: Option[String],
-  ): OptionT[OptionEither.FutureEither, List[(AccountId, List[Subscription[SubscriptionPlan.AnyPlan]])]] = for {
+  ): OptionTEither[List[(AccountId, List[Subscription[SubscriptionPlan.AnyPlan]])]] = for {
     user <- OptionEither.liftFutureEither(maybeUserId)
     contact <- OptionEither(contactRepo.get(user))
     subscriptions <- OptionEither.liftEitherOption(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
