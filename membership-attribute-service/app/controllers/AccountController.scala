@@ -28,8 +28,8 @@ import scalaz._
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
-import utils.{OptionEither, SimpleEitherT}
 import utils.SimpleEitherT.SimpleEitherT
+import utils.{OptionTEither, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -105,12 +105,12 @@ class AccountController(
           */
         def disableAutoPayOnlyIfAccountHasOneSubscription(
             accountId: memsub.Subscription.AccountId,
-        ): EitherT[String, Future, Future[Either[String, Unit]]] = {
-          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).map { currentSubscriptions =>
+        ): SimpleEitherT[Unit] = {
+          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
-              tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither)
+              SimpleEitherT(tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither))
             else // do not disable auto pay
-              Future.successful(Right({}))
+              SimpleEitherT.right({})
           }
         }
 
@@ -200,26 +200,26 @@ class AccountController(
 
         logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${userId.mkString}")
         (for {
-          user <- OptionEither.some(userId)
-          contact <- OptionEither(tp.contactRepo.get(user))
-          freeOrPaidSub <- OptionEither(
+          user <- OptionTEither.some(userId)
+          contact <- OptionTEither(tp.contactRepo.get(user))
+          freeOrPaidSub <- OptionTEither(
             tp.subService
               .either[F, P](contact)
               .map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")),
           ).map(_.toEither)
           sub: Subscription[AnyPlan] = freeOrPaidSub.fold(identity, identity)
-          paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
+          paymentDetails <- OptionTEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
             Left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x")
           })
-          accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
+          accountSummary <- OptionTEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
             Left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x")
           })
           stripeService = accountSummary.billToContact.country
             .map(RegionalStripeGateways.getGatewayForCountry)
             .flatMap(tp.stripeServicesByPaymentGateway.get)
             .getOrElse(tp.ukStripeService)
-          alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
-          cancellationEffectiveDate <- OptionEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name).map(_.toEither))
+          alertText <- OptionTEither.fromFuture(alertText(accountSummary, sub, getPaymentMethod))
+          cancellationEffectiveDate <- OptionTEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name).map(_.toEither))
           isAutoRenew = sub.autoRenew
         } yield AccountDetails(
           contactId = contact.salesforceContactId,

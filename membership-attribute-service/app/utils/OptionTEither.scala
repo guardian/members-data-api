@@ -5,8 +5,7 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-// this is helping us stack future/either/option
-object OptionEither {
+object OptionTEither {
   type OptionTEither[A] = OptionT[SimpleEitherT, A]
 
   def apply[A](m: Future[\/[String, Option[A]]]): OptionTEither[A] =
@@ -21,13 +20,12 @@ object OptionEither {
   def some[A](value: A)(implicit ex: ExecutionContext): OptionTEither[A] =
     apply(SimpleEitherT.right(Option(value)).run)
 
-  def liftFutureEither[A](x: Option[A]): OptionTEither[A] =
+  def fromOption[A](x: Option[A]): OptionTEither[A] =
     apply(Future.successful(\/.right[String, Option[A]](x)))
 
-  def liftEitherOption[A](future: Future[A])(implicit ex: ExecutionContext): OptionTEither[A] = {
+  def fromFuture[A](future: Future[A])(implicit ex: ExecutionContext): OptionTEither[A] = {
     apply(future map { value: A =>
       \/.right[String, Option[A]](Some(value))
     })
   }
-
 }
