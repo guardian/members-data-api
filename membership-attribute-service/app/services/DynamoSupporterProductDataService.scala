@@ -1,25 +1,25 @@
 package services
 
-import cats.data.EitherT
 import com.gu.i18n.Currency
 import com.typesafe.scalalogging.LazyLogging
-import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
-import monitoring.{CreateMetrics, Metrics}
+import monitoring.CreateMetrics
 import org.joda.time.{DateTimeZone, LocalDate}
 import org.scanamo.DynamoReadError.describe
 import org.scanamo._
 import org.scanamo.generic.semiauto._
 import org.scanamo.syntax._
+import scalaz.std.scalaFuture._
+import scalaz.{EitherT, \/}
 import services.DynamoSupporterProductDataService.errorMessage
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait SupporterProductDataService {
   def getNonCancelledAttributes(identityId: String): Future[Either[String, Option[Attributes]]]
-
-  def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]]
+  def getSupporterRatePlanItems(identityId: String): SimpleEitherT[List[DynamoSupporterRatePlanItem]]
 }
 
 class DynamoSupporterProductDataService(
@@ -43,10 +43,10 @@ class DynamoSupporterProductDataService(
     getSupporterRatePlanItems(identityId).map { ratePlanItems =>
       val nonCancelled = ratePlanItems.filter(item => !item.cancellationDate.exists(_.isBefore(LocalDate.now(DateTimeZone.UTC))))
       mapper.attributesFromSupporterRatePlans(identityId, nonCancelled)
-    }.value
+    }.toEither
   }
 
-  def getSupporterRatePlanItems(identityId: String): EitherT[Future, String, List[DynamoSupporterRatePlanItem]] = {
+  def getSupporterRatePlanItems(identityId: String): SimpleEitherT[List[DynamoSupporterRatePlanItem]] = {
     EitherT(
       for {
         futureDynamoResult <- getSupporterRatePlanItemsWithReadErrors(identityId)
@@ -59,13 +59,13 @@ class DynamoSupporterProductDataService(
         })
       } yield
         if (futureErrors.isEmpty || futureRatePlanItems.nonEmpty)
-          Right(futureRatePlanItems)
+          \/.right(futureRatePlanItems)
         else
-          Left(errorMessage(identityId, futureErrors)),
+          \/.left(errorMessage(identityId, futureErrors)),
     )
   }
 
-  private def getSupporterRatePlanItemsWithReadErrors(identityId: String) =
+  private def getSupporterRatePlanItemsWithReadErrors(identityId: String): Future[List[Either[DynamoReadError, DynamoSupporterRatePlanItem]]] =
     ScanamoAsync(client).exec {
       Table[DynamoSupporterRatePlanItem](table)
         .query("identityId" === identityId)

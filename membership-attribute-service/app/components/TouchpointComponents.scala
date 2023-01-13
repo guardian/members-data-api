@@ -3,17 +3,15 @@ package components
 import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
 import com.gu.config
-import com.gu.i18n.Country
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.OktaTokenValidationConfig
-import com.gu.memsub.services.PaymentService
+import services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.SimpleContactRepository
-import com.gu.stripe.{BasicStripeService, StripeService}
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
@@ -47,6 +45,7 @@ class TouchpointComponents(
     zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
+    patronsStripeServiceOverride: Option[BasicStripeService] = None,
 )(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
@@ -69,14 +68,13 @@ class TouchpointComponents(
   lazy val tpConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
   implicit lazy val _bt: TouchpointBackendConfig = tpConfig
 
-  lazy val patronsStripeService = new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner)
-  lazy val ukStripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
-  lazy val auStripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
-  lazy val allStripeServices = Seq(ukStripeService, auStripeService)
+  lazy val patronsStripeService: BasicStripeService = patronsStripeServiceOverride
+    .getOrElse(new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner))
+  lazy val ukStripeService: StripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
+  lazy val auStripeService: StripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
+  lazy val allStripeServices: Seq[StripeService] = Seq(ukStripeService, auStripeService)
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
-  lazy val invoiceTemplateIdsByCountry: Map[Country, InvoiceTemplate] =
-    InvoiceTemplates.fromConfig(invoiceTemplatesConf).map(it => (it.country, it)).toMap
 
   lazy val contactRepo: SimpleContactRepository = contactRepositoryOverride.getOrElse(
     new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName),
@@ -135,7 +133,7 @@ class TouchpointComponents(
   lazy val subService: SubscriptionService[Future] = subscriptionServiceOverride.getOrElse(
     new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds),
   )
-  lazy val paymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
@@ -143,4 +141,21 @@ class TouchpointComponents(
     audience = conf.getString("okta.verifier.audience"),
   )
   lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, tokenVerifierConfig)
+
+  lazy val guardianPatronService =
+    new GuardianPatronService(supporterProductDataService, patronsStripeService, tpConfig.stripePatrons.stripeCredentials.publicKey)
+
+  lazy val chooseStripeService: ChooseStripeService = new ChooseStripeService(stripeServicesByPaymentGateway, ukStripeService)
+
+  lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
+
+  lazy val accountDetailsFromZuora: AccountDetailsFromZuora =
+    new AccountDetailsFromZuora(
+      createMetrics,
+      zuoraRestService,
+      contactRepo,
+      subService,
+      chooseStripeService,
+      paymentDetailsForSubscription,
+    )
 }

@@ -21,6 +21,7 @@ import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
 import services.{
+  BasicStripeService,
   ContributionsStoreDatabaseService,
   HealthCheckableService,
   MobileSubscriptionServiceImpl,
@@ -62,6 +63,8 @@ class MyComponents(context: Context)
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None
   lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
+  lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
+
   lazy val touchPointBackends = new TouchpointBackends(
     actorSystem,
     config,
@@ -72,6 +75,7 @@ class MyComponents(context: Context)
     zuoraRestServiceOverride,
     catalogServiceOverride,
     zuoraSoapServiceOverride,
+    patronsStripeServiceOverride,
   )
   private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
   private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
