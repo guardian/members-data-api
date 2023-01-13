@@ -16,11 +16,14 @@ import scala.concurrent.{ExecutionContext, Future}
 class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: OktaTokenValidationConfig)(implicit ec: ExecutionContext)
     extends AuthenticationService {
 
-  val idApiUrl = Uri.unsafeFromString(apiConfig.url)
-
-  val identityPlayAuthService = {
+  private val identityPlayAuthService = {
+    val idApiUrl = Uri.unsafeFromString(apiConfig.url)
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
-    IdentityPlayAuthService.unsafeInit(UserFromTokenParser, idapiConfig, oktaTokenValidationConfig)
+    IdentityPlayAuthService.unsafeInit(
+      idapiConfig,
+      oktaTokenValidationConfig,
+      accessClaimsParser = UserFromTokenParser,
+    )
   }
 
   def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Either[AuthenticationFailure, UserFromToken]] = {
@@ -57,7 +60,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: Okt
 
   private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[UserFromToken]] =
     identityPlayAuthService
-      .getUserClaimsFromRequestOrWithIdapi(requestHeader, requiredScopes)
+      .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
       .map {
         case (_: OktaUserCredentials, claims) =>
           SafeLogger.warn("Authorised by Okta token")
