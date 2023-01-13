@@ -87,9 +87,9 @@ case class Attributes(
 
   lazy val isRecurringSupporter = (
     isPaidTier
+      || isSupporterPlus
       || isRecurringContributor
       || digitalSubscriberHasActivePlan
-      || isSupporterPlus
       || isPaperSubscriber
       || isGuardianWeeklySubscriber
       || isPremiumLiveAppSubscriber
