@@ -21,7 +21,7 @@ import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
-import utils.{ListEither, OptionEither}
+import utils.{ListTEither, OptionEither}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -107,14 +107,14 @@ class ExistingPaymentOptionsController(
 
         logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
         (for {
-          groupedSubsList <- ListEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
+          groupedSubsList <- ListTEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
           (accountId, subscriptions) = groupedSubsList
-          objectAccount <- ListEither.liftList(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x =>
+          objectAccount <- ListTEither.single(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x =>
             Left(s"error receiving OBJECT account with account id $accountId. Reason: $x")
           })
           if currencyMatchesFilter(objectAccount.currency) &&
             objectAccount.defaultPaymentMethodId.isDefined
-          paymentMethodOption <- ListEither.liftList(
+          paymentMethodOption <- ListTEither.single(
             tp.paymentService
               .getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable))
               .map(Right(_))
