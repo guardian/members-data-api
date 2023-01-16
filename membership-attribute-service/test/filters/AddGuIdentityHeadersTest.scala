@@ -24,6 +24,7 @@ class AddGuIdentityHeadersTest extends Specification with IdiomaticMockito {
     identityId = "testUserId",
     username = Some("testUserName"),
     userEmailValidated = None,
+    authTime = None,
   )
 
   val identityService = mock[IdentityAuthService]
