@@ -1,30 +1,19 @@
 package services
 
 import _root_.play.api.mvc.RequestHeader
+import cats.effect.IO
 import cats.implicits._
-import com.gu.identity.IdapiConfig
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogger
-import models.{UserFromToken, UserFromTokenParser}
-import org.http4s.Uri
+import models.{ApiError, ApiErrors, UserFromToken, UserFromTokenParser}
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: OktaTokenValidationConfig)(implicit ec: ExecutionContext)
+class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims])(implicit ec: ExecutionContext)
     extends AuthenticationService {
-
-  private val identityPlayAuthService = {
-    val idApiUrl = Uri.unsafeFromString(apiConfig.url)
-    val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
-    IdentityPlayAuthService.unsafeInit(
-      idapiConfig,
-      oktaTokenValidationConfig,
-      accessClaimsParser = UserFromTokenParser,
-    )
-  }
 
   def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Either[AuthenticationFailure, UserFromToken]] = {
     getUser(requestHeader, requiredScopes).attempt
@@ -58,6 +47,33 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: Okt
       }
   }
 
+  /** If given request has valid credentials, returns a [[UserAndCredentials]]. This tells us the access claims and their source. Otherwise it returns
+    * an [[ApiError]].
+    *
+    * @param requestHeader
+    *   Request to extract claims from.
+    * @param requiredScopes
+    *   Permissions that token needs to access an endpoint, if it's an Okta token. This is ignored for Idapi credentials.
+    */
+  def userAndCredentials(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Either[ApiError, UserAndCredentials]] =
+    identityPlayAuthService
+      .validateCredentialsFromRequest(requestHeader, requiredScopes, UserFromTokenParser)
+      .attempt
+      .flatMap {
+        // Request has Okta token but it's invalid
+        case Left(OktaValidationException(error)) =>
+          IO.pure(Left(ApiError(message = error.message, details = "", statusCode = error.suggestedHttpResponseCode)))
+        // Request has invalid Idapi credentials
+        case Left(UserCredentialsMissingError(_)) => IO.pure(Left(ApiErrors.unauthorized))
+        // Something unexpected
+        case Left(other) => IO.raiseError(other)
+        // Request has valid Okta token
+        case Right((credentials: OktaUserCredentials, user)) => IO.pure(Right(UserAndCredentials(user, credentials)))
+        // Request has valid Idapi credentials
+        case Right((credentials: IdapiUserCredentials, user)) => IO.pure(Right(UserAndCredentials(user, credentials)))
+      }
+      .unsafeToFuture()
+
   private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[UserFromToken]] =
     identityPlayAuthService
       .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
@@ -71,3 +87,7 @@ class IdentityAuthService(apiConfig: IdapiConfig, oktaTokenValidationConfig: Okt
       }
       .unsafeToFuture()
 }
+
+/** A set of access claims and the source of the claims.
+  */
+case class UserAndCredentials(user: UserFromToken, credentials: UserCredentials)

@@ -4,7 +4,8 @@ import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.identity.IdapiService
-import com.gu.identity.auth.OktaTokenValidationConfig
+import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
+import com.gu.identity.play.IdentityPlayAuthService
 import services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
@@ -19,7 +20,9 @@ import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
 import configuration.Stage
+import models.{UserFromToken, UserFromTokenParser}
 import monitoring.CreateMetrics
+import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
 import software.amazon.awssdk.auth.credentials.{
@@ -140,7 +143,17 @@ class TouchpointComponents(
     issuerUrl = conf.getString("okta.verifier.issuerUrl"),
     audience = conf.getString("okta.verifier.audience"),
   )
-  lazy val identityAuthService = new IdentityAuthService(tpConfig.idapi, tokenVerifierConfig)
+  lazy val identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims] = {
+    val apiConfig = tpConfig.idapi
+    val idApiUrl = Uri.unsafeFromString(apiConfig.url)
+    val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
+    IdentityPlayAuthService.unsafeInit(
+      idapiConfig,
+      tokenVerifierConfig,
+      accessClaimsParser = UserFromTokenParser,
+    )
+  }
+  lazy val identityAuthService = new IdentityAuthService(identityPlayAuthService)
 
   lazy val guardianPatronService =
     new GuardianPatronService(supporterProductDataService, patronsStripeService, tpConfig.stripePatrons.stripeCredentials.publicKey)
