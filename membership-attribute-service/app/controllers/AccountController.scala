@@ -251,7 +251,7 @@ class AccountController(
     }
 
   def reminders: Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/reminders") {
         request.redirectAdvice.userId match {
           case Some(userId) =>
@@ -268,7 +268,7 @@ class AccountController(
     }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration(metricName) {
         implicit val tp: TouchpointComponents = request.touchpoint
         val maybeUserId = request.redirectAdvice.userId
@@ -302,7 +302,7 @@ class AccountController(
   }
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancelled-subscriptions") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val emptyResponse = Ok("[]")

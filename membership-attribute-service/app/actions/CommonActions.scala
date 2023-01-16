@@ -7,7 +7,6 @@ import controllers.NoCache
 import filters.IsTestUser
 import models.UserFromToken
 import play.api.mvc._
-import services.AuthenticationFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -24,8 +23,8 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   val NoCacheAction = resultModifier(noCache)
   def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) =
     NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
-  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
-    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser)
+  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, requiredScopes: List[AccessScope]) =
+    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser
