@@ -28,8 +28,8 @@ import scalaz._
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
-import utils.OptionEither
 import utils.SimpleEitherT.SimpleEitherT
+import utils.{OptionTEither, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -84,8 +84,7 @@ class AccountController(
         val cancelForm = Form {
           single("reason" -> nonEmptyText)
         }
-        // transforming to Option here because type of failure is no longer relevant at this point
-        val maybeUserId = request.user.toOption.map(_.identityId)
+        val identityId = request.user.identityId
 
         def handleInputBody(cancelForm: Form[String]): Future[Either[ApiError, String]] = Future.successful {
           cancelForm
@@ -106,12 +105,12 @@ class AccountController(
           */
         def disableAutoPayOnlyIfAccountHasOneSubscription(
             accountId: memsub.Subscription.AccountId,
-        ): EitherT[String, Future, Future[Either[String, Unit]]] = {
-          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).map { currentSubscriptions =>
+        ): SimpleEitherT[Unit] = {
+          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
-              tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither)
+              SimpleEitherT(tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither))
             else // do not disable auto pay
-              Future.successful(Right({}))
+              SimpleEitherT.right({})
           }
         }
 
@@ -133,7 +132,7 @@ class AccountController(
         }
 
         (for {
-          identityId <- EitherT.fromEither(Future.successful(maybeUserId.toRight(unauthorized)))
+          identityId <- EitherT.right(identityId)
           cancellationReason <- EitherT.fromEither(handleInputBody(cancelForm))
           sfContact <- EitherT
             .fromEither(tp.contactRepo.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
@@ -154,10 +153,10 @@ class AccountController(
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
-            SafeLogger.error(scrub"Failed to cancel subscription for user $maybeUserId because $apiError")
+            SafeLogger.error(scrub"Failed to cancel subscription for user $identityId because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
-            logger.info(s"Successfully cancelled subscription $subscriptionName owned by $maybeUserId")
+            logger.info(s"Successfully cancelled subscription $subscriptionName owned by $identityId")
             Ok(Json.toJson(CancellationEffectiveDate(cancellationEffectiveDate)))
         }
       }
@@ -167,7 +166,7 @@ class AccountController(
     AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
         val tp = request.touchpoint
-        val maybeUserId = request.user.map(_.identityId)
+        val userId = request.user.identityId
 
         (for {
           cancellationEffectiveDate <- tp.subService
@@ -176,11 +175,11 @@ class AccountController(
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
-            SafeLogger.error(scrub"Failed to determine effectiveCancellationDate for $maybeUserId and $subscriptionName because $apiError")
+            SafeLogger.error(scrub"Failed to determine effectiveCancellationDate for $userId and $subscriptionName because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
             logger.info(
-              s"Successfully determined cancellation effective date for $subscriptionName owned by $maybeUserId as $cancellationEffectiveDate",
+              s"Successfully determined cancellation effective date for $subscriptionName owned by $userId as $cancellationEffectiveDate",
             )
             Ok(Json.toJson(CancellationEffectiveDate(cancellationEffectiveDate)))
         }
@@ -197,31 +196,30 @@ class AccountController(
 
         def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
-        // transforming to Option here because type of failure is no longer relevant at this point
-        val maybeUserId = request.user.toOption.map(_.identityId)
+        val userId = request.user.identityId
 
-        logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
+        logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${userId.mkString}")
         (for {
-          user <- OptionEither.liftFutureEither(maybeUserId)
-          contact <- OptionEither(tp.contactRepo.get(user))
-          freeOrPaidSub <- OptionEither(
+          user <- OptionTEither.some(userId)
+          contact <- OptionTEither(tp.contactRepo.get(user))
+          freeOrPaidSub <- OptionTEither(
             tp.subService
               .either[F, P](contact)
               .map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")),
           ).map(_.toEither)
           sub: Subscription[AnyPlan] = freeOrPaidSub.fold(identity, identity)
-          paymentDetails <- OptionEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
+          paymentDetails <- OptionTEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
             Left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x")
           })
-          accountSummary <- OptionEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
+          accountSummary <- OptionTEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
             Left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x")
           })
           stripeService = accountSummary.billToContact.country
             .map(RegionalStripeGateways.getGatewayForCountry)
             .flatMap(tp.stripeServicesByPaymentGateway.get)
             .getOrElse(tp.ukStripeService)
-          alertText <- OptionEither.liftEitherOption(alertText(accountSummary, sub, getPaymentMethod))
-          cancellationEffectiveDate <- OptionEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name).map(_.toEither))
+          alertText <- OptionTEither.fromFuture(alertText(accountSummary, sub, getPaymentMethod))
+          cancellationEffectiveDate <- OptionTEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name).map(_.toEither))
           isAutoRenew = sub.autoRenew
         } yield AccountDetails(
           contactId = contact.salesforceContactId,
@@ -240,13 +238,13 @@ class AccountController(
           cancellationEffectiveDate,
         ).toJson).run.run.map(_.toEither).map {
           case Right(Some(result)) =>
-            logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
+            logger.info(s"Successfully retrieved payment details result for identity user: ${userId.mkString}")
             Ok(result)
           case Right(None) =>
-            logger.info(s"identity user doesn't exist in SF: ${maybeUserId.mkString}")
+            logger.info(s"identity user doesn't exist in SF: ${userId.mkString}")
             Ok(Json.obj())
           case Left(message) =>
-            logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
+            logger.warn(s"Unable to retrieve payment details result for identity user ${userId.mkString} due to $message")
             InternalServerError("Failed to retrieve payment details due to an internal error")
         }
       }
@@ -330,13 +328,12 @@ class AccountController(
         }
 
         val tp = request.touchpoint
-        // transforming to Option here because type of failure is no longer relevant at this point
-        val maybeUserId = request.user.toOption.map(_.identityId)
-        logger.info(s"Attempting to update contribution amount for ${maybeUserId.mkString}")
+        val userId = request.user.identityId
+        logger.info(s"Attempting to update contribution amount for ${userId}")
         (for {
-          newPrice <- EitherT.fromEither(Future.successful(validateContributionAmountUpdateForm))
-          user <- EitherT.fromEither(Future.successful(maybeUserId.toRight("no identity cookie for user")))
-          sfUser <- EitherT.fromEither(tp.contactRepo.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
+          newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm)
+          user <- SimpleEitherT.right(userId)
+          sfUser <- SimpleEitherT.fromFutureOption(tp.contactRepo.get(user), s"No SF user $user")
           subscription <- EitherT.fromEither(
             tp.subService
               .current[SubscriptionPlan.Contributor](sfUser)
@@ -359,10 +356,10 @@ class AccountController(
           ).leftMap(message => s"Error while updating contribution amount: $message")
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
-            SafeLogger.error(scrub"Failed to update payment amount for user ${maybeUserId.mkString}, due to: $message")
+            SafeLogger.error(scrub"Failed to update payment amount for user $userId, due to: $message")
             InternalServerError(message)
           case Right(()) =>
-            logger.info(s"Contribution amount updated for user ${maybeUserId.mkString}")
+            logger.info(s"Contribution amount updated for user $userId")
             Ok("Success")
         }
       }

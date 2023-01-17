@@ -1,15 +1,16 @@
 package controllers
 
-import actions._
+import actions.{CommonActions, ContinueRegardlessOfSignInRecency}
 import com.gu.i18n.Currency
 import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
 import com.gu.salesforce.SimpleContactRepository
+import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import models.ExistingPaymentOption
@@ -18,10 +19,11 @@ import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
-import scalaz.OptionT
+import scalaz.-\/
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
-import utils.{ListTEither, OptionEither}
+import utils.ListTEither
+import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -37,16 +39,15 @@ class ExistingPaymentOptionsController(
 
   def allSubscriptionsSince(
       date: LocalDate,
-  )(
+      maybeUserId: Option[String],
       contactRepo: SimpleContactRepository,
       subService: SubscriptionService[Future],
-  )(
-      maybeUserId: Option[String],
-  ): OptionT[OptionEither.FutureEither, List[(AccountId, List[Subscription[SubscriptionPlan.AnyPlan]])]] = for {
-    user <- OptionEither.liftFutureEither(maybeUserId)
-    contact <- OptionEither(contactRepo.get(user))
-    subscriptions <- OptionEither.liftEitherOption(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
-  } yield subscriptions.groupBy(_.accountId).toList
+  ): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
+    (for {
+      user <- ListTEither.fromOption(maybeUserId)
+      contact <- ListTEither.fromFutureOption(contactRepo.get(user))
+      subscription <- ListTEither.fromFutureList(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
+    } yield subscription).toList.map(_.groupBy(_.accountId))
 
   def consolidatePaymentMethod(existingPaymentOptions: List[ExistingPaymentOption]): Iterable[ExistingPaymentOption] = {
 
@@ -107,12 +108,11 @@ class ExistingPaymentOptionsController(
 
         logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
         (for {
-          groupedSubsList <- ListTEither.fromOptionEither(allSubscriptionsSince(eligibilityDate)(tp.contactRepo, tp.subService)(maybeUserId))
+          groupedSubsList <- ListTEither.fromEitherT(allSubscriptionsSince(eligibilityDate, maybeUserId, tp.contactRepo, tp.subService).map(_.toList))
           (accountId, subscriptions) = groupedSubsList
-          objectAccount <- ListTEither.single(tp.zuoraRestService.getObjectAccount(accountId).map(_.toEither).recover { case x =>
-            Left(s"error receiving OBJECT account with account id $accountId. Reason: $x")
-          })
-          if currencyMatchesFilter(objectAccount.currency) &&
+          objectAccount <- ListTEither.singleDisjunction(tp.zuoraRestService.getObjectAccount(accountId).recover { case x =>
+            -\/[String, ObjectAccount](s"error receiving OBJECT account with account id $accountId. Reason: $x")
+          }) if currencyMatchesFilter(objectAccount.currency) &&
             objectAccount.defaultPaymentMethodId.isDefined
           paymentMethodOption <- ListTEither.single(
             tp.paymentService
