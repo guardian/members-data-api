@@ -4,8 +4,6 @@ import com.gu.identity.auth.{MissingRequiredClaim, UnparsedClaims}
 import com.gu.identity.model.{PublicFields, StatusFields, User}
 import org.specs2.mutable.Specification
 
-import java.time.{ZoneId, ZonedDateTime}
-
 class UserFromTokenTest extends Specification {
 
   val identityId = "someIdentityId"
@@ -17,7 +15,6 @@ class UserFromTokenTest extends Specification {
     "sub" -> email,
     "email_validated" -> Boolean.box(true),
     "unused" -> "unusedValue",
-    "auth_time" -> Long.box(1672917908),
   )
 
   val parsedClaims = UserFromToken(
@@ -25,7 +22,6 @@ class UserFromTokenTest extends Specification {
     username = Some(username),
     primaryEmailAddress = email,
     userEmailValidated = Some(true),
-    authTime = Some(ZonedDateTime.of(2023, 1, 5, 11, 25, 8, 0, ZoneId.of("UTC"))),
   )
 
   "UserFromTokenParser.fromUnparsed" should {
@@ -34,7 +30,7 @@ class UserFromTokenTest extends Specification {
 
       val Right(actual) = UserFromTokenParser.fromUnparsed(unparsedClaims)
 
-      actual shouldEqual parsedClaims
+      actual shouldEqual (parsedClaims)
     }
     "parse claims without optional fields" in {
       val onlyRequiredRawClaims = rawClaims.removedAll(List("identity_username", "email_validated"))
@@ -43,7 +39,7 @@ class UserFromTokenTest extends Specification {
       val Right(actual) = UserFromTokenParser.fromUnparsed(onlyRequiredUnparsed)
 
       val onlyRequiredAccessClaims = parsedClaims.copy(username = None, userEmailValidated = None)
-      actual shouldEqual onlyRequiredAccessClaims
+      actual shouldEqual (onlyRequiredAccessClaims)
     }
 
     def assertErrorReturnedOnMissingRequiredClaim(requiredClaimName: String) = {
@@ -71,7 +67,7 @@ class UserFromTokenTest extends Specification {
         ),
       )
 
-      UserFromTokenParser.fromUser(testUser) shouldEqual parsedClaims.copy(authTime = None)
+      UserFromTokenParser.fromUser(testUser) shouldEqual parsedClaims
 
     }
   }
