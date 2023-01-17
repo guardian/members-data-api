@@ -74,7 +74,7 @@ class DynamoSupporterProductDataService(
   private def alertOnDynamoReadErrors(identityId: String, errors: List[DynamoReadError]) =
     if (errors.nonEmpty) {
       logger.error(errorMessage(identityId, errors))
-      metrics.put("SupporterProductDataDynamoError", 1) // referenced in CloudFormation
+      metrics.increaseCount("SupporterProductDataDynamoError") // referenced in CloudFormation
     }
 }
 
