@@ -17,7 +17,7 @@ class UserFromTokenTest extends Specification {
     "sub" -> email,
     "email_validated" -> Boolean.box(true),
     "unused" -> "unusedValue",
-    "auth_time" -> Long.box(1672917908),
+    "auth_time" -> Int.box(1672917908),
   )
 
   val parsedClaims = UserFromToken(

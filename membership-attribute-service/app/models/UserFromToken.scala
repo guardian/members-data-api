@@ -32,9 +32,9 @@ object UserFromTokenParser extends AccessClaimsParser[UserFromToken] {
       defaultClaims: DefaultAccessClaims,
       unparsedClaims: UnparsedClaims,
   ): Either[ValidationError, UserFromToken] = {
-    def toUtcTime(unixTimeStamp: Long) = Instant.ofEpochSecond(unixTimeStamp).atZone(ZoneId.of("UTC"))
+    def toUtcTime(unixTimeStamp: Int) = Instant.ofEpochSecond(unixTimeStamp).atZone(ZoneId.of("UTC"))
     for {
-      authTime <- unparsedClaims.getRequired[Long]("auth_time")
+      authTime <- unparsedClaims.getRequired[Int]("auth_time")
     } yield UserFromToken(
       primaryEmailAddress = defaultClaims.primaryEmailAddress,
       identityId = defaultClaims.identityId,
