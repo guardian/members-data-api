@@ -1,6 +1,7 @@
 package monitoring
 
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
+import com.amazonaws.services.cloudwatch.model.StandardUnit
 import configuration.ApplicationName
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -8,19 +9,17 @@ import scala.concurrent.{ExecutionContext, Future}
 case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchAsync) extends CloudWatch {
   val application = ApplicationName.applicationName // This sets the namespace for Custom Metrics in AWS (see CloudWatch)
 
-  def increaseCount(metricName: String): Unit = put(metricName + " count", 1, "count")
-
-  def reportDuration(metricName: String, duration: Long): Unit = put(metricName + " duration ms", duration, "ms")
+  def incrementCount(metricName: String): Unit = put(metricName + " count", 1, StandardUnit.Count)
 
   def measureDuration[T](metricName: String)(block: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
     logger.debug(s"$metricName started...")
-    increaseCount(metricName)
+    incrementCount(metricName)
     val startTime = System.currentTimeMillis()
 
-    def recordEnd[A](metricName: String)(value: A): A = {
+    def recordEnd[A](name: String)(value: A): A = {
       val duration = System.currentTimeMillis() - startTime
-      reportDuration(metricName, duration)
-      logger.debug(s"${service} $metricName completed in $duration ms")
+      put(name + " duration ms", duration, StandardUnit.Milliseconds)
+      logger.debug(s"$service $name completed in $duration ms")
 
       value
     }

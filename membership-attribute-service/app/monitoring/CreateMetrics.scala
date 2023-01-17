@@ -15,7 +15,6 @@ class CreateMetrics(stage: Stage) {
     .build()
 
   def forService(service: Class[_]): Metrics = Metrics(service.getSimpleName, stage.value, cloudwatch)
-
   def batchedForService(service: Class[_])(implicit system: ActorSystem, ec: ExecutionContext): BatchedMetrics =
     new BatchedMetrics(service.getSimpleName, stage.value, cloudwatch)
 }

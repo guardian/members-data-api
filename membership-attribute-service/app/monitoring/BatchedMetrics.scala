@@ -2,6 +2,8 @@ package monitoring
 
 import akka.actor.ActorSystem
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
+import com.amazonaws.services.cloudwatch.model.StandardUnit
+import com.typesafe.scalalogging.LazyLogging
 import configuration.ApplicationName
 
 import java.util.concurrent.ConcurrentHashMap
@@ -23,15 +25,15 @@ final class BatchedMetrics(
 
   system.scheduler.scheduleAtFixedRate(5.seconds, 60.seconds)(() => publishAllMetrics())
 
-  def increaseCount(metricName: String): Unit =
-    countMap.getOrElseUpdate(metricName, new AtomicInteger(1)).incrementAndGet()
+  def incrementCount(key: String): Unit =
+    countMap.getOrElseUpdate(key, new AtomicInteger(1)).incrementAndGet()
 
   private def resetCount(key: String): Unit =
     countMap.getOrElseUpdate(key, new AtomicInteger(0)).set(0)
 
   private def publishAllMetrics(): Unit =
     countMap.foreach { case (key, value) =>
-      put(key, value.doubleValue(), "count")
+      put(key, value.doubleValue(), StandardUnit.Count)
       resetCount(key)
     }
 }

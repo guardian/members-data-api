@@ -11,12 +11,11 @@ import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
-import monitoring.{CreateMetrics, BatchedMetrics}
+import monitoring.CreateMetrics
 import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-import utils.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -36,7 +35,7 @@ class AttributeController(
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = createMetrics.forService(classOf[AttributeController])
-  lazy val expensiveMetrics = createMetrics.batchedForService(classOf[AttributeController])
+  lazy val batchedMetrics = createMetrics.batchedForService(classOf[AttributeController])
 
   private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
       executionContext: ExecutionContext,
@@ -59,11 +58,11 @@ class AttributeController(
   )(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(error) =>
-        metrics.increaseCount(s"mobile-subscription-fetch-exception")
+        metrics.incrementCount(s"mobile-subscription-fetch-exception")
         log.warn("Exception while fetching mobile subscription, assuming none", error)
         Success(None)
       case Success(Left(error)) =>
-        metrics.increaseCount(s"mobile-subscription-fetch-error-non-http-200")
+        metrics.incrementCount(s"mobile-subscription-fetch-error-non-http-200")
         log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
         Success(None)
       case Success(Right(status)) => Success(status)
@@ -97,10 +96,10 @@ class AttributeController(
       sendAttributesIfNotFound: Boolean = false,
       requiredScopes: List[AccessScope],
       metricName: String,
-      useExpensiveMetrics: Boolean = false,
-  ): Action[AnyContent] = {
-    AuthAndBackendViaAuthLibAction(requiredScopes).async { request =>
-      val future: Future[Result] = {
+      useBatchedMetrics: Boolean = false,
+  ) = {
+    AuthAndBackendViaAuthLibAction(requiredScopes).async { implicit request =>
+      val future = {
         if (endpointDescription == "membership" || endpointDescription == "features") {
           DeprecatedRequestLogger.logDeprecatedRequest(request)
         }
@@ -177,14 +176,13 @@ class AttributeController(
           // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
           // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
           val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
-          metrics.increaseCount(s"$endpointDescription-failed-to-serve-entitlements")
+          metrics.incrementCount(s"$endpointDescription-failed-to-serve-entitlements")
           log.error(errMsg, e)
           InternalServerError(errMsg)
         }
       }
-
-      if (useExpensiveMetrics) {
-        expensiveMetrics.increaseCount(metricName)
+      if (useBatchedMetrics) {
+        batchedMetrics.incrementCount(metricName)
         future
       } else {
         metrics.measureDuration(metricName)(future)
@@ -220,7 +218,7 @@ class AttributeController(
       sendAttributesIfNotFound = true,
       requiredScopes = List(readSelf),
       metricName = "GET /user-attributes/me",
-      useExpensiveMetrics = true,
+      useBatchedMetrics = true,
     )
 
   def features =
