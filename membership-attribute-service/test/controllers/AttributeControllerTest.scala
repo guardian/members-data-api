@@ -50,21 +50,25 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     primaryEmailAddress = "test@gu.com",
     identityId = validUserId,
     userEmailValidated = Some(true),
+    authTime = None,
   )
   private val unvalidatedEmailUser = UserFromToken(
     primaryEmailAddress = "unvalidatedEmail@gu.com",
     identityId = unvalidatedEmailUserId,
     userEmailValidated = Some(false),
+    authTime = None,
   )
   private val userWithoutAttributes = UserFromToken(
     primaryEmailAddress = "notcached@gu.com",
     identityId = userWithoutAttributesUserId,
+    authTime = None,
   )
 
   private val guardianEmployeeUser = UserFromToken(
     primaryEmailAddress = "foo@guardian.co.uk",
     identityId = "1234321",
     userEmailValidated = Some(true),
+    authTime = None,
   )
   private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
 
@@ -72,6 +76,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     primaryEmailAddress = "foo@theguardian.com",
     identityId = "123theguardiancom",
     userEmailValidated = Some(true),
+    authTime = None,
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
 
@@ -79,6 +84,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     primaryEmailAddress = "bar@theguardian.com",
     identityId = "userWithRealProducts",
     userEmailValidated = Some(true),
+    authTime = None,
   )
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
