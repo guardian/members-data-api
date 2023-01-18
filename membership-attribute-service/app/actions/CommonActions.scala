@@ -7,7 +7,6 @@ import controllers.NoCache
 import filters.IsTestUser
 import models.UserFromToken
 import play.api.mvc._
-import services.AuthenticationFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,12 +21,14 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
+
+  def AuthorizeForScopes(requiredScopes: List[AccessScope]): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
     NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
-  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn): ActionBuilder[AuthAndBackendRequest, AnyContent] =
+
+  def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn): ActionBuilder[AuthAndBackendRequest, AnyContent] =
     NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser)
 
-  def AuthAndBackendViaBothAction(
+  def AuthorizeForRecentLogin(
       howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
       requiredScopes: List[AccessScope],
   ): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =

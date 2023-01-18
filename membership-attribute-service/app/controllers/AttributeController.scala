@@ -97,8 +97,8 @@ class AttributeController(
       requiredScopes: List[AccessScope],
       metricName: String,
       useBatchedMetrics: Boolean = false,
-  ) = {
-    AuthAndBackendViaAuthLibAction(requiredScopes).async { implicit request =>
+  ): Action[AnyContent] = {
+    AuthorizeForScopes(requiredScopes).async { implicit request =>
       val future = {
         if (endpointDescription == "membership" || endpointDescription == "features") {
           DeprecatedRequestLogger.logDeprecatedRequest(request)
@@ -232,7 +232,7 @@ class AttributeController(
     )
 
   def oneOffContributions =
-    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
+    AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/one-off-contributions") {
         val userHasValidatedEmail = request.user.userEmailValidated.getOrElse(false)
 
