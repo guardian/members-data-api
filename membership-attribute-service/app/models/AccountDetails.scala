@@ -111,10 +111,10 @@ object AccountDetails {
         case paidPlan: PaidSubscriptionPlan[_, _] =>
           Json.obj(
             "chargedThrough" -> paidPlan.chargedThrough,
-            "amount" -> paidPlan.charges.price.prices.head.amount * 100,
+            "price" -> paidPlan.charges.price.prices.head.amount * 100,
             "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
             "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
-            "interval" -> paidPlan.charges.billingPeriod.noun,
+            "billingPeriod" -> paidPlan.charges.billingPeriod.noun,
           )
         case _ => Json.obj()
       }) ++ (plan.charges match {
@@ -155,6 +155,7 @@ object AccountDetails {
         ),
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
+        billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name) }) ++
         Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
@@ -177,10 +178,10 @@ object AccountDetails {
             "autoRenew" -> isAutoRenew,
             "plan" -> Json.obj( // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
               "name" -> paymentDetails.plan.name,
-              "amount" -> paymentDetails.plan.price.amount * 100,
+              "price" -> paymentDetails.plan.price.amount * 100,
               "currency" -> paymentDetails.plan.price.currency.glyph,
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
-              "interval" -> paymentDetails.plan.interval.mkString,
+              "billingPeriod" -> paymentDetails.plan.interval.mkString,
             ),
             "currentPlans" -> currentPlans.map(jsonifyPlan),
             "futurePlans" -> futurePlans.map(jsonifyPlan),
@@ -217,9 +218,9 @@ object AccountDetails {
   def mmaCategoryFrom(product: Product): String = product match {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
-    case _: Product.SupporterPlus => "subscriptions"
+    case _: Product.SupporterPlus => "recurringSupport"
     case _: Product.GuardianPatron => "subscriptions"
-    case _: Product.Contribution => "contributions"
+    case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"
     case _ => product.name // fallback
   }
@@ -242,7 +243,7 @@ object CancelledSubscription {
               "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
               "readerType" -> subscription.readerType.value,
               "accountId" -> subscription.accountId.get,
-            ),
+            )
           ),
         )
       }

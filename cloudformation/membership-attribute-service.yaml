@@ -298,7 +298,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
         - - !FindInMap [ Constants, Alarm, Urgent ]
@@ -341,7 +341,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
         - - !FindInMap [ Constants, Alarm, Urgent ]
@@ -381,7 +381,7 @@ Resources:
         - - "Impact - we're serving 4XX for significant proportion of requests - indicative of an issue interacting with identity"
           - !FindInMap [ Constants, Alarm, Process ]
       AlarmActions:
-        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       TreatMissingData: notBreaching
       EvaluationPeriods: '3'
       Threshold: 20
@@ -420,7 +420,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
         - - !FindInMap [ Constants, Alarm, Urgent ]
@@ -449,7 +449,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:fulfilment-dev'
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
         - - !FindInMap [ Constants, Alarm, Urgent ]
@@ -500,7 +500,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:Rupert-testing
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
         - - 'A DynamoReadError occurred while reading from the SupporterProductData DynamoDB table'

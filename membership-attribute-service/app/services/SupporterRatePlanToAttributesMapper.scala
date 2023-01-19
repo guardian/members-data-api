@@ -1,11 +1,12 @@
 package services
 
+import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
-import services.MembershipTier.{Friend, Partner, Patron, Staff, Supporter, getMostValuableTier}
+import services.MembershipTier._
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
-class SupporterRatePlanToAttributesMapper(stage: String) {
+class SupporterRatePlanToAttributesMapper(stage: Stage) {
 
   def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]) = {
     supporterRatePlanItems
@@ -17,7 +18,7 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
   }
 
   private def mapRatePlanToAttributes(maybeAttributes: Option[Attributes], ratePlanItem: DynamoSupporterRatePlanItem, identityId: String) =
-    productRatePlanMappings(stage)
+    productRatePlanMappings(stage.value)
       .collectFirst {
         case (ids, transformer) if ids.contains(ratePlanItem.productRatePlanId) =>
           Some(transformer.transform(maybeAttributes.getOrElse(Attributes(identityId)), ratePlanItem))

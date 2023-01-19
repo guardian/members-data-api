@@ -1,24 +1,24 @@
 package controllers
 
-import actions._
+import actions.{AuthenticatedUserAndBackendRequest, CommonActions}
 import akka.actor.ActorSystem
-import com.gu.identity.model.User
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.identity.auth.AccessScope
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}
 import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
+import models.AccessScope.{completeReadSelf, readSelf}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
-import monitoring.{ExpensiveMetrics, Metrics}
+import monitoring.{CreateMetrics, BatchedMetrics}
 import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
+import utils.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 /** What benefits is the user entitled to?
@@ -28,21 +28,21 @@ class AttributeController(
     override val controllerComponents: ControllerComponents,
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
     mobileSubscriptionService: MobileSubscriptionService,
+    addGuIdentityHeaders: AddGuIdentityHeaders,
+    createMetrics: CreateMetrics,
 )(implicit system: ActorSystem)
     extends BaseController
     with LoggingWithLogstashFields {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
-  lazy val metrics = Metrics("AttributesController")
-  lazy val expensiveMetrics = new ExpensiveMetrics("AttributesController")
+  lazy val metrics = createMetrics.forService(classOf[AttributeController])
+  lazy val expensiveMetrics = createMetrics.batchedForService(classOf[AttributeController])
 
-  private def getLatestOneOffContributionDate(identityId: String, user: User)(implicit
+  private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
       executionContext: ExecutionContext,
   ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
-    val userHasValidatedEmail = user.statusFields.userEmailValidated.getOrElse(false)
-
-    if (userHasValidatedEmail) {
+    if (user.userEmailValidated.contains(true)) {
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
         case Left(databaseError) =>
           // Failed to get one-off data, but this should not block the zuora request
@@ -59,11 +59,11 @@ class AttributeController(
   )(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(error) =>
-        metrics.put(s"mobile-subscription-fetch-exception", 1)
+        metrics.increaseCount(s"mobile-subscription-fetch-exception")
         log.warn("Exception while fetching mobile subscription, assuming none", error)
         Success(None)
       case Success(Left(error)) =>
-        metrics.put(s"mobile-subscription-fetch-error-non-http-200", 1)
+        metrics.increaseCount(s"mobile-subscription-fetch-error-non-http-200")
         log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
         Success(None)
       case Success(Right(status)) => Success(status)
@@ -85,7 +85,7 @@ class AttributeController(
   protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
     log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
     request.touchpoint.supporterProductDataService
-      .getAttributes(identityId)
+      .getNonCancelledAttributes(identityId)
       .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
   }
 
@@ -95,85 +95,99 @@ class AttributeController(
       onSuccessSupporter: Attributes => Result,
       onNotFound: Result,
       sendAttributesIfNotFound: Boolean = false,
-  ) = {
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
-      if (endpointDescription == "membership" || endpointDescription == "features") {
-        DeprecatedRequestLogger.logDeprecatedRequest(request)
+      requiredScopes: List[AccessScope],
+      metricName: String,
+      useExpensiveMetrics: Boolean = false,
+  ): Action[AnyContent] = {
+    AuthAndBackendViaAuthLibAction(requiredScopes).async { request =>
+      val future: Future[Result] = {
+        if (endpointDescription == "membership" || endpointDescription == "features") {
+          DeprecatedRequestLogger.logDeprecatedRequest(request)
+        }
+
+        val user = request.user
+        // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
+        val futureSupporterAttributes = getSupporterProductDataAttributes(user.identityId)(request)
+        val futureOneOffContribution = getLatestOneOffContributionDate(user.identityId, user)
+        val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.identityId)
+
+        (for {
+          // Fetch one-off data independently of zuora data so that we can handle users with no zuora record
+          (fromWhere: String, supporterAttributes: Option[Attributes]) <- futureSupporterAttributes
+          latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
+          latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
+          supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
+            // transforming to Option here because type of failure is no longer relevant at this point
+            request.user,
+            supporterAttributes,
+            user.identityId,
+          )
+          allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(
+            addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription),
+          )
+        } yield {
+
+          def customFields(supporterType: String): List[LogField] = List(
+            LogFieldString("lookup-endpoint-description", endpointDescription),
+            LogFieldString("supporter-type", supporterType),
+            LogFieldString("data-source", fromWhere),
+          )
+
+          val result = allProductAttributes match {
+            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _)) =>
+              logInfoWithCustomFields(
+                s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere",
+                customFields("member"),
+              )
+              onSuccessMember(attrs).withHeaders(
+                "X-Gu-Membership-Tier" -> tier,
+                "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString,
+              )
+            case Some(attrs) =>
+              attrs.DigitalSubscriptionExpiryDate.foreach { date =>
+                logInfoWithCustomFields(s"${user.identityId} is a digital subscriber expiring $date", customFields("digital-subscriber"))
+              }
+              attrs.PaperSubscriptionExpiryDate.foreach { date =>
+                logInfoWithCustomFields(s"${user.identityId} is a paper subscriber expiring $date", customFields("paper-subscriber"))
+              }
+              attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
+                logInfoWithCustomFields(
+                  s"${user.identityId} is a Guardian Weekly subscriber expiring $date",
+                  customFields("guardian-weekly-subscriber"),
+                )
+              }
+              attrs.GuardianPatronExpiryDate.foreach { date =>
+                logInfoWithCustomFields(s"${user.identityId} is a Guardian Patron expiring $date", customFields("guardian-patron"))
+              }
+              attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
+                logInfoWithCustomFields(s"${user.identityId} is a regular $paymentPlan contributor", customFields("contributor"))
+              }
+              logInfoWithCustomFields(s"${user.identityId} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+              onSuccessSupporter(attrs)
+            case None if sendAttributesIfNotFound =>
+              val attr = addOneOffAndMobile(Attributes(user.identityId), latestOneOffDate, latestMobileSubscription)
+              log.logger.info(s"${user.identityId} does not have zuora attributes - $attr - found via $fromWhere")
+              Ok(Json.toJson(attr))
+            case _ =>
+              onNotFound
+          }
+          addGuIdentityHeaders.fromUser(result, user)
+
+        }).recover { case e =>
+          // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
+          // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
+          val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
+          metrics.increaseCount(s"$endpointDescription-failed-to-serve-entitlements")
+          log.error(errMsg, e)
+          InternalServerError(errMsg)
+        }
       }
 
-      request.user match {
-        case Some(user) =>
-          // execute futures outside of the for comprehension so they are executed in parallel rather than in sequence
-          val futureSupporterAttributes = getSupporterProductDataAttributes(user.id)
-          val futureOneOffContribution = getLatestOneOffContributionDate(user.id, user)
-          val futureMobileSubscriptionStatus = getLatestMobileSubscription(user.id)
-
-          (for {
-            // Fetch one-off data independently of zuora data so that we can handle users with no zuora record
-            (fromWhere: String, supporterAttributes: Option[Attributes]) <- futureSupporterAttributes
-            latestOneOffDate: Option[LocalDate] <- futureOneOffContribution
-            latestMobileSubscription: Option[MobileSubscriptionStatus] <- futureMobileSubscriptionStatus
-            supporterOrStaffAttributes: Option[Attributes] = maybeAllowAccessToDigipackForGuardianEmployees(
-              request.user,
-              supporterAttributes,
-              user.id,
-            )
-            allProductAttributes: Option[Attributes] = supporterOrStaffAttributes.map(
-              addOneOffAndMobile(_, latestOneOffDate, latestMobileSubscription),
-            )
-          } yield {
-
-            def customFields(supporterType: String): List[LogField] = List(
-              LogFieldString("lookup-endpoint-description", endpointDescription),
-              LogFieldString("supporter-type", supporterType),
-              LogFieldString("data-source", fromWhere),
-            )
-
-            val result = allProductAttributes match {
-              case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _)) =>
-                logInfoWithCustomFields(s"${user.id} is a $tier member - $endpointDescription - $attrs found via $fromWhere", customFields("member"))
-                onSuccessMember(attrs).withHeaders(
-                  "X-Gu-Membership-Tier" -> tier,
-                  "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString,
-                )
-              case Some(attrs) =>
-                attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a digital subscriber expiring $date", customFields("digital-subscriber"))
-                }
-                attrs.PaperSubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a paper subscriber expiring $date", customFields("paper-subscriber"))
-                }
-                attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a Guardian Weekly subscriber expiring $date", customFields("guardian-weekly-subscriber"))
-                }
-                attrs.GuardianPatronExpiryDate.foreach { date =>
-                  logInfoWithCustomFields(s"${user.id} is a Guardian Patron expiring $date", customFields("guardian-patron"))
-                }
-                attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                  logInfoWithCustomFields(s"${user.id} is a regular $paymentPlan contributor", customFields("contributor"))
-                }
-                logInfoWithCustomFields(s"${user.id} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
-                onSuccessSupporter(attrs)
-              case None if sendAttributesIfNotFound =>
-                val attr = addOneOffAndMobile(Attributes(user.id), latestOneOffDate, latestMobileSubscription)
-                log.logger.info(s"${user.id} does not have zuora attributes - $attr - found via $fromWhere")
-                Ok(Json.toJson(attr))
-              case _ =>
-                onNotFound
-            }
-            AddGuIdentityHeaders.fromUser(result, user)
-
-          }).recover { case e =>
-            // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
-            // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
-            val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
-            metrics.put(s"$endpointDescription-failed-to-serve-entitlements", 1)
-            log.error(errMsg, e)
-            InternalServerError(errMsg)
-          }
-        case None =>
-          metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
-          Future(unauthorized)
+      if (useExpensiveMetrics) {
+        expensiveMetrics.increaseCount(metricName)
+        future
+      } else {
+        metrics.measureDuration(metricName)(future)
       }
     }
   }
@@ -187,64 +201,66 @@ class AttributeController(
       .getOrElse(notFound)
   }
 
-  def membership = lookup(
-    endpointDescription = "membership",
-    onSuccessMember = membershipAttributesFromAttributes,
-    onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
-    onNotFound = notFound,
-  )
-  def attributes = lookup(
-    endpointDescription = "attributes",
-    onSuccessMember = attrs => Ok(Json.toJson(attrs)),
-    onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
-    onNotFound = notFound,
-    sendAttributesIfNotFound = true,
-  )
-  def features = lookup(
-    endpointDescription = "features",
-    onSuccessMember = Features.fromAttributes,
-    onSuccessSupporter = _ => Features.unauthenticated,
-    onNotFound = Features.unauthenticated,
-  )
+  def membership =
+    lookup(
+      endpointDescription = "membership",
+      onSuccessMember = membershipAttributesFromAttributes,
+      onSuccessSupporter = _ => ApiError("Not found", "User was found but they are not a member", 404),
+      onNotFound = notFound,
+      requiredScopes = List(completeReadSelf),
+      metricName = "GET /user-attributes/me/membership",
+    )
 
-  def oneOffContributions = {
-    AuthAndBackendViaAuthLibAction.async { implicit request =>
-      val userHasValidatedEmail = request.user.flatMap(_.statusFields.userEmailValidated).getOrElse(false)
+  def attributes =
+    lookup(
+      endpointDescription = "attributes",
+      onSuccessMember = attrs => Ok(Json.toJson(attrs)),
+      onSuccessSupporter = attrs => Ok(Json.toJson(attrs)),
+      onNotFound = notFound,
+      sendAttributesIfNotFound = true,
+      requiredScopes = List(readSelf),
+      metricName = "GET /user-attributes/me",
+      useExpensiveMetrics = true,
+    )
 
-      val futureResult: Future[Result] = if (userHasValidatedEmail) {
-        request.user.map(_.id) match {
-          case Some(identityId) =>
-            contributionsStoreDatabaseService.getAllContributions(identityId).map {
+  def features =
+    lookup(
+      endpointDescription = "features",
+      onSuccessMember = Features.fromAttributes,
+      onSuccessSupporter = _ => Features.unauthenticated,
+      onNotFound = Features.unauthenticated,
+      requiredScopes = List(completeReadSelf),
+      metricName = "GET /user-attributes/me/features",
+    )
+
+  def oneOffContributions =
+    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
+      metrics.measureDuration("GET /user-attributes/me/one-off-contributions") {
+        val userHasValidatedEmail = request.user.userEmailValidated.getOrElse(false)
+
+        val futureResult: Future[Result] =
+          if (userHasValidatedEmail) {
+            contributionsStoreDatabaseService.getAllContributions(request.user.identityId).map {
               case Left(err) => Ok(err)
               case Right(result) => Ok(Json.toJson(result).toString)
             }
-          case None => Future(unauthorized)
-        }
-      } else
-        Future(unauthorized)
+          } else Future(unauthorized)
 
-      futureResult.map { result =>
-        request.user match {
-          case Some(user) => AddGuIdentityHeaders.fromUser(result, user)
-          case None => result
-        }
+        futureResult.map(addGuIdentityHeaders.fromUser(_, request.user))
       }
     }
-  }
 
   /** Allow all validated guardian.co.uk/theguardian.com email addresses access to the digipack
     */
   private def maybeAllowAccessToDigipackForGuardianEmployees(
-      maybeUser: Option[User],
+      user: UserFromToken,
       maybeAttributes: Option[Attributes],
       identityId: String,
   ): Option[Attributes] = {
-
+    val email = user.primaryEmailAddress
     val allowDigiPackAccessToStaff =
       (for {
-        user <- maybeUser
-        email = user.primaryEmailAddress
-        userHasValidatedEmail <- user.statusFields.userEmailValidated
+        userHasValidatedEmail <- user.userEmailValidated
         emailDomain <- email.split("@").lastOption
         userHasGuardianEmail = List("guardian.co.uk", "theguardian.com").contains(emailDomain)
       } yield {
@@ -258,7 +274,5 @@ class AttributeController(
       (maybeAttributes orElse mockedZuoraAttribs).map(_.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
     else
       maybeAttributes
-
   }
-
 }

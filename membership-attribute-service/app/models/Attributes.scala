@@ -75,6 +75,7 @@ case class Attributes(
   // TODO in future this could become more sophisticated (e.g. two weeks before their products expire)
   lazy val showSupportMessaging = !(
     isPaidTier
+      || isSupporterPlus
       || isRecurringContributor
       || isRecentOneOffContributor
       || digitalSubscriberHasActivePlan
@@ -94,7 +95,7 @@ object Attributes {
       (__ \ "recurringContributionPaymentPlan").writeNullable[String] and
       (__ \ "oneOffContributionDate").writeNullable[LocalDate] and
       (__ \ "membershipJoinDate").writeNullable[LocalDate] and
-      (__ \ "supporterPlusExpiryDate").writeNullable[LocalDate] and
+      JsPath.writeNullable[LocalDate].contramap[Option[LocalDate]](_ => None) and // do not serialize supporterPlusExpiryDate
       (__ \ "digitalSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "paperSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
