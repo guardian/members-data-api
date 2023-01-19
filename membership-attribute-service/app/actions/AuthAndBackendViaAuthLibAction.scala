@@ -27,7 +27,7 @@ class AuthAndBackendViaAuthLibAction(
         } else {
           touchpointBackends.normal
         }
-        Right(new AuthenticatedUserAndBackendRequest[A](Right(authenticatedUser), backendConf, request))
+        Right(new AuthenticatedUserAndBackendRequest[A](authenticatedUser, backendConf, request))
     }
   }
 }
