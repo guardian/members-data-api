@@ -2,7 +2,7 @@ package actions
 
 import com.gu.identity.{IdapiService, SignedInRecently}
 import components.TouchpointBackends
-import filters.AddGuIdentityHeaders
+import filters.IsTestUser
 import play.api.mvc.{ActionRefiner, Request, Result, Results}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -10,6 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class AuthAndBackendViaIdapiAction(
     touchpointBackends: TouchpointBackends,
     howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
+    isTestUser: IsTestUser,
 )(implicit
     ex: ExecutionContext,
 ) extends ActionRefiner[Request, AuthAndBackendRequest] {
@@ -23,7 +24,7 @@ class AuthAndBackendViaIdapiAction(
       )
       .map(redirectAdvice => {
 
-        val backendConf = if (AddGuIdentityHeaders.isTestUser(redirectAdvice.displayName)) {
+        val backendConf = if (isTestUser(redirectAdvice.displayName)) {
           touchpointBackends.test
         } else {
           touchpointBackends.normal

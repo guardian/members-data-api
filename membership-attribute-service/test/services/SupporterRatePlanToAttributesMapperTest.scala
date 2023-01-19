@@ -1,6 +1,6 @@
 package services
 
-import com.gu.i18n.Currency
+import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
@@ -8,7 +8,7 @@ import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 import services.SupporterRatePlanToAttributesMapperTest.allActiveProductRatePlans
 
 class SupporterRatePlanToAttributesMapperTest extends Specification {
-  val mapper = new SupporterRatePlanToAttributesMapper("PROD")
+  val mapper = new SupporterRatePlanToAttributesMapper(Stage("PROD"))
   val identityId = "999"
   val termEndDate = LocalDate.now().plusDays(5)
 
@@ -43,20 +43,6 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
         identityId,
         List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea")),
       ) should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution"))
-    }
-
-    "identify a high monthly contribution" in {
-      mapper.attributesFromSupporterRatePlans(
-        identityId,
-        List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97").copy(contributionAmount = Some(15), contributionCurrency = Some(Currency.GBP))),
-      ) should beSome.which(_.HighContributor should beSome(true))
-    }
-
-    "identify a low monthly contribution" in {
-      mapper.attributesFromSupporterRatePlans(
-        identityId,
-        List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97").copy(contributionAmount = Some(5), contributionCurrency = Some(Currency.GBP))),
-      ) should beSome.which(_.HighContributor should beSome(false))
     }
 
     "identify a Digital Subscription" in {
@@ -277,7 +263,6 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           identityId,
           Some("Supporter"),
           Some("Monthly Contribution"),
-          Some(false),
           None,
           None,
           None,

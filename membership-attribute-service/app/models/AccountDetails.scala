@@ -111,10 +111,10 @@ object AccountDetails {
         case paidPlan: PaidSubscriptionPlan[_, _] =>
           Json.obj(
             "chargedThrough" -> paidPlan.chargedThrough,
-            "amount" -> paidPlan.charges.price.prices.head.amount * 100,
+            "price" -> paidPlan.charges.price.prices.head.amount * 100,
             "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
             "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
-            "interval" -> paidPlan.charges.billingPeriod.noun,
+            "billingPeriod" -> paidPlan.charges.billingPeriod.noun,
           )
         case _ => Json.obj()
       }) ++ (plan.charges match {
@@ -178,10 +178,10 @@ object AccountDetails {
             "autoRenew" -> isAutoRenew,
             "plan" -> Json.obj( // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
               "name" -> paymentDetails.plan.name,
-              "amount" -> paymentDetails.plan.price.amount * 100,
+              "price" -> paymentDetails.plan.price.amount * 100,
               "currency" -> paymentDetails.plan.price.currency.glyph,
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
-              "interval" -> paymentDetails.plan.interval.mkString,
+              "billingPeriod" -> paymentDetails.plan.interval.mkString,
             ),
             "currentPlans" -> currentPlans.map(jsonifyPlan),
             "futurePlans" -> futurePlans.map(jsonifyPlan),
@@ -243,7 +243,7 @@ object CancelledSubscription {
               "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
               "readerType" -> subscription.readerType.value,
               "accountId" -> subscription.accountId.get,
-            ),
+            )
           ),
         )
       }

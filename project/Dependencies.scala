@@ -4,10 +4,10 @@ import play.sbt.PlayImport
 object Dependencies {
 
   val awsClientVersion = "1.11.1022"
-  val awsClientV2Version = "2.16.86"
+  val awsClientV2Version = "2.16.104"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.7"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.9"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
   val postgres = "org.postgresql" % "postgresql" % "42.5.1"
   val jdbc = PlayImport.jdbc
@@ -18,13 +18,16 @@ object Dependencies {
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.622"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.635"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.1.1"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
-  val anorm = "org.playframework.anorm" %% "anorm" % "2.6.10"
-  val netty = "io.netty" % "netty-codec" % "4.1.85.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.85.Final"
+  val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
+  val netty = "io.netty" % "netty-codec" % "4.1.87.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.87.Final"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
+  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.12" % Test
 
   val jacksonVersion = "2.14.1"
   val jacksonDatabindVersion = "2.14.1"
@@ -44,6 +47,7 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier" % oktaJwtVerifierVersion,
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
+  val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
 
   // projects
 
@@ -61,7 +65,7 @@ object Dependencies {
     awsCloudWatch,
     scalaz,
     membershipCommon,
-    specs2,
+    specs2.exclude("org.specs2", "specs2-mock_2.13"),
     kinesis,
     logstash,
     anorm,
@@ -70,8 +74,13 @@ object Dependencies {
     nettyHttp,
     "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
     akkaHttpCore,
+    unirest,
+    mockServer,
+    mockitoScala,
   ) ++ jackson ++ oktaJwtVerifier
 
-  val depOverrides = jackson
-
+  val dependencyOverrides = jackson ++ Seq(scalaXml)
+  val excludeDependencies = Seq(
+    ExclusionRule("com.squareup.okio", "okio"),
+  )
 }

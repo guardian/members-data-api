@@ -1,14 +1,15 @@
 package services
 
-import java.util.GregorianCalendar
-
+import java.util.{GregorianCalendar, TimeZone}
 import scala.concurrent.Future
 import services.ContributionsStoreDatabaseService.DatabaseGetResult
 import models.{ContributionData, RecurringReminderStatus, SupportReminders}
 
 case class FakePostgresService(validId: String) extends ContributionsStoreDatabaseService {
+  private val calendar = new GregorianCalendar(2021, 10, 28)
+  calendar.setTimeZone(TimeZone.getTimeZone("UTC"))
   val testContributionData = ContributionData(
-    created = new GregorianCalendar(2021, 10, 28).getTime,
+    created = calendar.getTime,
     currency = "GBP",
     amount = 11.0,
     status = "statusValue",
