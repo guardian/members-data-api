@@ -13,7 +13,7 @@ object ApiError {
     override def writes(o: ApiError): JsValue = Json.obj(
       "message" -> o.message,
       "details" -> o.details,
-      "statusCode" -> o.statusCode
+      "statusCode" -> o.statusCode,
     )
   }
   implicit def apiErrorToResult(err: ApiError): Result = {

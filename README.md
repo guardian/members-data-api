@@ -3,21 +3,6 @@
 The members' data API is a Play app that manages and retrieves supporter attributes associated with a user.  
 It runs on https://members-data-api.theguardian.com/.
 
-
-## How do we handle Zuora 40 concurrent requests limit?
-
-When users visit dotcom a check is made for entitlements. For example, should ads be displayed. This results in high
-load on members-data-api which we need to manage. In particular Zuora does not provide a caching mechanism whilst
-at the same time having 40 concurrent requests limit. Note this limit applies globally across our systems, and Zuora
-does not provide segregation by a particular client. Hence, the onus is on us to manage the limit.
-
-There are few ways we try to manage the load 
-1. dotcom cookies that expire after 24 hours
-1. mem-data-api DynamoDB table with particular TTL
-1. mechanism to control number of concurrent Zuora requests each mem-data-api instance can make (currently there are 6)
-
-With current load management we hit Zuora around 1000 per minute.
-
 ### Dotcom
 theguardian.com website is the biggest single consumer of `members-data-api`, specifically the `/user-attributes/me` endpoint, which it uses to determine both ad-free (becuase user has digital subscription) and if we should hide 'support messaging/asks' (banner, epic, header/footer support buttons etc).
 
@@ -33,19 +18,17 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
 - `gu_one_off_contribution_date` = `oneOffContributionDate` in the response
 
 ##### Useful Links 
-- DCR [dotcom-rendering/blob/master/src/web/lib/contributions.tsx](https://github.com/guardian/dotcom-rendering/blob/master/src/web/lib/contributions.tsx)
+- DCR [dotcom-rendering/src/web/lib/contributions.ts](https://github.com/guardian/dotcom-rendering/blob/main/dotcom-rendering/src/web/lib/contributions.ts)
 - Dotcom
-  - [frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js](https://github.com/guardian/frontend/blob/master/static/src/javascripts/projects/common/modules/commercial/user-features.js)
+  - [frontend/static/src/javascripts/projects/common/modules/commercial/user-features.ts](https://github.com/guardian/frontend/blob/main/static/src/javascripts/projects/common/modules/commercial/user-features.ts)
   - [frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js](https://github.com/guardian/frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js)
 
-### DynamoDB table
-
-1. Count Zuora concurrent requests (per instance)
-1. Get the concurrency limit set in `AttributesFromZuoraLookup` dynamodb table for all instances in total
-1. Calculate concurrency limit per instance
-1. If the count is greater than limit, then hit cache
-1. If the count is less than limit and Zuora is healthy, then hit Zuora
-1. If the count is less than limit and Zuora is unhealthy, then hit cache
+### User attributes data sources
+User attributes (which products a user currently holds) are served from three sources
+1. The `SupporterProductData-[STAGE]` DynamoDB table - This table is populated by a scheduled extract
+from Stripe (Guardian Patrons only) and Zuora (digital and print subscriptions & recurring contributions)
+2. The `contributions-store-[STAGE]` Postgres database (one off contributions only)
+3. The [mobile purchases api](https://github.com/guardian/mobile-purchases) (in-app purchases only)
 
 ### Limiting concurrent requests
 
@@ -94,28 +77,29 @@ drastic increase of load due to breaking news.**
 
 1. Create an ssh tunnel to the CODE one-off contributions database:
     1. Clone https://github.com/guardian/contributions-platform
-    2. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
+    1. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
+    1. If you need to close your tunnel and didn't make a note of the process number you can run `ps aux | grep amazonaws.com` to find the process number. The output will look something like this `username      1693   0.0  0.0 34153208    952   ??  Ss    4:20pm   0:00.00 ssh -i /private/var/folders/yv/dbtm9psd5ddbjm_lvcjm9zf1vdng_j/T/security_ssm-scala_temporary-rsa-private-key.tmp -f machine.eu-west-1.compute.amazonaws.com -L 5432:contributions-store-code.address.rds.amazonaws.com:5432 -N -o IdentitiesOnly yes -o ExitOnForwardFailure yes` where `1693` is the process number. You can close the tunnel with `kill 1693`.
 
-1. Ensure an `nginx` service is running locally.
+1. Ensure an `nginx` service is running locally. You can run `dev-nginx restart-nginx` to do this.
 
+### Identity frontend local sign in
+As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you will need to sign in to the identity frontend locally.
+1. Start up a local Identity service by running script `make dev` in the [gateway](https://github.com/guardian/gateway) repo.
+1. Go to https://profile.thegulocal.com/signin.
+
+### Starting the API
 1. To start the Members' data API service run `./start-api.sh`.  
 The service will be running on 9400 and use the SupporterAttributesFallback-DEV DynamoDB table.
 
-1. go to https://members-data-api.thegulocal.com/user-attributes/me/mma-membership.  
+1. go to https://members-data-api.thegulocal.com/user-attributes/me.
 If you get a 401 response, it probably means your Identity credentials have expired.  
-Renew them by:
-    1. Start up a local Identity service by running script `start-frontend.sh` in the `identity-frontend` repo.
-    1. Go to https://profile.thegulocal.com/signin.
+Renew them by following the steps in [Identity frontend local sign in](#identity-frontend-local-sign-in)
+
+1. As of 22/04/2022 the https://members-data-api.thegulocal.com/user-attributes/me endpoint should work correctly if your set up is correct. Other endpoints (`/healthcheck`, `/user-attributes/me/mma-membership`) may not work correctly due to upstream dependencies.
 
 ## Running tests
 
-run sbt and then test.  It will download a dynamodb table from S3 and use that.  Tip: watch out for firewalls blocking the download, you may need to turn them off to stop it scanning the file.
-
-## Testing manually
-
-A good strategy for testing your stuff is to run a local identity-frontend, membership-frontend and members-data-api.  Then sign up for membership and hit the above url, which should return the right JSON structure.
-
-The /me endpoints use the GU_U and SC_GU_U from the Cookie request header.
+run sbt and then test
 
 ### Identity Frontend
 
@@ -127,13 +111,6 @@ Identity frontend is split between [new (profile-origin)](https://github.com/gua
     }
  
 ## API Docs
-
-The SupporterAttributesFallback Dynamo table has identity id as a primary key. Corresponding to each identity id in the table 
-we have information about that user's membership, subscriptions, and/or digital pack. 
-
-On each lookup call (i.e. /user-attributes/{me}), we derive this information from subscriptions via Zuora, 
-and then update the entry if it's out of date. If we can't get subscriptions from Zuora, we fall back to the 
-SupporterAttributesFallback table. There is a TTL on the SupporterAttributesFallback table. 
 
 ### GET /user-attributes/me
 

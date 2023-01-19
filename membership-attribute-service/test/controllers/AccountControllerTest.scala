@@ -1,25 +1,25 @@
 package controllers
 
 import actions.CommonActions
-import org.specs2.mock.Mockito
+import configuration.Stage
+import org.mockito.IdiomaticMockito
 import org.specs2.mutable.Specification
 import play.api.test.Helpers._
 import play.api.test._
-
 import services.FakePostgresService
+import util.CreateNoopMetrics
 
-class AccountControllerTest extends Specification with Mockito {
+class AccountControllerTest extends Specification with IdiomaticMockito {
 
   "validateContributionAmountUpdateForm" should {
 
     val subName = "s1"
     val commonActions = mock[CommonActions]
-    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"))
+    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"), CreateNoopMetrics)
     val request = FakeRequest("POST", s"/api/update/amount/contributions/$subName")
 
     "succeed when given value is valid" in {
-      val result = controller.validateContributionAmountUpdateForm(
-        request.withFormUrlEncodedBody("newPaymentAmount" -> "1"))
+      val result = controller.validateContributionAmountUpdateForm(request.withFormUrlEncodedBody("newPaymentAmount" -> "1"))
       result must beRight(1)
     }
 
@@ -29,8 +29,7 @@ class AccountControllerTest extends Specification with Mockito {
     }
 
     "fail when given value is zero" in {
-      val result = controller.validateContributionAmountUpdateForm(
-        request.withFormUrlEncodedBody("newPaymentAmount" -> "0"))
+      val result = controller.validateContributionAmountUpdateForm(request.withFormUrlEncodedBody("newPaymentAmount" -> "0"))
       result must beLeft("New payment amount '0.00' is too small")
     }
   }

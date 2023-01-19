@@ -15,20 +15,20 @@ import play.api.libs.json.{Json, _}
 import org.joda.time.LocalDate.now
 
 case class AccountDetails(
-  contactId: String,
-  regNumber: Option[String],
-  email: Option[String],
-  deliveryAddress: Option[DeliveryAddress],
-  subscription : Subscription[SubscriptionPlan.AnyPlan],
-  paymentDetails: PaymentDetails,
-  billingCountry: Option[Country],
-  stripePublicKey: String,
-  accountHasMissedRecentPayments: Boolean,
-  safeToUpdatePaymentMethod: Boolean,
-  isAutoRenew: Boolean,
-  alertText: Option[String],
-  accountId: String,
-  cancellationEffectiveDate: Option[String]
+    contactId: String,
+    regNumber: Option[String],
+    email: Option[String],
+    deliveryAddress: Option[DeliveryAddress],
+    subscription: Subscription[SubscriptionPlan.AnyPlan],
+    paymentDetails: PaymentDetails,
+    billingCountry: Option[Country],
+    stripePublicKey: String,
+    accountHasMissedRecentPayments: Boolean,
+    safeToUpdatePaymentMethod: Boolean,
+    isAutoRenew: Boolean,
+    alertText: Option[String],
+    accountId: String,
+    cancellationEffectiveDate: Option[String],
 )
 
 object AccountDetails {
@@ -43,57 +43,61 @@ object AccountDetails {
 
       val mmaCategory = mmaCategoryFrom(product)
 
-      val endDate = paymentDetails.chargedThroughDate.getOrElse(paymentDetails.termEndDate)
-
       val paymentMethod = paymentDetails.paymentMethod match {
-        case Some(payPal: PayPalMethod) => Json.obj(
-          "paymentMethod" -> "PayPal",
-          "payPalEmail" -> payPal.email
-        )
-        case Some(card: PaymentCard) => Json.obj(
-          "paymentMethod" -> "Card",
-          "card" -> {
-            Json.obj(
-              "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("••••"),
-              "expiry" -> card.paymentCardDetails.map(cardDetails => Json.obj(
-                  "month" -> cardDetails.expiryMonth,
-                "year" -> cardDetails.expiryYear
-              )),
-              "type" -> card.cardType.getOrElse[String]("unknown"),
-              "stripePublicKeyForUpdate" -> stripePublicKey,
-              "email" -> email
-            )
-          }
-        )
-        case Some(dd: GoCardless) => Json.obj(
-          "paymentMethod" -> "DirectDebit",
-          "account" -> Json.obj( // DEPRECATED
-            "accountName" -> dd.accountName
-          ),
-          "mandate" -> Json.obj(
-            "accountName" -> dd.accountName,
-            "accountNumber" -> dd.accountNumber,
-            "sortCode" -> dd.sortCode
+        case Some(payPal: PayPalMethod) =>
+          Json.obj(
+            "paymentMethod" -> "PayPal",
+            "payPalEmail" -> payPal.email,
           )
-        )
-        case Some(sepa: Sepa) => Json.obj(
-          "paymentMethod" -> "Sepa",
-          "sepaMandate" -> Json.obj(
-            "accountName" -> sepa.accountName,
-            "iban" -> sepa.accountNumber,
+        case Some(card: PaymentCard) =>
+          Json.obj(
+            "paymentMethod" -> "Card",
+            "card" -> {
+              Json.obj(
+                "last4" -> card.paymentCardDetails.map(_.lastFourDigits).getOrElse[String]("••••"),
+                "expiry" -> card.paymentCardDetails.map(cardDetails =>
+                  Json.obj(
+                    "month" -> cardDetails.expiryMonth,
+                    "year" -> cardDetails.expiryYear,
+                  ),
+                ),
+                "type" -> card.cardType.getOrElse[String]("unknown"),
+                "stripePublicKeyForUpdate" -> stripePublicKey,
+                "email" -> email,
+              )
+            },
           )
-        )
-        case _ if accountHasMissedRecentPayments && safeToUpdatePaymentMethod => Json.obj(
-          "paymentMethod" -> "ResetRequired",
-          "stripePublicKeyForCardAddition" -> stripePublicKey
-        )
+        case Some(dd: GoCardless) =>
+          Json.obj(
+            "paymentMethod" -> "DirectDebit",
+            "account" -> Json.obj( // DEPRECATED
+              "accountName" -> dd.accountName,
+            ),
+            "mandate" -> Json.obj(
+              "accountName" -> dd.accountName,
+              "accountNumber" -> dd.accountNumber,
+              "sortCode" -> dd.sortCode,
+            ),
+          )
+        case Some(sepa: Sepa) =>
+          Json.obj(
+            "paymentMethod" -> "Sepa",
+            "sepaMandate" -> Json.obj(
+              "accountName" -> sepa.accountName,
+              "iban" -> sepa.accountNumber,
+            ),
+          )
+        case _ if accountHasMissedRecentPayments && safeToUpdatePaymentMethod =>
+          Json.obj(
+            "paymentMethod" -> "ResetRequired",
+            "stripePublicKeyForCardAddition" -> stripePublicKey,
+          )
         case _ => Json.obj()
       }
 
-
       def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
-        case _: Product.Weekly => if(plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
-        case _: Product.Paper => Some(plan.name.replace("+",  " plus Digital Subscription"))
+        case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
+        case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
         case _ => None
       }
 
@@ -102,26 +106,30 @@ object AccountDetails {
         "start" -> plan.start,
         "end" -> plan.end,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
-        "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30)))
+        "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30))),
       ) ++ (plan match {
-        case paidPlan: PaidSubscriptionPlan[_, _] => Json.obj(
-          "chargedThrough" -> paidPlan.chargedThrough,
-          "amount" -> paidPlan.charges.price.prices.head.amount * 100,
-          "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
-          "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
-          "interval" -> paidPlan.charges.billingPeriod.noun,
-        )
+        case paidPlan: PaidSubscriptionPlan[_, _] =>
+          Json.obj(
+            "chargedThrough" -> paidPlan.chargedThrough,
+            "price" -> paidPlan.charges.price.prices.head.amount * 100,
+            "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
+            "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
+            "billingPeriod" -> paidPlan.charges.billingPeriod.noun,
+          )
         case _ => Json.obj()
       }) ++ (plan.charges match {
-        case paperCharges: PaperCharges => Json.obj("daysOfWeek" ->
-            paperCharges.dayPrices
-            .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
-            .keys.toList
-            .map(_.dayOfTheWeekIndex)
-            .sorted
-            .map(DayOfWeek.of)
-            .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH))
-        )
+        case paperCharges: PaperCharges =>
+          Json.obj(
+            "daysOfWeek" ->
+              paperCharges.dayPrices
+                .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
+                .keys
+                .toList
+                .map(_.dayOfTheWeekIndex)
+                .sorted
+                .map(DayOfWeek.of)
+                .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH)),
+          )
         case _ => Json.obj()
       })
 
@@ -130,8 +138,9 @@ object AccountDetails {
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 
       val startDate: LocalDate = sortedPlans.headOption.map(_.start).getOrElse(paymentDetails.customerAcceptanceDate)
+      val endDate: LocalDate = sortedPlans.headOption.map(_.end).getOrElse(paymentDetails.termEndDate)
 
-      if(currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
+      if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
       val selfServiceCancellation = SelfServiceCancellation(product, billingCountry)
 
@@ -142,10 +151,11 @@ object AccountDetails {
         "selfServiceCancellation" -> Json.obj(
           "isAllowed" -> selfServiceCancellation.isAllowed,
           "shouldDisplayEmail" -> selfServiceCancellation.shouldDisplayEmail,
-          "phoneRegionsToDisplay" -> selfServiceCancellation.phoneRegionsToDisplay
-        )
+          "phoneRegionsToDisplay" -> selfServiceCancellation.phoneRegionsToDisplay,
+        ),
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
+        billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name) }) ++
         Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,
@@ -168,35 +178,35 @@ object AccountDetails {
             "autoRenew" -> isAutoRenew,
             "plan" -> Json.obj( // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
               "name" -> paymentDetails.plan.name,
-              "amount" -> paymentDetails.plan.price.amount * 100,
+              "price" -> paymentDetails.plan.price.amount * 100,
               "currency" -> paymentDetails.plan.price.currency.glyph,
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
-              "interval" -> paymentDetails.plan.interval.mkString
+              "billingPeriod" -> paymentDetails.plan.interval.mkString,
             ),
             "currentPlans" -> currentPlans.map(jsonifyPlan),
             "futurePlans" -> futurePlans.map(jsonifyPlan),
             "readerType" -> accountDetails.subscription.readerType.value,
             "accountId" -> accountDetails.accountId,
-            "cancellationEffectiveDate" -> cancellationEffectiveDate
+            "cancellationEffectiveDate" -> cancellationEffectiveDate,
           )),
         ) ++ alertText.map(text => Json.obj("alertText" -> text)).getOrElse(Json.obj())
 
     }
   }
 
-  /**
-   * Note this is a different concept than termEndDate because termEndDate
-   * could be many years in the future. termEndDate models when Zuora will
-   * renew the subscription whilst anniversary indicates when another year
-   * will have passed since user started their subscription.
-   *
-   * @param start beginning of subscription timeline, perhaps customerAcceptanceDate
-   * @param today where we are on the timeline today
-   * @return next anniversary date of the subscription
-   */
+  /** Note this is a different concept than termEndDate because termEndDate could be many years in the future. termEndDate models when Zuora will
+    * renew the subscription whilst anniversary indicates when another year will have passed since user started their subscription.
+    *
+    * @param start
+    *   beginning of subscription timeline, perhaps customerAcceptanceDate
+    * @param today
+    *   where we are on the timeline today
+    * @return
+    *   next anniversary date of the subscription
+    */
   def anniversary(
-    start: LocalDate,
-    today: LocalDate = LocalDate.now()
+      start: LocalDate,
+      today: LocalDate = LocalDate.now(),
   ): LocalDate = {
     @tailrec def loop(current: LocalDate): LocalDate = {
       val next = current.plusYears(1)
@@ -208,7 +218,9 @@ object AccountDetails {
   def mmaCategoryFrom(product: Product): String = product match {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
-    case _: Product.Contribution => "contributions"
+    case _: Product.SupporterPlus => "recurringSupport"
+    case _: Product.GuardianPatron => "subscriptions"
+    case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"
     case _ => product.name // fallback
   }
@@ -217,19 +229,24 @@ object AccountDetails {
 object CancelledSubscription {
   import AccountDetails._
   def apply(subscription: Subscription[AnyPlan]): JsObject = {
-    GetCurrentPlans.bestCancelledPlan(subscription).map { plan =>
-      Json.obj(
-        "mmaCategory" -> mmaCategoryFrom(plan.product),
-        "tier" -> plan.productName,
-        "subscription" -> (Json.obj(
-          "subscriptionId" -> subscription.name.get,
-          "cancellationEffectiveDate" -> subscription.termEndDate,
-          "start" -> subscription.acceptanceDate,
-          "end" -> subscription.termEndDate,
-          "readerType" -> subscription.readerType.value,
-          "accountId" -> subscription.accountId.get,
-        )),
-      )
-    }.getOrElse(Json.obj())
+    GetCurrentPlans
+      .bestCancelledPlan(subscription)
+      .map { plan =>
+        Json.obj(
+          "mmaCategory" -> mmaCategoryFrom(plan.product),
+          "tier" -> plan.productName,
+          "subscription" -> (
+            Json.obj(
+              "subscriptionId" -> subscription.name.get,
+              "cancellationEffectiveDate" -> subscription.termEndDate,
+              "start" -> subscription.acceptanceDate,
+              "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
+              "readerType" -> subscription.readerType.value,
+              "accountId" -> subscription.accountId.get,
+            )
+          ),
+        )
+      }
+      .getOrElse(Json.obj())
   }
 }

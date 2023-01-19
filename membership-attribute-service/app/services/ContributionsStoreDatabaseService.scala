@@ -2,17 +2,13 @@ package services
 
 import anorm._
 import com.typesafe.scalalogging.StrictLogging
-import models.ContributionData
+import models.RecurringReminderStatus._
+import models.{ContributionData, SupportReminderDb, SupportReminders}
 import play.api.db.Database
 import services.ContributionsStoreDatabaseService.DatabaseGetResult
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scalaz.\/
-import models.SupportReminders
-import models.SupportReminderDb
-import models.RecurringReminderStatus._
-
 
 trait ContributionsStoreDatabaseService {
   def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]]
@@ -23,19 +19,20 @@ trait ContributionsStoreDatabaseService {
 }
 
 object ContributionsStoreDatabaseService {
-  type DatabaseGetResult[R] = Future[\/[String, R]]
+  type DatabaseGetResult[R] = Future[Either[String, R]]
 }
 
 class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext)
-  extends ContributionsStoreDatabaseService with StrictLogging {
+    extends ContributionsStoreDatabaseService
+    with StrictLogging {
 
   private def executeQuery[R](statement: SimpleSql[Row], parser: ResultSetParser[R]): DatabaseGetResult[R] =
     Future(database.withConnection { implicit conn =>
       statement.as(parser)
     })
-      .map(\/.right)
+      .map(Right(_))
       .recover { case NonFatal(err) =>
-        \/.left(s"Error querying contributions store. Error: $err")
+        Left(s"Error querying contributions store. Error: $err")
       }
 
   override def getAllContributions(identityId: String): DatabaseGetResult[List[ContributionData]] = {
@@ -75,9 +72,11 @@ class PostgresDatabaseService private (database: Database)(implicit ec: Executio
 
     executeQuery(statement, rowParser).map { result =>
       result.map {
-        case Some(SupportReminderDb(true, reminderCode)) => SupportReminders(recurringStatus=Cancelled, recurringReminderCode=Some(reminderCode.toString()))
-        case Some(SupportReminderDb(false, reminderCode)) => SupportReminders(recurringStatus=Active, recurringReminderCode=Some(reminderCode.toString()))
-        case None => SupportReminders(recurringStatus=NotSet, recurringReminderCode=None)
+        case Some(SupportReminderDb(true, reminderCode)) =>
+          SupportReminders(recurringStatus = Cancelled, recurringReminderCode = Some(reminderCode.toString()))
+        case Some(SupportReminderDb(false, reminderCode)) =>
+          SupportReminders(recurringStatus = Active, recurringReminderCode = Some(reminderCode.toString()))
+        case None => SupportReminders(recurringStatus = NotSet, recurringReminderCode = None)
       }
     }
   }
@@ -87,4 +86,3 @@ object PostgresDatabaseService {
   def fromDatabase(database: Database)(implicit ec: ExecutionContext): PostgresDatabaseService =
     new PostgresDatabaseService(database)
 }
-

@@ -1,11 +1,12 @@
 package services
 
+import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
-import services.MembershipTier.{Friend, Partner, Patron, Staff, Supporter, getMostValuableTier}
+import services.MembershipTier._
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
-class SupporterRatePlanToAttributesMapper(stage: String) {
+class SupporterRatePlanToAttributesMapper(stage: Stage) {
 
   def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]) = {
     supporterRatePlanItems
@@ -17,7 +18,7 @@ class SupporterRatePlanToAttributesMapper(stage: String) {
   }
 
   private def mapRatePlanToAttributes(maybeAttributes: Option[Attributes], ratePlanItem: DynamoSupporterRatePlanItem, identityId: String) =
-    productRatePlanMappings(stage)
+    productRatePlanMappings(stage.value)
       .collectFirst {
         case (ids, transformer) if ids.contains(ratePlanItem.productRatePlanId) =>
           Some(transformer.transform(maybeAttributes.getOrElse(Attributes(identityId)), ratePlanItem))
@@ -32,7 +33,11 @@ object SupporterRatePlanToAttributesMapper {
   type ProductRatePlanId = String
   val digitalSubTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
-      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
+      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
+    )
+  val supporterPlusTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
     attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
@@ -40,20 +45,30 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
   val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
-      PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
+      PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val paperPlusDigitalTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
-      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
+      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val guardianWeeklyTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
-      GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate)
+      GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
+  val guardianPatronTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      GuardianPatronExpiryDate = Some(supporterRatePlanItem.termEndDate),
+    )
+  val guardianPatronProductRatePlanId = "guardian_patron"
   val productRatePlanMappings: Map[Stage, Map[List[ProductRatePlanId], AttributeTransformer]] =
     Map(
       "PROD" -> Map(
+        List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
+        List(
+          "8a12865b8219d9b401822106192b64dc",
+          "8a12865b8219d9b40182210618a464ba",
+        ) -> supporterPlusTransformer,
         List(
           "2c92a0fb4edd70c8014edeaa4eae220a",
           "2c92a0fb4edd70c8014edeaa4e972204",
@@ -62,7 +77,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92a00c77992ba70177a6596f710265",
           "2c92a0ff73add07f0173b99f14390afc",
           "2c92a00773adc09d0173b99e4ded7f45",
-          "2c92a0fb4edd70c8014edeaa4e8521fe"
+          "2c92a0fb4edd70c8014edeaa4e8521fe",
         ) -> digitalSubTransformer,
         List("2c92a0fc5aacfadd015ad24db4ff5e97") -> monthlyContributionTransformer,
         List("2c92a0fc5e1dc084015e37f58c200eea") -> annualContributionTransformer,
@@ -83,7 +98,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92a0ff560d311b0156136f2afe5315",
           "2c92a0fd560d13880156136b72e50f0c",
           "2c92a0ff56fe33f001572334561765c1",
-          "2c92a0fd596d321a0159735a7b150e43"
+          "2c92a0fd596d321a0159735a7b150e43",
         ) -> paperTransformer,
         List(
           "2c92a00870ec598001710740ce702ff0",
@@ -100,7 +115,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92a0fd560d13880156136b8e490f8b",
           "2c92a0ff560d311b0156136b9f5c3968",
           "2c92a0ff560d311b0156136b697438a9",
-          "2c92a0fd560d132301560e43cf041a3c"
+          "2c92a0fd560d132301560e43cf041a3c",
         ) -> paperPlusDigitalTransformer,
         List(
           "2c92a0fe6619b4b601661ab300222651",
@@ -130,41 +145,46 @@ object SupporterRatePlanToAttributesMapper {
           "2c92a0fc5b42d2c9015b6259f7f40040",
           "2c92a0fd57d0a9870157d7412f19424f",
           "2c92a0fe57d0a0c40157d74241005544",
-          "2c92a0ff58bdf4eb0158f307ed0e02be"
+          "2c92a0ff58bdf4eb0158f307ed0e02be",
         ) -> guardianWeeklyTransformer,
         List(
           "2c92a0fb4ce4b8e7014ce711d3c37e60",
-          "2c92a0f9479fb46d0147d0155c6f558b"
+          "2c92a0f9479fb46d0147d0155c6f558b",
         ) -> memberTransformer(Friend),
         List(
-          "2c92a0f949efde7c0149f1f18162178e"
+          "2c92a0f949efde7c0149f1f18162178e",
         ) -> memberTransformer(Staff),
         List(
           "2c92a0f94c547592014c69f5b0ff4f7e",
           "2c92a0fb4c5481db014c69f4a1e03bbd",
           "2c92a0fb4bb97034014bbbc562114fef",
-          "2c92a0fb4bb97034014bbbc562604ff7"
+          "2c92a0fb4bb97034014bbbc562604ff7",
         ) -> memberTransformer(Supporter),
         List(
           "2c92a0fb4c5481dc014c69f95fce7240",
           "2c92a0f94c54758b014c69f813bd39ec",
           "2c92a0f9479fb46d0147d0155ca15595",
-          "2c92a0f9479fb46d0147d0155cb15596"
+          "2c92a0f9479fb46d0147d0155cb15596",
         ) -> memberTransformer(Partner),
         List(
           "2c92a0fb4c5481db014c69fb9118704b",
           "2c92a0f94c547592014c69fb0c4274fc",
           "2c92a0f9479fb46d0147d0155bf9557a",
-          "2c92a0f9479fb46d0147d0155c245581"
-        ) -> memberTransformer(Patron)
+          "2c92a0f9479fb46d0147d0155c245581",
+        ) -> memberTransformer(Patron),
       ),
       "UAT" -> Map(
+        List("guardian_patron") -> guardianPatronTransformer,
+        List(
+          "8ad088718219a6b601822036a6c91f5c",
+          "8ad088718219a6b601822036a5801f34",
+        ) -> supporterPlusTransformer,
         List(
           "2c92c0f94f2acf73014f2c908f671591",
           "2c92c0f84f2ac59d014f2c94aea9199e",
           "2c92c0f971c65df50171dfabef87093d",
           "2c92c0f9778c090d017795ef3000352f",
-          "2c92c0f9778c0900017795da493b4f85"
+          "2c92c0f9778c0900017795da493b4f85",
         ) -> digitalSubTransformer,
         List("2c92c0f85ab269be015acd9d014549b7") -> monthlyContributionTransformer,
         List("2c92c0f95e1d5c9c015e38f8c87d19a1") -> annualContributionTransformer,
@@ -183,7 +203,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92c0f95aff3b54015b0ede33bc04f2",
           "2c92c0f955ca02900155da27f83c2d9b",
           "2c92c0f955ca02900155da27ff142e01",
-          "2c92c0f955ca02900155da27f55b2d5f"
+          "2c92c0f955ca02900155da27f55b2d5f",
         ) -> paperTransformer,
         List(
           "2c92c0f870f682820171070489d542da",
@@ -200,7 +220,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92c0f955ca02900155da27f4872d4d",
           "2c92c0f955ca02900155da27f9402dad",
           "2c92c0f955ca02900155da27f29e2d13",
-          "2c92c0f955ca02900155da2803b02e33"
+          "2c92c0f955ca02900155da2803b02e33",
         ) -> paperPlusDigitalTransformer,
         List(
           "2c92c0f9660fc4d70166109a2eb0607c",
@@ -210,41 +230,46 @@ object SupporterRatePlanToAttributesMapper {
           "2c92c0f9660fc4d70166107fa5412641",
           "2c92c0f867cae0700167f043870d6d0e",
           "2c92c0f8660fb5d601661081ea010391",
-          "2c92c0f96df75b51016df8444f36362f"
+          "2c92c0f96df75b51016df8444f36362f",
         ) -> guardianWeeklyTransformer,
         List(
           "2c92c0f94cc6ea05014cdb4b1d1f037d",
-          "2c92c0f848f362750148f4c2727379d7"
+          "2c92c0f848f362750148f4c2727379d7",
         ) -> memberTransformer(Friend),
         List(
-          "2c92c0f849f118740149f1d61ad07723"
+          "2c92c0f849f118740149f1d61ad07723",
         ) -> memberTransformer(Staff),
         List(
           "2c92c0f84c5100b6014c569ad3a23d10",
           "2c92c0f84c5100b6014c569b83b33ebd",
           "2c92c0f84bbfeca5014bc0c5a9a12427",
-          "2c92c0f84bbfeca5014bc0c5a83f241f"
+          "2c92c0f84bbfeca5014bc0c5a83f241f",
         ) -> memberTransformer(Supporter),
         List(
           "2c92c0f84c510073014c56948fbe6894",
           "2c92c0f84c510081014c569327003593",
           "2c92c0f848f362750148f4c2729379db",
-          "2c92c0f848f362750148f4c2728379d9"
+          "2c92c0f848f362750148f4c2728379d9",
         ) -> memberTransformer(Partner),
         List(
           "2c92c0f94c510a0d014c569070792fa7",
           "2c92c0f84c510081014c568daa112d2a",
           "2c92c0f848f362750148f4c2726079d5",
-          "2c92c0f848f362750148f4c2724679d3"
-        ) -> memberTransformer(Patron)
+          "2c92c0f848f362750148f4c2724679d3",
+        ) -> memberTransformer(Patron),
       ),
       "DEV" -> Map(
+        List("guardian_patron") -> guardianPatronTransformer,
+        List(
+          "8ad09fc281de1ce70181de3b251736a4",
+          "8ad09fc281de1ce70181de3b28ee3783",
+        ) -> supporterPlusTransformer,
         List(
           "2c92c0f84bbfec8b014bc655f4852d9d",
           "2c92c0f94bbffaaa014bc6a4212e205b",
           "2c92c0f971c65dfe0171c6c1f86e603c",
           "2c92c0f8778bf8f60177915b477714aa",
-          "2c92c0f8778bf8cd0177a610cdf230ae"
+          "2c92c0f8778bf8cd0177a610cdf230ae",
         ) -> digitalSubTransformer,
         List("2c92c0f85a6b134e015a7fcd9f0c7855") -> monthlyContributionTransformer,
         List("2c92c0f85e2d19af015e3896e824092c") -> annualContributionTransformer,
@@ -263,7 +288,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92c0f85aff3453015b1041dfd2317f",
           "2c92c0f955c3cf0f0155c5d9df433bf7",
           "2c92c0f955c3cf0f0155c5d9ddf13bc5",
-          "2c92c0f955c3cf0f0155c5d9e2493c43"
+          "2c92c0f955c3cf0f0155c5d9e2493c43",
         ) -> paperTransformer,
         List(
           "2c92c0f86fa49142016fa49eb1732a39",
@@ -280,7 +305,7 @@ object SupporterRatePlanToAttributesMapper {
           "2c92c0f955c3cf0f0155c5d9e83a3cb7",
           "2c92c0f95aff3b56015b104aa9a13ea5",
           "2c92c0f85aff33ff015b1042d4ba0a05",
-          "2c92c0f85aff3453015b10496b5e3d17"
+          "2c92c0f85aff3453015b10496b5e3d17",
         ) -> paperPlusDigitalTransformer,
         List(
           "2c92c0f965f2122101660fb33ed24a45",
@@ -290,34 +315,34 @@ object SupporterRatePlanToAttributesMapper {
           "2c92c0f965d280590165f16b1b9946c2",
           "2c92c0f867cae0700167eff921734f7b",
           "2c92c0f965dc30640165f150c0956859",
-          "2c92c0f96ded216a016df491134d4091"
+          "2c92c0f96ded216a016df491134d4091",
         ) -> guardianWeeklyTransformer,
         List(
           "2c92c0f94c9ca1c5014c9e5c64ba4260",
-          "2c92c0f945fee1c90146057402c7066b"
+          "2c92c0f945fee1c90146057402c7066b",
         ) -> memberTransformer(Friend),
         List(
-          "2c92c0f849c6e58a0149c73d6f114be2"
+          "2c92c0f849c6e58a0149c73d6f114be2",
         ) -> memberTransformer(Staff),
         List(
           "2c92c0f94c510a0d014c569ba8eb45f7",
           "2c92c0f94c510a01014c569e2d857cfd",
           "2c92c0f84b079582014b2754c07c0f7d",
-          "2c92c0f84b079582014b2754bfd70f6d"
+          "2c92c0f84b079582014b2754bfd70f6d",
         ) -> memberTransformer(Supporter),
         List(
           "2c92c0f94c510a0d014c569a93194575",
           "2c92c0f84c510081014c569a18b04e84",
           "2c92c0f945fee1c9014605749e450969",
-          "2c92c0f8471e22bb01471ffe9596366c"
+          "2c92c0f8471e22bb01471ffe9596366c",
         ) -> memberTransformer(Partner),
         List(
           "2c92c0f84c5100b6014c56908a63216d",
           "2c92c0f94c510a04014c568d648d097d",
           "2c92c0f845fed48301460578277167c3",
-          "2c92c0f9471e145d01471ffd7c304df9"
-        ) -> memberTransformer(Patron)
-      )
+          "2c92c0f9471e145d01471ffd7c304df9",
+        ) -> memberTransformer(Patron),
+      ),
     )
 
   def memberTransformer(tier: MembershipTier): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
@@ -328,7 +353,6 @@ object SupporterRatePlanToAttributesMapper {
   }
 
 }
-
 
 sealed abstract class MembershipTier(val name: String, val value: Int)
 
@@ -347,6 +371,5 @@ object MembershipTier {
       existingTier
     else
       Some(newTier.name)
-
 
 }

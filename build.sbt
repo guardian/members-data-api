@@ -1,4 +1,3 @@
-import Dependencies._
 import scala.sys.process._
 
 val appVersion = "1.0-SNAPSHOT"
@@ -13,35 +12,28 @@ def buildInfoSettings = Seq(
     name,
     BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
     BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId()))
+    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId())),
   ),
   buildInfoPackage := "app",
-  buildInfoOptions += BuildInfoOption.ToMap
+  buildInfoOptions += BuildInfoOption.ToMap,
 )
 
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.13.7",
+  scalaVersion := "2.13.10",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
   ),
   Compile / doc / sources := Seq.empty,
   Compile / packageDoc / publishArtifact := false,
   Global / parallelExecution := false,
   updateOptions := updateOptions.value.withCachedResolution(true),
-  Test / javaOptions += "-Dconfig.resource=TEST.public.conf"
+  Test / javaOptions += "-Dconfig.resource=TEST.public.conf",
+  Test / fork := true,
 ) ++ buildInfoSettings
-
-lazy val dynamoDBLocalSettings = Seq(
-  dynamoDBLocalDownloadDir := file("dynamodb-local"),
-  startDynamoDBLocal := (startDynamoDBLocal.dependsOn(Test / compile)).value,
-  Test / test := (Test / test).dependsOn(startDynamoDBLocal).value,
-  Test / testOnly := ((Test / testOnly).dependsOn(startDynamoDBLocal)).evaluated,
-  Test / testOptions += (dynamoDBLocalTestCleanup).value
-)
 
 import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 val buildDebSettings = Seq(
@@ -59,31 +51,24 @@ val buildDebSettings = Seq(
     "-J-XX:MaxMetaspaceSize=500m",
     "-J-XX:+PrintGCDetails",
     "-J-XX:+PrintGCDateStamps",
-    s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
-  )
+    s"-J-Xloggc:/var/log/${packageName.value}/gc.log",
+  ),
 )
 
-def lib(name: String) =
-  Project(name, file(name))
-    .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging)
-    .settings(commonSettings)
-
-def app(name: String) =
-  lib(name)
-    .settings(dynamoDBLocalSettings)
-    .settings(buildDebSettings)
-
-val api = app("membership-attribute-service")
+val api = Project("membership-attribute-service", file("membership-attribute-service"))
+  .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging)
+  .settings(commonSettings)
+  .settings(buildDebSettings)
   .settings(
-    libraryDependencies ++= apiDependencies,
-    dependencyOverrides ++= depOverrides
+    libraryDependencies ++= Dependencies.apiDependencies,
+    dependencyOverrides ++= Dependencies.dependencyOverrides,
+    excludeDependencies ++= Dependencies.excludeDependencies,
   )
   .settings(routesGenerator := InjectedRoutesGenerator)
   .settings(
-    scalacOptions += "-Ypartial-unification",
     addCommandAlias("devrun", "run 9400"),
     addCommandAlias("batch-load", "runMain BatchLoader"),
-    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity")
+    addCommandAlias("play-artifact", "riffRaffNotifyTeamcity"),
   )
 
 val root = project.in(file(".")).aggregate(api)

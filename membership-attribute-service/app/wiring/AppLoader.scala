@@ -2,88 +2,133 @@ package wiring
 
 import actions.CommonActions
 import akka.actor.ActorSystem
+import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.salesforce.SimpleContactRepository
+import com.gu.zuora.ZuoraSoapService
+import com.gu.zuora.rest.ZuoraRestService
 import components.TouchpointBackends
-import configuration.Config
+import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
-import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
+import filters._
 import loghandling.Logstash
-import monitoring.{ErrorHandler, SentryLogging}
+import monitoring.{CreateMetrics, ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
-import play.api.{db, _}
-import play.api.db.{ConnectionPool, DBComponents, HikariCPComponents}
-import play.api.http.DefaultHttpErrorHandler
+import play.api._
+import play.api.db.{DBComponents, HikariCPComponents}
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.EssentialFilter
-import play.filters.cors.CORSFilter
+import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.{AttributesFromZuora, MobileSubscriptionServiceImpl, PostgresDatabaseService}
+import services.{
+  BasicStripeService,
+  ContributionsStoreDatabaseService,
+  HealthCheckableService,
+  MobileSubscriptionServiceImpl,
+  PostgresDatabaseService,
+  SupporterProductDataService,
+}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
-class AppLoader extends ApplicationLoader
-{
-  def load(context: Context) = {
+class AppLoader extends ApplicationLoader {
+  def load(context: Context): Application = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
-    SentryLogging.init()
-    Logstash.init(Config)
-    new MyComponents(context).application
+    val config = context.initialConfiguration.underlying
+    SentryLogging.init(new SentryConfig(config))
+    Logstash.init(new LogstashConfig(config))
+    createMyComponents(context).application
   }
+
+  protected def createMyComponents(context: Context) =
+    new MyComponents(context)
 }
 
 class MyComponents(context: Context)
-  extends BuiltInComponentsFromContext(context)
+    extends BuiltInComponentsFromContext(context)
     with AhcWSComponents
     with CSRFComponents
     with HikariCPComponents
-    with DBComponents
-{
+    with DBComponents {
 
+  lazy val config = context.initialConfiguration.underlying
+  lazy val stage = Stage(config.getString("stage"))
+  lazy val createMetrics = new CreateMetrics(stage)
 
+  lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
+  lazy val contactRepositoryOverride: Option[SimpleContactRepository] = None
+  lazy val subscriptionServiceOverride: Option[SubscriptionService[Future]] = None
+  lazy val zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None
+  lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
+  lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
+  lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
 
-  val touchPointBackends = new TouchpointBackends(actorSystem)
-  val commonActions = new CommonActions(touchPointBackends, defaultBodyParser)
+  lazy val touchPointBackends = new TouchpointBackends(
+    actorSystem,
+    config,
+    createMetrics,
+    supporterProductDataServiceOverride,
+    contactRepositoryOverride,
+    subscriptionServiceOverride,
+    zuoraRestServiceOverride,
+    catalogServiceOverride,
+    zuoraSoapServiceOverride,
+    patronsStripeServiceOverride,
+  )
+  private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
+  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
+  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, isTestUser)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(
       environment,
       configuration,
       devContext.map(_.sourceMapper),
       Some(router),
-      touchPointBackends.normal.identityAuthService
+      touchPointBackends.normal.identityAuthService,
+      addGuIdentityHeaders,
     )
   implicit val system: ActorSystem = actorSystem
-  val attributesFromZuora = new AttributesFromZuora()
 
-  val dbService = {
+  lazy val dbService: ContributionsStoreDatabaseService = {
     val db = dbApi.database("oneOffStore")
     val jdbcExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("contexts.jdbc-context")
 
     PostgresDatabaseService.fromDatabase(db)(jdbcExecutionContext)
   }
 
-  val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient)
+  lazy val mobileSubscriptionService = new MobileSubscriptionServiceImpl(wsClient = wsClient, config)
 
   lazy val router: Routes = new Routes(
     httpErrorHandler,
     new HealthCheckController(touchPointBackends, controllerComponents),
-    new AttributeController(attributesFromZuora, commonActions, controllerComponents, dbService, mobileSubscriptionService),
-    new ExistingPaymentOptionsController(commonActions, controllerComponents),
-    new AccountController(commonActions, controllerComponents, dbService),
-    new PaymentUpdateController(commonActions, controllerComponents),
-    new ContactController(commonActions, controllerComponents)
+    new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, createMetrics),
+    new ExistingPaymentOptionsController(commonActions, controllerComponents, createMetrics),
+    new AccountController(commonActions, controllerComponents, dbService, createMetrics),
+    new PaymentUpdateController(commonActions, controllerComponents, createMetrics),
+    new ContactController(commonActions, controllerComponents, createMetrics),
   )
 
   val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
+
+  lazy val corsConfig = new CorsConfig(configuration)
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
     new CheckCacheHeadersFilter(),
     csrfFilter,
     new AddEC2InstanceHeader(wsClient),
-    new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService),
-    CORSFilter(corsConfig = Config.mmaUpdateCorsConfig, pathPrefixes = postPaths),
-    CORSFilter(corsConfig = Config.corsConfig, pathPrefixes = Seq("/user-attributes"))
+    new AddGuIdentityHeadersFilter(addGuIdentityHeaders),
+    CORSFilter(corsConfig = corsConfig.mmaUpdateCorsConfig, pathPrefixes = postPaths),
+    CORSFilter(corsConfig = corsConfig.corsConfig, pathPrefixes = Seq("/user-attributes")),
   )
+}
 
+class CorsConfig(val configuration: Configuration) {
+  lazy val corsConfig = CORSConfig.fromConfiguration(configuration)
+
+  lazy val mmaUpdateCorsConfig = corsConfig.copy(
+    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
+    isHttpMethodAllowed = Seq("POST", "OPTIONS").contains(_),
+  )
 }
