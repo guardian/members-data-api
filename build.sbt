@@ -42,6 +42,7 @@ val buildDebSettings = Seq(
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
   packageDescription := """Members Data API""",
+  riffRaffManifestProjectName := s"MemSub::Membership::members-data-api",
   riffRaffPackageType := (Debian / packageBin).value,
   riffRaffArtifactResources += (file("cloudformation/membership-attribute-service.yaml") -> "cloudformation/membership-attribute-service.yaml"),
   Universal / javaOptions ++= Seq(
