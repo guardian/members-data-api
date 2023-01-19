@@ -1,12 +1,12 @@
 package filters
 
 import org.specs2.mutable.Specification
-import org.specs2.mock.Mockito
 import Headers._
+import org.mockito.IdiomaticMockito
 import play.api.mvc
 import org.specs2.specification.Scope
 
-class HeadersTest extends Specification with Mockito {
+class HeadersTest extends Specification with IdiomaticMockito {
   trait fixtures extends Scope {
     val headersFixture = mock[mvc.Headers]
     headersFixture.get("X-Forwarded-For") returns Some("86.142.23.56, 78.24.67.23")
