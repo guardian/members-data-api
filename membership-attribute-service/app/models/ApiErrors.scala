@@ -35,4 +35,9 @@ object ApiErrors {
     statusCode = 401,
   )
 
+  val forbidden = ApiError(
+    message = "Forbidden",
+    details = "Insufficient authority to access endpoint",
+    statusCode = 403,
+  )
 }

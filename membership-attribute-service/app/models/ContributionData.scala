@@ -17,7 +17,7 @@ object ContributionData {
     override def writes(o: ContributionData): JsValue = Json.obj(
       "created" -> o.created,
       "currency" -> o.currency.toString,
-      "amount" -> o.amount,
+      "price" -> o.amount,
       "status" -> o.status,
     )
   }
