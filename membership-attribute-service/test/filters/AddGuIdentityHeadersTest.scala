@@ -1,19 +1,21 @@
 package filters
 
-import configuration.Config.testUsernames
+import com.typesafe.config.ConfigFactory
+import configuration.CreateTestUsernames
 import models.UserFromToken
+import org.mockito.IdiomaticMockito
 import org.mockito.Mockito.{times, verify, verifyNoInteractions, when}
-import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 import play.api.mvc.Results.Ok
 import play.api.mvc.{RequestHeader, Result}
+import services.AuthenticationFailure.Unauthorised
 import services.IdentityAuthService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class AddGuIdentityHeadersTest extends Specification with Mockito {
+class AddGuIdentityHeadersTest extends Specification with IdiomaticMockito {
 
   val XGuIdentityId = "X-Gu-Identity-Id"
   val XGuMembershipTestUser = "X-Gu-Membership-Test-User"
@@ -22,11 +24,17 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
     identityId = "testUserId",
     username = Some("testUserName"),
     userEmailValidated = None,
+    authTime = None,
   )
 
   val identityService = mock[IdentityAuthService]
   val request = mock[RequestHeader]
-  when(identityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Some(user)))
+  when(identityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Right(user)))
+  val config = ConfigFactory.load()
+  val testUsernames = CreateTestUsernames.from(config)
+  val isTestUser = new IsTestUser(testUsernames)
+
+  val addGuIdentityHeaders = new AddGuIdentityHeaders(identityService, isTestUser)
 
   val resultWithoutIdentityHeaders = Ok("testResult").withHeaders("previousHeader" -> "previousHeaderValue")
   val resultWithXGuIdentity = resultWithoutIdentityHeaders.withHeaders(XGuIdentityId -> "testUserId")
@@ -44,45 +52,46 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
   "AddGuIdentityHeaders" should {
 
     "add headers for user " in {
-      val actualResult = AddGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, user)
+      val actualResult = addGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, user)
       assertHeadersSet(actualResult)
     }
 
     "add headers for test user " in {
       val testUsername = testUsernames.generate()
       val testUser = user.copy(username = Some(testUsername))
-      val actualResult = AddGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, testUser)
+      val actualResult = addGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, testUser)
       assertHeadersSet(actualResult, testUser = true)
     }
 
     "detect if result has identity headers" in {
-      AddGuIdentityHeaders.hasIdentityHeaders(resultWithoutIdentityHeaders) should beEqualTo(false)
-      AddGuIdentityHeaders.hasIdentityHeaders(resultWithXGuIdentity) should beEqualTo(false)
-      AddGuIdentityHeaders.hasIdentityHeaders(resultWithXGuMembershipTestUser) should beEqualTo(false)
-      AddGuIdentityHeaders.hasIdentityHeaders(resultWithAllIdentityHeaders) should beEqualTo(true)
+      addGuIdentityHeaders.hasIdentityHeaders(resultWithoutIdentityHeaders) should beEqualTo(false)
+      addGuIdentityHeaders.hasIdentityHeaders(resultWithXGuIdentity) should beEqualTo(false)
+      addGuIdentityHeaders.hasIdentityHeaders(resultWithXGuMembershipTestUser) should beEqualTo(false)
+      addGuIdentityHeaders.hasIdentityHeaders(resultWithAllIdentityHeaders) should beEqualTo(true)
     }
 
     "detect test users" in {
       val testUsername = testUsernames.generate()
-      AddGuIdentityHeaders.isTestUser(Some(testUsername)) should beTrue
+      val isTestUser = new IsTestUser(testUsernames)
+      isTestUser(Some(testUsername)) should beTrue
     }
     "detect non test users" in {
-      AddGuIdentityHeaders.isTestUser(Some("not_a_test_user")) should beFalse
+      isTestUser(Some("not_a_test_user")) should beFalse
     }
     "consider empty username as non test user" in {
-      AddGuIdentityHeaders.isTestUser(None) should beFalse
+      isTestUser(None) should beFalse
     }
   }
 
   "fromIdapiIfMissing should not change the headers or call idapi if the result already has identity headers" in {
-    val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithAllIdentityHeaders, identityService)
+    val futureActualResult = addGuIdentityHeaders.fromIdapiIfMissing(request, resultWithAllIdentityHeaders)
     val actualResult = Await.result(futureActualResult, 5.seconds)
     verifyNoInteractions(identityService)
     assertHeadersSet(actualResult)
   }
 
   "fromIdapiIfMissing should call idapi and set the headers if the result doesn't already have identity headers" in {
-    val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders, identityService)
+    val futureActualResult = addGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders)
     val actualResult = Await.result(futureActualResult, 5.seconds)
     verify(identityService, times(1)).user(requiredScopes = Nil)(request)
     assertHeadersSet(actualResult)
@@ -90,9 +99,10 @@ class AddGuIdentityHeadersTest extends Specification with Mockito {
 
   "fromIdapiIfMissing should not modify headers if no user is found in idapi when trying to add missing headers" in {
     val notFoundIdentityService = mock[IdentityAuthService]
-    when(notFoundIdentityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(None))
+    when(notFoundIdentityService.user(requiredScopes = Nil)(request)).thenReturn(Future.successful(Left(Unauthorised)))
 
-    val futureActualResult = AddGuIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders, notFoundIdentityService)
+    val guIdentityHeaders = new AddGuIdentityHeaders(notFoundIdentityService, isTestUser)
+    val futureActualResult = guIdentityHeaders.fromIdapiIfMissing(request, resultWithoutIdentityHeaders)
     val actualResult = Await.result(futureActualResult, 5.seconds)
     verify(notFoundIdentityService, times(1)).user(requiredScopes = Nil)(request)
     actualResult.header.headers.size should beEqualTo(1)
