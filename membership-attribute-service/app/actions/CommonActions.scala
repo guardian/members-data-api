@@ -30,7 +30,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
     NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes)
 
   // TODO: Is this redundant, given that authoriseForRecentLogin checks for recency and scopes?
-  def AuthorizeForRecentLogin2(
+  def AuthorizeForRecentLoginAndScopes(
       howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
       requiredScopes: List[AccessScope],
   ): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
