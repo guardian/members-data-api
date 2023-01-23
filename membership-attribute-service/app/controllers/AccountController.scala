@@ -267,7 +267,7 @@ class AccountController(
     }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
+    AuthorizeForRecentLogin2(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
       metrics.measureDuration(metricName) {
         val user = request.user
         val userId = user.identityId
