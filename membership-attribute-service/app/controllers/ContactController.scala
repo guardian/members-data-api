@@ -24,7 +24,7 @@ class ContactController(
   val metrics = createMetrics.forService(classOf[ContactController])
 
   def updateDeliveryAddress(contactId: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { request =>
       metrics.measureDuration("PUT /user-attributes/me/delivery-address/:contactId") {
         logger.info(s"Updating delivery address for contact $contactId")
 

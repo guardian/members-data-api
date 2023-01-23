@@ -29,7 +29,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
   val metrics = createMetrics.forService(classOf[PaymentUpdateController])
 
   def updateCard(subscriptionName: String) =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/update-card/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
         val legacyForm = Form {
@@ -82,7 +82,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     }
 
   def updateDirectDebit(subscriptionName: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/update-direct-debit/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 

@@ -77,7 +77,7 @@ class ExistingPaymentOptionsController(
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
   def existingPaymentOptions(currencyFilter: Option[String]): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(ContinueRegardlessOfSignInRecency, requiredScopes = List(completeReadSelf)).async { implicit request =>
+    AuthorizeForRecentLogin(ContinueRegardlessOfSignInRecency, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/existing-payment-options") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val maybeUserId = request.redirectAdvice.userId
