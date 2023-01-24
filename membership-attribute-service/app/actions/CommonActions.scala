@@ -22,18 +22,20 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 
   val NoCacheAction = resultModifier(noCache)
 
+  // TODO: Might need a better name as authoriseForRecentLogin checks for recency and scopes
   def AuthorizeForScopes(requiredScopes: List[AccessScope]): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
     NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
 
-  def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn): ActionBuilder[AuthAndBackendRequest, AnyContent] =
-    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser)
+  def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, requiredScopes: List[AccessScope]): ActionBuilder[AuthAndBackendRequest, AnyContent] =
+    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes)
 
-  def AuthorizeForRecentLogin(
+  // TODO: Is this redundant, given that authoriseForRecentLogin checks for recency and scopes?
+  def AuthorizeForRecentLoginAndScopes(
       howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
       requiredScopes: List[AccessScope],
   ): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
     NoCacheAction andThen
-      new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser) andThen
+      new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes) andThen
       new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {

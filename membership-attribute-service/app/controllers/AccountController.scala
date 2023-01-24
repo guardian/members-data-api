@@ -250,7 +250,7 @@ class AccountController(
     }
 
   def reminders: Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/reminders") {
         request.redirectAdvice.userId match {
           case Some(userId) =>
@@ -267,7 +267,7 @@ class AccountController(
     }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
+    AuthorizeForRecentLoginAndScopes(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
       metrics.measureDuration(metricName) {
         val user = request.user
         val userId = user.identityId
@@ -299,7 +299,7 @@ class AccountController(
   }
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancelled-subscriptions") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val emptyResponse = Ok("[]")

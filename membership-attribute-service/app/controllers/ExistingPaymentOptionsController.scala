@@ -13,6 +13,7 @@ import com.gu.salesforce.SimpleContactRepository
 import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
+import models.AccessScope.completeReadSelf
 import models.ExistingPaymentOption
 import monitoring.CreateMetrics
 import org.joda.time.LocalDate
@@ -76,7 +77,7 @@ class ExistingPaymentOptionsController(
     new LocalDate(cardDetails.expiryYear, cardDetails.expiryMonth, 1).isAfter(now.plusMonths(1))
 
   def existingPaymentOptions(currencyFilter: Option[String]): Action[AnyContent] =
-    AuthorizeForRecentLogin(ContinueRegardlessOfSignInRecency).async { implicit request =>
+    AuthorizeForRecentLogin(ContinueRegardlessOfSignInRecency, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/existing-payment-options") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val maybeUserId = request.redirectAdvice.userId

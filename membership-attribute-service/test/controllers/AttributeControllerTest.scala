@@ -136,7 +136,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val commonActions =
     new CommonActions(touchpointBackends, stubParser, isTestUser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
       override def AuthorizeForScopes(requiredScopes: List[AccessScope]) = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
-      override def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
+      override def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, requiredScopes: List[AccessScope]) =
         NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
     }
 

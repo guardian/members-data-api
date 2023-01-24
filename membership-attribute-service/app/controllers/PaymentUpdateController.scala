@@ -10,6 +10,7 @@ import com.gu.zuora.api.GoCardlessZuoraInstance
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import configuration.Stage
 import json.PaymentCardUpdateResultWriters._
+import models.AccessScope.updateSelf
 import monitoring.{CreateMetrics, Metrics}
 import play.api.data.Form
 import play.api.data.Forms._
@@ -28,7 +29,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
   val metrics = createMetrics.forService(classOf[PaymentUpdateController])
 
   def updateCard(subscriptionName: String) =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/update-card/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
         val legacyForm = Form {
@@ -81,7 +82,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
     }
 
   def updateDirectDebit(subscriptionName: String): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/update-direct-debit/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 
