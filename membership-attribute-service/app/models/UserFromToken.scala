@@ -21,6 +21,8 @@ import java.time.{Instant, ZoneId, ZonedDateTime}
 case class UserFromToken(
     primaryEmailAddress: String,
     identityId: String,
+    firstName: Option[String] = None,
+    lastName: Option[String] = None,
     username: Option[String] = None,
     userEmailValidated: Option[Boolean] = None,
     authTime: Option[ZonedDateTime], // optional because not available from Idapi
@@ -40,6 +42,8 @@ object UserFromTokenParser extends AccessClaimsParser[UserFromToken] {
       identityId = defaultClaims.identityId,
       username = defaultClaims.username,
       userEmailValidated = unparsedClaims.getOptional[Boolean]("email_validated"),
+      firstName = unparsedClaims.getOptional[String]("first_name"),
+      lastName = unparsedClaims.getOptional[String]("last_name"),
       authTime = Some(toUtcTime(authTime)),
     )
   }
@@ -49,6 +53,8 @@ object UserFromTokenParser extends AccessClaimsParser[UserFromToken] {
     identityId = user.id,
     username = user.publicFields.username,
     userEmailValidated = user.statusFields.userEmailValidated,
+    firstName = user.privateFields.firstName,
+    lastName = user.privateFields.secondName,
     authTime = None,
   )
 }

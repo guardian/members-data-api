@@ -54,7 +54,6 @@ object AccountHelpers {
     failableFuture.map(Right(_)).recover { case exception =>
       Left(s"failed to $action. Exception : $exception")
     }
-
 }
 
 case class CancellationEffectiveDate(cancellationEffectiveDate: String)
@@ -78,7 +77,7 @@ class AccountController(
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
-    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+    AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
         val tp = request.touchpoint
         val cancelForm = Form {
@@ -163,7 +162,7 @@ class AccountController(
     }
 
   private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
-    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf)).async { implicit request =>
+    AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
         val tp = request.touchpoint
         val userId = request.user.identityId
@@ -188,7 +187,7 @@ class AccountController(
 
   @Deprecated
   private def paymentDetails[P <: SubscriptionPlan.Paid: SubPlanReads, F <: SubscriptionPlan.Free: SubPlanReads](metricName: String) =
-    AuthAndBackendViaAuthLibAction(requiredScopes = List(completeReadSelf)).async { implicit request =>
+    AuthorizeForScopes(requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration(metricName) {
         DeprecatedRequestLogger.logDeprecatedRequest(request)
 
@@ -251,7 +250,7 @@ class AccountController(
     }
 
   def reminders: Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/reminders") {
         request.redirectAdvice.userId match {
           case Some(userId) =>
@@ -268,23 +267,21 @@ class AccountController(
     }
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLoginAndScopes(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
       metrics.measureDuration(metricName) {
-        implicit val tp: TouchpointComponents = request.touchpoint
-        val maybeUserId = request.redirectAdvice.userId
+        val user = request.user
+        val userId = user.identityId
 
-        logger.info(s"Attempting to retrieve payment details for identity user: ${maybeUserId.mkString}")
+        logger.info(s"Attempting to retrieve payment details for identity user: $userId")
 
-        maybeUserId
-          .map(paymentDetails(_, filter, tp))
-          .getOrElse(EitherT.right[String, Future, List[AccountDetails]](Nil))
-          .toEither
+        paymentDetails(userId, filter, request.touchpoint).toEither
           .map {
             case Right(subscriptionList) =>
-              logger.info(s"Successfully retrieved payment details result for identity user: ${maybeUserId.mkString}")
-              Ok(Json.toJson(subscriptionList.map(_.toJson)))
+              logger.info(s"Successfully retrieved payment details result for identity user: $userId")
+              val response = ProductsResponse.from(user, subscriptionList)
+              Ok(Json.toJson(response))
             case Left(message) =>
-              logger.warn(s"Unable to retrieve payment details result for identity user ${maybeUserId.mkString} due to $message")
+              logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
               InternalServerError("Failed to retrieve payment details due to an internal error")
           }
       }
@@ -302,7 +299,7 @@ class AccountController(
   }
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
-    AuthAndBackendViaIdapiAction(Return401IfNotSignedInRecently).async { implicit request =>
+    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancelled-subscriptions") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val emptyResponse = Ok("[]")
@@ -321,7 +318,7 @@ class AccountController(
     }
 
   private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) =
-    AuthAndBackendViaAuthLibAction(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+    AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/contribution-update-amount/:subscriptionName") {
         if (subscriptionNameOption.isEmpty) {
           DeprecatedRequestLogger.logDeprecatedRequest(request)

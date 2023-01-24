@@ -1,6 +1,5 @@
 package acceptance
 
-import acceptance.data.Randoms.randomId
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
 import acceptance.data.{
   IdentityResponse,
@@ -119,7 +118,14 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         )
         .respond(
           response()
-            .withBody(IdentityResponse(userId = 200067388)),
+            .withBody(
+              IdentityResponse(
+                userId = 200067388,
+                firstName = "Frank",
+                lastName = "Poole",
+                email = "frank.poole@amail.com",
+              ),
+            ),
         )
 
       val contact = TestContact(identityId = "200067388")
@@ -127,10 +133,11 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
 
       val giftSubscription = GiftSubscriptionsFromIdentityIdRecord(
-        randomId("giftSubscriptionName"),
-        randomId("giftSubscriptionId"),
-        LocalDate.now().plusYears(1),
+        Id = "giftSubscriptionId",
+        Name = "giftSubscriptionName",
+        TermEndDate = LocalDate.now().plusYears(1),
       )
+
       zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388") returns Future(
         \/.right(
           List(giftSubscription),
@@ -139,6 +146,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val nonGiftSubscription = TestSubscription()
       val nonGiftSubscriptionAccountId = nonGiftSubscription.accountId
+
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns
         Future(List(nonGiftSubscription))
 
@@ -187,6 +195,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         )
         .asString
 
+      httpResponse.getStatus shouldEqual 200
+
       contactRepositoryMock.get("200067388") was called
       supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") was called
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) was called
@@ -212,15 +222,17 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraSoapServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
 
-      httpResponse.getStatus shouldEqual 200
-
       val body = httpResponse.getBody
       val json = Json.parse(body)
 
       identityMockClientAndServer.verify(redirectAdviceRequest)
       identityMockClientAndServer.verify(identityRequest)
 
-      val productsArray = json.as[JsArray].value
+      (json \ "user" \ "firstName").as[String] shouldEqual "Frank"
+      (json \ "user" \ "lastName").as[String] shouldEqual "Poole"
+      (json \ "user" \ "email").as[String] shouldEqual "frank.poole@amail.com"
+
+      val productsArray = (json \ "products").as[JsArray].value
       productsArray.size shouldEqual 3
 
       val membershipProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "membership").get
