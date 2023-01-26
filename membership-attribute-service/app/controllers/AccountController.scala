@@ -134,7 +134,7 @@ class AccountController(
           identityId <- EitherT.right(identityId)
           cancellationReason <- EitherT.fromEither(handleInputBody(cancelForm))
           sfContact <- EitherT
-            .fromEither(tp.contactRepo.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
+            .fromEither(tp.contactRepository.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
             .leftMap(CancelError(_, 404))
           sfSub <- EitherT
             .fromEither(
@@ -200,7 +200,7 @@ class AccountController(
         logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${userId.mkString}")
         (for {
           user <- OptionTEither.some(userId)
-          contact <- OptionTEither(tp.contactRepo.get(user))
+          contact <- OptionTEither(tp.contactRepository.get(user))
           freeOrPaidSub <- OptionTEither(
             tp.subService
               .either[F, P](contact)
@@ -306,7 +306,7 @@ class AccountController(
         request.redirectAdvice.userId match {
           case Some(identityId) =>
             (for {
-              contact <- OptionT(EitherT(tp.contactRepo.get(identityId)))
+              contact <- OptionT(EitherT(tp.contactRepository.get(identityId)))
               subs <- OptionT(EitherT(tp.subService.recentlyCancelled(contact)).map(Option(_)))
             } yield {
               Ok(Json.toJson(subs.map(CancelledSubscription(_))))
@@ -330,7 +330,7 @@ class AccountController(
         (for {
           newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm)
           user <- SimpleEitherT.right(userId)
-          sfUser <- SimpleEitherT.fromFutureOption(tp.contactRepo.get(user), s"No SF user $user")
+          sfUser <- SimpleEitherT.fromFutureOption(tp.contactRepository.get(user), s"No SF user $user")
           subscription <- EitherT.fromEither(
             tp.subService
               .current[SubscriptionPlan.Contributor](sfUser)

@@ -38,8 +38,8 @@ class ContactController(
               case Left(parsingFailure) => Future.successful(BadRequest(parsingFailure.getMessage))
               case Right(None) => Future.successful(BadRequest(s"Not json: ${request.body}"))
               case Right(Some(address)) =>
-                val contactRepo = request.touchpoint.contactRepo
-                update(contactRepo, contactId, address) map { _ =>
+                val contactRepository = request.touchpoint.contactRepository
+                update(contactRepository, contactId, address) map { _ =>
                   NoContent
                 } recover { case updateFailure =>
                   BadGateway(updateFailure.getMessage)
@@ -59,10 +59,10 @@ class ContactController(
       request: AuthAndBackendRequest[AnyContent],
       contactId: String,
   ): Future[Boolean] = {
-    val contactRepo = request.touchpoint.contactRepo
+    val contactRepository = request.touchpoint.contactRepository
     request.redirectAdvice.userId match {
       case Some(userId) =>
-        contactRepo.get(userId).map(_.toEither).map {
+        contactRepository.get(userId).map(_.toEither).map {
           case Right(Some(contact)) => contact.salesforceContactId == contactId
           case _ => false
         }
@@ -71,7 +71,7 @@ class ContactController(
   }
 
   private def update(
-      contactRepo: ContactRepository,
+      contactRepository: ContactRepository,
       contactId: String,
       address: DeliveryAddress,
   ): Future[Unit] = {
@@ -90,6 +90,6 @@ class ContactController(
         contactField("Delivery_Information__c", address.instructions) ++
         contactField("Address_Change_Information_Last_Quoted__c", address.addressChangeInformation)
     }
-    contactRepo.update(contactId, contactFields)
+    contactRepository.update(contactId, contactFields)
   }
 }
