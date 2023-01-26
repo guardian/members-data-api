@@ -81,7 +81,7 @@ class TouchpointComponents(
   private lazy val salesforce = CreateScalaforce(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
   private lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
   private lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createMetrics)
-  lazy val contactRepo: ContactRepository =
+  lazy val contactRepository: ContactRepository =
     contactRepositoryOverride.getOrElse(contactRepositoryWithMetrics)
   lazy val salesforceService: SalesforceService = new SalesforceService(salesforce)
 
@@ -167,7 +167,7 @@ class TouchpointComponents(
     new AccountDetailsFromZuora(
       createMetrics,
       zuoraRestService,
-      contactRepo,
+      contactRepository,
       subService,
       chooseStripeService,
       paymentDetailsForSubscription,
