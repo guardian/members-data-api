@@ -6,7 +6,6 @@ import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
 import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
@@ -23,6 +22,7 @@ import scalaz.-\/
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
 import services.salesforce.ContactRepository
+import services.subscription.SubscriptionService
 import utils.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 
@@ -42,7 +42,7 @@ class ExistingPaymentOptionsController(
       date: LocalDate,
       maybeUserId: Option[String],
       contactRepository: ContactRepository,
-      subService: SubscriptionService[Future],
+      subService: SubscriptionService,
   ): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
     (for {
       user <- ListTEither.fromOption(maybeUserId)

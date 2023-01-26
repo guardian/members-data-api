@@ -7,7 +7,7 @@ import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
+import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog}
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
@@ -30,6 +30,8 @@ import software.amazon.awssdk.auth.credentials.{
   InstanceProfileCredentialsProvider,
   ProfileCredentialsProvider,
 }
+import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -43,7 +45,7 @@ class TouchpointComponents(
     conf: Config,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
     contactRepositoryOverride: Option[ContactRepository] = None,
-    subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
+    subscriptionServiceOverride: Option[SubscriptionService] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
@@ -134,8 +136,10 @@ class TouchpointComponents(
       throw error
     }
 
-  lazy val subService: SubscriptionService[Future] = subscriptionServiceOverride.getOrElse(
-    new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds),
+  private lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
+
+  lazy val subService: SubscriptionService = subscriptionServiceOverride.getOrElse(
+    new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createMetrics),
   )
   lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
