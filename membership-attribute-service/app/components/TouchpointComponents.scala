@@ -138,7 +138,7 @@ class TouchpointComponents(
 
   private lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
 
-  lazy val subService: SubscriptionService = subscriptionServiceOverride.getOrElse(
+  lazy val subscriptionService: SubscriptionService = subscriptionServiceOverride.getOrElse(
     new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createMetrics),
   )
   lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
@@ -172,7 +172,7 @@ class TouchpointComponents(
       createMetrics,
       zuoraRestService,
       contactRepository,
-      subService,
+      subscriptionService,
       chooseStripeService,
       paymentDetailsForSubscription,
     )
