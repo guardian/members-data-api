@@ -42,12 +42,12 @@ class ExistingPaymentOptionsController(
       date: LocalDate,
       maybeUserId: Option[String],
       contactRepository: ContactRepository,
-      subService: SubscriptionService,
+      subscriptionService: SubscriptionService,
   ): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
     (for {
       user <- ListTEither.fromOption(maybeUserId)
       contact <- ListTEither.fromFutureOption(contactRepository.get(user))
-      subscription <- ListTEither.fromFutureList(subService.since[SubscriptionPlan.AnyPlan](date)(contact))
+      subscription <- ListTEither.fromFutureList(subscriptionService.since[SubscriptionPlan.AnyPlan](date)(contact))
     } yield subscription).toList.map(_.groupBy(_.accountId))
 
   def consolidatePaymentMethod(existingPaymentOptions: List[ExistingPaymentOption]): Iterable[ExistingPaymentOption] = {
@@ -110,7 +110,7 @@ class ExistingPaymentOptionsController(
         logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
         (for {
           groupedSubsList <- ListTEither.fromEitherT(
-            allSubscriptionsSince(eligibilityDate, maybeUserId, tp.contactRepository, tp.subService).map(_.toList),
+            allSubscriptionsSince(eligibilityDate, maybeUserId, tp.contactRepository, tp.subscriptionService).map(_.toList),
           )
           (accountId, subscriptions) = groupedSubsList
           objectAccount <- ListTEither.singleDisjunction(tp.zuoraRestService.getObjectAccount(accountId).recover { case x =>

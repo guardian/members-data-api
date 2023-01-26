@@ -51,7 +51,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
           (stripeCardIdentifier, stripePublicKey) = stripeDetails
           sfUser <- EitherT.fromEither(tp.contactRepository.get(user).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $user"))))
           subscription <- EitherT.fromEither(
-            tp.subService
+            tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
@@ -134,7 +134,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
           (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
           sfUser <- EitherT.fromEither(tp.contactRepository.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
           subscription <- EitherT.fromEither(
-            tp.subService
+            tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
