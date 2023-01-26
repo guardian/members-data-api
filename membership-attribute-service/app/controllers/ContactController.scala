@@ -1,12 +1,12 @@
 package controllers
 
 import actions.{AuthAndBackendRequest, CommonActions, Return401IfNotSignedInRecently}
-import com.gu.salesforce.{SFContactId, SimpleContactRepository}
 import com.typesafe.scalalogging.LazyLogging
 import models.AccessScope.updateSelf
 import models.DeliveryAddress
 import monitoring.CreateMetrics
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
+import services.salesforce.ContactRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Exception
@@ -71,7 +71,7 @@ class ContactController(
   }
 
   private def update(
-      contactRepo: SimpleContactRepository,
+      contactRepo: ContactRepository,
       contactId: String,
       address: DeliveryAddress,
   ): Future[Unit] = {
@@ -90,6 +90,6 @@ class ContactController(
         contactField("Delivery_Information__c", address.instructions) ++
         contactField("Address_Change_Information_Last_Quoted__c", address.addressChangeInformation)
     }
-    contactRepo.salesforce.Contact.update(SFContactId(contactId), contactFields)
+    contactRepo.update(contactId, contactFields)
   }
 }

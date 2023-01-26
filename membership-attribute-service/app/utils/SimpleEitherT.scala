@@ -1,9 +1,10 @@
 package utils
 
+import scalaz.std.scalaFuture._
 import scalaz.{EitherT, \/}
+import utils.ListTEither.ListTEither
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.std.scalaFuture._
 
 object SimpleEitherT {
   type SimpleEitherT[A] = EitherT[String, Future, A]
@@ -36,4 +37,5 @@ object SimpleEitherT {
   def fromEither[T](either: Either[String, T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
     apply(Future.successful(either))
 
+  def fromListT[T](value: ListTEither[T])(implicit ec: ExecutionContext): SimpleEitherT[List[T]] = SimpleEitherT(value.toList.run)
 }
