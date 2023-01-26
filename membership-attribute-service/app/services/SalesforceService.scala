@@ -1,7 +1,7 @@
 package services
 
-import com.gu.salesforce.ContactRepository
+import com.gu.salesforce.Scalaforce
 
-class SalesforceService(contactRepository: ContactRepository) extends HealthCheckableService {
-  override def checkHealth: Boolean = contactRepository.salesforce.isAuthenticated
+class SalesforceService(salesforce: Scalaforce) extends HealthCheckableService {
+  override def checkHealth: Boolean = salesforce.isAuthenticated
 }

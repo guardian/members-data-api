@@ -3,6 +3,8 @@ package monitoring
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
 import com.amazonaws.services.cloudwatch.model.StandardUnit
 import configuration.ApplicationName
+import utils.SimpleEitherT
+import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -10,6 +12,9 @@ case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchA
   val application = ApplicationName.applicationName // This sets the namespace for Custom Metrics in AWS (see CloudWatch)
 
   def incrementCount(metricName: String): Unit = put(metricName + " count", 1, StandardUnit.Count)
+
+  def measureDurationEither[T](metricName: String)(block: => SimpleEitherT[T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
+    SimpleEitherT(measureDuration(metricName)(block.run))
 
   def measureDuration[T](metricName: String)(block: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
     logger.debug(s"$metricName started...")

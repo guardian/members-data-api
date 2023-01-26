@@ -23,6 +23,7 @@ import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.-\/
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
+import services.salesforce.ContactRepository
 import utils.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 
@@ -41,7 +42,7 @@ class ExistingPaymentOptionsController(
   def allSubscriptionsSince(
       date: LocalDate,
       maybeUserId: Option[String],
-      contactRepo: SimpleContactRepository,
+      contactRepo: ContactRepository,
       subService: SubscriptionService[Future],
   ): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
     (for {

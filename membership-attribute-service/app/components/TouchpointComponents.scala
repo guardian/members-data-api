@@ -6,16 +6,14 @@ import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
-import com.gu.salesforce.SimpleContactRepository
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
+import com.gu.zuora.api.PaymentGateway
 import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
@@ -25,6 +23,7 @@ import monitoring.CreateMetrics
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
+import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -43,7 +42,7 @@ class TouchpointComponents(
     createMetrics: CreateMetrics,
     conf: Config,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
-    contactRepositoryOverride: Option[SimpleContactRepository] = None,
+    contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
@@ -79,10 +78,12 @@ class TouchpointComponents(
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
 
-  lazy val contactRepo: SimpleContactRepository = contactRepositoryOverride.getOrElse(
-    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName),
-  )
-  lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
+  private lazy val salesforce = CreateScalaforce(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
+  private lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
+  private lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createMetrics)
+  lazy val contactRepo: ContactRepository =
+    contactRepositoryOverride.getOrElse(contactRepositoryWithMetrics)
+  lazy val salesforceService: SalesforceService = new SalesforceService(salesforce)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
     .credentialsProviders(
