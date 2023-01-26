@@ -2,7 +2,7 @@ package wiring
 
 import actions.CommonActions
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.rest.ZuoraRestService
 import components.TouchpointBackends
@@ -20,14 +20,8 @@ import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
 import services.salesforce.ContactRepository
-import services.{
-  BasicStripeService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  MobileSubscriptionServiceImpl,
-  PostgresDatabaseService,
-  SupporterProductDataService,
-}
+import services.subscription.SubscriptionService
+import services.{BasicStripeService, ContributionsStoreDatabaseService, HealthCheckableService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -59,7 +53,7 @@ class MyComponents(context: Context)
 
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
   lazy val contactRepositoryOverride: Option[ContactRepository] = None
-  lazy val subscriptionServiceOverride: Option[SubscriptionService[Future]] = None
+  lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None
   lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None

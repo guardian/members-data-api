@@ -1,18 +1,9 @@
 package acceptance
 
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
-import acceptance.data.{
-  IdentityResponse,
-  TestAccountSummary,
-  TestCatalog,
-  TestContact,
-  TestPaidSubscriptionPlan,
-  TestPaymentSummary,
-  TestQueriesAccount,
-  TestSubscription,
-}
+import acceptance.data.{IdentityResponse, TestAccountSummary, TestCatalog, TestContact, TestPaidSubscriptionPlan, TestPaymentSummary, TestQueriesAccount, TestSubscription}
 import com.gu.i18n.Currency
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
 import com.gu.zuora.ZuoraSoapService
@@ -35,6 +26,8 @@ import services.{
   SupporterProductDataService,
   SupporterRatePlanToAttributesMapper,
 }
+import services.subscription.SubscriptionService
+import services.{BasicStripeService, ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService, SupporterRatePlanToAttributesMapper}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
@@ -43,7 +36,7 @@ import scala.concurrent.Future
 
 class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
-  var subscriptionServiceMock: SubscriptionService[Future] = _
+  var subscriptionServiceMock: SubscriptionService = _
   var zuoraRestServiceMock: ZuoraRestService[Future] = _
   var catalogServiceMock: CatalogService[Future] = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
@@ -53,7 +46,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
-    subscriptionServiceMock = mock[SubscriptionService[Future]]
+    subscriptionServiceMock = mock[SubscriptionService]
     zuoraRestServiceMock = mock[ZuoraRestService[Future]]
     catalogServiceMock = mock[CatalogService[Future]]
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]

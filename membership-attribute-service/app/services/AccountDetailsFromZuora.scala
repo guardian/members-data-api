@@ -3,7 +3,6 @@ package services
 import com.gu.memsub.Product
 import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.Contact
 import com.gu.services.model.PaymentDetails
@@ -18,6 +17,7 @@ import scalaz.std.scalaFuture._
 import services.DifferentiateSubscription.differentiateSubscription
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
 import services.salesforce.ContactRepository
+import services.subscription.SubscriptionService
 import utils.ListTEither.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 import utils.{ListTEither, SimpleEitherT}
@@ -28,7 +28,7 @@ class AccountDetailsFromZuora(
     createMetrics: CreateMetrics,
     zuoraRestService: ZuoraRestService[Future],
     contactRepository: ContactRepository,
-    subscriptionService: SubscriptionService[Future],
+    subscriptionService: SubscriptionService,
     chooseStripeService: ChooseStripeService,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
 )(implicit executionContext: ExecutionContext) {
