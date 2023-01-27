@@ -21,7 +21,14 @@ import play.filters.csrf.CSRFComponents
 import router.Routes
 import services.salesforce.ContactRepository
 import services.subscription.SubscriptionService
-import services.{BasicStripeService, ContributionsStoreDatabaseService, HealthCheckableService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
+import services.{
+  BasicStripeService,
+  ContributionsStoreDatabaseService,
+  HealthCheckableService,
+  MobileSubscriptionServiceImpl,
+  PostgresDatabaseService,
+  SupporterProductDataService,
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 

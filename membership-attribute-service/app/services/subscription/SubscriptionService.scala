@@ -83,5 +83,3 @@ trait SubscriptionService {
       today: LocalDate = LocalDate.now(),
   ): EitherT[String, Future, Option[LocalDate]]
 }
-
-

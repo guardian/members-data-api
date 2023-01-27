@@ -19,8 +19,6 @@ import scalaz.syntax.std.option._
 import scala.language.higherKinds
 import scala.util.Try
 
-
-
 // this is (all?) the testable stuff without mocking needed
 // we should make the subscription service just getting the json, and then we can have testable pure functions here
 object SubscriptionTransform {

@@ -1,7 +1,16 @@
 package acceptance
 
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
-import acceptance.data.{IdentityResponse, TestAccountSummary, TestCatalog, TestContact, TestPaidSubscriptionPlan, TestPaymentSummary, TestQueriesAccount, TestSubscription}
+import acceptance.data.{
+  IdentityResponse,
+  TestAccountSummary,
+  TestCatalog,
+  TestContact,
+  TestPaidSubscriptionPlan,
+  TestPaymentSummary,
+  TestQueriesAccount,
+  TestSubscription,
+}
 import com.gu.i18n.Currency
 import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
@@ -27,7 +36,13 @@ import services.{
   SupporterRatePlanToAttributesMapper,
 }
 import services.subscription.SubscriptionService
-import services.{BasicStripeService, ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService, SupporterRatePlanToAttributesMapper}
+import services.{
+  BasicStripeService,
+  ContributionsStoreDatabaseService,
+  HealthCheckableService,
+  SupporterProductDataService,
+  SupporterRatePlanToAttributesMapper,
+}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
