@@ -15,7 +15,6 @@ import com.gu.i18n.Currency
 import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
-import com.gu.zuora.ZuoraSoapService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import kong.unirest.Unirest
@@ -36,6 +35,7 @@ import services.{
   SupporterRatePlanToAttributesMapper,
 }
 import services.subscription.SubscriptionService
+import services.zuora.soap.ZuoraSoapService
 import services.{
   BasicStripeService,
   ContributionsStoreDatabaseService,

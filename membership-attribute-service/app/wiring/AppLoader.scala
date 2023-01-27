@@ -3,7 +3,6 @@ package wiring
 import actions.CommonActions
 import akka.actor.ActorSystem
 import com.gu.memsub.subsv2.services.CatalogService
-import com.gu.zuora.ZuoraSoapService
 import services.zuora.rest.ZuoraRestService
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
@@ -21,6 +20,7 @@ import play.filters.csrf.CSRFComponents
 import router.Routes
 import services.salesforce.ContactRepository
 import services.subscription.SubscriptionService
+import services.zuora.soap.ZuoraSoapService
 import services.{
   BasicStripeService,
   ContributionsStoreDatabaseService,
