@@ -4,7 +4,7 @@ import actions.CommonActions
 import akka.actor.ActorSystem
 import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.rest.ZuoraRestService
+import services.zuora.rest.ZuoraRestService
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
@@ -61,7 +61,7 @@ class MyComponents(context: Context)
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
   lazy val contactRepositoryOverride: Option[ContactRepository] = None
   lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
-  lazy val zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None
+  lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
   lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None

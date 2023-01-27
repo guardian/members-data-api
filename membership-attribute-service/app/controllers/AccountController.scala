@@ -10,7 +10,6 @@ import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.zuora.api.RegionalStripeGateways
-import com.gu.zuora.rest.ZuoraRestService.PaymentMethodId
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
@@ -28,6 +27,7 @@ import scalaz._
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
+import services.zuora.rest.ZuoraRestService.PaymentMethodId
 import utils.SimpleEitherT.SimpleEitherT
 import utils.{OptionTEither, SimpleEitherT}
 
