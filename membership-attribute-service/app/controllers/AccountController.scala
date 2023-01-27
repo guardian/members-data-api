@@ -138,7 +138,9 @@ class AccountController(
             .leftMap(CancelError(_, 404))
           sfSub <- EitherT
             .fromEither(
-              tp.subscriptionService.current[P](sfContact).map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
+              tp.subscriptionService
+                .current[P](sfContact)
+                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
             )
             .leftMap(CancelError(_, 404))
           accountId <- EitherT.fromEither(
