@@ -8,7 +8,7 @@ import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.monitoring.SafeLogger
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
+import services.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime

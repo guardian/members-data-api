@@ -16,8 +16,8 @@ import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
 import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.rest.ZuoraRestService
-import com.gu.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
+import services.zuora.rest.ZuoraRestService
+import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import kong.unirest.Unirest
 import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any
@@ -52,7 +52,7 @@ import scala.concurrent.Future
 class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
   var subscriptionServiceMock: SubscriptionService = _
-  var zuoraRestServiceMock: ZuoraRestService[Future] = _
+  var zuoraRestServiceMock: ZuoraRestService = _
   var catalogServiceMock: CatalogService[Future] = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
@@ -62,7 +62,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
     subscriptionServiceMock = mock[SubscriptionService]
-    zuoraRestServiceMock = mock[ZuoraRestService[Future]]
+    zuoraRestServiceMock = mock[ZuoraRestService]
     catalogServiceMock = mock[CatalogService[Future]]
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
