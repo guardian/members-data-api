@@ -2,13 +2,13 @@ package components
 
 import akka.actor.ActorSystem
 import com.gu.memsub.subsv2.services.CatalogService
-import com.gu.zuora.ZuoraSoapService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
 import services.salesforce.ContactRepository
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
+import services.zuora.soap.ZuoraSoapService
 import services.{BasicStripeService, HealthCheckableService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}

@@ -10,7 +10,6 @@ import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.Payment
 import com.gu.stripe.Stripe
 import com.gu.stripe.Stripe.Customer
-import com.gu.zuora.api.ZuoraService
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Queries.Account
 import com.gu.zuora.soap.models.Queries.PaymentMethod._
@@ -23,7 +22,9 @@ import scalaz.{MonadTrans, OptionT, \/}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
+import _root_.services.zuora.soap.ZuoraSoapService
+
+class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
     extends api.PaymentService {
 
   implicit val monadTrans = MonadTrans[OptionT] // it's the only one we use here, really

@@ -13,8 +13,8 @@ import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.api.PaymentGateway
-import com.gu.zuora.{ZuoraSoapService, rest}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
+import com.gu.zuora.rest
 import com.typesafe.config.Config
 import configuration.Stage
 import models.{UserFromToken, UserFromTokenParser}
@@ -25,6 +25,7 @@ import services._
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
+import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -114,8 +115,11 @@ class TouchpointComponents(
       extendedHttpClient = RequestRunners.futureRunner,
       metrics = zuoraMetrics,
     )
+
+  private lazy val zuoraSoapService = new SimpleZuoraSoapService(zuoraSoapClient)
+
   lazy val zuoraService = zuoraServiceOverride.getOrElse(
-    new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
+    new ZuoraSoapServiceWithMetrics(zuoraSoapService, createMetrics) with HealthCheckableService {
       override def checkHealth: Boolean = zuoraSoapClient.isReady
     },
   )
