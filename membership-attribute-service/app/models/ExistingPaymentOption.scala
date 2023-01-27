@@ -2,7 +2,7 @@ package models
 
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub._
-import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
+import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
 import org.joda.time.LocalDate.now

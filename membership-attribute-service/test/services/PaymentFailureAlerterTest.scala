@@ -1,7 +1,7 @@
 package services
 
 import com.gu.memsub.Subscription.AccountId
-import com.gu.zuora.rest.ZuoraRestService.{Invoice, InvoiceId, PaymentMethodId, PaymentMethodResponse}
+import services.zuora.rest.ZuoraRestService.{Invoice, InvoiceId, PaymentMethodId, PaymentMethodResponse}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
 import org.specs2.concurrent.ExecutionEnv

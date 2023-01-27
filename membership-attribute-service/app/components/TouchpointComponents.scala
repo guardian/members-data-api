@@ -12,9 +12,8 @@ import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.PaymentGateway
-import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
+import com.gu.zuora.{ZuoraSoapService, rest}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
 import configuration.Stage
@@ -24,13 +23,8 @@ import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
-  EnvironmentVariableCredentialsProvider,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
+import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -51,7 +45,7 @@ class TouchpointComponents(
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService] = None,
-    zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
+    zuoraRestServiceOverride: Option[ZuoraRestService] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
@@ -126,10 +120,13 @@ class TouchpointComponents(
     },
   )
 
-  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
-  lazy val zuoraRestService = zuoraRestServiceOverride.getOrElse(new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient))
+  private lazy val zuoraRestClient = SimpleClient(tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
+  private lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
+  lazy val zuoraRestService: ZuoraRestService = zuoraRestServiceOverride.getOrElse(
+    new ZuoraRestServiceWithMetrics(simpleClientZuoraRestService, createMetrics)(executionContext),
+  )
 
-  lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+  lazy val catalogRestClient = rest.SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = catalogServiceOverride.getOrElse(
     new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
   )

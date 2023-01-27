@@ -8,7 +8,6 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
-import com.gu.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import models.AccessScope.completeReadSelf
@@ -23,6 +22,7 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
 import services.salesforce.ContactRepository
 import services.subscription.SubscriptionService
+import services.zuora.rest.ZuoraRestService.ObjectAccount
 import utils.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 

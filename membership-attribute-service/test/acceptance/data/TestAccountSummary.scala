@@ -3,7 +3,15 @@ package acceptance.data
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Currency
 import com.gu.memsub.Subscription.{AccountId, AccountNumber}
-import com.gu.zuora.rest.ZuoraRestService.{AccountSummary, BillToContact, DefaultPaymentMethod, Invoice, Payment, SalesforceContactId, SoldToContact}
+import services.zuora.rest.ZuoraRestService.{
+  AccountSummary,
+  BillToContact,
+  DefaultPaymentMethod,
+  Invoice,
+  Payment,
+  SalesforceContactId,
+  SoldToContact,
+}
 
 object TestAccountSummary {
   def apply(
