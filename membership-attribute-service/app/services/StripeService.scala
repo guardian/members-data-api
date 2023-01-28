@@ -1,6 +1,6 @@
 package services
 
-import com.gu.i18n.{Country, Currency}
+import com.gu.i18n.Currency
 import com.gu.memsub.util.WebServiceHelper
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners._
@@ -13,10 +13,9 @@ import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext)
+class BasicStripeService(config: BasicStripeServiceConfig, val httpClient: FutureHttpClient)(implicit ec: ExecutionContext)
     extends WebServiceHelper[StripeObject, Stripe.Error] {
-  val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
-  val httpClient: FutureHttpClient = client
+  override val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
 
   override def wsPreExecute(req: Request.Builder): Request.Builder = {
     req.addHeader("Authorization", s"Bearer ${config.stripeCredentials.secretKey}")
@@ -75,23 +74,13 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
     get[Stripe.Subscription](s"subscriptions/$id", params = ("expand[]", "customer"))
 }
 
-class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext)
-    extends BasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client) {
-  val publicKey: String = apiConfig.credentials.publicKey
-  val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
+class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext) {
   val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
   val invoiceTemplateOverride: Option[InvoiceTemplate] = apiConfig.invoiceTemplateOverride
-  val accountCountry: Country = apiConfig.stripeAccountCountry
+  private val basicStripeService = new BasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client)
 
-  override def wsPreExecute(req: Request.Builder): Request.Builder = {
-    req.addHeader("Authorization", s"Bearer ${apiConfig.credentials.secretKey}")
+  def createCustomer(card: String): Future[Customer] = basicStripeService.createCustomer(card)
 
-    apiConfig.version match {
-      case Some(version) => {
-        SafeLogger.info(s"Making a stripe call with version: $version env: ${apiConfig.envName} country: ${apiConfig.stripeAccountCountry}")
-        req.addHeader("Stripe-Version", version)
-      }
-      case None => req
-    }
-  }
+  def createCustomerWithStripePaymentMethod(stripePaymentMethodID: String): Future[Customer] =
+    basicStripeService.createCustomerWithStripePaymentMethod(stripePaymentMethodID)
 }

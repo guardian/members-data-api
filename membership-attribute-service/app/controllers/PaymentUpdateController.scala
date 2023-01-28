@@ -56,7 +56,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
           stripeService <- EitherT.fromEither(
-            Future.successful(tp.stripeServicesByPublicKey.get(stripePublicKey)).map(_.toRight(s"No Stripe service for public key: $stripePublicKey")),
+            Future.successful(tp.chooseStripe.serviceForPublicKey(stripePublicKey)).map(_.toRight(s"No Stripe service for public key: $stripePublicKey")),
           )
           updateResult <- EitherT.fromEither(
             setPaymentCardFunction(subscription.accountId, stripeCardIdentifier, stripeService).map(
