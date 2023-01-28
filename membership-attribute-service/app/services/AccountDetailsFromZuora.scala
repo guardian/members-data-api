@@ -29,7 +29,7 @@ class AccountDetailsFromZuora(
     zuoraRestService: ZuoraRestService,
     contactRepository: ContactRepository,
     subscriptionService: SubscriptionService,
-    chooseStripeService: ChooseStripeService,
+    chooseStripeService: ChooseStripe,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
@@ -47,7 +47,7 @@ class AccountDetailsFromZuora(
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
       country = accountSummary.billToContact.country
-      stripePublicKey = chooseStripeService.forCountry(country).publicKey
+      stripePublicKey = chooseStripeService.publicKeyForCountry(country)
       alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield AccountDetails(
@@ -58,7 +58,7 @@ class AccountDetailsFromZuora(
       subscription = contactAndSubscription.subscription,
       paymentDetails = paymentDetails,
       billingCountry = accountSummary.billToContact.country,
-      stripePublicKey = stripePublicKey,
+      stripePublicKey = stripePublicKey.key,
       accountHasMissedRecentPayments = freeOrPaidSub.isRight &&
         accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
       safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),

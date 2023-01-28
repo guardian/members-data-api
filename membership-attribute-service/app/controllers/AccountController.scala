@@ -215,10 +215,7 @@ class AccountController(
           accountSummary <- OptionTEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
             Left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x")
           })
-          stripeService = accountSummary.billToContact.country
-            .map(RegionalStripeGateways.getGatewayForCountry)
-            .flatMap(tp.stripeServicesByPaymentGateway.get)
-            .getOrElse(tp.ukStripeService)
+          stripePublicKey = tp.chooseStripe.publicKeyForCountry(accountSummary.billToContact.country)
           alertText <- OptionTEither.fromFuture(alertText(accountSummary, sub, getPaymentMethod))
           cancellationEffectiveDate <- OptionTEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name).map(_.toEither))
           isAutoRenew = sub.autoRenew
@@ -230,7 +227,7 @@ class AccountController(
           subscription = sub,
           paymentDetails = paymentDetails,
           billingCountry = accountSummary.billToContact.country,
-          stripePublicKey = stripeService.publicKey,
+          stripePublicKey = stripePublicKey.key,
           accountHasMissedRecentPayments = false,
           safeToUpdatePaymentMethod = true,
           isAutoRenew = isAutoRenew,

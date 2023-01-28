@@ -12,9 +12,8 @@ import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.api.PaymentGateway
-import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.gu.zuora.rest
+import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
 import configuration.Stage
 import models.{UserFromToken, UserFromTokenParser}
@@ -26,12 +25,7 @@ import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, Cre
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
-  EnvironmentVariableCredentialsProvider,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -69,18 +63,13 @@ class TouchpointComponents(
   lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
-  lazy val tpConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
-  implicit lazy val _bt: TouchpointBackendConfig = tpConfig
+  lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
+  implicit lazy val _bt: TouchpointBackendConfig = backendConfig
 
   lazy val patronsStripeService: BasicStripeService = patronsStripeServiceOverride
-    .getOrElse(new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner))
-  lazy val ukStripeService: StripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
-  lazy val auStripeService: StripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
-  lazy val allStripeServices: Seq[StripeService] = Seq(ukStripeService, auStripeService)
-  lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
-  lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
+    .getOrElse(new BasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner))
 
-  private lazy val salesforce = CreateScalaforce(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
+  private lazy val salesforce = CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
   private lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
   private lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createMetrics)
   lazy val contactRepository: ContactRepository =
@@ -110,7 +99,7 @@ class TouchpointComponents(
   private lazy val zuoraSoapClient =
     new ClientWithFeatureSupplier(
       featureCodes = Set.empty,
-      apiConfig = tpConfig.zuoraSoap,
+      apiConfig = backendConfig.zuoraSoap,
       httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
       extendedHttpClient = RequestRunners.futureRunner,
       metrics = zuoraMetrics,
@@ -124,13 +113,13 @@ class TouchpointComponents(
     },
   )
 
-  private lazy val zuoraRestClient = SimpleClient(tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
+  private lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
   private lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
   lazy val zuoraRestService: ZuoraRestService = zuoraRestServiceOverride.getOrElse(
     new ZuoraRestServiceWithMetrics(simpleClientZuoraRestService, createMetrics)(executionContext),
   )
 
-  lazy val catalogRestClient = rest.SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+  lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = catalogServiceOverride.getOrElse(
     new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
   )
@@ -149,13 +138,13 @@ class TouchpointComponents(
   )
   lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
-  lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
+  lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
     issuerUrl = conf.getString("okta.verifier.issuerUrl"),
     audience = conf.getString("okta.verifier.audience"),
   )
   lazy val identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims] = {
-    val apiConfig = tpConfig.idapi
+    val apiConfig = backendConfig.idapi
     val idApiUrl = Uri.unsafeFromString(apiConfig.url)
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
     IdentityPlayAuthService.unsafeInit(
@@ -167,9 +156,9 @@ class TouchpointComponents(
   lazy val identityAuthService = new IdentityAuthService(identityPlayAuthService)
 
   lazy val guardianPatronService =
-    new GuardianPatronService(supporterProductDataService, patronsStripeService, tpConfig.stripePatrons.stripeCredentials.publicKey)
+    new GuardianPatronService(supporterProductDataService, patronsStripeService, backendConfig.stripePatrons.stripeCredentials.publicKey)
 
-  lazy val chooseStripeService: ChooseStripeService = new ChooseStripeService(stripeServicesByPaymentGateway, ukStripeService)
+  lazy val chooseStripe: ChooseStripe = ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership)
 
   lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
 
@@ -179,7 +168,7 @@ class TouchpointComponents(
       zuoraRestService,
       contactRepository,
       subscriptionService,
-      chooseStripeService,
+      chooseStripe,
       paymentDetailsForSubscription,
     )
 }
