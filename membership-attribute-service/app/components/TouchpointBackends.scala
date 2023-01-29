@@ -6,10 +6,11 @@ import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
 import services.salesforce.ContactRepository
+import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
-import services.{BasicStripeService, HealthCheckableService, SupporterProductDataService}
+import services.{HealthCheckableService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 

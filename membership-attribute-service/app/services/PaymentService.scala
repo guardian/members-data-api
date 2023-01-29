@@ -1,5 +1,7 @@
 package services
 
+import _root_.services.stripe.StripeService
+import _root_.services.zuora.soap.ZuoraSoapService
 import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.SubscriptionPlan.Contributor
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
@@ -21,8 +23,6 @@ import scalaz.{MonadTrans, OptionT, \/}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-
-import _root_.services.zuora.soap.ZuoraSoapService
 
 class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
     extends api.PaymentService {

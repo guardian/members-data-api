@@ -15,8 +15,6 @@ import com.gu.i18n.Currency
 import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
-import services.zuora.rest.ZuoraRestService
-import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import kong.unirest.Unirest
 import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any
@@ -27,22 +25,12 @@ import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
 import services.salesforce.ContactRepository
-import services.{
-  BasicStripeService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  SupporterProductDataService,
-  SupporterRatePlanToAttributesMapper,
-}
+import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService
+import services.zuora.rest.ZuoraRestService
+import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import services.zuora.soap.ZuoraSoapService
-import services.{
-  BasicStripeService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  SupporterProductDataService,
-  SupporterRatePlanToAttributesMapper,
-}
+import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService, SupporterRatePlanToAttributesMapper}
 import utils.SimpleEitherT
 import wiring.MyComponents
 

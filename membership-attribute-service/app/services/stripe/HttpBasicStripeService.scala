@@ -1,4 +1,4 @@
-package services
+package services.stripe
 
 import com.gu.i18n.Currency
 import com.gu.memsub.util.WebServiceHelper
@@ -7,14 +7,14 @@ import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._
 import com.gu.stripe.Stripe._
 import com.gu.stripe.{BasicStripeServiceConfig, Stripe, StripeServiceConfig}
-import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway, RegionalStripeGateways}
 import okhttp3.Request
 import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class BasicStripeService(config: BasicStripeServiceConfig, val httpClient: FutureHttpClient)(implicit ec: ExecutionContext)
-    extends WebServiceHelper[StripeObject, Stripe.Error] {
+class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: FutureHttpClient)(implicit ec: ExecutionContext)
+    extends WebServiceHelper[StripeObject, Stripe.Error]
+    with BasicStripeService {
   override val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
 
   override def wsPreExecute(req: Request.Builder): Request.Builder = {
@@ -49,7 +49,14 @@ class BasicStripeService(config: BasicStripeServiceConfig, val httpClient: Futur
   def fetchPaymentMethod(customerId: String): Future[CustomersPaymentMethods] =
     get[CustomersPaymentMethods](s"payment_methods", "customer" -> customerId, "type" -> "card")
 
-  def createCharge(amount: Int, currency: Currency, email: String, description: String, cardToken: String, meta: Map[String, String]) =
+  def createCharge(
+      amount: Int,
+      currency: Currency,
+      email: String,
+      description: String,
+      cardToken: String,
+      meta: Map[String, String],
+  ): Future[Charge] =
     post[Charge](
       "charges",
       Map(
@@ -74,13 +81,7 @@ class BasicStripeService(config: BasicStripeServiceConfig, val httpClient: Futur
     get[Stripe.Subscription](s"subscriptions/$id", params = ("expand[]", "customer"))
 }
 
-class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext) {
-  val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
-  val invoiceTemplateOverride: Option[InvoiceTemplate] = apiConfig.invoiceTemplateOverride
-  private val basicStripeService = new BasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client)
-
-  def createCustomer(card: String): Future[Customer] = basicStripeService.createCustomer(card)
-
-  def createCustomerWithStripePaymentMethod(stripePaymentMethodID: String): Future[Customer] =
-    basicStripeService.createCustomerWithStripePaymentMethod(stripePaymentMethodID)
+object HttpBasicStripeService {
+  def from(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext) =
+    new HttpBasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client)
 }
