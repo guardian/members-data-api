@@ -8,10 +8,9 @@ import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.zuora.api.GoCardlessZuoraInstance
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
-import configuration.Stage
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.updateSelf
-import monitoring.{CreateMetrics, Metrics}
+import monitoring.CreateMetrics
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
@@ -56,7 +55,9 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
           stripeService <- EitherT.fromEither(
-            Future.successful(tp.chooseStripe.serviceForPublicKey(stripePublicKey)).map(_.toRight(s"No Stripe service for public key: $stripePublicKey")),
+            Future
+              .successful(tp.chooseStripe.serviceForPublicKey(stripePublicKey))
+              .map(_.toRight(s"No Stripe service for public key: $stripePublicKey")),
           )
           updateResult <- EitherT.fromEither(
             setPaymentCardFunction(subscription.accountId, stripeCardIdentifier, stripeService).map(

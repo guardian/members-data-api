@@ -22,10 +22,16 @@ import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
+import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, HttpBasicStripeService}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
@@ -66,8 +72,9 @@ class TouchpointComponents(
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
   implicit lazy val _bt: TouchpointBackendConfig = backendConfig
 
+  private lazy val patronsBasicHttpStripeService = new HttpBasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner)
   lazy val patronsStripeService: BasicStripeService = patronsStripeServiceOverride
-    .getOrElse(new BasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner))
+    .getOrElse(new BasicStripeServiceWithMetrics(patronsBasicHttpStripeService, createMetrics))
 
   private lazy val salesforce = CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
   private lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
@@ -158,7 +165,7 @@ class TouchpointComponents(
   lazy val guardianPatronService =
     new GuardianPatronService(supporterProductDataService, patronsStripeService, backendConfig.stripePatrons.stripeCredentials.publicKey)
 
-  lazy val chooseStripe: ChooseStripe = ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership)
+  lazy val chooseStripe: ChooseStripe = ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership, createMetrics)
 
   lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
 
