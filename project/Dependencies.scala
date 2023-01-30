@@ -29,8 +29,8 @@ object Dependencies {
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.12" % Test
 
-  val jacksonVersion = "2.14.1"
-  val jacksonDatabindVersion = "2.14.1"
+  val jacksonVersion = "2.14.2"
+  val jacksonDatabindVersion = "2.14.2"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
