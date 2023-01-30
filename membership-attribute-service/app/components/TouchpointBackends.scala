@@ -1,13 +1,14 @@
 package components
 
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
-import com.gu.salesforce.SimpleContactRepository
+import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.rest.ZuoraRestService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
+import services.salesforce.ContactRepository
+import services.subscription.SubscriptionService
 import services.{BasicStripeService, HealthCheckableService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,8 +18,8 @@ class TouchpointBackends(
     config: Config,
     createMetrics: CreateMetrics,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
-    contactRepositoryOverride: Option[SimpleContactRepository] = None,
-    subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
+    contactRepositoryOverride: Option[ContactRepository] = None,
+    subscriptionServiceOverride: Option[SubscriptionService] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,

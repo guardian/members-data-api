@@ -49,9 +49,9 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
             Future.successful(updateForm.orElse(legacyForm).toRight("no 'stripePaymentMethodID' and 'stripePublicKey' submitted with request")),
           )
           (stripeCardIdentifier, stripePublicKey) = stripeDetails
-          sfUser <- EitherT.fromEither(tp.contactRepo.get(user).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $user"))))
+          sfUser <- EitherT.fromEither(tp.contactRepository.get(user).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $user"))))
           subscription <- EitherT.fromEither(
-            tp.subService
+            tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
@@ -132,9 +132,9 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
             Future.successful(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request")),
           )
           (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
-          sfUser <- EitherT.fromEither(tp.contactRepo.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
+          sfUser <- EitherT.fromEither(tp.contactRepository.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
           subscription <- EitherT.fromEither(
-            tp.subService
+            tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )

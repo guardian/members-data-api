@@ -13,4 +13,7 @@ addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "1.1.18")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 
-libraryDependencies += "org.vafer" % "jdeb" % "1.3" artifacts (Artifact("jdeb", "jar", "jar"))
+addSbtPlugin("org.jmotor.sbt" % "sbt-dependency-updates" % "1.2.7")
+
+libraryDependencies += "org.vafer" % "jdeb" % "1.10"
+dependencyOverrides += "org.scala-lang.modules" %% "scala-xml" % "2.1.0"

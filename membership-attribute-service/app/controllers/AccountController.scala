@@ -105,7 +105,7 @@ class AccountController(
         def disableAutoPayOnlyIfAccountHasOneSubscription(
             accountId: memsub.Subscription.AccountId,
         ): SimpleEitherT[Unit] = {
-          EitherT(tp.subService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
+          EitherT(tp.subscriptionService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
               SimpleEitherT(tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither))
             else // do not disable auto pay
@@ -134,11 +134,13 @@ class AccountController(
           identityId <- EitherT.right(identityId)
           cancellationReason <- EitherT.fromEither(handleInputBody(cancelForm))
           sfContact <- EitherT
-            .fromEither(tp.contactRepo.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
+            .fromEither(tp.contactRepository.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
             .leftMap(CancelError(_, 404))
           sfSub <- EitherT
             .fromEither(
-              tp.subService.current[P](sfContact).map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
+              tp.subscriptionService
+                .current[P](sfContact)
+                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
             )
             .leftMap(CancelError(_, 404))
           accountId <- EitherT.fromEither(
@@ -147,7 +149,7 @@ class AccountController(
               else Left(CancelError(s"$subscriptionName does not belong to $identityId", 503)),
             ),
           )
-          cancellationEffectiveDate <- tp.subService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
+          cancellationEffectiveDate <- tp.subscriptionService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
           _ <- EitherT.fromEither(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, sfSub.termEndDate))
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
@@ -168,7 +170,7 @@ class AccountController(
         val userId = request.user.identityId
 
         (for {
-          cancellationEffectiveDate <- tp.subService
+          cancellationEffectiveDate <- tp.subscriptionService
             .decideCancellationEffectiveDate[P](subscriptionName)
             .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
           result = cancellationEffectiveDate.getOrElse("now").toString
@@ -200,9 +202,9 @@ class AccountController(
         logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${userId.mkString}")
         (for {
           user <- OptionTEither.some(userId)
-          contact <- OptionTEither(tp.contactRepo.get(user))
+          contact <- OptionTEither(tp.contactRepository.get(user))
           freeOrPaidSub <- OptionTEither(
-            tp.subService
+            tp.subscriptionService
               .either[F, P](contact)
               .map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")),
           ).map(_.toEither)
@@ -306,8 +308,8 @@ class AccountController(
         request.redirectAdvice.userId match {
           case Some(identityId) =>
             (for {
-              contact <- OptionT(EitherT(tp.contactRepo.get(identityId)))
-              subs <- OptionT(EitherT(tp.subService.recentlyCancelled(contact)).map(Option(_)))
+              contact <- OptionT(EitherT(tp.contactRepository.get(identityId)))
+              subs <- OptionT(EitherT(tp.subscriptionService.recentlyCancelled(contact)).map(Option(_)))
             } yield {
               Ok(Json.toJson(subs.map(CancelledSubscription(_))))
             }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
@@ -330,9 +332,9 @@ class AccountController(
         (for {
           newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm)
           user <- SimpleEitherT.right(userId)
-          sfUser <- SimpleEitherT.fromFutureOption(tp.contactRepo.get(user), s"No SF user $user")
+          sfUser <- SimpleEitherT.fromFutureOption(tp.contactRepository.get(user), s"No SF user $user")
           subscription <- EitherT.fromEither(
-            tp.subService
+            tp.subscriptionService
               .current[SubscriptionPlan.Contributor](sfUser)
               .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")(subs)),
           )

@@ -6,16 +6,14 @@ import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
+import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog}
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
-import com.gu.salesforce.SimpleContactRepository
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
+import com.gu.zuora.api.PaymentGateway
 import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
@@ -25,6 +23,14 @@ import monitoring.CreateMetrics
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
+import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
+import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -43,8 +49,8 @@ class TouchpointComponents(
     createMetrics: CreateMetrics,
     conf: Config,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
-    contactRepositoryOverride: Option[SimpleContactRepository] = None,
-    subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
+    contactRepositoryOverride: Option[ContactRepository] = None,
+    subscriptionServiceOverride: Option[SubscriptionService] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
@@ -79,10 +85,12 @@ class TouchpointComponents(
   lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
   lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
 
-  lazy val contactRepo: SimpleContactRepository = contactRepositoryOverride.getOrElse(
-    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName),
-  )
-  lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
+  private lazy val salesforce = CreateScalaforce(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
+  private lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
+  private lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createMetrics)
+  lazy val contactRepository: ContactRepository =
+    contactRepositoryOverride.getOrElse(contactRepositoryWithMetrics)
+  lazy val salesforceService: SalesforceService = new SalesforceService(salesforce)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
     .credentialsProviders(
@@ -133,8 +141,10 @@ class TouchpointComponents(
       throw error
     }
 
-  lazy val subService: SubscriptionService[Future] = subscriptionServiceOverride.getOrElse(
-    new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds),
+  private lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
+
+  lazy val subscriptionService: SubscriptionService = subscriptionServiceOverride.getOrElse(
+    new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createMetrics),
   )
   lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
@@ -166,8 +176,8 @@ class TouchpointComponents(
     new AccountDetailsFromZuora(
       createMetrics,
       zuoraRestService,
-      contactRepo,
-      subService,
+      contactRepository,
+      subscriptionService,
       chooseStripeService,
       paymentDetailsForSubscription,
     )
