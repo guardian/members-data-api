@@ -29,7 +29,7 @@ class AccountDetailsFromZuora(
     zuoraRestService: ZuoraRestService,
     contactRepository: ContactRepository,
     subscriptionService: SubscriptionService,
-    chooseStripeService: ChooseStripe,
+    chooseStripe: ChooseStripe,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
@@ -43,30 +43,32 @@ class AccountDetailsFromZuora(
   private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter): ListT[SimpleEitherT, AccountDetails] = {
     for {
       contactAndSubscription <- allCurrentSubscriptions(userId, filter)
-      freeOrPaidSub = differentiateSubscription(contactAndSubscription)
+      isPaidSubscription = differentiateSubscription(contactAndSubscription).isRight
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
       country = accountSummary.billToContact.country
-      stripePublicKey = chooseStripeService.publicKeyForCountry(country)
+      stripePublicKey = chooseStripe.publicKeyForCountry(country)
       alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
-    } yield AccountDetails(
-      contactId = contactAndSubscription.contact.salesforceContactId,
-      regNumber = None,
-      email = accountSummary.billToContact.email,
-      deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
-      subscription = contactAndSubscription.subscription,
-      paymentDetails = paymentDetails,
-      billingCountry = accountSummary.billToContact.country,
-      stripePublicKey = stripePublicKey.key,
-      accountHasMissedRecentPayments = freeOrPaidSub.isRight &&
-        accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
-      safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
-      isAutoRenew = isAutoRenew,
-      alertText = alertText,
-      accountId = accountSummary.id.get,
-      effectiveCancellationDate,
-    )
+    } yield {
+      AccountDetails(
+        contactId = contactAndSubscription.contact.salesforceContactId,
+        regNumber = None,
+        email = accountSummary.billToContact.email,
+        deliveryAddress = Some(DeliveryAddress.fromContact(contactAndSubscription.contact)),
+        subscription = contactAndSubscription.subscription,
+        paymentDetails = paymentDetails,
+        billingCountry = accountSummary.billToContact.country,
+        stripePublicKey = stripePublicKey.key,
+        accountHasMissedRecentPayments = isPaidSubscription &&
+          accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
+        safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
+        isAutoRenew = isAutoRenew,
+        alertText = alertText,
+        accountId = accountSummary.id.get,
+        effectiveCancellationDate,
+      )
+    }
   }
 
   private def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
@@ -118,41 +120,43 @@ class AccountDetailsFromZuora(
   private def getAccountDetailsParallel(
       contactAndSubscription: ContactAndSubscription,
   ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
-    // Run all these api calls in parallel to improve response times
-    val paymentDetailsFuture =
-      paymentDetailsForSubscription(contactAndSubscription)
-        .map(Right(_))
-        .recover { case x =>
-          Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
-        }
+    metrics.measureDurationEither("getAccountDetailsParallel") {
+      // Run all these api calls in parallel to improve response times
+      val paymentDetailsFuture =
+        paymentDetailsForSubscription(contactAndSubscription)
+          .map(Right(_))
+          .recover { case x =>
+            Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
+          }
 
-    val accountSummaryFuture =
-      zuoraRestService
-        .getAccount(contactAndSubscription.subscription.accountId)
-        .map(_.toEither)
-        .recover { case x =>
-          Left(
-            s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
-              s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
-          )
-        }
+      val accountSummaryFuture =
+        zuoraRestService
+          .getAccount(contactAndSubscription.subscription.accountId)
+          .map(_.toEither)
+          .recover { case x =>
+            Left(
+              s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
+                s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
+            )
+          }
 
-    val effectiveCancellationDateFuture =
-      zuoraRestService
-        .getCancellationEffectiveDate(contactAndSubscription.subscription.name)
-        .map(_.toEither)
-        .recover { case x =>
-          Left(
-            s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
-              s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
-          )
-        }
+      val effectiveCancellationDateFuture =
+        zuoraRestService
+          .getCancellationEffectiveDate(contactAndSubscription.subscription.name)
+          .map(_.toEither)
+          .recover { case x =>
+            Left(
+              s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
+                s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
+            )
+          }
 
-    for {
-      paymentDetails <- SimpleEitherT(paymentDetailsFuture)
-      accountSummary <- SimpleEitherT(accountSummaryFuture)
-      effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
-    } yield (paymentDetails, accountSummary, effectiveCancellationDate)
+      for {
+        paymentDetails <- SimpleEitherT(paymentDetailsFuture)
+        accountSummary <- SimpleEitherT(accountSummaryFuture)
+        effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
+      } yield (paymentDetails, accountSummary, effectiveCancellationDate)
+    }
   }
 
   private def checkForGiftSubscription(
@@ -160,11 +164,13 @@ class AccountDetailsFromZuora(
       nonGiftSubscription: List[ContactAndSubscription],
       contact: Contact,
   ): SimpleEitherT[List[ContactAndSubscription]] = {
-    for {
-      records <- SimpleEitherT(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId))
-      reused <- reuseAlreadyFetchedSubscriptionIfAvailable(records, nonGiftSubscription)
-      contactAndSubscriptions = reused.map(ContactAndSubscription(contact, _, isGiftRedemption = true))
-    } yield contactAndSubscriptions ++ nonGiftSubscription
+    metrics.measureDurationEither("checkForGiftSubscription") {
+      for {
+        records <- SimpleEitherT(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId))
+        reused <- reuseAlreadyFetchedSubscriptionIfAvailable(records, nonGiftSubscription)
+        contactAndSubscriptions = reused.map(ContactAndSubscription(contact, _, isGiftRedemption = true))
+      } yield contactAndSubscriptions ++ nonGiftSubscription
+    }
   }
 
   private def reuseAlreadyFetchedSubscriptionIfAvailable(
