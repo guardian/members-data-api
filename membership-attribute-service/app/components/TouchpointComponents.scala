@@ -163,7 +163,12 @@ class TouchpointComponents(
   lazy val identityAuthService = new IdentityAuthService(identityPlayAuthService)
 
   lazy val guardianPatronService =
-    new GuardianPatronService(supporterProductDataService, patronsStripeService, backendConfig.stripePatrons.stripeCredentials.publicKey)
+    new GuardianPatronService(
+      supporterProductDataService,
+      patronsStripeService,
+      backendConfig.stripePatrons.stripeCredentials.publicKey,
+      createMetrics,
+    )
 
   lazy val chooseStripe: ChooseStripe = ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership, createMetrics)
 
