@@ -54,7 +54,6 @@ class TouchpointComponents(
     system: ActorSystem,
     executionContext: ExecutionContext,
 ) {
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
   lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
   lazy val environmentConfig = touchpointConfig.getConfig(s"environments." + stage.value)
 
@@ -70,7 +69,6 @@ class TouchpointComponents(
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
-  implicit lazy val _bt: TouchpointBackendConfig = backendConfig
 
   private lazy val patronsBasicHttpStripeService = new HttpBasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner)
   lazy val patronsStripeService: BasicStripeService = patronsStripeServiceOverride
