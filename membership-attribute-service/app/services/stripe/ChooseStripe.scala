@@ -1,11 +1,9 @@
-package services
+package services.stripe
 
 import com.gu.i18n.Country
 import com.gu.okhttp.RequestRunners
-import com.gu.okhttp.RequestRunners.client
 import com.gu.stripe.StripeServiceConfig
 import monitoring.CreateMetrics
-import services.stripe.{BasicStripeServiceWithMetrics, HttpBasicStripeService, StripeService}
 
 import scala.concurrent.ExecutionContext
 
