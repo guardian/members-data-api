@@ -15,6 +15,7 @@ import scalaz.std.scalaFuture._
 import services.DifferentiateSubscription.differentiateSubscription
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
 import services.salesforce.ContactRepository
+import services.stripe.ChooseStripe
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
