@@ -1,6 +1,6 @@
 package loghandling
 
-import com.gu.monitoring.SafeLogger
+import monitoring.SafeLogger
 import play.api.mvc.{AnyContent, WrappedRequest}
 
 object DeprecatedRequestLogger {

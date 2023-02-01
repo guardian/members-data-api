@@ -5,17 +5,17 @@ import com.gu.aws.ProfileName
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import models.subscription.subsv2.services.SubscriptionService.CatalogMap
-import models.subscription.subsv2.services.{CatalogService, FetchCatalog}
-import com.gu.monitoring.SafeLogger._
-import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
+import com.gu.monitoring.ZuoraMetrics
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest
 import com.typesafe.config.Config
 import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, SubsV2ProductIds, SubscriptionsProductIds}
+import models.subscription.subsv2.services.SubscriptionService.CatalogMap
+import models.subscription.subsv2.services.{CatalogService, FetchCatalog}
 import models.{UserFromToken, UserFromTokenParser}
-import monitoring.CreateMetrics
+import monitoring.{CreateMetrics, SafeLogger}
+import monitoring.SafeLogger._
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
@@ -35,7 +35,7 @@ import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAs
 
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class TouchpointComponents(
     stage: Stage,

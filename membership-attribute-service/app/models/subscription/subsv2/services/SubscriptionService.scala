@@ -10,7 +10,7 @@ import models.subscription.subsv2.reads.SubJsonReads._
 import models.subscription.subsv2.reads.SubPlanReads
 import models.subscription.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
 import models.subscription.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
-import com.gu.monitoring.SafeLogger
+import monitoring.SafeLogger
 import com.gu.salesforce.ContactId
 import com.gu.zuora.rest.SimpleClient
 import org.joda.time.{LocalDate, LocalTime}
@@ -452,25 +452,24 @@ object SubscriptionTransform {
       val validHighLevelPlans: String \/ NonEmptyList[P] =
         Sequence(
           lowLevelPlans
-            .map {
-              lowLevelPlan =>
-                // get the equivalent plan from the catalog so we can merge them into a standard high level object
-                catalog
-                  .get(lowLevelPlan.productRatePlanId)
-                  .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
-                  .flatMap { catalogPlan =>
-                    val maybePlans = implicitly[SubPlanReads[P]].read(pids, lowLevelPlan, catalogPlan)
-                    maybePlans.toDisjunction
-                      .leftMap(
-                        _.list.zipWithIndex
-                          .map { case (err, index) =>
-                            s"  ${index + 1}: $err"
-                          }
-                          .toList
-                          .mkString("\n", "\n", "\n"),
-                      )
-                      .withTrace(s"high-level-plan-read: ${lowLevelPlan.id}")
-                  }
+            .map { lowLevelPlan =>
+              // get the equivalent plan from the catalog so we can merge them into a standard high level object
+              catalog
+                .get(lowLevelPlan.productRatePlanId)
+                .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
+                .flatMap { catalogPlan =>
+                  val maybePlans = implicitly[SubPlanReads[P]].read(pids, lowLevelPlan, catalogPlan)
+                  maybePlans.toDisjunction
+                    .leftMap(
+                      _.list.zipWithIndex
+                        .map { case (err, index) =>
+                          s"  ${index + 1}: $err"
+                        }
+                        .toList
+                        .mkString("\n", "\n", "\n"),
+                    )
+                    .withTrace(s"high-level-plan-read: ${lowLevelPlan.id}")
+                }
             },
         )
 
