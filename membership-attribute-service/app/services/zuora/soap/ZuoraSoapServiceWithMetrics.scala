@@ -2,15 +2,15 @@ package services.zuora.soap
 
 import com.github.nscala_time.time.Imports
 import com.gu.i18n.Currency
-import com.gu.memsub.Subscription
-import com.gu.memsub.Subscription.{Id, ProductRatePlanId}
+import _root_.models.subscription.Subscription
+import _root_.models.subscription.Subscription.{Id, ProductRatePlanId}
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
-import com.gu.zuora.soap.models.Commands.{Amend, Contribute, CreatePaymentMethod, Renew, Subscribe}
-import com.gu.zuora.soap.models.Queries.{PreviewInvoiceItem, Usage}
-import com.gu.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}
-import com.gu.zuora.soap.models.{PaymentSummary, Queries}
+import services.zuora.soap.models.Commands.{Amend, Contribute, CreatePaymentMethod, Renew, Subscribe}
+import services.zuora.soap.models.Queries.{PreviewInvoiceItem, Usage}
+import services.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}
+import services.zuora.soap.models.{PaymentSummary, Queries}
 import monitoring.CreateMetrics
 import org.joda.time.{LocalDate, ReadableDuration}
 

@@ -1,7 +1,7 @@
 package components
 
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.CatalogService
+import models.subscription.subsv2.services.CatalogService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics

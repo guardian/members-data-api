@@ -1,8 +1,8 @@
 package services.zuora.rest
 
 import com.gu.i18n.{Country, Currency, Title}
-import com.gu.memsub.Subscription.{AccountId, AccountNumber, Name, RatePlanId, SubscriptionRatePlanChargeId}
-import com.gu.memsub.subsv2.reads.CommonReads._
+import models.subscription.Subscription.{AccountId, AccountNumber, Name, RatePlanId, SubscriptionRatePlanChargeId}
+import models.subscription.subsv2.reads.CommonReads._
 import com.gu.salesforce.ContactId
 import com.gu.zuora.ZuoraLookup
 import com.gu.zuora.api.PaymentGateway
@@ -26,7 +26,7 @@ import scala.language.higherKinds
 
 object ZuoraRestService {
 
-  import com.gu.memsub.subsv2.reads.CommonReads.localWrites
+  import models.subscription.subsv2.reads.CommonReads.localWrites
   import play.api.libs.functional.syntax._
   import play.api.libs.json.Reads._
   import play.api.libs.json._

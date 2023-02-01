@@ -1,11 +1,11 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import com.gu.memsub.Benefit.SupporterPlus
-import com.gu.memsub.BillingPeriod.Year
-import com.gu.memsub.Subscription.{ProductRatePlanChargeId, SubscriptionRatePlanChargeId}
-import com.gu.memsub.subsv2.PaidCharge
-import com.gu.memsub.{Benefit, BillingPeriod, PricingSummary, Product}
+import models.subscription.Benefit.SupporterPlus
+import models.subscription.BillingPeriod.Year
+import models.subscription.Subscription.{ProductRatePlanChargeId, SubscriptionRatePlanChargeId}
+import models.subscription.subsv2.PaidCharge
+import models.subscription.{Benefit, BillingPeriod, PricingSummary, Product}
 
 object TestPaidCharge {
   def apply[B <: Benefit, BP <: BillingPeriod](

@@ -1,15 +1,15 @@
 package services.subscription
 
-import com.gu.memsub
-import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub.subsv2.SubscriptionPlan._
-import com.gu.memsub.subsv2._
-import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
-import com.gu.memsub.subsv2.reads.SubJsonReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.memsub.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
-import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
-import com.gu.memsub.subsv2.services.Trace.Traceable
+import models.subscription
+import models.subscription.Subscription.AccountId
+import models.subscription.subsv2.SubscriptionPlan._
+import models.subscription.subsv2._
+import models.subscription.subsv2.reads.ChargeListReads.ProductIds
+import models.subscription.subsv2.reads.SubJsonReads._
+import models.subscription.subsv2.reads.SubPlanReads
+import models.subscription.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
+import models.subscription.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
+import models.subscription.subsv2.services.Trace.Traceable
 import com.gu.monitoring.SafeLogger
 import com.gu.salesforce.ContactId
 import org.joda.time.{LocalDate, LocalTime}
@@ -55,7 +55,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     *   https://community.zuora.com/t5/Admin-Settings-Ideas/Get-current-active-subscription-rate-plans/idi-p/19049
     */
   def get[P <: AnyPlan: SubPlanReads](
-      name: memsub.Subscription.Name,
+      name: subscription.Subscription.Name,
       isActiveToday: Boolean = false,
   ): Future[Option[Subscription[P]]] = {
 
@@ -213,7 +213,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
   /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead
     */
   def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      name: memsub.Subscription.Name,
+      name: subscription.Subscription.Name,
   )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[\/[String, Subscription[FALLBACK] \/ Subscription[PREFERRED]]] = {
     val futureSubJson = rest.get[JsValue](s"subscriptions/${name.get}")(idReads)
 
@@ -228,7 +228,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
 
   // this is a back door to find the subscription discount ids so we can delete when people upgrade
   // just need the id and prp id
-  def backdoorRatePlanIds(name: com.gu.memsub.Subscription.Name): Future[String \/ List[SubIds]] = {
+  def backdoorRatePlanIds(name: models.subscription.Subscription.Name): Future[String \/ List[SubIds]] = {
     val futureSubJson = rest.get[JsValue](s"subscriptions/${name.get}")(idReads)
 
     futureSubJson.map(_.flatMap { subJson =>
@@ -255,7 +255,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     *   should not proceed with automatic cancelation
     */
   def decideCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](
-      subscriptionName: memsub.Subscription.Name,
+      subscriptionName: subscription.Subscription.Name,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
   ): EitherT[String, Future, Option[LocalDate]] = {

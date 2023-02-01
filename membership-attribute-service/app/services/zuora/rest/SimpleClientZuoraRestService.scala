@@ -1,6 +1,6 @@
 package services.zuora.rest
 
-import com.gu.memsub.Subscription._
+import models.subscription.Subscription._
 import com.gu.monitoring.SafeLogger
 import com.gu.salesforce.ContactId
 import services.zuora.rest.ZuoraRestService._

@@ -2,7 +2,7 @@ package acceptance.data
 
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Currency
-import com.gu.memsub.Subscription.{AccountId, AccountNumber}
+import models.subscription.Subscription.{AccountId, AccountNumber}
 import services.zuora.rest.ZuoraRestService.{
   AccountSummary,
   BillToContact,
