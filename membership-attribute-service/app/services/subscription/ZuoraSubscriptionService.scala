@@ -10,7 +10,7 @@ import models.subscription.subsv2.reads.SubPlanReads
 import models.subscription.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
 import models.subscription.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
 import models.subscription.subsv2.services.Trace.Traceable
-import com.gu.monitoring.SafeLogger
+import monitoring.SafeLogger
 import com.gu.salesforce.ContactId
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.{Reads => JsReads, _}

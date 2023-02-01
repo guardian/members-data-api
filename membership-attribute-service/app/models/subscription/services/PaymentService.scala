@@ -1,7 +1,7 @@
 package models.subscription.services
 
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger.Sanitizer
+import monitoring.SafeLogger
+import monitoring.SafeLogger.Sanitizer
 import com.gu.stripe.Stripe.Customer
 import com.gu.stripe.{Stripe, StripeService}
 import models.PaymentDetails

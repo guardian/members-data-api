@@ -2,7 +2,7 @@ package services
 
 import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
-import com.gu.monitoring.SafeLogger
+import monitoring.SafeLogger
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage
 import org.specs2.concurrent.ExecutionEnv
