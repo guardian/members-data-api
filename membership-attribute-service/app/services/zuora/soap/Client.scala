@@ -1,26 +1,26 @@
 package services.zuora.soap
 
+import _root_.models.subscription.util.FutureRetry._
+import _root_.models.subscription.util.ScheduledTask
 import akka.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
+import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
+import com.gu.okhttp.RequestRunners._
+import com.gu.zuora.ZuoraSoapConfig
+import com.typesafe.scalalogging.LazyLogging
+import monitoring.SafeLogger
+import monitoring.SafeLogger._
 import okhttp3.Request.Builder
 import okhttp3._
-import java.util.concurrent.atomic.AtomicReference
-import _root_.models.subscription.util.ScheduledTask
-import _root_.models.subscription.util.FutureRetry._
-import com.gu.zuora.ZuoraSoapConfig
+import org.joda.time.{DateTime, ReadableDuration}
 import services.zuora.soap.Readers._
 import services.zuora.soap.actions.{Action, Actions}
-import services.zuora.soap.models.{Identifiable, Query, Result}
 import services.zuora.soap.models.Results.{Authentication, QueryResult}
+import services.zuora.soap.models.{Identifiable, Query, Result}
 import services.zuora.soap.readers.Reader
-import com.gu.okhttp.RequestRunners._
-import com.gu.monitoring.{NoOpZuoraMetrics, SafeLogger, ZuoraMetrics}
-import com.gu.monitoring.SafeLogger._
-import com.typesafe.scalalogging.LazyLogging
-import org.joda.time.{DateTime, ReadableDuration}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect._
 import scala.util.{Failure, Success}
