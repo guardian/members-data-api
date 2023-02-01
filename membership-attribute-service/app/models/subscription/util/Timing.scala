@@ -1,7 +1,7 @@
 package models.subscription.util
 
 import com.gu.monitoring.CloudWatch
-import com.gu.monitoring.SafeLogger
+import monitoring.SafeLogger
 import scala.concurrent.{ExecutionContext, Future}
 
 object Timing {

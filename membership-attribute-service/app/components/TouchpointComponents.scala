@@ -5,8 +5,7 @@ import com.gu.aws.ProfileName
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import com.gu.monitoring.SafeLogger._
-import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
+import com.gu.monitoring.ZuoraMetrics
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest
@@ -16,7 +15,8 @@ import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, Subs
 import models.subscription.subsv2.services.SubscriptionService.CatalogMap
 import models.subscription.subsv2.services.{CatalogService, FetchCatalog}
 import models.{UserFromToken, UserFromTokenParser}
-import monitoring.{CreateMetrics, CreateNoopMetrics}
+import monitoring.SafeLogger.Sanitizer
+import monitoring.{CreateMetrics, CreateNoopMetrics, SafeLogger}
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
