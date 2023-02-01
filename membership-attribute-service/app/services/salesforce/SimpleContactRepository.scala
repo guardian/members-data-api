@@ -30,8 +30,8 @@ class SimpleContactRepository(private val salesforce: Scalaforce)(implicit execu
       .recover { case e: Throwable => \/.l[Unit](e) }
   }
 
-  import com.gu.memsub.subsv2.reads.Trace.{Traceable => T1}
-  import com.gu.memsub.subsv2.services.Trace.Traceable
+  import models.subscription.subsv2.reads.Trace.{Traceable => T1}
+  import models.subscription.subsv2.services.Trace.Traceable
 
   private def toEither[A](j: JsResult[A]): String \/ A = j.fold(
     { errors =>

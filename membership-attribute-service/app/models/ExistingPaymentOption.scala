@@ -1,7 +1,7 @@
 package models
 
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub._
+import models.subscription.subsv2.{Subscription, SubscriptionPlan}
+import models.subscription._
 import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json

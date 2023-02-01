@@ -2,24 +2,24 @@ package services
 
 import _root_.services.stripe.StripeService
 import _root_.services.zuora.soap.ZuoraSoapService
-import com.gu.memsub.Subscription._
-import com.gu.memsub.subsv2.SubscriptionPlan.Contributor
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub.{BillingSchedule, Subscription => _, _}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger.Sanitizer
-import com.gu.services.model.PaymentDetails
-import com.gu.services.model.PaymentDetails.Payment
+import models.PaymentDetails
 import com.gu.stripe.Stripe
 import com.gu.stripe.Stripe.Customer
-import com.gu.zuora.soap.models.Queries
-import com.gu.zuora.soap.models.Queries.Account
-import com.gu.zuora.soap.models.Queries.PaymentMethod._
+import models.subscription.Subscription._
+import models.subscription.subsv2.SubscriptionPlan.Contributor
+import models.subscription.subsv2.{Subscription, SubscriptionPlan}
+import models.subscription.{BillingSchedule, Subscription => _, _}
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.{MonadTrans, OptionT, \/}
+import _root_.services.zuora.soap.models.Queries
+import _root_.services.zuora.soap.models.Queries.Account
+import _root_.services.zuora.soap.models.Queries.PaymentMethod._
+import models.PaymentDetails.Payment
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}

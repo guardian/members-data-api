@@ -1,10 +1,10 @@
 package services.subscription
 
-import com.gu.memsub
-import com.gu.memsub.Subscription.{AccountId, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.SubscriptionPlan._
-import com.gu.memsub.subsv2._
-import com.gu.memsub.subsv2.reads.SubPlanReads
+import models.subscription
+import models.subscription.Subscription.{AccountId, ProductRatePlanId, RatePlanId}
+import models.subscription.subsv2.SubscriptionPlan._
+import models.subscription.subsv2._
+import models.subscription.subsv2.reads.SubPlanReads
 import com.gu.salesforce.ContactId
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json._
@@ -16,13 +16,13 @@ import scala.language.higherKinds
 case class SubIds(ratePlanId: RatePlanId, productRatePlanId: ProductRatePlanId)
 
 object SubscriptionService {
-  type SoapClient = ContactId => Future[List[memsub.Subscription.AccountId]]
+  type SoapClient = ContactId => Future[List[subscription.Subscription.AccountId]]
   type CatalogMap = Map[ProductRatePlanId, CatalogZuoraPlan]
 }
 
 trait SubscriptionService {
   def get[P <: AnyPlan: SubPlanReads](
-      name: memsub.Subscription.Name,
+      name: subscription.Subscription.Name,
       isActiveToday: Boolean = false,
   ): Future[Option[Subscription[P]]]
 
@@ -53,12 +53,12 @@ trait SubscriptionService {
   /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead
     */
   def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      name: memsub.Subscription.Name,
+      name: subscription.Subscription.Name,
   )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[\/[String, Subscription[FALLBACK] \/ Subscription[PREFERRED]]]
 
   // this is a back door to find the subscription discount ids so we can delete when people upgrade
   // just need the id and prp id
-  def backdoorRatePlanIds(name: com.gu.memsub.Subscription.Name): Future[String \/ List[SubIds]]
+  def backdoorRatePlanIds(name: models.subscription.Subscription.Name): Future[String \/ List[SubIds]]
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
     *
@@ -78,7 +78,7 @@ trait SubscriptionService {
     *   should not proceed with automatic cancelation
     */
   def decideCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](
-      subscriptionName: memsub.Subscription.Name,
+      subscriptionName: subscription.Subscription.Name,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
   ): EitherT[String, Future, Option[LocalDate]]

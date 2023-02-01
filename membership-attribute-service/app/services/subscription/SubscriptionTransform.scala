@@ -1,13 +1,13 @@
 package services.subscription
 
-import com.gu.memsub.Subscription.{ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2._
-import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
-import com.gu.memsub.subsv2.reads.CommonReads._
-import com.gu.memsub.subsv2.reads.SubJsonReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
+import models.subscription.Subscription.{ProductRatePlanId, RatePlanId}
+import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import models.subscription.subsv2._
+import models.subscription.subsv2.reads.ChargeListReads.ProductIds
+import models.subscription.subsv2.reads.CommonReads._
+import models.subscription.subsv2.reads.SubJsonReads._
+import models.subscription.subsv2.reads.SubPlanReads
+import models.subscription.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.monitoring.SafeLogger
 import org.joda.time.LocalDate
 import play.api.libs.json.{Reads => JsReads, _}

@@ -2,7 +2,7 @@ package wiring
 
 import actions.CommonActions
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.CatalogService
+import models.subscription.subsv2.services.CatalogService
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._

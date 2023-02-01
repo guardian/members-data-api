@@ -2,20 +2,18 @@ package components
 
 import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
-import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog}
+import models.subscription.subsv2.services.SubscriptionService.CatalogMap
+import models.subscription.subsv2.services.{CatalogService, FetchCatalog}
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest
-import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
-import configuration.Stage
+import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, SubsV2ProductIds, SubscriptionsProductIds}
 import models.{UserFromToken, UserFromTokenParser}
 import monitoring.CreateMetrics
 import org.http4s.Uri
@@ -25,7 +23,7 @@ import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, Cre
 import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
-import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
+import services.zuora.soap.{ClientWithFeatureSupplier, SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -63,10 +61,10 @@ class TouchpointComponents(
   lazy val supporterProductDataTable = environmentConfig.getString("supporter-product-data.table")
   lazy val invoiceTemplatesConf = environmentConfig.getConfig(s"zuora.invoiceTemplateIds")
 
-  lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
-  lazy val productIds = config.SubsV2ProductIds(environmentConfig.getConfig("zuora.productIds"))
-  lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
-  lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
+  lazy val digitalPackPlans = DigitalPackRatePlanIds.fromConfig(digitalPackConf)
+  lazy val productIds = SubsV2ProductIds(environmentConfig.getConfig("zuora.productIds"))
+  lazy val membershipPlans = MembershipRatePlanIds.fromConfig(membershipConf)
+  lazy val subsProducts = SubscriptionsProductIds(paperCatalogConf)
 
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
 
