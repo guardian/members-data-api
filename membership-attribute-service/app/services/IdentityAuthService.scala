@@ -6,7 +6,7 @@ import cats.implicits._
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
-import com.gu.monitoring.SafeLogger
+import monitoring.SafeLogger
 import models.{ApiError, ApiErrors, UserFromToken, UserFromTokenParser}
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
 
