@@ -1,11 +1,11 @@
 package services
 
-import com.gu.memsub.Product
-import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import models.subscription.Product
+import models.subscription.Subscription.Name
+import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import models.subscription.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.Contact
-import com.gu.services.model.PaymentDetails
+import models.PaymentDetails
 import controllers.AccountController
 import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
 import models.{AccountDetails, ContactAndSubscription, DeliveryAddress}

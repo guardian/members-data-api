@@ -1,6 +1,6 @@
 package services.zuora.rest
 
-import com.gu.memsub.Subscription.{AccountId, Name, RatePlanId, SubscriptionRatePlanChargeId}
+import models.subscription.Subscription.{AccountId, Name, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.salesforce.ContactId
 import com.gu.zuora.rest.ZuoraResponse
 import services.zuora.rest.ZuoraRestService.{

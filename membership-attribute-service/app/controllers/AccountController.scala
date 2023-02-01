@@ -1,15 +1,8 @@
 package controllers
 
 import actions._
-import com.gu.memsub
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.reads.ChargeListReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
-import com.gu.zuora.api.RegionalStripeGateways
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
@@ -17,6 +10,11 @@ import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
 import models.AccountDetails._
 import models.ApiErrors._
 import models._
+import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import models.subscription.subsv2.reads.ChargeListReads._
+import models.subscription.subsv2.reads.SubPlanReads
+import models.subscription.subsv2.reads.SubPlanReads._
+import models.subscription.subsv2.{Subscription, SubscriptionPlan}
 import monitoring.CreateMetrics
 import org.joda.time.LocalDate
 import play.api.data.Form
@@ -25,8 +23,8 @@ import play.api.libs.json.{Format, Json}
 import play.api.mvc._
 import scalaz._
 import scalaz.std.scalaFuture._
+import services.ContributionsStoreDatabaseService
 import services.PaymentFailureAlerter._
-import services._
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
 import utils.SimpleEitherT.SimpleEitherT
 import utils.{OptionTEither, SimpleEitherT}
@@ -36,12 +34,12 @@ import scala.concurrent.{ExecutionContext, Future}
 object AccountHelpers {
 
   sealed trait OptionalSubscriptionsFilter
-  case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
+  case class FilterBySubName(subscriptionName: subscription.Subscription.Name) extends OptionalSubscriptionsFilter
   case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
   case object NoFilter extends OptionalSubscriptionsFilter
 
   def subscriptionSelector[P <: SubscriptionPlan.AnyPlan](
-      subscriptionNameOption: Option[memsub.Subscription.Name],
+      subscriptionNameOption: Option[subscription.Subscription.Name],
       messageSuffix: String,
   )(subscriptions: List[Subscription[P]]): Either[String, Subscription[P]] = subscriptionNameOption match {
     case Some(subName) => subscriptions.find(_.name == subName).toRight(s"$subName was not a subscription for $messageSuffix")
@@ -76,7 +74,7 @@ class AccountController(
 
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
+  def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: subscription.Subscription.Name): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
         val tp = request.touchpoint
@@ -103,7 +101,7 @@ class AccountController(
           * balance, and if at any point auto-pay is switched back on, then payment for the entire amount would be attempted.
           */
         def disableAutoPayOnlyIfAccountHasOneSubscription(
-            accountId: memsub.Subscription.AccountId,
+            accountId: subscription.Subscription.AccountId,
         ): SimpleEitherT[Unit] = {
           EitherT(tp.subscriptionService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
@@ -116,7 +114,7 @@ class AccountController(
         def executeCancellation(
             cancellationEffectiveDate: Option[LocalDate],
             reason: String,
-            accountId: memsub.Subscription.AccountId,
+            accountId: subscription.Subscription.AccountId,
             endOfTermDate: LocalDate,
         ): Future[Either[ApiError, Option[LocalDate]]] = {
           (for {
@@ -163,7 +161,7 @@ class AccountController(
       }
     }
 
-  private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
+  private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: subscription.Subscription.Name) =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
         val tp = request.touchpoint
@@ -316,7 +314,7 @@ class AccountController(
       }
     }
 
-  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) =
+  private def updateContributionAmount(subscriptionNameOption: Option[subscription.Subscription.Name]) =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/contribution-update-amount/:subscriptionName") {
         if (subscriptionNameOption.isEmpty) {
@@ -370,17 +368,17 @@ class AccountController(
   }
 
   def cancelSpecificSub(subscriptionName: String): Action[AnyContent] =
-    cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+    cancelSubscription[SubscriptionPlan.AnyPlan](subscription.Subscription.Name(subscriptionName))
 
   def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
-    getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+    getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](subscription.Subscription.Name(subscriptionName))
 
   def cancelledSubscriptions(): Action[AnyContent] = fetchCancelledSubscriptions()
 
   @Deprecated def contributionUpdateAmount: Action[AnyContent] = updateContributionAmount(None)
 
   def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] = updateContributionAmount(
-    Some(memsub.Subscription.Name(subscriptionName)),
+    Some(subscription.Subscription.Name(subscriptionName)),
   )
 
   @Deprecated def membershipDetails: Action[AnyContent] =
@@ -408,7 +406,7 @@ class AccountController(
     )
   def paymentDetailsSpecificSub(subscriptionName: String): Action[AnyContent] =
     anyPaymentDetails(
-      FilterBySubName(memsub.Subscription.Name(subscriptionName)),
+      FilterBySubName(subscription.Subscription.Name(subscriptionName)),
       "GET /user-attributes/me/mma/:subscriptionName",
     )
 }

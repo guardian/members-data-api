@@ -4,10 +4,10 @@ import java.time.format.TextStyle
 import java.util.Locale
 import scala.annotation.tailrec
 import com.gu.i18n.Country
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product, Sepa}
-import com.gu.services.model.PaymentDetails
+import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import models.subscription.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
+import models.subscription.{GoCardless, PayPalMethod, PaymentCard, Product, Sepa}
+import models.PaymentDetails
 import com.typesafe.scalalogging.LazyLogging
 import json.localDateWrites
 import org.joda.time.LocalDate
