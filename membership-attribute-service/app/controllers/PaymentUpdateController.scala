@@ -1,15 +1,13 @@
 package controllers
 
 import actions.{CommonActions, Return401IfNotSignedInRecently}
-import com.gu.memsub
-import com.gu.memsub.subsv2.SubscriptionPlan
-import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.zuora.api.GoCardlessZuoraInstance
-import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.updateSelf
+import models.subscription.subsv2.SubscriptionPlan
+import models.subscription.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod, Subscription}
 import monitoring.CreateMetrics
 import play.api.data.Form
 import play.api.data.Forms._
@@ -17,6 +15,7 @@ import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
+import services.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -52,7 +51,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
           subscription <- EitherT.fromEither(
             tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
-              .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
+              .map(subs => subscriptionSelector(Some(Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
           stripeService <- EitherT.fromEither(
             Future
@@ -137,7 +136,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
           subscription <- EitherT.fromEither(
             tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
-              .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
+              .map(subs => subscriptionSelector(Some(Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
           account <- EitherT.fromEither(
             annotateFailableFuture(tp.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),

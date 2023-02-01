@@ -3,14 +3,14 @@ package services
 import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
 import _root_.services.stripe.BasicStripeService
 import com.github.nscala_time.time.Imports.DateTimeFormat
-import com.gu.memsub.BillingPeriod.{Month, RecurringPeriod, Year}
-import com.gu.memsub.Product.GuardianPatron
-import com.gu.memsub.Subscription._
-import com.gu.memsub._
-import com.gu.memsub.subsv2.ReaderType.Direct
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
-import com.gu.services.model.PaymentDetails
-import com.gu.services.model.PaymentDetails.PersonalPlan
+import models.subscription.BillingPeriod.{Month, RecurringPeriod, Year}
+import models.subscription.Product.GuardianPatron
+import models.subscription.Subscription._
+import models.subscription._
+import models.subscription.subsv2.ReaderType.Direct
+import models.subscription.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
+import models.PaymentDetails
+import models.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
 import monitoring.CreateMetrics
