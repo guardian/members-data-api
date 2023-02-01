@@ -1,11 +1,11 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import com.gu.memsub
-import com.gu.memsub.{Benefit, BillingPeriod, Product}
-import com.gu.memsub.Product.Membership
-import com.gu.memsub.Subscription.{Feature, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.{PaidChargeList, PaidSubscriptionPlan}
+import models.subscription
+import models.subscription.{Benefit, BillingPeriod, Product}
+import models.subscription.Product.Membership
+import models.subscription.Subscription.{Feature, ProductRatePlanId, RatePlanId}
+import models.subscription.subsv2.{PaidChargeList, PaidSubscriptionPlan}
 import org.joda.time.LocalDate
 
 import java.time.Month

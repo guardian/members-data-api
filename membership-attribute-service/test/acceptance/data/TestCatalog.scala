@@ -4,7 +4,7 @@ import acceptance.data.Randoms.randomId
 import acceptance.data.TestCatalogPlan.{monthlyPaid, oneYearPaid, paperCharges, quarterlyPaid, sixWeeksPaid, threeMonthsPaid, yearlyPaid}
 import acceptance.data.TestPlans.{testDigipackPlans, testPaidMembershipPlans, testSupporterPlusPlans, weeklyPlans}
 import com.gu.i18n.Currency
-import com.gu.memsub.Benefit.{
+import models.subscription.Benefit.{
   FridayPaper,
   Friend,
   MondayPaper,
@@ -19,10 +19,10 @@ import com.gu.memsub.Benefit.{
   TuesdayPaper,
   WednesdayPaper,
 }
-import com.gu.memsub.BillingPeriod.{Month, OneYear, Quarter, SixWeeks, ThreeMonths, Year}
-import com.gu.memsub.Product.Membership
-import com.gu.memsub.Subscription.ProductRatePlanId
-import com.gu.memsub.subsv2.{
+import models.subscription.BillingPeriod.{Month, OneYear, Quarter, SixWeeks, ThreeMonths, Year}
+import models.subscription.Product.Membership
+import models.subscription.Subscription.ProductRatePlanId
+import models.subscription.subsv2.{
   Catalog,
   CatalogPlan,
   CatalogZuoraPlan,
@@ -40,7 +40,7 @@ import com.gu.memsub.subsv2.{
   WeeklyZoneBPlans,
   WeeklyZoneCPlans,
 }
-import com.gu.memsub.{Benefit, BillingPeriod, Current, PricingSummary, Product, Status}
+import models.subscription.{Benefit, BillingPeriod, Current, PricingSummary, Product, Status}
 import scalaz.NonEmptyList
 
 object TestCatalogPlan {

@@ -2,11 +2,11 @@ package testdata
 
 import com.github.nscala_time.time.Implicits._
 import com.gu.i18n.Currency.GBP
-import com.gu.memsub.Benefit._
-import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, _}
-import com.gu.memsub.subsv2.ReaderType.Gift
-import com.gu.memsub.subsv2._
-import com.gu.memsub.{Subscription => _, _}
+import models.subscription.Benefit._
+import models.subscription.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, _}
+import models.subscription.subsv2.ReaderType.Gift
+import models.subscription.subsv2._
+import models.subscription.{Subscription => _, _}
 import org.joda.time.LocalDate
 
 import scalaz.NonEmptyList

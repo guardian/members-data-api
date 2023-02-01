@@ -12,9 +12,9 @@ import acceptance.data.{
   TestSubscription,
 }
 import com.gu.i18n.Currency
-import com.gu.memsub.subsv2.services.CatalogService
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
-import com.gu.memsub.{Product, Subscription}
+import models.subscription.subsv2.services.CatalogService
+import models.subscription.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
+import models.subscription.{Product, Subscription}
 import kong.unirest.Unirest
 import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any
