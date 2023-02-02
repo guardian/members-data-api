@@ -2,7 +2,7 @@ package components
 
 import akka.actor.ActorSystem
 import aws.ProfileName
-import com.gu.identity.IdapiService
+import services.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.typesafe.config.Config
@@ -113,13 +113,13 @@ class TouchpointComponents(
     },
   )
 
-  private lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
+  private lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds), createMetrics)
   private lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
   lazy val zuoraRestService: ZuoraRestService = zuoraRestServiceOverride.getOrElse(
     new ZuoraRestServiceWithMetrics(simpleClientZuoraRestService, createMetrics)(executionContext),
   )
 
-  lazy val catalogRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+  lazy val catalogRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds), createMetrics)
   lazy val catalogService = catalogServiceOverride.getOrElse(
     new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
   )

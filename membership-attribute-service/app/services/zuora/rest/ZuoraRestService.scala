@@ -3,13 +3,11 @@ package services.zuora.rest
 import com.gu.i18n.{Country, Currency, Title}
 import models.subscription.Subscription.{AccountId, AccountNumber, Name, RatePlanId, SubscriptionRatePlanChargeId}
 import models.subscription.subsv2.reads.CommonReads._
-import com.gu.salesforce.ContactId
-import com.gu.zuora.ZuoraLookup
-import services.zuora.api.PaymentGateway
 import _root_.services.zuora.rest.ZuoraResponse
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
 import scalaz.\/
+import services.salesforce.model.ContactId
 import services.zuora.rest.ZuoraRestService.{
   AccountSummary,
   AccountsByCrmIdResponse,
@@ -20,6 +18,7 @@ import services.zuora.rest.ZuoraRestService.{
   ObjectAccount,
   PaymentMethodResponse,
 }
+import services.zuora.soap.{PaymentGateway, ZuoraLookup}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds

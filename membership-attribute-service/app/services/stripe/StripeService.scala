@@ -4,7 +4,7 @@ import com.gu.i18n.Country
 import com.typesafe.config.Config
 import scalaz.Scalaz.ToBooleanOpsFromBoolean
 import services.stripe.Stripe._
-import services.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway, RegionalStripeGateways}
+import services.zuora.soap.{InvoiceTemplate, InvoiceTemplates, PaymentGateway, RegionalStripeGateways}
 
 import scala.concurrent.{ExecutionContext, Future}
 
