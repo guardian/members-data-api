@@ -6,8 +6,7 @@ import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.monitoring.ZuoraMetrics
-import com.gu.okhttp.RequestRunners
-import com.gu.touchpoint.TouchpointBackendConfig
+import utils.RequestRunners
 import com.gu.zuora.rest
 import com.typesafe.config.Config
 import configuration.OptionalConfig._
@@ -20,7 +19,7 @@ import monitoring.{CreateMetrics, CreateNoopMetrics, SafeLogger}
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
-import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
+import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SalesforceHealthCheckService, SimpleContactRepository}
 import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
@@ -78,15 +77,16 @@ class TouchpointComponents(
       .getOrElse(new BasicStripeServiceWithMetrics(patronsBasicHttpStripeService, createFineMetrics))
   }
 
-  lazy val salesforce = CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
-
   lazy val contactRepository: ContactRepository = {
     lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
     lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createFineMetrics)
 
     contactRepositoryOverride.getOrElse(contactRepositoryWithMetrics)
   }
-  lazy val salesforceService: SalesforceService = new SalesforceService(salesforce)
+
+  private lazy val salesforce =
+    CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName, createMetrics)
+  lazy val salesforceService: SalesforceHealthCheckService = new SalesforceHealthCheckService(salesforce)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
     .credentialsProviders(
@@ -137,7 +137,7 @@ class TouchpointComponents(
     )
   }
 
-  lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+  lazy val catalogRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = catalogServiceOverride.getOrElse(
     new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
   )

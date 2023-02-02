@@ -7,8 +7,8 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Metrics(service: String, cloudwatch: CloudWatch) extends StrictLogging {
-  def incrementCount(metricName: String): Unit = cloudwatch.put(metricName + " count", 1, StandardUnit.Count)
+case class Metrics(service: String, protected val cloudWatch: CloudWatch) extends StrictLogging {
+  def incrementCount(metricName: String): Unit = cloudWatch.put(metricName + " count", 1, StandardUnit.Count)
 
   def measureDurationEither[T](metricName: String)(block: => SimpleEitherT[T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
     SimpleEitherT(measureDuration(metricName)(block.run))
@@ -20,12 +20,26 @@ case class Metrics(service: String, cloudwatch: CloudWatch) extends StrictLoggin
 
     def recordEnd[A](name: String)(value: A): A = {
       val duration = System.currentTimeMillis() - startTime
-      cloudwatch.put(name + " duration ms", duration, StandardUnit.Milliseconds)
+      cloudWatch.put(name + " duration ms", duration, StandardUnit.Milliseconds)
       logger.debug(s"$service $name completed in $duration ms")
 
       value
     }
 
     block.transform(recordEnd(metricName), recordEnd(s"$metricName failed"))
+  }
+}
+
+trait RequestMetrics {
+  protected val cloudWatch: CloudWatch
+  def putRequest {
+    cloudWatch.put("request-count", 1, StandardUnit.Count)
+  }
+}
+
+trait AuthenticationMetrics {
+  protected val cloudWatch: CloudWatch
+  def putAuthenticationError {
+    cloudWatch.put("auth-error", 1, StandardUnit.Count)
   }
 }

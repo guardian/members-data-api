@@ -2,7 +2,7 @@ package subscriptions
 
 import models.subscription.Subscription.Name
 import models.subscription.util.WebServiceHelper
-import com.gu.okhttp.RequestRunners._
+import utils.RequestRunners._
 import subscriptions.CAS.Deserializer._
 import subscriptions.CAS._
 import subscriptions.Quadrant.looksLikeAQuadrantSubscriber

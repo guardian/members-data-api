@@ -1,7 +1,7 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import com.gu.salesforce.Contact
+import services.salesforce.model.Contact
 import org.joda.time.DateTime
 
 object TestContact {

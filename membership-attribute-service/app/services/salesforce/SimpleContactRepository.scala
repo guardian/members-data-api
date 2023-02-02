@@ -1,13 +1,12 @@
 package services.salesforce
 
 import akka.actor.Scheduler
-import com.gu.okhttp.RequestRunners
+import utils.RequestRunners
 import com.gu.salesforce.ContactDeserializer._
-import com.gu.salesforce.{Contact, ContactId, SFContactId, SalesforceConfig, Scalaforce}
-import okhttp3.{Request, Response}
 import play.api.libs.json._
 import scalaz.std.scalaFuture.futureInstance
 import scalaz.{-\/, EitherT, \/, \/-}
+import services.salesforce.model.{Contact, ContactId}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -41,6 +40,7 @@ class SimpleContactRepository(private val salesforce: Scalaforce)(implicit execu
   )
 
   private def get(key: String, value: String): Future[String \/ Option[Contact]] = {
+    import model.ContactDeserializer.contact
     salesforce.Contact.read(key, value).map { failableJsonContact =>
       (for {
         resultOpt <- failableJsonContact
@@ -108,18 +108,4 @@ class SimpleContactRepository(private val salesforce: Scalaforce)(implicit execu
 
   override def update(contactId: String, contactFields: Map[String, String]): Future[Unit] =
     salesforce.Contact.update(SFContactId(contactId), contactFields)
-}
-
-object CreateScalaforce {
-  def apply(salesforceConfig: SalesforceConfig, scheduler: Scheduler, appName: String)(implicit executionContext: ExecutionContext): Scalaforce = {
-    val salesforce: Scalaforce = new Scalaforce {
-      val application: String = appName
-      val stage: String = salesforceConfig.envName
-      val sfConfig: SalesforceConfig = salesforceConfig
-      val httpClient: (Request) => Future[Response] = RequestRunners.futureRunner
-      val sfScheduler = scheduler
-    }
-    salesforce.startAuth()
-    salesforce
-  }
 }

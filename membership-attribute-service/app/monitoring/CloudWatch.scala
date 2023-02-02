@@ -11,18 +11,23 @@ class CloudWatch(stage: String, application: String, service: String, cloudwatch
 
   private val mandatoryDimensions = Seq(stageDimension, servicesDimension)
 
-  protected[monitoring] def put(name: String, count: Double, unit: StandardUnit): Unit = {
+  protected[monitoring] def put(name: String, count: Double, unit: StandardUnit, extraDimensions: Dimension*): Unit = {
     val metric =
       new MetricDatum()
         .withValue(count)
         .withMetricName(name)
         .withUnit(unit)
-        .withDimensions(mandatoryDimensions: _*)
+        .withDimensions(mandatoryDimensions ++ extraDimensions: _*)
 
     val request = new PutMetricDataRequest().withNamespace(application).withMetricData(metric)
 
     cloudwatch.putMetricDataAsync(request, LoggingAsyncHandler)
   }
+
+  def putCount(name: String, count: Double): Unit = put(name, count, StandardUnit.Count)
+
+  def putCount(name: String, count: Double, responseMethod: String): Unit =
+    put(name, count, StandardUnit.Count, new Dimension().withName("ResponseMethod").withValue(responseMethod))
 }
 
 object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with StrictLogging {
