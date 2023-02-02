@@ -1,7 +1,7 @@
 package actions
 import akka.stream.Materializer
-import com.gu.identity.RedirectAdviceResponse
 import com.gu.identity.auth.AccessScope
+import services.identity.RedirectAdviceResponse
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import filters.IsTestUser

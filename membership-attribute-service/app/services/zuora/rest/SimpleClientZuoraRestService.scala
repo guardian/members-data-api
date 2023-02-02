@@ -2,13 +2,13 @@ package services.zuora.rest
 
 import models.subscription.Subscription._
 import monitoring.SafeLogger
-import com.gu.salesforce.ContactId
 import services.zuora.rest.ZuoraRestService._
 import _root_.services.zuora.rest.{ZuoraCrudResponse, ZuoraResponse}
 import org.joda.time.LocalDate
 import play.api.libs.json.{JsObject, JsValue, Json}
 import scalaz.std.list._
 import scalaz.{-\/, EitherT, Monad, \/, \/-}
+import services.salesforce.model.ContactId
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds

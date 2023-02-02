@@ -2,7 +2,7 @@ package acceptance.data
 
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Currency
-import services.zuora.api.PaymentGateway
+import services.zuora.soap.PaymentGateway
 import services.zuora.soap.models.Queries
 
 object TestQueriesAccount {

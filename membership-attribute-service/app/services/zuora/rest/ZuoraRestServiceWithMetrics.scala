@@ -1,7 +1,6 @@
 package services.zuora.rest
 
 import models.subscription.Subscription.{AccountId, Name, RatePlanId, SubscriptionRatePlanChargeId}
-import com.gu.salesforce.ContactId
 import _root_.services.zuora.rest.ZuoraResponse
 import services.zuora.rest.ZuoraRestService.{
   AccountSummary,
@@ -16,6 +15,7 @@ import services.zuora.rest.ZuoraRestService.{
 import monitoring.CreateMetrics
 import org.joda.time.LocalDate
 import scalaz.\/
+import services.salesforce.model.ContactId
 
 import scala.concurrent.{ExecutionContext, Future}
 
