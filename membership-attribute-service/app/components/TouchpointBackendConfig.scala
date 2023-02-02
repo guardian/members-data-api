@@ -2,7 +2,7 @@ package components
 
 import com.gu.i18n.Country
 import com.gu.identity.IdapiConfig
-import com.gu.paypal.PayPalConfig
+import configuration.PayPalConfig
 import services.stripe.{BasicStripeServiceConfig, StripeServiceConfig}
 import monitoring.SafeLogger
 import services.salesforce.SalesforceConfig

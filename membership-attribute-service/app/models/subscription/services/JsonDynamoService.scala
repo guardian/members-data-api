@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBClient, AmazonDynamoDBCl
 import com.amazonaws.services.dynamodbv2.document.spec.{GetItemSpec, QuerySpec, ScanSpec}
 import com.amazonaws.services.dynamodbv2.document._
 import com.amazonaws.services.dynamodbv2.model.TableDescription
-import com.gu.aws.CredentialsProvider
+import aws.CredentialsProvider
 import play.api.libs.json._
 
 import scala.collection.JavaConverters._

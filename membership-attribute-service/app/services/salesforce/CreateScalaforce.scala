@@ -1,8 +1,8 @@
 package services.salesforce
 
 import akka.actor.Scheduler
+import monitoring.CreateMetrics
 import utils.RequestRunners
-import monitoring.{CreateMetrics, SalesforceMetrics}
 
 import scala.concurrent.ExecutionContext
 

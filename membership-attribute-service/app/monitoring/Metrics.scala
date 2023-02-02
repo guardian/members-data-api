@@ -29,19 +29,3 @@ case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchA
     block.transform(recordEnd(metricName), recordEnd(s"$metricName failed"))
   }
 }
-
-trait StatusMetrics extends CloudWatch {
-  def putResponseCode(status: Int, responseMethod: String) {}
-}
-
-trait RequestMetrics extends CloudWatch {
-  def putRequest {
-    put("request-count", 1, StandardUnit.Count)
-  }
-}
-
-trait AuthenticationMetrics extends CloudWatch {
-  def putAuthenticationError {
-    put("auth-error", 1, StandardUnit.Count)
-  }
-}

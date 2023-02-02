@@ -5,7 +5,7 @@ import _root_.models.subscription.util.FutureRetry._
 import akka.actor.ActorSystem
 import com.gu.monitoring.ZuoraMetrics
 import utils.RequestRunners.FutureHttpClient
-import monitoring.SafeLogger
+import monitoring.{CreateMetrics, SafeLogger}
 import monitoring.SafeLogger._
 import services.zuora.ZuoraSoapConfig
 import services.zuora.soap.Readers._
@@ -21,9 +21,9 @@ class ClientWithFeatureSupplier(
     apiConfig: ZuoraSoapConfig,
     httpClient: FutureHttpClient,
     extendedHttpClient: FutureHttpClient,
-    metrics: ZuoraMetrics,
+    createMetrics: CreateMetrics,
 )(implicit actorSystem: ActorSystem, ec: ExecutionContext)
-    extends Client(apiConfig, httpClient, extendedHttpClient, metrics) {
+    extends Client(apiConfig, httpClient, extendedHttpClient, createMetrics) {
 
   // FIXME: This is strange and should be removed. Seems to be used only by membership-frontend which is essentially a dead product
   val featuresSupplier = new AtomicReference[Future[Seq[Feature]]](null)

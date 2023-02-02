@@ -1,14 +1,14 @@
 package services.salesforce
 
 import akka.actor.{Cancellable, Scheduler}
-import com.gu.memsub.util.FutureRetry._
 import com.typesafe.scalalogging.LazyLogging
 import models.subscription.util.Timing
-import monitoring.{CreateMetrics, SafeLogger, SalesforceMetrics}
+import monitoring.{CreateMetrics, SafeLogger}
 import okhttp3._
 import play.api.libs.json._
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, Monad, \/, \/-}
+import utils.FutureRetry._
 import utils.RequestRunners.FutureHttpClient
 
 import java.util.concurrent.atomic.AtomicReference

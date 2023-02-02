@@ -1,13 +1,10 @@
 package components
 
 import akka.actor.ActorSystem
-import com.gu.aws.ProfileName
+import aws.ProfileName
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import com.gu.monitoring.ZuoraMetrics
-import utils.RequestRunners
-import _root_.services.zuora.rest
 import com.typesafe.config.Config
 import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, SubsV2ProductIds, SubscriptionsProductIds}
 import models.subscription.subsv2.services.SubscriptionService.CatalogMap
@@ -31,6 +28,7 @@ import software.amazon.awssdk.auth.credentials.{
 }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
+import utils.RequestRunners
 
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
@@ -98,14 +96,13 @@ class TouchpointComponents(
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
-  private val zuoraMetrics = new ZuoraMetrics(stage.value, configuration.ApplicationName.applicationName)
   private lazy val zuoraSoapClient =
     new ClientWithFeatureSupplier(
       featureCodes = Set.empty,
       apiConfig = backendConfig.zuoraSoap,
       httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
       extendedHttpClient = RequestRunners.futureRunner,
-      metrics = zuoraMetrics,
+      createMetrics = createMetrics,
     )
 
   private lazy val zuoraSoapService = new SimpleZuoraSoapService(zuoraSoapClient)
