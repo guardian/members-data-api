@@ -1,7 +1,7 @@
 package models.subscription
 
 import models.subscription.subsv2.{SubscriptionPlan => Plan}
-import com.gu.salesforce.Contact
+import _root_.services.salesforce.model.Contact
 
 case class Subscriber[+T <: subsv2.Subscription[Plan.AnyPlan]](subscription: T, contact: Contact)
 

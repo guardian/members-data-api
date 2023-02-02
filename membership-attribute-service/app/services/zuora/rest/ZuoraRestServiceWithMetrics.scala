@@ -2,7 +2,7 @@ package services.zuora.rest
 
 import models.subscription.Subscription.{AccountId, Name, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.salesforce.ContactId
-import com.gu.zuora.rest.ZuoraResponse
+import _root_.services.zuora.rest.ZuoraResponse
 import services.zuora.rest.ZuoraRestService.{
   AccountSummary,
   AccountsByCrmIdResponse,

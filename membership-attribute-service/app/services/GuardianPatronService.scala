@@ -11,7 +11,7 @@ import models.subscription.subsv2.ReaderType.Direct
 import models.subscription.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
 import models.PaymentDetails
 import models.PaymentDetails.PersonalPlan
-import com.gu.stripe.Stripe
+import _root_.services.stripe.Stripe
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
 import monitoring.CreateMetrics
 import scalaz.EitherT

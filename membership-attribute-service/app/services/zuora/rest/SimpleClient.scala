@@ -1,12 +1,12 @@
 package services.zuora.rest
 
 import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
-import com.gu.zuora.ZuoraRestConfig
 import okhttp3.{Response => OKHttpResponse, _}
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
 import scalaz.syntax.functor.ToFunctorOps
 import scalaz.syntax.std.either._
 import scalaz.{Functor, \/}
+import services.zuora.ZuoraRestConfig
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds

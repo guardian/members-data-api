@@ -1,7 +1,7 @@
 package acceptance.data.stripe
 
 import acceptance.data.Randoms.randomId
-import com.gu.stripe.Stripe.{CustomersPaymentMethods, StripePaymentMethod, StripePaymentMethodCard}
+import services.stripe.Stripe.{CustomersPaymentMethods, StripePaymentMethod, StripePaymentMethodCard}
 
 object TestStripePaymentMethod {
   def apply(

@@ -1,6 +1,6 @@
 package services.salesforce
 
-import com.gu.salesforce.{Contact, ContactId}
+import services.salesforce.model.{Contact, ContactId}
 import monitoring.CreateMetrics
 import play.api.libs.json.JsObject
 import scalaz.\/
