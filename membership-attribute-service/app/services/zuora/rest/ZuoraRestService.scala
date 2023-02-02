@@ -6,7 +6,7 @@ import models.subscription.subsv2.reads.CommonReads._
 import com.gu.salesforce.ContactId
 import com.gu.zuora.ZuoraLookup
 import com.gu.zuora.api.PaymentGateway
-import com.gu.zuora.rest.ZuoraResponse
+import _root_.services.zuora.rest.ZuoraResponse
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, LocalDate}
 import scalaz.\/

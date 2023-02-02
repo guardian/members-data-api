@@ -7,7 +7,7 @@ import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenVa
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.monitoring.ZuoraMetrics
 import utils.RequestRunners
-import com.gu.zuora.rest
+import _root_.services.zuora.rest
 import com.typesafe.config.Config
 import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, SubsV2ProductIds, SubscriptionsProductIds}
 import models.subscription.subsv2.services.SubscriptionService.CatalogMap
