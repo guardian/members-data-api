@@ -2,15 +2,12 @@ package monitoring
 
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
 import com.amazonaws.services.cloudwatch.model.StandardUnit
-import configuration.ApplicationName
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchAsync) extends CloudWatch {
-  val application = ApplicationName.applicationName // This sets the namespace for Custom Metrics in AWS (see CloudWatch)
-
   def incrementCount(metricName: String): Unit = put(metricName + " count", 1, StandardUnit.Count)
 
   def measureDurationEither[T](metricName: String)(block: => SimpleEitherT[T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
@@ -30,5 +27,21 @@ case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchA
     }
 
     block.transform(recordEnd(metricName), recordEnd(s"$metricName failed"))
+  }
+}
+
+trait StatusMetrics extends CloudWatch {
+  def putResponseCode(status: Int, responseMethod: String) {}
+}
+
+trait RequestMetrics extends CloudWatch {
+  def putRequest {
+    put("request-count", 1, StandardUnit.Count)
+  }
+}
+
+trait AuthenticationMetrics extends CloudWatch {
+  def putAuthenticationError {
+    put("auth-error", 1, StandardUnit.Count)
   }
 }

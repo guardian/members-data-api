@@ -2,7 +2,7 @@ package models
 
 import models.subscription.subsv2.Subscription
 import models.subscription.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.salesforce.Contact
+import services.salesforce.model.Contact
 
 case class ContactAndSubscription(
     contact: Contact,

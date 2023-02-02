@@ -4,7 +4,7 @@ import com.github.nscala_time.time.Imports._
 import com.gu.i18n.Currency
 import _root_.models.subscription.Subscription
 import _root_.models.subscription.Subscription.{AccountId, Id, ProductRatePlanId}
-import com.gu.salesforce.ContactId
+import services.salesforce.model.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
 import services.zuora.soap.models.Queries.{PreviewInvoiceItem, Usage}

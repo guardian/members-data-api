@@ -3,25 +3,25 @@ package services.zuora.soap
 import _root_.models.subscription.Subscription.Feature.Code
 import _root_.models.subscription.util.FutureRetry._
 import akka.actor.ActorSystem
-import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
-import com.gu.okhttp.RequestRunners.FutureHttpClient
-import com.gu.zuora.ZuoraSoapConfig
+import com.gu.monitoring.ZuoraMetrics
+import utils.RequestRunners.FutureHttpClient
 import monitoring.SafeLogger
-import services.zuora.soap.models.Queries.Feature
+import monitoring.SafeLogger._
+import services.zuora.ZuoraSoapConfig
 import services.zuora.soap.Readers._
+import services.zuora.soap.models.Queries.Feature
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Failure
-import monitoring.SafeLogger._
 
 class ClientWithFeatureSupplier(
     featureCodes: Set[Code],
     apiConfig: ZuoraSoapConfig,
     httpClient: FutureHttpClient,
     extendedHttpClient: FutureHttpClient,
-    metrics: ZuoraMetrics = NoOpZuoraMetrics,
+    metrics: ZuoraMetrics,
 )(implicit actorSystem: ActorSystem, ec: ExecutionContext)
     extends Client(apiConfig, httpClient, extendedHttpClient, metrics) {
 

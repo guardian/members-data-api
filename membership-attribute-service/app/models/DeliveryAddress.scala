@@ -1,7 +1,7 @@
 package models
 
-import com.gu.salesforce.Contact
 import play.api.libs.json.{Format, Json}
+import services.salesforce.model.Contact
 
 case class DeliveryAddress(
     addressLine1: Option[String],

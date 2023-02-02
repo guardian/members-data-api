@@ -3,7 +3,7 @@ package services.zuora.soap
 import com.gu.i18n.{CountryGroup, Currency}
 import monitoring.SafeLogger
 import monitoring.SafeLogger._
-import com.gu.salesforce.ContactId
+import services.salesforce.model.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PayPal, PaymentGateway}
 import services.zuora.soap.actions.{Action, XmlWriterAction}

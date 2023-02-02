@@ -5,14 +5,14 @@ import _root_.models.subscription.util.ScheduledTask
 import akka.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
 import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
-import com.gu.okhttp.RequestRunners._
-import com.gu.zuora.ZuoraSoapConfig
+import utils.RequestRunners._
 import com.typesafe.scalalogging.LazyLogging
 import monitoring.SafeLogger
 import monitoring.SafeLogger._
 import okhttp3.Request.Builder
 import okhttp3._
 import org.joda.time.{DateTime, ReadableDuration}
+import services.zuora.ZuoraSoapConfig
 import services.zuora.soap.Readers._
 import services.zuora.soap.actions.{Action, Actions}
 import services.zuora.soap.models.Results.{Authentication, QueryResult}
