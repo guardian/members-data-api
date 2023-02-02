@@ -2,7 +2,7 @@ package services.zuora.soap.models
 
 import com.gu.i18n.{Country, Currency}
 import models.subscription.Subscription.Feature.{Code, Id}
-import com.gu.zuora.api.PaymentGateway
+import services.zuora.api.PaymentGateway
 import org.joda.time.LocalDate
 
 trait Query

@@ -5,7 +5,7 @@ import models.subscription.Subscription.{AccountId, AccountNumber, Name, RatePla
 import models.subscription.subsv2.reads.CommonReads._
 import com.gu.salesforce.ContactId
 import com.gu.zuora.ZuoraLookup
-import com.gu.zuora.api.PaymentGateway
+import services.zuora.api.PaymentGateway
 import _root_.services.zuora.rest.ZuoraResponse
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, LocalDate}

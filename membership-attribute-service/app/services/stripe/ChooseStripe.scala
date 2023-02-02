@@ -2,7 +2,7 @@ package services.stripe
 
 import com.gu.i18n.Country
 import utils.RequestRunners
-import com.gu.stripe.StripeServiceConfig
+import services.stripe.StripeServiceConfig
 import monitoring.CreateMetrics
 
 import scala.concurrent.ExecutionContext

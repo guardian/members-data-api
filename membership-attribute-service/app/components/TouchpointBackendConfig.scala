@@ -3,7 +3,7 @@ package components
 import com.gu.i18n.Country
 import com.gu.identity.IdapiConfig
 import com.gu.paypal.PayPalConfig
-import com.gu.stripe.{BasicStripeServiceConfig, StripeServiceConfig}
+import services.stripe.{BasicStripeServiceConfig, StripeServiceConfig}
 import monitoring.SafeLogger
 import services.salesforce.SalesforceConfig
 import services.zuora.{ZuoraApiConfig, ZuoraRestConfig, ZuoraSoapConfig}

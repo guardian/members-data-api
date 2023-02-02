@@ -2,8 +2,8 @@ package acceptance.data.stripe
 
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Currency
-import com.gu.stripe.Stripe
-import com.gu.stripe.Stripe.{SubscriptionCustomer, SubscriptionPlan}
+import services.stripe.Stripe
+import services.stripe.Stripe.{SubscriptionCustomer, SubscriptionPlan}
 import org.joda.time.LocalDate
 
 object TestStripeSubscription {

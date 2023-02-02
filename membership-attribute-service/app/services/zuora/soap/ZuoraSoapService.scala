@@ -5,8 +5,8 @@ import com.gu.i18n.Currency
 import _root_.models.subscription.Subscription
 import _root_.models.subscription.Subscription.{AccountId, Id, ProductRatePlanId}
 import services.salesforce.model.ContactId
-import com.gu.stripe.Stripe
-import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
+import services.stripe.Stripe
+import services.zuora.api.{InvoiceTemplate, PaymentGateway}
 import services.zuora.soap.models.Queries.{PreviewInvoiceItem, Usage}
 import services.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}
 import services.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
