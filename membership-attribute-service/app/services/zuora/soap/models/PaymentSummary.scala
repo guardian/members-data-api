@@ -2,7 +2,7 @@ package services.zuora.soap.models
 
 import com.gu.i18n.Currency
 import models.subscription.Price
-import com.gu.stripe.Stripe
+import services.stripe.Stripe
 import services.zuora.soap.models.Queries.{InvoiceItem, PreviewInvoiceItem, Subscription}
 
 case class PaymentSummary(current: InvoiceItem, previous: Seq[InvoiceItem], currency: Currency) {

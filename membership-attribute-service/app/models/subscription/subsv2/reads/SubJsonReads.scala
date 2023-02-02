@@ -10,8 +10,8 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import play.api.libs.json._
 import CommonReads._
-import com.gu.zuora.rest.{Feature => RestFeature}
-import com.gu.zuora.rest.Readers._
+import _root_.services.zuora.rest.{Feature => RestFeature}
+import _root_.services.zuora.rest.Readers._
 
 import scalaz.syntax.traverse._
 import scalaz.std.list._

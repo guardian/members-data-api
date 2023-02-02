@@ -1,12 +1,13 @@
 package services.stripe
 
 import com.gu.i18n.Currency
+import com.typesafe.config.Config
 import models.subscription.util.WebServiceHelper
 import monitoring.SafeLogger
-import com.gu.okhttp.RequestRunners._
-import com.gu.stripe.Stripe.Deserializer._
-import com.gu.stripe.Stripe._
-import com.gu.stripe.{BasicStripeServiceConfig, Stripe, StripeServiceConfig}
+import utils.RequestRunners._
+import services.stripe.Stripe.Deserializer._
+import services.stripe.Stripe._
+import services.stripe.{BasicStripeServiceConfig, Stripe, StripeServiceConfig}
 import okhttp3.Request
 import scalaz.syntax.std.option._
 
@@ -84,4 +85,13 @@ class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: F
 object HttpBasicStripeService {
   def from(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext) =
     new HttpBasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client)
+}
+
+case class BasicStripeServiceConfig(stripeCredentials: StripeCredentials, version: Option[String])
+
+object BasicStripeServiceConfig {
+  def from(config: Config, variant: String = "api") = BasicStripeServiceConfig(
+    StripeCredentials.fromConfig(config, variant),
+    StripeServiceConfig.stripeVersion(config, variant),
+  )
 }

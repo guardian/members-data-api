@@ -5,14 +5,14 @@ import _root_.models.subscription.util.ScheduledTask
 import akka.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
 import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
-import com.gu.okhttp.RequestRunners._
-import com.gu.zuora.ZuoraSoapConfig
+import utils.RequestRunners._
 import com.typesafe.scalalogging.LazyLogging
-import monitoring.SafeLogger
+import monitoring.{CreateMetrics, SafeLogger}
 import monitoring.SafeLogger._
 import okhttp3.Request.Builder
 import okhttp3._
 import org.joda.time.{DateTime, ReadableDuration}
+import services.zuora.ZuoraSoapConfig
 import services.zuora.soap.Readers._
 import services.zuora.soap.actions.{Action, Actions}
 import services.zuora.soap.models.Results.{Authentication, QueryResult}
@@ -29,9 +29,10 @@ class Client(
     apiConfig: ZuoraSoapConfig,
     httpClient: FutureHttpClient,
     extendedHttpClient: FutureHttpClient,
-    metrics: ZuoraMetrics = NoOpZuoraMetrics,
+    createMetrics: CreateMetrics,
 )(implicit actorSystem: ActorSystem, ec: ExecutionContext)
     extends LazyLogging {
+  val metrics = createMetrics.forService("Zuora")
 
   import Client._
 
@@ -57,7 +58,7 @@ class Client(
       reader: Reader[T],
       client: FutureHttpClient = httpClient,
   ): Future[T] = {
-    metrics.countRequest()
+    metrics.incrementCount("request-count")
     val request = new Builder()
       .url(apiConfig.url.toString())
       .post(RequestBody.create(clientMediaType, action.xml(authentication).toString()))

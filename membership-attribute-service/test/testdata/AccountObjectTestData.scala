@@ -2,7 +2,7 @@ package testdata
 
 import com.gu.i18n.Country
 import com.gu.i18n.Currency.GBP
-import com.gu.zuora.api.StripeUKMembershipGateway
+import services.zuora.api.StripeUKMembershipGateway
 import models.subscription.Subscription.{AccountId, AccountNumber}
 import services.zuora.rest.ZuoraRestService._
 import org.joda.time.DateTime
