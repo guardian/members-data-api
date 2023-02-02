@@ -1,11 +1,9 @@
 package services.salesforce
 
-import akka.actor.Scheduler
-import utils.RequestRunners
-import com.gu.salesforce.ContactDeserializer._
 import play.api.libs.json._
 import scalaz.std.scalaFuture.futureInstance
 import scalaz.{-\/, EitherT, \/, \/-}
+import services.salesforce.model.ContactDeserializer._
 import services.salesforce.model.{Contact, ContactId}
 
 import scala.concurrent.{ExecutionContext, Future}

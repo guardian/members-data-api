@@ -6,7 +6,6 @@ import _root_.models.subscription.Subscription
 import _root_.models.subscription.Subscription.{Id, ProductRatePlanId}
 import services.salesforce.model.ContactId
 import services.stripe.Stripe
-import services.zuora.api.{InvoiceTemplate, PaymentGateway}
 import services.zuora.soap.models.Commands.{Amend, Contribute, CreatePaymentMethod, Renew, Subscribe}
 import services.zuora.soap.models.Queries.{PreviewInvoiceItem, Usage}
 import services.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}

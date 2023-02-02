@@ -2,8 +2,8 @@ package services.zuora.soap.models
 
 import com.gu.i18n.{Country, Currency}
 import models.subscription.Subscription.Feature.{Code, Id}
-import services.zuora.api.PaymentGateway
 import org.joda.time.LocalDate
+import services.zuora.soap.PaymentGateway
 
 trait Query
 

@@ -1,6 +1,6 @@
 package services.zuora.rest
 
-import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
+import monitoring.CreateMetrics
 import okhttp3.{Response => OKHttpResponse, _}
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
 import scalaz.syntax.functor.ToFunctorOps
@@ -18,10 +18,12 @@ import scala.util.{Success, Try}
 case class SimpleClient(
     config: ZuoraRestConfig,
     run: Request => Future[OKHttpResponse],
-    metrics: ZuoraMetrics = NoOpZuoraMetrics,
+    createMetrics: CreateMetrics,
 )(implicit functor: Functor[Future], ec: ExecutionContext) {
+  val metrics = createMetrics.forService("Zuora")
+
   def authenticated(url: String): Request.Builder = {
-    metrics.countRequest() // to count total number of request hitting Zuora
+    metrics.incrementCount("request-count") // to count total number of request hitting Zuora
 
     new Request.Builder()
       .addHeader("apiSecretAccessKey", config.password)

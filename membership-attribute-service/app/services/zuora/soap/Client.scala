@@ -4,7 +4,6 @@ import _root_.models.subscription.util.FutureRetry._
 import _root_.models.subscription.util.ScheduledTask
 import akka.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
-import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
 import utils.RequestRunners._
 import com.typesafe.scalalogging.LazyLogging
 import monitoring.{CreateMetrics, SafeLogger}

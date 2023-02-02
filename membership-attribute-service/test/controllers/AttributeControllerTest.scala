@@ -4,7 +4,7 @@ import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, Commo
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.gu.identity.auth.AccessScope
-import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
+import services.identity.{RedirectAdviceResponse, SignedInRecently}
 import com.typesafe.config.ConfigFactory
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.{CreateTestUsernames, Stage}

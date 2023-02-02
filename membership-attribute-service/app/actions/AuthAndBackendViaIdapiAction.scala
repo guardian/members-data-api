@@ -1,7 +1,7 @@
 package actions
 
 import com.gu.identity.auth.{AccessScope, IdapiUserCredentials, OktaUserCredentials}
-import com.gu.identity.{IdapiService, RedirectAdviceResponse, SignedInRecently}
+import services.identity.{IdapiService, RedirectAdviceResponse, SignedInRecently}
 import components.{TouchpointBackends, TouchpointComponents}
 import filters.IsTestUser
 import models.{ApiError, UserFromToken}
