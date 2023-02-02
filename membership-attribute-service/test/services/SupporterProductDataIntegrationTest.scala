@@ -1,12 +1,12 @@
 package services
 
 import akka.actor.ActorSystem
-import aws.ProfileName
 import monitoring.SafeLogger
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
+import services.catalog.aws.ProfileName
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
