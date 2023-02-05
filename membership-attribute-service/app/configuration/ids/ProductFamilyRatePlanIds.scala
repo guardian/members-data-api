@@ -1,8 +1,8 @@
-package configuration
+package configuration.ids
 
+import com.typesafe.config.{Config, ConfigFactory}
 import models.subscription.ProductFamily
 import models.subscription.Subscription.ProductRatePlanId
-import com.typesafe.config.{Config, ConfigFactory}
 
 trait ProductFamilyRatePlanIds {
   def productRatePlanIds: Set[ProductRatePlanId]

@@ -1,7 +1,7 @@
 package memsub.subsv2.services
 
 import com.typesafe.config.ConfigFactory
-import configuration.SubsV2ProductIds
+import configuration.ids.SubsV2ProductIds
 import memsub.subsv2.Fixtures.productIds
 import okhttp3._
 import org.specs2.mutable.Specification

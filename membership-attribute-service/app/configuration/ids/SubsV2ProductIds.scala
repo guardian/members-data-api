@@ -1,4 +1,4 @@
-package configuration
+package configuration.ids
 
 import models.subscription.Subscription.ProductId
 import models.subscription.subsv2.reads.ChargeListReads.ProductIds
