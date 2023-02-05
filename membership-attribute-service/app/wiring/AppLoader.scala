@@ -62,7 +62,7 @@ class MyComponents(context: Context)
   lazy val contactRepositoryOverride: Option[ContactRepository] = None
   lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
-  lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
+  lazy val catalogServiceOverride: Option[CatalogService] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
 
