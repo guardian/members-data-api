@@ -3,10 +3,9 @@ package monitoring
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.filter.Filter
 import ch.qos.logback.core.spi.FilterReply
-import monitoring.SafeLogger
-import monitoring.SafeLogger._
 import configuration.SentryConfig
 import io.sentry.Sentry
+import monitoring.SafeLogger._
 
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}

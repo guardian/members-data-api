@@ -1,13 +1,11 @@
 package controllers
 
 import actions.{CommonActions, Return401IfNotSignedInRecently}
-import monitoring.SafeLogger
-import monitoring.SafeLogger._
-import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.updateSelf
 import models.subscription.subsv2.SubscriptionPlan
 import models.subscription.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod, Subscription}
-import monitoring.CreateMetrics
+import monitoring.{CreateMetrics, SafeLogger}
+import monitoring.SafeLogger._
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json

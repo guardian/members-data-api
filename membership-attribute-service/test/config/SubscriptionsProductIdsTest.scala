@@ -1,7 +1,7 @@
 package config
 
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
-import configuration.SubscriptionsProductIds
+import configuration.ids.SubscriptionsProductIds
 import models.subscription.Subscription.ProductId
 import org.specs2.mutable.Specification
 

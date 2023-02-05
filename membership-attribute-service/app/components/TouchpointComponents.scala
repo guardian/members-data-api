@@ -5,7 +5,8 @@ import services.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.typesafe.config.Config
-import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, SubsV2ProductIds, SubscriptionsProductIds}
+import configuration.ids.{DigitalPackRatePlanIds, MembershipRatePlanIds, SubsV2ProductIds, SubscriptionsProductIds}
+import configuration.Stage
 import services.SubscriptionService.CatalogMap
 import models.{UserFromToken, UserFromTokenParser}
 import monitoring.SafeLogger._
