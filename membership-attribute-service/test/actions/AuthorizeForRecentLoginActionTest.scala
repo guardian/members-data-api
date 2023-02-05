@@ -17,7 +17,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
-class AuthAndBackendViaIdapiActionTest extends Specification with IdiomaticMockito {
+class AuthorizeForRecentLoginActionTest extends Specification with IdiomaticMockito {
 
   "refine" should {
 
@@ -48,7 +48,7 @@ class AuthAndBackendViaIdapiActionTest extends Specification with IdiomaticMocki
       when(backends.normal).thenReturn(components)
 
       val clock = Clock.fixed(currentTime.toInstant, zoneId)
-      val action = new AuthAndBackendViaIdapiAction(backends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes, clock)
+      val action = new AuthorizeForRecentLoginAction(backends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes, clock)
       action.invokeBlock(request, { _: AuthAndBackendRequest[AnyContent] => Future.successful(Results.Ok) })
     }
 
@@ -95,7 +95,7 @@ class AuthAndBackendViaIdapiActionTest extends Specification with IdiomaticMocki
       val backends = mock[TouchpointBackends]
       when(backends.normal).thenReturn(components)
 
-      val action = new AuthAndBackendViaIdapiAction(backends, Return401IfNotSignedInRecently, isTestUser, requiredScopes)
+      val action = new AuthorizeForRecentLoginAction(backends, Return401IfNotSignedInRecently, isTestUser, requiredScopes)
       val result = action.invokeBlock(request, { _: AuthAndBackendRequest[AnyContent] => Future.successful(Results.Ok) })
       Await.result(result, Duration.Inf).toString shouldEqual Results.Forbidden
         .withHeaders("Pragma" -> "no-cache", "Cache-Control" -> "no-cache, private")

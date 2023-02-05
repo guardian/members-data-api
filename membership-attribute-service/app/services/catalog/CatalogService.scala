@@ -22,21 +22,24 @@ import scalaz.syntax.nel._
 import scalaz.syntax.std.either._
 import scalaz.{EitherT, Monad, NonEmptyList, Validation, ValidationNel, \/}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object FetchCatalog {
 
   def fromZuoraApi(httpClient: SimpleClient)(implicit m: Monad[Future]): Future[String \/ JsValue] =
     httpClient.get[JsValue]("catalog/products?pageSize=40")((json: JsValue) => JsSuccess(json))
 
-  def fromS3[M[_]: Monad](zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client): M[String \/ JsValue] = {
+  def fromS3(zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client)(implicit m: Monad[Future]): Future[String \/ JsValue] = {
     val catalogRequest = new GetObjectRequest(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}", "catalog.json")
-    AwsS3.fetchJson(s3Client, catalogRequest).point[M]
+    AwsS3.fetchJson(s3Client, catalogRequest).point[Future]
   }
 
 }
 
-class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String \/ JsValue], unsafeGet: M[Catalog] => Catalog, stage: String) {
+class CatalogService(productIds: ProductIds, fetchCatalog: Future[String \/ JsValue], unsafeGet: Future[Catalog] => Catalog, stage: String)(implicit
+    m: Monad[Future],
+    ec: ExecutionContext,
+) {
 
   case class ErrorReport(problem: String, underlying: Map[ProductRatePlanId, String]) {
     override def toString = s"\n$problem\n\n--- HERE IS WHAT WE TRIED --\n" +
@@ -77,10 +80,10 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
     }
   }
 
-  def joinUp: M[String \/ List[CatalogZuoraPlan]] = (for {
-    catalog <- EitherT[String, M, JsValue](fetchCatalog)
-    catalogPlans <- EitherT[String, M, List[CatalogZuoraPlan]](
-      Json.fromJson[List[CatalogZuoraPlan]](catalog).asEither.disjunction.leftMap(_.toString).point[M],
+  def joinUp: Future[String \/ List[CatalogZuoraPlan]] = (for {
+    catalog <- EitherT[String, Future, JsValue](fetchCatalog)
+    catalogPlans <- EitherT[String, Future, List[CatalogZuoraPlan]](
+      Json.fromJson[List[CatalogZuoraPlan]](catalog).asEither.disjunction.leftMap(_.toString).point[Future],
     )
   } yield catalogPlans).run
 
@@ -149,9 +152,9 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
     map <- Validation.s[NonEmptyList[String]](plans.map(p => p.id -> p).toMap)
   } yield Catalog(friend, staff, supporter, partner, patron, digipack, supporterPlus, contributor, voucher, digitalVoucher, delivery, weekly, map)
 
-  lazy val catalog: M[NonEmptyList[String] \/ Catalog] = (for {
-    plans <- EitherT[String, M, List[CatalogZuoraPlan]](joinUp).leftMap(_.wrapNel)
-    catalog <- EitherT(validatePlans(plans).toDisjunction.point[M])
+  lazy val catalog: Future[NonEmptyList[String] \/ Catalog] = (for {
+    plans <- EitherT[String, Future, List[CatalogZuoraPlan]](joinUp).leftMap(_.wrapNel)
+    catalog <- EitherT(validatePlans(plans).toDisjunction.point[Future])
   } yield catalog).run
 
   lazy val unsafeCatalog: Catalog = unsafeGet(

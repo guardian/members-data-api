@@ -8,7 +8,7 @@ import services.AuthenticationFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthAndBackendViaAuthLibAction(
+class AuthorizeForScopesAction(
     touchpointBackends: TouchpointBackends,
     requiredScopes: List[AccessScope],
     isTestUser: IsTestUser,

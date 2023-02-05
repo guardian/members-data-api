@@ -22,7 +22,7 @@ class TouchpointBackends(
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[CatalogService[Future]] = None,
+    catalogServiceOverride: Option[CatalogService] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
 )(implicit

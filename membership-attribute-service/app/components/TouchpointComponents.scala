@@ -43,7 +43,7 @@ class TouchpointComponents(
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[CatalogService[Future]] = None,
+    catalogServiceOverride: Option[CatalogService] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
 )(implicit
@@ -122,7 +122,7 @@ class TouchpointComponents(
 
   lazy val catalogRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds), createMetrics)
   lazy val catalogService = catalogServiceOverride.getOrElse(
-    new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
+    new CatalogService(productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
   )
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
