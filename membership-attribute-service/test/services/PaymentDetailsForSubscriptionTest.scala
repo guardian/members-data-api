@@ -28,7 +28,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
       val contact = TestContact(randomId("identityId"))
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[ZuoraPaymentService])
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipackGift, true))
+      paymentDetailsForSubscription(digipackGift, true)
         .map(details =>
           details mustEqual PaymentDetails(
             pendingCancellation = false,
@@ -63,7 +63,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
         any[Option[String]],
       ) returns Future.successful(expectedPaymentDetails)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipack, false))
+      paymentDetailsForSubscription(digipack, false)
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
@@ -78,7 +78,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
         any[Option[String]](),
       ) returns Future.successful(expectedPaymentDetails)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipack, false))
+      paymentDetailsForSubscription(digipack, false)
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
@@ -88,7 +88,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
       val expectedPaymentDetails = PaymentDetails(friend)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, friend, false))
+      paymentDetailsForSubscription(friend, false)
         .map(details => details mustEqual expectedPaymentDetails)
     }
   }
