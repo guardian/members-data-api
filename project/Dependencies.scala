@@ -53,7 +53,7 @@ object Dependencies {
     "com.okta.jwt" % "okta-jwt-verifier-impl" % oktaJwtVerifierVersion,
   )
   val unirest = "com.konghq" % "unirest-java" % "4.0.0-RC2" % Test
-  val scalaUri = "io.lemonlabs" %% "scala-uri" % "2.2.0"
+  val scalaUri = "io.lemonlabs" %% "scala-uri" % "2.2.6"
 
   val awsS3 = "com.amazonaws" % "aws-java-sdk-s3" % awsClientVersion
   val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
