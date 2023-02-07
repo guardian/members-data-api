@@ -1,8 +1,8 @@
 package services.stripe
 
 import com.gu.i18n.Currency
-import services.stripe.Stripe
-import services.stripe.Stripe.{Charge, Customer, CustomersPaymentMethods, StripeObject}
+import com.gu.stripe.Stripe
+import com.gu.stripe.Stripe.{Charge, Customer, CustomersPaymentMethods, StripeObject}
 import monitoring.CreateMetrics
 
 import scala.concurrent.{ExecutionContext, Future}

@@ -1,6 +1,6 @@
 package services.salesforce
 
-import services.salesforce.model.{Contact, ContactId}
+import com.gu.salesforce.{Contact, ContactId}
 import play.api.libs.json._
 import scalaz.\/
 

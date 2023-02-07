@@ -1,7 +1,7 @@
 package services
 
 import akka.actor.ActorSystem
-import aws.ProfileName
+import com.gu.aws.ProfileName
 import monitoring.SafeLogger
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage

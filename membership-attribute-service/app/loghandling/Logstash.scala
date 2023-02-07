@@ -1,7 +1,7 @@
 package loghandling
 
 import com.amazonaws.util.EC2MetadataUtils
-import aws.ProfileName
+import com.gu.aws.ProfileName
 import com.typesafe.scalalogging.StrictLogging
 import configuration.LogstashConfig
 import software.amazon.awssdk.auth.credentials.{

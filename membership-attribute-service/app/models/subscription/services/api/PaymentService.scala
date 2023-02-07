@@ -1,14 +1,14 @@
 package models.subscription.services.api
 
-import _root_.services.stripe.StripeService
-import _root_.services.zuora.soap.models.Queries.Account
-import models.PaymentDetails
 import models.subscription.Subscription.{AccountId, Id}
+import models.subscription.{BillingSchedule, _}
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}
-import models.subscription._
-import scalaz.\/
+import models.PaymentDetails
+import com.gu.stripe.StripeService
+import _root_.services.zuora.soap.models.Queries.Account
 
 import scala.concurrent.Future
+import scalaz.\/
 
 trait PaymentService {
   def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None): Future[Option[PaymentMethod]]

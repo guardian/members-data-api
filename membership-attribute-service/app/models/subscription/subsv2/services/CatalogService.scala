@@ -1,9 +1,8 @@
 package models.subscription.subsv2.services
 
-import _root_.services.zuora.rest.SimpleClient
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.GetObjectRequest
-import aws.AwsS3
+import com.gu.aws.AwsS3
 import models.subscription.Benefit.{Partner, Patron, Supporter}
 import models.subscription.BillingPeriod._
 import models.subscription.Subscription.ProductRatePlanId
@@ -14,20 +13,21 @@ import models.subscription.subsv2.reads.CatJsonReads._
 import models.subscription.subsv2.reads.CatPlanReads
 import models.subscription.subsv2.reads.CatPlanReads._
 import models.subscription.subsv2.reads.ChargeListReads.{ProductIds, _}
-import play.api.libs.json._
+import com.gu.zuora.rest.SimpleClient
+import play.api.libs.json.{Reads => JsReads, _}
 import scalaz.Validation.FlatMap._
-import scalaz.syntax.apply.ToApplyOps
 import scalaz.syntax.monad._
 import scalaz.syntax.nel._
 import scalaz.syntax.std.either._
 import scalaz.{EitherT, Monad, NonEmptyList, Validation, ValidationNel, \/}
-
-import scala.concurrent.Future
+import scalaz.syntax.apply.ToApplyOps
 
 object FetchCatalog {
 
-  def fromZuoraApi(httpClient: SimpleClient)(implicit m: Monad[Future]): Future[String \/ JsValue] =
-    httpClient.get[JsValue]("catalog/products?pageSize=40")((json: JsValue) => JsSuccess(json))
+  def fromZuoraApi[M[_]: Monad](httpClient: SimpleClient[M]): M[String \/ JsValue] =
+    httpClient.get[JsValue]("catalog/products?pageSize=40")(new JsReads[JsValue] {
+      override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
+    })
 
   def fromS3[M[_]: Monad](zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client): M[String \/ JsValue] = {
     val catalogRequest = new GetObjectRequest(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}", "catalog.json")

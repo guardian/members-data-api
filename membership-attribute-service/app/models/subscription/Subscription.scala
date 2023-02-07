@@ -1,6 +1,6 @@
 package models.subscription
 
-import _root_.services.zuora.rest
+import com.gu.zuora.rest
 
 object Subscription {
   case class Name(get: String) extends AnyVal
