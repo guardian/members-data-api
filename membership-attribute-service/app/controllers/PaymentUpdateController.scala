@@ -3,7 +3,7 @@ package controllers
 import actions.{CommonActions, Return401IfNotSignedInRecently}
 import monitoring.SafeLogger
 import monitoring.SafeLogger._
-import services.zuora.api.GoCardlessZuoraInstance
+import com.gu.zuora.api.GoCardlessZuoraInstance
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.updateSelf
 import models.subscription.subsv2.SubscriptionPlan

@@ -1,20 +1,19 @@
 package models.subscription.util
 
-import com.amazonaws.services.cloudwatch.model.StandardUnit
-import monitoring.{CloudWatch, SafeLogger}
-
+import com.gu.monitoring.CloudWatch
+import monitoring.SafeLogger
 import scala.concurrent.{ExecutionContext, Future}
 
 object Timing {
 
   def record[T](cloudWatch: CloudWatch, metricName: String)(block: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
     SafeLogger.debug(s"$metricName started...")
-    cloudWatch.putCount(metricName, 1)
+    cloudWatch.put(metricName, 1)
     val startTime = System.currentTimeMillis()
 
     def recordEnd[A](name: String)(a: A): A = {
       val duration = System.currentTimeMillis() - startTime
-      cloudWatch.put(name + " duration ms", duration, StandardUnit.Milliseconds)
+      cloudWatch.put(name + " duration ms", duration)
       SafeLogger.debug(s"${cloudWatch.service} $name completed in $duration ms")
 
       a

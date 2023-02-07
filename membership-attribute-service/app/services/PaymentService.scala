@@ -5,8 +5,8 @@ import _root_.services.zuora.soap.ZuoraSoapService
 import monitoring.SafeLogger
 import monitoring.SafeLogger.Sanitizer
 import models.PaymentDetails
-import services.stripe.Stripe
-import services.stripe.Stripe.Customer
+import com.gu.stripe.Stripe
+import com.gu.stripe.Stripe.Customer
 import models.subscription.Subscription._
 import models.subscription.subsv2.SubscriptionPlan.Contributor
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}

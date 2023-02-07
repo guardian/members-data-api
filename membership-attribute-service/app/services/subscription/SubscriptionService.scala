@@ -1,11 +1,11 @@
 package services.subscription
 
-import _root_.services.salesforce.model.ContactId
 import models.subscription
 import models.subscription.Subscription.{AccountId, ProductRatePlanId, RatePlanId}
 import models.subscription.subsv2.SubscriptionPlan._
 import models.subscription.subsv2._
 import models.subscription.subsv2.reads.SubPlanReads
+import com.gu.salesforce.ContactId
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json._
 import scalaz._

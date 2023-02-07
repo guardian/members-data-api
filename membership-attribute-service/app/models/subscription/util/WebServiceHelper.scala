@@ -1,6 +1,6 @@
 package models.subscription.util
 
-import utils.RequestRunners.FutureHttpClient
+import com.gu.okhttp.RequestRunners.FutureHttpClient
 import okhttp3._
 import monitoring.SafeLogger
 import play.api.libs.json._

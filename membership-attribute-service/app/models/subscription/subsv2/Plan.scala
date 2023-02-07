@@ -1,11 +1,7 @@
 package models.subscription.subsv2
 
-import _root_.services.zuora.rest.Feature
 import com.gu.i18n.Currency
-import com.gu.i18n.Currency.GBP
-import models.subscription.Benefit._
-import models.subscription.BillingPeriod._
-import models.subscription.PricingSummary._
+import Currency.GBP
 import models.subscription.Subscription.{
   ProductId,
   ProductRatePlanChargeId,
@@ -14,13 +10,19 @@ import models.subscription.Subscription.{
   SubscriptionRatePlanChargeId,
   Feature => SubsFeature,
 }
+
+import scalaz.NonEmptyList
 import models.subscription._
+import com.gu.zuora.rest.Feature
+
+import scalaz.syntax.semigroup._
+import PricingSummary._
 import org.joda.time.LocalDate
 import play.api.libs.json._
-import scalaz.NonEmptyList
-import scalaz.syntax.semigroup._
 
 import scala.language.higherKinds
+import BillingPeriod._
+import Benefit._
 
 trait ZuoraEnum {
   def id: String

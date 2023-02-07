@@ -2,8 +2,8 @@ package models.subscription.services
 
 import monitoring.SafeLogger
 import monitoring.SafeLogger.Sanitizer
-import services.stripe.Stripe.Customer
-import services.stripe.{Stripe, StripeService}
+import com.gu.stripe.Stripe.Customer
+import com.gu.stripe.{Stripe, StripeService}
 import models.PaymentDetails
 import services.zuora.soap.models.Queries
 import services.zuora.soap.models.Queries.Account
@@ -153,14 +153,14 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
       stripeToken: String,
       stripeService: StripeService,
   ): Future[Option[PaymentCardUpdateResult]] =
-    setPaymentCard(stripeService.createCustomer)(accountId, stripeToken, stripeService)
+    setPaymentCard(stripeService.Customer.create)(accountId, stripeToken, stripeService)
 
   override def setPaymentCardWithStripePaymentMethod(
       accountId: AccountId,
       stripePaymentMethodID: String,
       stripeService: StripeService,
   ): Future[Option[PaymentCardUpdateResult]] =
-    setPaymentCard(stripeService.createCustomerWithStripePaymentMethod)(accountId, stripePaymentMethodID, stripeService)
+    setPaymentCard(stripeService.Customer.createWithStripePaymentMethod)(accountId, stripePaymentMethodID, stripeService)
 
   private def setPaymentCard(
       createCustomerFunction: String => Future[Customer],

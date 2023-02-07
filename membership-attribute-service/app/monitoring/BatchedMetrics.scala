@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
+// Designed for high-frequency metrics, for example, 1000 per minute is about $400 per month
 final class BatchedMetrics(
     val service: String,
     val stage: String,
@@ -20,7 +21,7 @@ final class BatchedMetrics(
   import scala.jdk.CollectionConverters._
   private val countMap = new ConcurrentHashMap[String, AtomicInteger]().asScala // keep it first in the constructor
 
-  override val application = ApplicationName.applicationName
+  val application = ApplicationName.applicationName
 
   system.scheduler.scheduleAtFixedRate(5.seconds, 60.seconds)(() => publishAllMetrics())
 

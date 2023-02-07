@@ -4,6 +4,7 @@ import models.subscription.Product
 import models.subscription.Subscription.Name
 import models.subscription.subsv2.SubscriptionPlan.AnyPlan
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.salesforce.Contact
 import models.PaymentDetails
 import controllers.AccountController
 import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
@@ -14,7 +15,6 @@ import scalaz.std.scalaFuture._
 import services.DifferentiateSubscription.differentiateSubscription
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
 import services.salesforce.ContactRepository
-import services.salesforce.model.Contact
 import services.stripe.ChooseStripe
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService

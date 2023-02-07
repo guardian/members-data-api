@@ -3,9 +3,9 @@ package services.zuora.soap
 import com.gu.i18n.{CountryGroup, Currency}
 import monitoring.SafeLogger
 import monitoring.SafeLogger._
-import services.salesforce.model.ContactId
-import services.stripe.Stripe
-import services.zuora.api.{InvoiceTemplate, PayPal, PaymentGateway}
+import com.gu.salesforce.ContactId
+import com.gu.stripe.Stripe
+import com.gu.zuora.api.{InvoiceTemplate, PayPal, PaymentGateway}
 import services.zuora.soap.actions.{Action, XmlWriterAction}
 import services.zuora.soap.models.Queries.{PreviewInvoiceItem, Subscription => QuerySubscription}
 import services.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}

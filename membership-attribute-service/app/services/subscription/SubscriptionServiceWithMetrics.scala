@@ -5,7 +5,7 @@ import models.subscription.Subscription.AccountId
 import models.subscription.subsv2.Subscription
 import models.subscription.subsv2.SubscriptionPlan.{AnyPlan, Contributor}
 import models.subscription.subsv2.reads.SubPlanReads
-import services.salesforce.model.ContactId
+import com.gu.salesforce.ContactId
 import monitoring.CreateMetrics
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.JsValue
