@@ -5,7 +5,7 @@ import okhttp3.{Response => OKHttpResponse, _}
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
 import scalaz.syntax.functor.ToFunctorOps
 import scalaz.syntax.std.either._
-import scalaz.{Functor, Monad, \/}
+import scalaz.{Functor, \/}
 import services.zuora.ZuoraRestConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,7 +19,7 @@ case class SimpleClient(
     config: ZuoraRestConfig,
     run: Request => Future[OKHttpResponse],
     createMetrics: CreateMetrics,
-)(implicit functor: Monad[Future], ec: ExecutionContext) {
+)(implicit functor: Functor[Future], ec: ExecutionContext) {
   val metrics = createMetrics.forService("Zuora")
 
   def authenticated(url: String): Request.Builder = {
@@ -33,7 +33,7 @@ case class SimpleClient(
 
   def isSuccess(statusCode: Int) = statusCode >= 200 && statusCode < 300
 
-  def parseJson(in: OKHttpResponse): \/[String, JsValue] = {
+  def parseJson[B](in: OKHttpResponse): \/[String, JsValue] = {
     if (isSuccess(in.code)) {
       (for {
         body <- Try(in.body().string)
