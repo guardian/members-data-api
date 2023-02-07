@@ -44,10 +44,8 @@ class AccountDetailsFromZuora(
   private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter): ListT[SimpleEitherT, AccountDetails] = {
     for {
       contactAndSubscription <- allCurrentSubscriptions(userId, filter)
-      subscription = contactAndSubscription.subscription
-      isPaidSubscription = differentiateSubscription(subscription).isRight
-      isGiftRedemption = contactAndSubscription.isGiftRedemption
-      detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(subscription, isGiftRedemption))
+      isPaidSubscription = differentiateSubscription(contactAndSubscription).isRight
+      detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
       country = accountSummary.billToContact.country
       stripePublicKey = chooseStripe.publicKeyForCountry(country)
@@ -121,13 +119,12 @@ class AccountDetailsFromZuora(
   }
 
   private def getAccountDetailsParallel(
-      subscription: Subscription[AnyPlan],
-      isGiftRedemption: Boolean,
+      contactAndSubscription: ContactAndSubscription,
   ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
     metrics.measureDurationEither("getAccountDetailsParallel") {
       // Run all these api calls in parallel to improve response times
       val paymentDetailsFuture =
-        paymentDetailsForSubscription(subscription, isGiftRedemption)
+        paymentDetailsForSubscription(contactAndSubscription)
           .map(Right(_))
           .recover { case x =>
             Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
@@ -135,23 +132,23 @@ class AccountDetailsFromZuora(
 
       val accountSummaryFuture =
         zuoraRestService
-          .getAccount(subscription.accountId)
+          .getAccount(contactAndSubscription.subscription.accountId)
           .map(_.toEither)
           .recover { case x =>
             Left(
-              s"error receiving account summary for subscription: ${subscription.name} " +
-                s"with account id ${subscription.accountId}. Reason: $x",
+              s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
+                s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
             )
           }
 
       val effectiveCancellationDateFuture =
         zuoraRestService
-          .getCancellationEffectiveDate(subscription.name)
+          .getCancellationEffectiveDate(contactAndSubscription.subscription.name)
           .map(_.toEither)
           .recover { case x =>
             Left(
-              s"Failed to fetch effective cancellation date: ${subscription.name} " +
-                s"with account id ${subscription.accountId}. Reason: $x",
+              s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
+                s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
             )
           }
 
