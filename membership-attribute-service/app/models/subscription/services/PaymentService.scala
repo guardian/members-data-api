@@ -1,31 +1,30 @@
-package services.payment
+package models.subscription.services
 
-import _root_.services.zuora.soap.ZuoraSoapService
-import _root_.services.zuora.soap.models.Queries
-import _root_.services.zuora.soap.models.Queries.Account
-import _root_.services.zuora.soap.models.Queries.PaymentMethod._
+import monitoring.SafeLogger
+import monitoring.SafeLogger.Sanitizer
+import services.stripe.Stripe.Customer
+import services.stripe.{Stripe, StripeService}
 import models.PaymentDetails
-import models.PaymentDetails.Payment
+import services.zuora.soap.models.Queries
+import services.zuora.soap.models.Queries.Account
+import services.zuora.soap.models.Queries.PaymentMethod._
 import models.subscription.Subscription._
 import models.subscription.subsv2.SubscriptionPlan.Contributor
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}
 import models.subscription.{BillingSchedule, Subscription => _, _}
-import monitoring.SafeLogger
-import monitoring.SafeLogger.Sanitizer
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.{MonadTrans, OptionT, \/}
-import services.payment
-import _root_.services.stripe.{Stripe, StripeService}
-import services.stripe.Stripe.Customer
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import _root_.services.zuora.soap.ZuoraSoapService
+import models.PaymentDetails.Payment
 
-class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
-    extends payment.PaymentService {
+class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
+    extends api.PaymentService {
 
   implicit val monadTrans = MonadTrans[OptionT] // it's the only one we use here, really
 

@@ -7,7 +7,7 @@ import models.subscription.subsv2.reads.ChargeListReads.ProductIds
 import models.subscription.subsv2.reads.CommonReads._
 import models.subscription.subsv2.reads.SubJsonReads._
 import models.subscription.subsv2.reads.SubPlanReads
-import services.SubscriptionService.CatalogMap
+import models.subscription.subsv2.services.SubscriptionService.CatalogMap
 import monitoring.SafeLogger
 import org.joda.time.LocalDate
 import play.api.libs.json.{Reads => JsReads, _}

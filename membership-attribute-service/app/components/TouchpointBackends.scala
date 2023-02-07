@@ -1,10 +1,10 @@
 package components
 
 import akka.actor.ActorSystem
+import models.subscription.subsv2.services.CatalogService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
-import services.catalog.CatalogService
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService

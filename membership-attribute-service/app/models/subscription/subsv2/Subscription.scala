@@ -6,6 +6,7 @@ import models.subscription.Benefit._
 import models.subscription.BillingPeriod.{OneTimeChargeBillingPeriod, OneYear, ThreeMonths}
 import models.subscription.promo.PromoCode
 import models.subscription.subsv2.SubscriptionPlan._
+import models.subscription.subsv2.services.Sequence
 import models.subscription.{BillingPeriod, Product}
 import org.joda.time.{DateTime, LocalDate}
 
@@ -13,7 +14,6 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scalaz.syntax.all._
 import scalaz.{NonEmptyList, Validation, \/}
-import services.Sequence
 
 case class CovariantNonEmptyList[+T](head: T, tail: List[T]) {
   val list = head :: tail

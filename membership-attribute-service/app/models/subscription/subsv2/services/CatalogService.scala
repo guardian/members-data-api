@@ -1,9 +1,9 @@
-package services.catalog
+package models.subscription.subsv2.services
 
 import _root_.services.zuora.rest.SimpleClient
-import aws.AwsS3
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.GetObjectRequest
+import aws.AwsS3
 import models.subscription.Benefit.{Partner, Patron, Supporter}
 import models.subscription.BillingPeriod._
 import models.subscription.Subscription.ProductRatePlanId

@@ -1,21 +1,20 @@
 package components
 
 import akka.actor.ActorSystem
+import aws.ProfileName
 import services.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.typesafe.config.Config
 import configuration.{DigitalPackRatePlanIds, MembershipRatePlanIds, Stage, SubsV2ProductIds, SubscriptionsProductIds}
-import services.SubscriptionService.CatalogMap
+import models.subscription.subsv2.services.SubscriptionService.CatalogMap
+import models.subscription.subsv2.services.{CatalogService, FetchCatalog}
 import models.{UserFromToken, UserFromTokenParser}
 import monitoring.SafeLogger._
 import monitoring.{CreateMetrics, SafeLogger}
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
-import services.catalog.aws.ProfileName
-import services.catalog.{CatalogService, FetchCatalog}
-import services.payment.ZuoraPaymentService
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SalesforceHealthCheckService, SimpleContactRepository}
 import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
@@ -137,7 +136,7 @@ class TouchpointComponents(
   lazy val subscriptionService: SubscriptionService = subscriptionServiceOverride.getOrElse(
     new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createMetrics),
   )
-  lazy val paymentService: ZuoraPaymentService = new ZuoraPaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(

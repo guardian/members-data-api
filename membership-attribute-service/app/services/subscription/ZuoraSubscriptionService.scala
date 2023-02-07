@@ -7,9 +7,9 @@ import models.subscription.subsv2._
 import models.subscription.subsv2.reads.ChargeListReads.ProductIds
 import models.subscription.subsv2.reads.SubJsonReads._
 import models.subscription.subsv2.reads.SubPlanReads
-import services.SubscriptionService.{CatalogMap, SoapClient}
-import services.SubscriptionTransform.getRecentlyCancelledSubscriptions
-import services.Trace.Traceable
+import models.subscription.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
+import models.subscription.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
+import models.subscription.subsv2.services.Trace.Traceable
 import monitoring.SafeLogger
 import _root_.services.salesforce.model.ContactId
 import org.joda.time.{LocalDate, LocalTime}

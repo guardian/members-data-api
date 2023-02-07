@@ -1,6 +1,6 @@
 package services
 
-import services.payment.PaymentService
+import services.api.PaymentService
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}
 import models.subscription.{BillingPeriod, Price}
 import models.PaymentDetails

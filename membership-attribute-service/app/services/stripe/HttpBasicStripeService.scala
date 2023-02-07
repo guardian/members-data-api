@@ -4,11 +4,12 @@ import com.gu.i18n.Currency
 import com.typesafe.config.Config
 import models.subscription.util.WebServiceHelper
 import monitoring.SafeLogger
-import okhttp3.Request
-import scalaz.syntax.std.option._
+import utils.RequestRunners._
 import services.stripe.Stripe.Deserializer._
 import services.stripe.Stripe._
-import utils.RequestRunners._
+import services.stripe.{BasicStripeServiceConfig, Stripe, StripeServiceConfig}
+import okhttp3.Request
+import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
 
