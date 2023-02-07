@@ -13,7 +13,7 @@ case class ContributionData(
 )
 
 object ContributionData {
-  implicit val writes = new Writes[ContributionData] {
+  implicit val contributionDataWrites = new Writes[ContributionData] {
     override def writes(o: ContributionData): JsValue = Json.obj(
       "created" -> o.created,
       "currency" -> o.currency.toString,

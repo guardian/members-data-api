@@ -1,17 +1,18 @@
 package models
-import com.gu.i18n.Country
-import com.typesafe.scalalogging.LazyLogging
-import models.subscription.subsv2.SubscriptionPlan.AnyPlan
-import models.subscription.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
-import models.subscription.{GoCardless, PayPalMethod, PaymentCard, Product, Sepa}
-import org.joda.time.LocalDate
-import org.joda.time.LocalDate.now
-import play.api.libs.json._
-
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
 import scala.annotation.tailrec
+import com.gu.i18n.Country
+import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import models.subscription.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
+import models.subscription.{GoCardless, PayPalMethod, PaymentCard, Product, Sepa}
+import models.PaymentDetails
+import com.typesafe.scalalogging.LazyLogging
+import json.localDateWrites
+import org.joda.time.LocalDate
+import play.api.libs.json.{Json, _}
+import org.joda.time.LocalDate.now
 
 case class AccountDetails(
     contactId: String,
@@ -31,7 +32,6 @@ case class AccountDetails(
 )
 
 object AccountDetails {
-  import utils.JsonWrites.localDateWrites
 
   implicit class ResultLike(accountDetails: AccountDetails) extends LazyLogging {
 
@@ -228,8 +228,6 @@ object AccountDetails {
 
 object CancelledSubscription {
   import AccountDetails._
-  import utils.JsonWrites.localDateWrites
-
   def apply(subscription: Subscription[AnyPlan]): JsObject = {
     GetCurrentPlans
       .bestCancelledPlan(subscription)
