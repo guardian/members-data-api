@@ -1,7 +1,7 @@
 package services
 
-import models.subscription.subsv2.SubscriptionPlan.{Free, Paid}
-import models.subscription.subsv2.{PaidChargeList, Subscription}
+import com.gu.memsub.subsv2.SubscriptionPlan.{Free, Paid}
+import com.gu.memsub.subsv2.{PaidChargeList, Subscription}
 import models.ContactAndSubscription
 
 object DifferentiateSubscription {

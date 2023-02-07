@@ -2,10 +2,10 @@ package services
 
 import java.util.Locale
 
-import models.subscription.Product
-import models.subscription.Subscription.AccountId
-import models.subscription.subsv2.{Subscription, SubscriptionPlan}
-import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.Product
+import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.monitoring.SafeLogger
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 import services.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
