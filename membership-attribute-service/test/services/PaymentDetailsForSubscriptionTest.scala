@@ -4,10 +4,10 @@ import acceptance.data.Randoms.randomId
 import acceptance.data.TestContact
 import com.gu.i18n.Currency.GBP
 import services.PaymentService
-import models.subscription.subsv2.{Subscription, SubscriptionPlan}
-import models.subscription.{BillingPeriod, Price}
-import models.PaymentDetails
-import models.PaymentDetails.PersonalPlan
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.{BillingPeriod, Price}
+import com.gu.services.model.PaymentDetails
+import com.gu.services.model.PaymentDetails.PersonalPlan
 import models.ContactAndSubscription
 import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any

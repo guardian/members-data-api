@@ -3,11 +3,11 @@ package controllers
 import actions.{CommonActions, ContinueRegardlessOfSignInRecency}
 import com.gu.i18n.Currency
 import com.gu.identity.SignedInRecently
-import models.subscription.Subscription.AccountId
-import models.subscription.subsv2.reads.ChargeListReads._
-import models.subscription.subsv2.reads.SubPlanReads._
-import models.subscription.subsv2.{Subscription, SubscriptionPlan}
-import models.subscription.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
+import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.subsv2.reads.ChargeListReads._
+import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import models.AccessScope.completeReadSelf

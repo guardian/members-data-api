@@ -1,6 +1,6 @@
 package json
 
-import models.subscription.{CardUpdateFailure, CardUpdateSuccess, PaymentCard}
+import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, PaymentCard}
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
