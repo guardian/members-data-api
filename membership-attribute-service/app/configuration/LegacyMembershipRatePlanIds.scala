@@ -1,4 +1,4 @@
-package configuration.ids
+package configuration
 
 import models.subscription.Subscription.ProductRatePlanId
 

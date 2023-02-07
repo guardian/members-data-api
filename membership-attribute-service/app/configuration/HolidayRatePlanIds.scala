@@ -1,7 +1,7 @@
-package configuration.ids
+package configuration
 
-import com.typesafe.config.Config
 import models.subscription.Subscription.{ProductRatePlanChargeId, ProductRatePlanId}
+import com.typesafe.config.Config
 case class HolidayRatePlanIds(prpId: ProductRatePlanId, prpcId: ProductRatePlanChargeId)
 
 object HolidayRatePlanIds {

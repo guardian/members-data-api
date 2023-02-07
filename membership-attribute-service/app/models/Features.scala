@@ -1,14 +1,13 @@
 package models
 
 import org.joda.time.LocalDate
-import play.api.libs.json.Json
+import play.api.libs.json.{Json}
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
-
+import json.localDateWrites
 import scala.language.implicitConversions
 
 object Features {
-  import utils.JsonWrites.localDateWrites
 
   implicit val jsWrite = Json.writes[Features]
 

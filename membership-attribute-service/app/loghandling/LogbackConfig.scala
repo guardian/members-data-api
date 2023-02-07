@@ -11,6 +11,7 @@ import play.api.{Logger => PlayLogger}
 object LogbackConfig {
 
   private lazy val logger = PlayLogger(getClass)
+  lazy val loggingContext = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
 
   case class KinesisAppenderConfig(stream: String, region: String, awsCredentialsProvider: AwsCredentialsProvider, bufferSize: Int)
 
@@ -40,7 +41,7 @@ object LogbackConfig {
     a
   }
 
-  def init(config: LogStashConfig) = {
+  def init(config: LogStashConf) = {
     if (config.enabled) {
       try {
         val rootLogger = LoggerFactory.getLogger(SLFLogger.ROOT_LOGGER_NAME)

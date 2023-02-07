@@ -5,9 +5,12 @@ import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import scalaz.syntax.std.boolean._
-
+import play.api.mvc.Result
+import play.api.mvc.Results.Ok
+import json.localDateWrites
 import scala.language.implicitConversions
+import scalaz.syntax.std.boolean._
+import json._
 
 case class ContentAccess(
     member: Boolean,
@@ -85,7 +88,6 @@ case class Attributes(
 }
 
 object Attributes {
-  import utils.JsonWrites._
 
   implicit val jsAttributesWrites: OWrites[Attributes] = (
     (__ \ "userId").write[String] and

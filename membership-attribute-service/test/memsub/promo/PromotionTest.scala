@@ -2,7 +2,7 @@ package memsub.promo
 
 import com.github.nscala_time.time.Imports._
 import com.gu.i18n.Country.{UK, US}
-import configuration.ids.{DigitalPackRatePlanIds, ProductFamilyRatePlanIds}
+import configuration.{DigitalPackRatePlanIds, ProductFamilyRatePlanIds}
 import memsub.promo.PromotionStub.promoFor
 import models.subscription.Subscription.ProductRatePlanId
 import models.subscription.Subscriptions

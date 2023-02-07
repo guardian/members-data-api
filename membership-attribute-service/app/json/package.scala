@@ -1,10 +1,8 @@
-package utils
-
 import org.joda.time.LocalDate
 import play.api.libs.functional.syntax._
-import play.api.libs.json._
+import play.api.libs.json.{OWrites, Writes, _}
 
-object JsonWrites {
+package object json {
 
   // Adapted from http://kailuowang.blogspot.co.uk/2013/11/addremove-fields-to-plays-default-case.html
   implicit class RichOWrites[A](writes: OWrites[A]) {

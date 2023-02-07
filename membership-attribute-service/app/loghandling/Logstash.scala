@@ -11,7 +11,7 @@ import software.amazon.awssdk.auth.credentials.{
   ProfileCredentialsProvider,
 }
 
-case class LogStashConfig(
+case class LogStashConf(
     enabled: Boolean,
     stream: String,
     region: String,
@@ -39,7 +39,7 @@ object Logstash extends StrictLogging {
     stream <- config.stream
     region <- config.streamRegion
   } yield {
-    LogStashConfig(
+    LogStashConf(
       config.enabled,
       stream,
       region,

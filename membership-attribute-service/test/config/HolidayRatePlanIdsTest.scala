@@ -1,7 +1,7 @@
 package config
 
 import com.typesafe.config.ConfigFactory
-import configuration.ids.HolidayRatePlanIds
+import configuration.HolidayRatePlanIds
 import org.specs2.mutable.Specification
 
 class HolidayRatePlanIdsTest extends Specification {

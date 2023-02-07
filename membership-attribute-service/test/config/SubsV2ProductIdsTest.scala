@@ -1,7 +1,7 @@
 package config
 
 import com.typesafe.config.ConfigFactory
-import configuration.ids.SubsV2ProductIds
+import configuration.SubsV2ProductIds
 import org.specs2.mutable.Specification
 
 class SubsV2ProductIdsTest extends Specification {

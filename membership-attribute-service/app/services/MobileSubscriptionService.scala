@@ -10,7 +10,9 @@ import play.api.libs.ws.WSClient
 import scala.concurrent.{ExecutionContext, Future}
 
 trait MobileSubscriptionService {
+
   def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]]
+
 }
 
 class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit ec: ExecutionContext) extends MobileSubscriptionService {
