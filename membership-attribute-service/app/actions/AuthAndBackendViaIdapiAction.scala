@@ -11,7 +11,7 @@ import services.UserAndCredentials
 import java.time.{Clock, Duration, ZonedDateTime}
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthorizeForRecentLoginAction(
+class AuthAndBackendViaIdapiAction(
     touchpointBackends: TouchpointBackends,
     howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
     isTestUser: IsTestUser,

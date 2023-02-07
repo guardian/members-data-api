@@ -41,7 +41,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
   var subscriptionServiceMock: SubscriptionService = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogService = _
+  var catalogServiceMock: CatalogService[Future] = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -51,7 +51,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     contactRepositoryMock = mock[ContactRepository]
     subscriptionServiceMock = mock[SubscriptionService]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = mock[CatalogService]
+    catalogServiceMock = mock[CatalogService[Future]]
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
