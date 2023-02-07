@@ -1,21 +1,22 @@
 package services
 
-import com.typesafe.scalalogging.LazyLogging
-import models.PaymentDetails
-import models.PaymentDetails.PersonalPlan
-import models.subscription.subsv2.SubscriptionPlan.AnyPlan
+import services.payment.PaymentService
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}
 import models.subscription.{BillingPeriod, Price}
+import models.PaymentDetails
+import models.PaymentDetails.PersonalPlan
+import com.typesafe.scalalogging.LazyLogging
+import models.ContactAndSubscription
 import scalaz.\/
 import services.DifferentiateSubscription.differentiateSubscription
-import services.payment.PaymentService
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 class PaymentDetailsForSubscription(paymentService: PaymentService) extends LazyLogging {
-  def apply(subscription: Subscription[AnyPlan], isGiftRedemption: Boolean)(implicit ec: ExecutionContext): Future[PaymentDetails] = {
-    val differentiated = differentiateSubscription(subscription)
+  def apply(contactAndSubscription: ContactAndSubscription)(implicit ec: ExecutionContext): Future[PaymentDetails] = {
+    val isGiftRedemption = contactAndSubscription.isGiftRedemption
+    val differentiated = differentiateSubscription(contactAndSubscription)
     differentiated match {
       case Right(giftSub) if isGiftRedemption =>
         Future.successful(giftPaymentDetailsFor(giftSub))
