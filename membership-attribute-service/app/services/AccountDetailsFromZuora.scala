@@ -9,7 +9,7 @@ import controllers.AccountController
 import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
 import models.{AccountDetails, ContactAndSubscription, DeliveryAddress}
 import monitoring.CreateMetrics
-import scalaz.ListT
+import scalaz.{ListT, \/}
 import scalaz.std.scalaFuture._
 import services.DifferentiateSubscription.differentiateSubscription
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
@@ -155,11 +155,17 @@ class AccountDetailsFromZuora(
             )
           }
 
-      for {
-        paymentDetails <- SimpleEitherT(paymentDetailsFuture)
-        accountSummary <- SimpleEitherT(accountSummaryFuture)
-        effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
-      } yield (paymentDetails, accountSummary, effectiveCancellationDate)
+      SimpleEitherT(
+        Future
+          .sequence(List(paymentDetailsFuture, accountSummaryFuture, effectiveCancellationDateFuture))
+          .flatMap(_ =>
+            (for {
+              paymentDetails <- SimpleEitherT(paymentDetailsFuture)
+              accountSummary <- SimpleEitherT(accountSummaryFuture)
+              effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
+            } yield (paymentDetails, accountSummary, effectiveCancellationDate)).run,
+          ),
+      )
     }
   }
 
