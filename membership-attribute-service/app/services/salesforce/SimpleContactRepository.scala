@@ -28,7 +28,7 @@ class SimpleContactRepository(private val salesforce: Scalaforce)(implicit execu
   }
 
   import models.subscription.subsv2.reads.Trace.{Traceable => T1}
-  import services.Trace.Traceable
+  import models.subscription.subsv2.services.Trace.Traceable
 
   private def toEither[A](j: JsResult[A]): String \/ A = j.fold(
     { errors =>

@@ -1,6 +1,7 @@
 package services.stripe
 
 import com.gu.i18n.Currency
+import services.stripe.Stripe
 import services.stripe.Stripe.{Charge, Customer, CustomersPaymentMethods, StripeObject}
 
 import scala.concurrent.Future

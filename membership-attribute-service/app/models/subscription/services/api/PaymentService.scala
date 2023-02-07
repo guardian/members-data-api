@@ -1,11 +1,11 @@
-package services.payment
+package models.subscription.services.api
 
 import _root_.services.stripe.StripeService
-import models.subscription.Subscription.{AccountId, Id}
-import models.subscription._
-import models.subscription.subsv2.{Subscription, SubscriptionPlan}
-import models.PaymentDetails
 import _root_.services.zuora.soap.models.Queries.Account
+import models.PaymentDetails
+import models.subscription.Subscription.{AccountId, Id}
+import models.subscription.subsv2.{Subscription, SubscriptionPlan}
+import models.subscription._
 import scalaz.\/
 
 import scala.concurrent.Future

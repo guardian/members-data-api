@@ -1,4 +1,4 @@
-package services.catalog.aws
+package aws
 
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import com.amazonaws.services.s3.model.{GetObjectRequest, S3ObjectInputStream}

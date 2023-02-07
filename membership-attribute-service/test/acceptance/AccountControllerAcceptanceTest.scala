@@ -12,6 +12,7 @@ import acceptance.data.{
   TestSubscription,
 }
 import com.gu.i18n.Currency
+import models.subscription.subsv2.services.CatalogService
 import models.subscription.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import models.subscription.{Product, Subscription}
 import kong.unirest.Unirest
@@ -23,7 +24,6 @@ import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
-import services.catalog.CatalogService
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService

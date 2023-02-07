@@ -1,5 +1,3 @@
-package services.catalog
-
 import com.amazonaws.auth.{InstanceProfileCredentialsProvider, AWSCredentialsProviderChain}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 

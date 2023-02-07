@@ -1,7 +1,5 @@
-package services
+package models.subscription.subsv2.services
 
-import _root_.services.SubscriptionService.{CatalogMap, SoapClient}
-import _root_.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
 import _root_.services.salesforce.model.ContactId
 import _root_.services.zuora.rest.SimpleClient
 import models.subscription
@@ -12,6 +10,8 @@ import models.subscription.subsv2.reads.ChargeListReads.ProductIds
 import models.subscription.subsv2.reads.CommonReads._
 import models.subscription.subsv2.reads.SubJsonReads._
 import models.subscription.subsv2.reads.SubPlanReads
+import models.subscription.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
+import models.subscription.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
 import monitoring.SafeLogger
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.{Reads => JsReads, _}
@@ -65,7 +65,7 @@ object Trace {
 
 }
 
-import services.Trace.Traceable
+import models.subscription.subsv2.services.Trace.Traceable
 
 class SubscriptionService(pids: ProductIds, futureCatalog: => Future[CatalogMap], rest: SimpleClient, soap: SoapClient)(implicit
     ec: ExecutionContext,

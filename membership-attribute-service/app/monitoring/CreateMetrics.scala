@@ -3,8 +3,8 @@ package monitoring
 import akka.actor.ActorSystem
 import com.amazonaws.regions.Regions.EU_WEST_1
 import com.amazonaws.services.cloudwatch.{AmazonCloudWatchAsync, AmazonCloudWatchAsyncClient}
+import aws.CredentialsProvider
 import configuration.Stage
-import services.catalog.aws.CredentialsProvider
 
 import scala.concurrent.ExecutionContext
 
