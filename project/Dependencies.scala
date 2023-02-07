@@ -57,7 +57,7 @@ object Dependencies {
 
   val awsS3 = "com.amazonaws" % "aws-java-sdk-s3" % awsClientVersion
   val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
-  val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.4"
+  val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.5"
 
   // projects
 
