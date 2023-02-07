@@ -8,7 +8,7 @@ import models.subscription.subsv2.reads.CommonReads._
 import models.subscription.subsv2.reads.SubJsonReads._
 import models.subscription.subsv2.reads.SubPlanReads
 import models.subscription.subsv2.services.SubscriptionService.CatalogMap
-import monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger
 import org.joda.time.LocalDate
 import play.api.libs.json.{Reads => JsReads, _}
 import scalaz._

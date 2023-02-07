@@ -1,8 +1,8 @@
 package models.subscription.util
 
 import akka.actor.ActorSystem
-import monitoring.SafeLogger
-import monitoring.SafeLogger._
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import java.util.concurrent.atomic.AtomicReference
