@@ -16,7 +16,7 @@ class AuthAndBackendViaAuthLibAction(
     ex: ExecutionContext,
 ) extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
   override val executionContext = ex
-
+//useless comment
   override protected def refine[A](request: Request[A]): Future[Either[Result, AuthenticatedUserAndBackendRequest[A]]] = {
     touchpointBackends.normal.identityAuthService.user(requiredScopes)(request) map {
       case Left(AuthenticationFailure.Unauthorised) => Left(Results.Unauthorized)
