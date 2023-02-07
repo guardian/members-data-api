@@ -1,7 +1,7 @@
 package components
 
 import com.gu.i18n.Country
-import services.identity.IdapiConfig
+import com.gu.identity.IdapiConfig
 import configuration.PayPalConfig
 import services.stripe.{BasicStripeServiceConfig, StripeServiceConfig}
 import monitoring.SafeLogger

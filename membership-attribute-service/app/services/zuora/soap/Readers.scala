@@ -2,6 +2,7 @@ package services.zuora.soap
 
 import com.gu.i18n.Currency
 import _root_.models.subscription.Subscription.Feature.{Code, Id}
+import services.zuora.api.PaymentGateway
 import services.zuora.soap.models.Queries._
 import services.zuora.soap.models.Results._
 import services.zuora.soap.models.errors._
