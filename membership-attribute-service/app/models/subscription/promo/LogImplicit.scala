@@ -1,6 +1,6 @@
 package models.subscription.promo
 
-import monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger
 
 object LogImplicit {
 

@@ -2,7 +2,7 @@ package models.subscription.util
 
 import com.gu.okhttp.RequestRunners.FutureHttpClient
 import okhttp3._
-import monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger
 import play.api.libs.json._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.{ClassTag, classTag}
