@@ -19,7 +19,7 @@ object Dependencies {
   val playJson = "com.typesafe.play" %% "play-json" % playJsonVersion
   val playJsonJoda = "com.typesafe.play" %% "play-json-joda" % playJsonVersion
   val specs2 = PlayImport.specs2 % Test
-  val specs2MatchersExtra = "org.specs2" %% "specs2-matcher-extra" % "4.5.1" % Test
+  val specs2MatchersExtra = "org.specs2" %% "specs2-matcher-extra" % "4.19.2" % Test
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
