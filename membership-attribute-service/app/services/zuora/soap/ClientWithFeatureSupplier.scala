@@ -3,6 +3,7 @@ package services.zuora.soap
 import _root_.models.subscription.Subscription.Feature.Code
 import _root_.models.subscription.util.FutureRetry._
 import akka.actor.ActorSystem
+import com.gu.monitoring.ZuoraMetrics
 import utils.RequestRunners.FutureHttpClient
 import monitoring.{CreateMetrics, SafeLogger}
 import monitoring.SafeLogger._

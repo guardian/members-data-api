@@ -5,11 +5,11 @@ import models.subscription.Subscription.AccountId
 import models.subscription.promo.PromoCode
 import models.subscription.subsv2.ReaderType
 import models.subscription.{Address, FullName, NormalisedTelephoneNumber, SupplierCode}
+import com.gu.salesforce.ContactId
+import services.zuora.api.{InvoiceTemplate, PaymentGateway}
 import services.zuora.soap.models.Queries.Contact
 import org.joda.time.LocalDate
 import scalaz.NonEmptyList
-import services.salesforce.model.ContactId
-import services.zuora.soap.{InvoiceTemplate, PaymentGateway}
 
 object Commands {
 

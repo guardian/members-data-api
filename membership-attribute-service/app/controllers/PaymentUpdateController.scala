@@ -3,6 +3,7 @@ package controllers
 import actions.{CommonActions, Return401IfNotSignedInRecently}
 import monitoring.SafeLogger
 import monitoring.SafeLogger._
+import services.zuora.api.GoCardlessZuoraInstance
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.updateSelf
 import models.subscription.subsv2.SubscriptionPlan
@@ -14,7 +15,6 @@ import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
-import services.zuora.soap.GoCardlessZuoraInstance
 import services.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 
 import scala.concurrent.{ExecutionContext, Future}

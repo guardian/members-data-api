@@ -7,6 +7,7 @@ import models.subscription.Subscription.AccountId
 import models.subscription.subsv2.{Subscription, SubscriptionPlan}
 import models.subscription.subsv2.SubscriptionPlan.AnyPlan
 import monitoring.SafeLogger
+import services.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 import services.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
@@ -15,7 +16,6 @@ import org.joda.time.format.DateTimeFormat
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.syntax.std.boolean._
-import services.zuora.soap.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 
 object PaymentFailureAlerter extends LoggingWithLogstashFields {
 

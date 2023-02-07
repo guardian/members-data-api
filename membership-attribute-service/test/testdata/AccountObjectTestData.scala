@@ -2,10 +2,10 @@ package testdata
 
 import com.gu.i18n.Country
 import com.gu.i18n.Currency.GBP
+import services.zuora.api.StripeUKMembershipGateway
 import models.subscription.Subscription.{AccountId, AccountNumber}
 import services.zuora.rest.ZuoraRestService._
 import org.joda.time.DateTime
-import services.zuora.soap.StripeUKMembershipGateway
 
 object AccountObjectTestData {
   private val testAccountId = AccountId("accountId")

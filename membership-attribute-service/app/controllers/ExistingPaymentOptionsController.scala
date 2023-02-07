@@ -2,7 +2,7 @@ package controllers
 
 import actions.{CommonActions, ContinueRegardlessOfSignInRecency}
 import com.gu.i18n.Currency
-import services.identity.SignedInRecently
+import com.gu.identity.SignedInRecently
 import models.subscription.Subscription.AccountId
 import models.subscription.subsv2.reads.ChargeListReads._
 import models.subscription.subsv2.reads.SubPlanReads._

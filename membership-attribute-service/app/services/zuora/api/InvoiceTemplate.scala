@@ -1,4 +1,4 @@
-package services.zuora.soap
+package services.zuora.api
 
 import com.gu.i18n.{Country, CountryGroup}
 import com.typesafe.config.Config
