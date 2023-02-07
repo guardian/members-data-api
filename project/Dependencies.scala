@@ -3,7 +3,7 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientVersion = "1.12.387"
+  val awsClientVersion = "1.12.401"
   val awsClientV2Version = "2.16.104"
 
   val playJsonVersion = "2.9.3"
