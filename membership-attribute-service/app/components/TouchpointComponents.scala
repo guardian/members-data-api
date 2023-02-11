@@ -15,9 +15,9 @@ import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
-import configuration.Stage
+import configuration.{OptionalConfig, Stage}
 import models.{UserFromToken, UserFromTokenParser}
-import monitoring.CreateMetrics
+import monitoring.{CreateMetrics, CreateNoopMetrics}
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
@@ -70,15 +70,23 @@ class TouchpointComponents(
 
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
 
-  private lazy val patronsBasicHttpStripeService = new HttpBasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner)
-  lazy val patronsStripeService: BasicStripeService = patronsStripeServiceOverride
-    .getOrElse(new BasicStripeServiceWithMetrics(patronsBasicHttpStripeService, createMetrics))
+  lazy val useFineMetrics = OptionalConfig.optionalBoolean("use-fine-metrics", conf).getOrElse(false)
+  lazy val createFineMetrics: CreateMetrics = if (useFineMetrics) createMetrics else CreateNoopMetrics
 
-  private lazy val salesforce = CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
-  private lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
-  private lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createMetrics)
-  lazy val contactRepository: ContactRepository =
+  lazy val patronsStripeService: BasicStripeService = {
+    lazy val patronsBasicHttpStripeService = new HttpBasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner)
+    patronsStripeServiceOverride
+      .getOrElse(new BasicStripeServiceWithMetrics(patronsBasicHttpStripeService, createFineMetrics))
+  }
+
+  lazy val salesforce = CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
+
+  lazy val contactRepository: ContactRepository = {
+    lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
+    lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createFineMetrics)
+
     contactRepositoryOverride.getOrElse(contactRepositoryWithMetrics)
+  }
   lazy val salesforceService: SalesforceService = new SalesforceService(salesforce)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
@@ -101,28 +109,34 @@ class TouchpointComponents(
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
   private val zuoraMetrics = new ZuoraMetrics(stage.value, configuration.ApplicationName.applicationName)
-  private lazy val zuoraSoapClient =
-    new ClientWithFeatureSupplier(
-      featureCodes = Set.empty,
-      apiConfig = backendConfig.zuoraSoap,
-      httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
-      extendedHttpClient = RequestRunners.futureRunner,
-      metrics = zuoraMetrics,
+
+  lazy val zuoraSoapService = {
+    lazy val zuoraSoapClient =
+      new ClientWithFeatureSupplier(
+        featureCodes = Set.empty,
+        apiConfig = backendConfig.zuoraSoap,
+        httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
+        extendedHttpClient = RequestRunners.futureRunner,
+        metrics = zuoraMetrics,
+      )
+
+    lazy val simpleZuoraSoapService = new SimpleZuoraSoapService(zuoraSoapClient)
+
+    zuoraServiceOverride.getOrElse(
+      new ZuoraSoapServiceWithMetrics(simpleZuoraSoapService, createFineMetrics) with HealthCheckableService {
+        override def checkHealth: Boolean = zuoraSoapClient.isReady
+      },
     )
+  }
 
-  private lazy val zuoraSoapService = new SimpleZuoraSoapService(zuoraSoapClient)
+  lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
 
-  lazy val zuoraService = zuoraServiceOverride.getOrElse(
-    new ZuoraSoapServiceWithMetrics(zuoraSoapService, createMetrics) with HealthCheckableService {
-      override def checkHealth: Boolean = zuoraSoapClient.isReady
-    },
-  )
-
-  private lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
-  private lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
-  lazy val zuoraRestService: ZuoraRestService = zuoraRestServiceOverride.getOrElse(
-    new ZuoraRestServiceWithMetrics(simpleClientZuoraRestService, createMetrics)(executionContext),
-  )
+  lazy val zuoraRestService: ZuoraRestService = {
+    lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
+    zuoraRestServiceOverride.getOrElse(
+      new ZuoraRestServiceWithMetrics(simpleClientZuoraRestService, createFineMetrics)(executionContext),
+    )
+  }
 
   lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = catalogServiceOverride.getOrElse(
@@ -136,12 +150,14 @@ class TouchpointComponents(
       throw error
     }
 
-  private lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds)
+  lazy val subscriptionService: SubscriptionService = {
+    lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService.getAccountIds)
 
-  lazy val subscriptionService: SubscriptionService = subscriptionServiceOverride.getOrElse(
-    new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createMetrics),
-  )
-  lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
+    subscriptionServiceOverride.getOrElse(
+      new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createFineMetrics),
+    )
+  }
+  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(

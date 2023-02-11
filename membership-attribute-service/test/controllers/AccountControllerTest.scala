@@ -1,13 +1,12 @@
 package controllers
 
 import actions.CommonActions
-import configuration.Stage
+import monitoring.CreateNoopMetrics
 import org.mockito.IdiomaticMockito
 import org.specs2.mutable.Specification
 import play.api.test.Helpers._
 import play.api.test._
 import services.FakePostgresService
-import util.CreateNoopMetrics
 
 class AccountControllerTest extends Specification with IdiomaticMockito {
 

@@ -23,7 +23,7 @@ class HealthCheckController(touchPointBackends: TouchpointBackends, override val
   // behaviourService, Stripe and all Zuora services are not critical
   private lazy val services = Set(
     touchpointComponents.salesforceService,
-    touchpointComponents.zuoraService,
+    touchpointComponents.zuoraSoapService,
   )
 
   private lazy val tests = services.map(service => new BoolTest(service.serviceName, () => service.checkHealth))

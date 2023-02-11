@@ -10,6 +10,7 @@ import components.{TouchpointBackends, TouchpointComponents}
 import configuration.{CreateTestUsernames, Stage}
 import filters.{AddGuIdentityHeaders, IsTestUser}
 import models.{Attributes, MobileSubscriptionStatus, UserFromToken}
+import monitoring.CreateNoopMetrics
 import org.joda.time.LocalDate
 import org.mockito.IdiomaticMockito
 import org.specs2.mutable.Specification
@@ -20,7 +21,6 @@ import play.api.test.Helpers._
 import play.api.test._
 import services.AuthenticationFailure.Unauthorised
 import services.{AuthenticationFailure, AuthenticationService, FakePostgresService, MobileSubscriptionService}
-import util.CreateNoopMetrics
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

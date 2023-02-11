@@ -8,7 +8,7 @@ import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
 import filters._
 import loghandling.Logstash
-import monitoring.{CreateMetrics, ErrorHandler, SentryLogging}
+import monitoring.{CreateMetrics, CreateRealMetrics, ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -56,7 +56,7 @@ class MyComponents(context: Context)
 
   lazy val config = context.initialConfiguration.underlying
   lazy val stage = Stage(config.getString("stage"))
-  lazy val createMetrics = new CreateMetrics(stage)
+  lazy val createMetrics = new CreateRealMetrics(stage)
 
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
   lazy val contactRepositoryOverride: Option[ContactRepository] = None

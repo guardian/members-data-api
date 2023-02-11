@@ -1,17 +1,14 @@
 package monitoring
 
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
 import com.amazonaws.services.cloudwatch.model.StandardUnit
-import configuration.ApplicationName
+import com.typesafe.scalalogging.StrictLogging
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchAsync) extends CloudWatch {
-  val application = ApplicationName.applicationName // This sets the namespace for Custom Metrics in AWS (see CloudWatch)
-
-  def incrementCount(metricName: String): Unit = put(metricName + " count", 1, StandardUnit.Count)
+case class Metrics(service: String, cloudwatch: CloudWatch) extends StrictLogging {
+  def incrementCount(metricName: String): Unit = cloudwatch.put(metricName + " count", 1, StandardUnit.Count)
 
   def measureDurationEither[T](metricName: String)(block: => SimpleEitherT[T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
     SimpleEitherT(measureDuration(metricName)(block.run))
@@ -23,7 +20,7 @@ case class Metrics(service: String, stage: String, cloudwatch: AmazonCloudWatchA
 
     def recordEnd[A](name: String)(value: A): A = {
       val duration = System.currentTimeMillis() - startTime
-      put(name + " duration ms", duration, StandardUnit.Milliseconds)
+      cloudwatch.put(name + " duration ms", duration, StandardUnit.Milliseconds)
       logger.debug(s"$service $name completed in $duration ms")
 
       value
