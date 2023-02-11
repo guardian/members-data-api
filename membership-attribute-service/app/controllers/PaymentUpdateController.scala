@@ -140,10 +140,10 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
           account <- EitherT.fromEither(
-            annotateFailableFuture(tp.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
+            annotateFailableFuture(tp.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
           )
           billToContact <- EitherT.fromEither(
-            annotateFailableFuture(tp.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
+            annotateFailableFuture(tp.zuoraSoapService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
           )
           bankTransferPaymentMethod = BankTransfer(
             accountHolderName = bankAccountName,
@@ -161,7 +161,7 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
             invoiceTemplateOverride = None,
           )
           _ <- EitherT.fromEither(
-            annotateFailableFuture(tp.zuoraService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
+            annotateFailableFuture(tp.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
           )
           freshDefaultPaymentMethodOption <- EitherT.fromEither(
             annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),

@@ -5,6 +5,7 @@ import com.gu.aws.ProfileName
 import com.gu.monitoring.SafeLogger
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage
+import monitoring.CreateNoopMetrics
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import software.amazon.awssdk.auth.credentials.{
@@ -15,7 +16,6 @@ import software.amazon.awssdk.auth.credentials.{
 }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
-import util.CreateNoopMetrics
 
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 

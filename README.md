@@ -260,3 +260,16 @@ Application instances allow SSH via SSM tunnel, not via port 22,
 | service status        | `systemctl status membership-attribute-service`                          |
 | healthcheck           | `curl http://127.0.0.1:9000/healthcheck`                                 |
 
+## Enabling fine metrics
+
+To enable fine metrics for all http calls to external services (Zuora Rest and SOAP, Salesforce, etc), set this in config (either application.conf or s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf):
+
+`use-fine-metrics=true`
+
+When set, calls to all methods / endpoints will be logged as metrics.
+
+You can see it on these dashboards:
+
+CODE: https://eu-west-1.console.aws.amazon.com/cloudwatch/home?region=eu-west-1#dashboards:name=Members-Data-API-CODE
+
+PROD: https://eu-west-1.console.aws.amazon.com/cloudwatch/home?region=eu-west-1#dashboards:name=Members-Data-API 

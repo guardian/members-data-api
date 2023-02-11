@@ -5,16 +5,13 @@ import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
 import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResult, StandardUnit}
 import com.typesafe.scalalogging.StrictLogging
 
-trait CloudWatch extends StrictLogging {
-  val stage: String
-  val application: String
-  val service: String
-  val cloudwatch: AmazonCloudWatchAsync
-  lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
-  lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
-  def mandatoryDimensions: Seq[Dimension] = Seq(stageDimension, servicesDimension)
+class CloudWatch(stage: String, application: String, service: String, cloudwatch: AmazonCloudWatchAsync) extends StrictLogging {
+  private lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
+  private lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
 
-  protected def put(name: String, count: Double, unit: StandardUnit): Unit = {
+  private val mandatoryDimensions = Seq(stageDimension, servicesDimension)
+
+  protected[monitoring] def put(name: String, count: Double, unit: StandardUnit): Unit = {
     val metric =
       new MetricDatum()
         .withValue(count)
