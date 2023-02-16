@@ -15,7 +15,8 @@ import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
-import configuration.{OptionalConfig, Stage}
+import configuration.OptionalConfig._
+import configuration.Stage
 import models.{UserFromToken, UserFromTokenParser}
 import monitoring.{CreateMetrics, CreateNoopMetrics}
 import org.http4s.Uri
@@ -37,7 +38,7 @@ import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAs
 
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class TouchpointComponents(
     stage: Stage,
@@ -70,7 +71,7 @@ class TouchpointComponents(
 
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
 
-  lazy val useFineMetrics = OptionalConfig.optionalBoolean("use-fine-metrics", conf).getOrElse(false)
+  lazy val useFineMetrics = conf.optionalBoolean("use-fine-metrics", false)
   lazy val createFineMetrics: CreateMetrics = if (useFineMetrics) createMetrics else CreateNoopMetrics
 
   lazy val patronsStripeService: BasicStripeService = {
