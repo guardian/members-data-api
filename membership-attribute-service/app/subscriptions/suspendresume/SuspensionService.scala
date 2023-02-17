@@ -5,8 +5,8 @@ import configuration.HolidayRatePlanIds
 import models.subscription.Benefit.PaperDay
 import models.subscription.subsv2.SubscriptionPlan
 import models.subscription.{BillingSchedule, Subscription}
-import monitoring.SafeLogger
-import monitoring.SafeLogger._
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import subscriptions.suspendresume.JsonFormatters._
 import subscriptions.suspendresume.RefundCalculator._
 import com.gu.zuora.rest.SimpleClient

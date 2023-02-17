@@ -1,7 +1,7 @@
 package services.zuora.rest
 
 import models.subscription.Subscription._
-import monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger
 import com.gu.salesforce.ContactId
 import services.zuora.rest.ZuoraRestService._
 import com.gu.zuora.rest.{ZuoraCrudResponse, ZuoraResponse}

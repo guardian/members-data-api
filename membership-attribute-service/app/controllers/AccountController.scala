@@ -1,8 +1,8 @@
 package controllers
 
 import actions._
-import monitoring.SafeLogger
-import monitoring.SafeLogger._
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
