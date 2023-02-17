@@ -1,7 +1,7 @@
 package models
 
 import com.gu.i18n.Country
-import models.subscription.Product
+import com.gu.memsub.Product
 
 /*
  * this file aims to model https://docs.google.com/spreadsheets/d/1GydjiURBMRk8S_xD4iwbbIBpuXXYI5h3_M87DtRDV8I

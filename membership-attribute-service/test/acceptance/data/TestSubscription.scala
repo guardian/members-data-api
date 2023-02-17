@@ -1,17 +1,17 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import models.subscription
-import models.subscription.promo.PromoCode
-import models.subscription.subsv2.SubscriptionPlan.AnyPlan
-import models.subscription.subsv2.{CovariantNonEmptyList, ReaderType, Subscription}
+import com.gu.memsub
+import com.gu.memsub.promo.PromoCode
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.{CovariantNonEmptyList, ReaderType, Subscription}
 import org.joda.time.{DateTime, LocalDate}
 
 object TestSubscription {
   def apply(
-      id: subscription.Subscription.Id = subscription.Subscription.Id(randomId("subscriptionId")),
-      name: subscription.Subscription.Name = subscription.Subscription.Name(randomId("subscriptionName")),
-      accountId: subscription.Subscription.AccountId = subscription.Subscription.AccountId(randomId("accountId")),
+      id: memsub.Subscription.Id = memsub.Subscription.Id(randomId("subscriptionId")),
+      name: memsub.Subscription.Name = memsub.Subscription.Name(randomId("subscriptionName")),
+      accountId: memsub.Subscription.AccountId = memsub.Subscription.AccountId(randomId("accountId")),
       startDate: LocalDate = LocalDate.now().minusDays(7),
       acceptanceDate: LocalDate = LocalDate.now().plusDays(2),
       termStartDate: LocalDate = LocalDate.now().minusDays(5),
@@ -26,7 +26,7 @@ object TestSubscription {
       autoRenew: Boolean = false,
   ): Subscription[AnyPlan] =
     Subscription[AnyPlan](
-      id: subscription.Subscription.Id,
+      id: memsub.Subscription.Id,
       name,
       accountId,
       startDate,

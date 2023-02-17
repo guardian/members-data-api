@@ -1,7 +1,7 @@
 package services.stripe
 
 import com.gu.i18n.Currency
-import models.subscription.util.WebServiceHelper
+import com.gu.memsub.util.WebServiceHelper
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._

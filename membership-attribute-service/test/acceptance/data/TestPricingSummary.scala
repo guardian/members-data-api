@@ -1,7 +1,7 @@
 package acceptance.data
 
 import com.gu.i18n.Currency
-import models.subscription.{Price, PricingSummary}
+import com.gu.memsub.{Price, PricingSummary}
 
 object TestPricingSummary {
   def apply(summary: (Currency, Price)*): PricingSummary = PricingSummary(summary.toMap)

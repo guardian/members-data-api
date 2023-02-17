@@ -1,36 +1,25 @@
 package services.zuora.soap
 
 import com.gu.i18n.{CountryGroup, Currency}
+import com.gu.memsub.Subscription._
+import com.gu.memsub.promo.PromoCode
+import com.gu.memsub.{Subscription => S}
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PayPal, PaymentGateway}
-import services.zuora.soap.actions.{Action, XmlWriterAction}
-import services.zuora.soap.models.Queries.{PreviewInvoiceItem, Subscription => QuerySubscription}
-import services.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}
-import services.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
+import com.gu.zuora.soap.ZuoraFilter._
+import com.gu.zuora.soap._
+import com.gu.zuora.soap.actions.Actions._
+import com.gu.zuora.soap.actions.{Action, XmlWriterAction}
+import com.gu.zuora.soap.models.Commands._
+import com.gu.zuora.soap.models.Queries.{PreviewInvoiceItem, Subscription}
+import com.gu.zuora.soap.models.Results.{AmendResult, CreateResult, SubscribeResult, UpdateResult}
+import com.gu.zuora.soap.models.errors._
+import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
+import com.gu.zuora.soap.writers.Command._
 import org.joda.time.{DateTime, LocalDate, ReadableDuration}
-import _root_.models.subscription.Subscription.AccountId
-import _root_.models.subscription.Subscription
-import _root_.models.subscription.Subscription.RatePlanId
-import _root_.models.subscription.Subscription.ProductRatePlanId
-import _root_.models.subscription.promo.PromoCode
-import services.zuora.soap.actions.Actions.{
-  CancelPlan,
-  Clear,
-  CreateCreditCardReferencePaymentMethod,
-  CreateFreeEventUsage,
-  CreatePayPalReferencePaymentMethod,
-  DowngradePlan,
-  PreviewInvoicesTillEndOfTermViaAmend,
-  PreviewInvoicesViaAmend,
-  SetTo,
-  Update,
-  UpdateAccountPayment,
-}
-import services.zuora.soap.models.Commands.{Amend, Contribute, CreatePaymentMethod, Renew, Subscribe, UpdatePromoCode}
-import services.zuora.soap.writers.Command
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
@@ -68,7 +57,7 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
   override def getContact(contactId: String): Future[SoapQueries.Contact] =
     soapClient.queryOne[SoapQueries.Contact](SimpleFilter("Id", contactId))
 
-  override def getSubscription(id: Subscription.Id): Future[SoapQueries.Subscription] =
+  override def getSubscription(id: S.Id): Future[SoapQueries.Subscription] =
     soapClient.queryOne[SoapQueries.Subscription](SimpleFilter("id", id.get))
 
   private def previewInvoices(subscriptionId: String, paymentDate: LocalDate, action: (String, LocalDate) => Action[AmendResult]) = {
@@ -79,14 +68,14 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
     }
   }
 
-  override def previewInvoicesTillEndOfTerm(subscriptionId: Subscription.Id): Future[Seq[PreviewInvoiceItem]] = {
+  override def previewInvoicesTillEndOfTerm(subscriptionId: S.Id): Future[Seq[PreviewInvoiceItem]] = {
     for {
       sub <- getSubscription(subscriptionId)
       previewInvoiceItems <- previewInvoices(sub.id, sub.contractAcceptanceDate, PreviewInvoicesTillEndOfTermViaAmend)
     } yield previewInvoiceItems
   }
 
-  override def previewInvoices(subscriptionId: Subscription.Id, number: Int = 2): Future[Seq[PreviewInvoiceItem]] = {
+  override def previewInvoices(subscriptionId: S.Id, number: Int = 2): Future[Seq[PreviewInvoiceItem]] = {
     for {
       sub <- getSubscription(subscriptionId)
       previewInvoiceItems <- previewInvoices(sub.id, sub.contractAcceptanceDate, PreviewInvoicesViaAmend(number) _)
@@ -133,7 +122,7 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
       command.accountId,
       command.paymentGateway,
     ) // We need to set gateway correctly because it must match with the payment method we'll create below
-    createMethodResult <- soapClient.extendedAuthenticatedRequest[CreateResult](new XmlWriterAction(command)(Command.createPaymentMethodWrites))
+    createMethodResult <- soapClient.extendedAuthenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
     result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway, command.invoiceTemplateOverride)
   } yield result
 
@@ -173,7 +162,7 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
     } yield result
 
   override def renewSubscription(renew: Renew): Future[AmendResult] = {
-    val amendResult = soapClient.authenticatedRequest[AmendResult](new XmlWriterAction(renew)(Command.renewWrites))
+    val amendResult = soapClient.authenticatedRequest[AmendResult](new XmlWriterAction(renew)(renewWrites))
 
     val promoCode = Some(renew).flatMap(_.promoCode)
 
@@ -190,7 +179,7 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
   }
 
   override def upgradeSubscription(amend: Amend): Future[AmendResult] = {
-    val amendResult = soapClient.authenticatedRequest[AmendResult](new XmlWriterAction(amend)(Command.amendWrites))
+    val amendResult = soapClient.authenticatedRequest[AmendResult](new XmlWriterAction(amend)(amendWrites))
 
     val promoCode = Some(amend).filterNot(_.previewMode).flatMap(_.promoCode)
 
@@ -217,17 +206,17 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
      */
 
     for {
-      subscription <- soapClient.queryOne[QuerySubscription](SimpleFilter("id", subscriptionId))
-      allSubVersions <- soapClient.query[QuerySubscription](SimpleFilter("Name", subscription.name))
+      subscription <- soapClient.queryOne[Subscription](SimpleFilter("id", subscriptionId))
+      allSubVersions <- soapClient.query[Subscription](SimpleFilter("Name", subscription.name))
       latestSubscriptionId = allSubVersions.sortBy(_.version).map(_.id).last
       action = UpdatePromoCode(latestSubscriptionId, code.get)
-      _ <- soapClient.authenticatedRequest[UpdateResult](new XmlWriterAction(action)(Command.updatePromoCodeWrites))
+      _ <- soapClient.authenticatedRequest[UpdateResult](new XmlWriterAction(action)(updatePromoCodeWrites))
     } yield ()
 
   }
 
   override def downgradePlan(
-      subscriptionId: Subscription.Id,
+      subscriptionId: S.Id,
       currentRatePlan: RatePlanId,
       futureRatePlanId: ProductRatePlanId,
       effectiveFrom: LocalDate,
@@ -236,12 +225,12 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
       DowngradePlan(subscriptionId.get, currentRatePlan.get, futureRatePlanId.get, effectiveFrom),
     )
 
-  override def cancelPlan(subscription: Subscription.Id, rp: RatePlanId, cancelDate: LocalDate) =
+  override def cancelPlan(subscription: S.Id, rp: RatePlanId, cancelDate: LocalDate) =
     soapClient.authenticatedRequest(CancelPlan(subscription.get, rp.get, cancelDate))
 
   implicit private def features: Future[Seq[SoapQueries.Feature]] = soapClient.featuresSupplier.get()
 
-  override def getPaymentSummary(subscriptionNumber: Subscription.Name, accountCurrency: Currency): Future[PaymentSummary] =
+  override def getPaymentSummary(subscriptionNumber: S.Name, accountCurrency: Currency): Future[PaymentSummary] =
     for {
       invoiceItems <- soapClient.query[SoapQueries.InvoiceItem](SimpleFilter("SubscriptionNumber", subscriptionNumber.get))
     } yield {
@@ -249,7 +238,7 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
       PaymentSummary(filteredInvoices, accountCurrency)
     }
 
-  override def getUsages(subscriptionNumber: Subscription.Name, unitOfMeasure: String, startDate: DateTime): Future[Seq[SoapQueries.Usage]] =
+  override def getUsages(subscriptionNumber: S.Name, unitOfMeasure: String, startDate: DateTime): Future[Seq[SoapQueries.Usage]] =
     soapClient.query[SoapQueries.Usage](
       AndFilter(
         SimpleFilter("StartDateTime", DateTimeHelpers.formatDateTime(startDate), ">="),
@@ -258,25 +247,20 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
       ),
     )
 
-  override def createFreeEventUsage(
-      accountId: AccountId,
-      subscriptionNumber: Subscription.Name,
-      description: String,
-      quantity: Int,
-  ): Future[CreateResult] =
+  override def createFreeEventUsage(accountId: AccountId, subscriptionNumber: S.Name, description: String, quantity: Int): Future[CreateResult] =
     soapClient.authenticatedRequest(CreateFreeEventUsage(accountId.get, description, quantity, subscriptionNumber.get))
 
   override def getFeatures: Future[Seq[SoapQueries.Feature]] = soapClient.featuresSupplier.get()
 
   override def createSubscription(subscribe: Subscribe): Future[SubscribeResult] =
-    soapClient.extendedAuthenticatedRequest[SubscribeResult](new XmlWriterAction(subscribe)(Command.subscribeWrites))
+    soapClient.extendedAuthenticatedRequest[SubscribeResult](new XmlWriterAction(subscribe)(subscribeWrites))
 
   override def lastPingTimeWithin(duration: ReadableDuration) = soapClient.lastPingTimeWithin(duration)
 
   override def getPaymentMethod(id: String): Future[SoapQueries.PaymentMethod] =
     soapClient.queryOne[SoapQueries.PaymentMethod](SimpleFilter("Id", id))
 
-  override def updateActivationDate(subscriptionId: Subscription.Id): Future[Unit] =
+  override def updateActivationDate(subscriptionId: Id): Future[Unit] =
     soapClient.authenticatedRequest[UpdateResult](
       Update(subscriptionId.get, "Subscription", Seq("ActivationDate__c" -> DateTime.now().toString)),
     ) map (_ => ()) andThen {
@@ -285,6 +269,6 @@ class SimpleZuoraSoapService(soapClient: ClientWithFeatureSupplier)(implicit ec:
     }
 
   override def createContribution(contribute: Contribute): Future[SubscribeResult] =
-    soapClient.extendedAuthenticatedRequest[SubscribeResult](new XmlWriterAction(contribute)(Command.contributeWrites))
+    soapClient.extendedAuthenticatedRequest[SubscribeResult](new XmlWriterAction(contribute)(contributeWrites))
 
 }
