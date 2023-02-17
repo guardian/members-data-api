@@ -1,10 +1,10 @@
 package services.subscription
 
-import models.subscription
-import models.subscription.Subscription.AccountId
-import models.subscription.subsv2.Subscription
-import models.subscription.subsv2.SubscriptionPlan.{AnyPlan, Contributor}
-import models.subscription.subsv2.reads.SubPlanReads
+import com.gu.memsub
+import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.subsv2.Subscription
+import com.gu.memsub.subsv2.SubscriptionPlan.{AnyPlan, Contributor}
+import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.salesforce.ContactId
 import monitoring.CreateMetrics
 import org.joda.time.{LocalDate, LocalTime}
@@ -18,7 +18,7 @@ class SubscriptionServiceWithMetrics(wrapped: SubscriptionService, createMetrics
     extends SubscriptionService {
   private val metrics = createMetrics.forService(wrapped.getClass)
 
-  override def get[P <: AnyPlan: SubPlanReads](name: subscription.Subscription.Name, isActiveToday: Boolean): Future[Option[Subscription[P]]] =
+  override def get[P <: AnyPlan: SubPlanReads](name: memsub.Subscription.Name, isActiveToday: Boolean): Future[Option[Subscription[P]]] =
     metrics.measureDuration("get")(wrapped.get(name, isActiveToday))
 
   override def current[P <: AnyPlan: SubPlanReads](contact: ContactId): Future[List[Subscription[P]]] =
@@ -54,11 +54,11 @@ class SubscriptionServiceWithMetrics(wrapped: SubscriptionService, createMetrics
   /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead
     */
   override def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      name: subscription.Subscription.Name,
+      name: memsub.Subscription.Name,
   )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[String \/ (Subscription[FALLBACK] \/ Subscription[PREFERRED])] =
     metrics.measureDuration("eitherByName")(wrapped.either(name))
 
-  override def backdoorRatePlanIds(name: subscription.Subscription.Name): Future[String \/ List[SubIds]] =
+  override def backdoorRatePlanIds(name: memsub.Subscription.Name): Future[String \/ List[SubIds]] =
     metrics.measureDuration("backdoorRatePlanIds")(wrapped.backdoorRatePlanIds(name))
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
@@ -79,7 +79,7 @@ class SubscriptionServiceWithMetrics(wrapped: SubscriptionService, createMetrics
     *   should not proceed with automatic cancelation
     */
   override def decideCancellationEffectiveDate[P <: AnyPlan: SubPlanReads](
-      subscriptionName: subscription.Subscription.Name,
+      subscriptionName: memsub.Subscription.Name,
       wallClockTimeNow: LocalTime,
       today: LocalDate,
   ): DisjunctionT[String, Future, Option[LocalDate]] =
