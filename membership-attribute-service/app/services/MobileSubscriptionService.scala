@@ -2,7 +2,7 @@ package services
 
 import models.MobileSubscriptionStatus
 import com.github.nscala_time.time.OrderingImplicits._
-import monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger
 import com.typesafe.config.Config
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.libs.ws.WSClient

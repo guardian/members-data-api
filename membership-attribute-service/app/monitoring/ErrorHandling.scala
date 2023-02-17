@@ -1,6 +1,6 @@
 package monitoring
-import monitoring.SafeLogger
-import monitoring.SafeLogger._
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger._
 import com.typesafe.scalalogging.LazyLogging
 import controllers.{Cached, NoCache}
 import filters.AddGuIdentityHeaders

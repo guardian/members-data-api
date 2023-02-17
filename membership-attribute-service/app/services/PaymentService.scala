@@ -2,8 +2,8 @@ package services
 
 import _root_.services.stripe.StripeService
 import _root_.services.zuora.soap.ZuoraSoapService
-import monitoring.SafeLogger
-import monitoring.SafeLogger.Sanitizer
+import com.gu.monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger.Sanitizer
 import models.PaymentDetails
 import com.gu.stripe.Stripe
 import com.gu.stripe.Stripe.Customer

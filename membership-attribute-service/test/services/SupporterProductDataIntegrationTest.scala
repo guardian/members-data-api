@@ -2,7 +2,7 @@ package services
 
 import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
-import monitoring.SafeLogger
+import com.gu.monitoring.SafeLogger
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage
 import monitoring.CreateNoopMetrics
