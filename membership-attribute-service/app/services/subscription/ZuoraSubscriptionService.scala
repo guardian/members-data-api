@@ -59,8 +59,8 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       isActiveToday: Boolean = false,
   ): Future[Option[Subscription[P]]] = {
 
-    SafeLogger.debug("isActiveToday")
-    SafeLogger.debug(isActiveToday.toString())
+    SafeLogger.info("isActiveToday")
+    SafeLogger.info(isActiveToday.toString())
 
     val url =
       if (isActiveToday)
@@ -266,15 +266,15 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       OptionT(get[P](subscriptionName, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
 
-          SafeLogger.debug("zuoraSubscriptionWithCurrentSegment")
-          SafeLogger.debug(zuoraSubscriptionWithCurrentSegment.toString())
+          SafeLogger.info("zuoraSubscriptionWithCurrentSegment")
+          SafeLogger.info(zuoraSubscriptionWithCurrentSegment.toString())
 
           val paidPlans =
             zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
           val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(BillRunCompletedByTime)
 
-          SafeLogger.debug("paidPlans")
-          SafeLogger.debug(paidPlans.toString())
+          SafeLogger.info("paidPlans")
+          SafeLogger.info(paidPlans.toString())
 
           paidPlans match {
             case paidPlan1 :: paidPlan2 :: _ => \/.l[Option[LocalDate]]("Failed to determine specific single active paid rate plan charge")
