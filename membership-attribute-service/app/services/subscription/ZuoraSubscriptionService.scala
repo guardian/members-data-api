@@ -59,6 +59,9 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       isActiveToday: Boolean = false,
   ): Future[Option[Subscription[P]]] = {
 
+    println("isActiveToday")
+    println(isActiveToday)
+
     val url =
       if (isActiveToday)
         s"subscriptions/${name.get}?charge-detail=current-segment" // (effectiveStartDate <= today’s date < effectiveEndDate).
