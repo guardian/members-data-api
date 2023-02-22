@@ -262,9 +262,16 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     EitherT(
       OptionT(get[P](subscriptionName, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
+
+          println("zuoraSubscriptionWithCurrentSegment")
+          println(zuoraSubscriptionWithCurrentSegment)
+
           val paidPlans =
             zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
           val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(BillRunCompletedByTime)
+
+          println("paidPlans")
+          println(paidPlans)
 
           paidPlans match {
             case paidPlan1 :: paidPlan2 :: _ => \/.l[Option[LocalDate]]("Failed to determine specific single active paid rate plan charge")
