@@ -60,7 +60,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
   ): Future[Option[Subscription[P]]] = {
 
     SafeLogger.debug("isActiveToday")
-    SafeLogger.debug(isActiveToday)
+    SafeLogger.debug(isActiveToday.toString())
 
     val url =
       if (isActiveToday)
