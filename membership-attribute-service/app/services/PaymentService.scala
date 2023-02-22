@@ -145,6 +145,9 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
   override def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None): Future[Option[PaymentMethod]] =
     getPaymentMethodByAccountId(accountId).map(_.flatMap(buildPaymentMethod(defaultMandateIdIfApplicable)))
 
+  override def getPaymentMethod(account: Account, defaultMandateIdIfApplicable: Option[String]): Future[Option[PaymentMethod]] =
+    getPaymentMethodByAccount(account).map(_.flatMap(buildPaymentMethod(defaultMandateIdIfApplicable)))
+
   override def getPaymentCard(accountId: AccountId): Future[Option[PaymentCard]] =
     getPaymentMethod(accountId).map(_.collect { case c: PaymentCard => c })
 

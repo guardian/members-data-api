@@ -12,6 +12,7 @@ import scala.concurrent.Future
 
 trait PaymentService {
   def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None): Future[Option[PaymentMethod]]
+  def getPaymentMethod(account: Account, defaultMandateIdIfApplicable: Option[String]): Future[Option[PaymentMethod]]
   def getPaymentCard(accountId: AccountId): Future[Option[PaymentCard]]
   @Deprecated def setPaymentCardWithStripeToken(
       accountId: AccountId,

@@ -78,7 +78,7 @@ class AccountDetailsFromZuora(
   private def nonGiftContactAndSubscriptionsFor(contact: Contact): Future[List[ContactAndSubscription]] = {
     subscriptionService
       .current[SubscriptionPlan.AnyPlan](contact)
-      .map(_.map(ContactAndSubscription(contact, _, isGiftRedemption = false)))
+      .map(_.map { case (account, sub) => ContactAndSubscription(contact, sub, isGiftRedemption = false) })
   }
 
   private def applyFilter(

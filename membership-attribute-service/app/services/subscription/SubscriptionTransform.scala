@@ -15,6 +15,7 @@ import scalaz._
 import scalaz.syntax.all._
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
+import com.gu.zuora.soap.models.Queries.Account
 
 import scala.language.higherKinds
 import scala.util.Try
@@ -61,7 +62,30 @@ object SubscriptionTransform {
     }
   }
 
+  def tryTwoReadersForSubscriptionJsonWithAccounts[PREFERRED <: AnyPlan: SubPlanReads, FALLBACK <: AnyPlan: SubPlanReads](
+      catalog: CatalogMap,
+      pids: ProductIds,
+  )(
+      subJsons: List[(Account, JsValue)],
+  ): \/[String, (Account, Disjunction[Subscription[FALLBACK], Subscription[PREFERRED]])] = {
+    val maybePreferred =
+      getCurrentSubscriptionsWithAccounts[PREFERRED](catalog, pids)(subJsons).map(_.head /*if more than one current, just pick one (for now!)*/ )
+    lazy val maybeFallback =
+      getCurrentSubscriptionsWithAccounts[FALLBACK](catalog, pids)(subJsons).map(_.head /*if more than one current, just pick one (for now!)*/ )
+    maybePreferred match {
+      case \/-((account, preferredSub)) => \/.right((account, \/-(preferredSub)))
+      case -\/(err1) =>
+        maybeFallback match {
+          case \/-((account, fallbackSub)) => \/.right((account, -\/(fallbackSub)))
+          case -\/(err2) => \/.left(s"Error from sub service: $err1\n\n$err2")
+        }
+    }
+  }
+
   type TimeRelativeSubTransformer[P <: AnyPlan] = (CatalogMap, ProductIds) => List[JsValue] => Disjunction[String, NonEmptyList[Subscription[P]]]
+
+  type TimeRelativeSubTransformerWithAccount[P <: AnyPlan] =
+    (CatalogMap, ProductIds) => List[(Account, JsValue)] => Disjunction[String, NonEmptyList[(Account, Subscription[P])]]
 
   def getCurrentSubscriptions[P <: AnyPlan: SubPlanReads](catalog: CatalogMap, pids: ProductIds)(
       subJsons: List[JsValue],
@@ -89,6 +113,32 @@ object SubscriptionTransform {
     }).flatMap(getFirstCurrentSub[P])
   }
 
+  def getCurrentSubscriptionsWithAccounts[P <: AnyPlan: SubPlanReads](catalog: CatalogMap, pids: ProductIds)(
+      subJsons: List[(Account, JsValue)],
+  ): Disjunction[String, NonEmptyList[(Account, Subscription[P])]] = {
+
+    def getFirstCurrentSub[P <: AnyPlan](
+        subs: NonEmptyList[(Account, Subscription[P])],
+    ): String \/ NonEmptyList[(Account, Subscription[P])] = // just quickly check to find one with a current plan
+      Sequence(
+        subs
+          .map { case (account, sub) =>
+            Try {
+              sub.plan // just to force a throw if it doesn't have one
+            } match {
+              case scala.util.Success(_) => \/-((account, sub)): \/[String, (Account, Subscription[P])]
+              case scala.util.Failure(ex) => -\/(ex.toString): \/[String, (Account, Subscription[P])]
+            }
+          }
+          .list
+          .toList,
+      )
+
+    Sequence(subJsons.map { case (account, subJson) =>
+      getSubscription(catalog, pids)(subJson).map(s => (account, s))
+    }).flatMap({ getFirstCurrentSub[P] })
+  }
+
   def getSubscriptionsActiveOnOrAfter[P <: AnyPlan: SubPlanReads](
       onOrAfter: LocalDate,
   )(catalog: CatalogMap, pids: ProductIds)(subJsons: List[JsValue]): Disjunction[String, NonEmptyList[Subscription[P]]] =
@@ -96,6 +146,22 @@ object SubscriptionTransform {
       case \/-(sub) => !sub.termEndDate.isBefore(onOrAfter)
       case _ => false
     })
+
+  def getSubscriptionsActiveOnOrAfterWithAccounts[P <: AnyPlan: SubPlanReads](
+      onOrAfter: LocalDate,
+  )(catalog: CatalogMap, pids: ProductIds)(
+      subJsons: List[(Account, JsValue)],
+  ): Disjunction[String, NonEmptyList[(Account, Subscription[P])]] =
+    Sequence(
+      subJsons
+        .map { case (account, subJson) =>
+          getSubscription[P](catalog, pids)(subJson).map(s => (account, s))
+        } // why can't I call map or traverse on tuples here to avoid manual (un)packing?
+        .filter {
+          case \/-((account, sub)) => !sub.termEndDate.isBefore(onOrAfter)
+          case _ => false
+        },
+    )
 
   def getRecentlyCancelledSubscriptions[P <: AnyPlan: SubPlanReads](
       today: LocalDate,
@@ -117,6 +183,25 @@ object SubscriptionTransform {
       }
   }
 
+  def getRecentlyCancelledSubscriptionsWithAccounts[P <: AnyPlan: SubPlanReads](
+      today: LocalDate,
+      lastNMonths: Int, // cancelled in the last n months
+      catalog: CatalogMap,
+      pids: ProductIds,
+      subJsons: List[(Account, JsValue)],
+  ): Disjunction[String, List[(Account, Subscription[P])]] = {
+    import Scalaz._
+    subJsons
+      .map { case (account, subJson) => getSubscription[P](catalog, pids)(subJson).map(s => (account, s)) }
+      .sequence
+      .map {
+        _.filter { case (account, sub) =>
+          sub.isCancelled &&
+          (sub.termEndDate isAfter today.minusMonths(lastNMonths)) &&
+          (sub.termEndDate isBefore today)
+        }
+      }
+  }
   def getSubscription[P <: AnyPlan: SubPlanReads](
       catalog: CatalogMap,
       pids: ProductIds,

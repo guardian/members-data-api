@@ -52,7 +52,9 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
           subscription <- EitherT.fromEither(
             tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
-              .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
+              .map(subs =>
+                subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs.map { case (account, sub) => sub }),
+              ),
           )
           stripeService <- EitherT.fromEither(
             Future
@@ -137,7 +139,9 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
           subscription <- EitherT.fromEither(
             tp.subscriptionService
               .current[SubscriptionPlan.AnyPlan](sfUser)
-              .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
+              .map(subs =>
+                subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs.map { case (account, sub) => sub }),
+              ),
           )
           account <- EitherT.fromEither(
             annotateFailableFuture(tp.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),

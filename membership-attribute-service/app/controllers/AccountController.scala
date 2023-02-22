@@ -140,7 +140,7 @@ class AccountController(
             .fromEither(
               tp.subscriptionService
                 .current[P](sfContact)
-                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
+                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs.map { case (account, sub) => sub })),
             )
             .leftMap(CancelError(_, 404))
           accountId <- EitherT.fromEither(
@@ -207,7 +207,7 @@ class AccountController(
             tp.subscriptionService
               .either[F, P](contact)
               .map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")),
-          ).map(_.toEither)
+          ).map { case (account, sub) => sub.toEither }
           sub: Subscription[AnyPlan] = freeOrPaidSub.fold(identity, identity)
           paymentDetails <- OptionTEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
             Left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x")
@@ -308,7 +308,7 @@ class AccountController(
               contact <- OptionT(EitherT(tp.contactRepository.get(identityId)))
               subs <- OptionT(EitherT(tp.subscriptionService.recentlyCancelled(contact)).map(Option(_)))
             } yield {
-              Ok(Json.toJson(subs.map(CancelledSubscription(_))))
+              Ok(Json.toJson(subs.map { case (account, sub) => CancelledSubscription(sub) }))
             }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
 
           case None => Future.successful(unauthorized)
@@ -333,7 +333,7 @@ class AccountController(
           subscription <- EitherT.fromEither(
             tp.subscriptionService
               .current[SubscriptionPlan.Contributor](sfUser)
-              .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")(subs)),
+              .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")(subs.map { case (account, sub) => sub })),
           )
           applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
           currencyGlyph = subscription.plan.charges.price.prices.head.currency.glyph

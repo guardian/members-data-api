@@ -8,6 +8,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
+import com.gu.zuora.soap.models.Queries.Account
 import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import models.AccessScope.completeReadSelf
@@ -43,12 +44,12 @@ class ExistingPaymentOptionsController(
       maybeUserId: Option[String],
       contactRepository: ContactRepository,
       subscriptionService: SubscriptionService,
-  ): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
+  ): SimpleEitherT[Map[Account, List[(Account, Subscription[SubscriptionPlan.AnyPlan])]]] =
     (for {
       user <- ListTEither.fromOption(maybeUserId)
       contact <- ListTEither.fromFutureOption(contactRepository.get(user))
       subscription <- ListTEither.fromFutureList(subscriptionService.since[SubscriptionPlan.AnyPlan](date)(contact))
-    } yield subscription).toList.map(_.groupBy(_.accountId))
+    } yield subscription).toList.map(_.groupBy { case (account, sub) => account })
 
   def consolidatePaymentMethod(existingPaymentOptions: List[ExistingPaymentOption]): Iterable[ExistingPaymentOption] = {
 
@@ -112,28 +113,32 @@ class ExistingPaymentOptionsController(
           groupedSubsList <- ListTEither.fromEitherT(
             allSubscriptionsSince(eligibilityDate, maybeUserId, tp.contactRepository, tp.subscriptionService).map(_.toList),
           )
-          (accountId, subscriptions) = groupedSubsList
+          (account, subscriptionsWithAccounts) = groupedSubsList
+          accountId = AccountId(account.id)
+          subscriptions = subscriptionsWithAccounts.map { case (acc, sub) => sub }
           objectAccount <- ListTEither.singleDisjunction(tp.zuoraRestService.getObjectAccount(accountId).recover { case x =>
             -\/[String, ObjectAccount](s"error receiving OBJECT account with account id $accountId. Reason: $x")
           }) if currencyMatchesFilter(objectAccount.currency) &&
             objectAccount.defaultPaymentMethodId.isDefined
           paymentMethodOption <- ListTEither.single(
             tp.paymentService
-              .getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable))
+              .getPaymentMethod(account, Some(defaultMandateIdIfApplicable))
               .map(Right(_))
               .recover { case x => Left(s"error retrieving payment method for account: $accountId. Reason: $x") },
           )
           if paymentMethodStillValid(paymentMethodOption) &&
             paymentMethodHasNoFailures(paymentMethodOption) &&
             paymentMethodIsActive(paymentMethodOption)
-        } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map(_.toEither).map {
-          case Right(existingPaymentOptions) =>
-            logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
-            Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson)))
-          case Left(message) =>
-            logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
-            InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
-        }
+        } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run
+          .map(_.toEither)
+          .map {
+            case Right(existingPaymentOptions) =>
+              logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
+              Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson)))
+            case Left(message) =>
+              logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
+              InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
+          }
       }
     }
 }

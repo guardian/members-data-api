@@ -152,7 +152,8 @@ class TouchpointComponents(
     }
 
   lazy val subscriptionService: SubscriptionService = {
-    lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService.getAccountIds)
+    lazy val zuoraSubscriptionService =
+      new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService.getAccounts(_).map(_.toList))
 
     subscriptionServiceOverride.getOrElse(
       new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createFineMetrics),
