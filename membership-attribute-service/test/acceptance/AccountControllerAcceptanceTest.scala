@@ -142,9 +142,10 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val nonGiftSubscription = TestSubscription()
       val nonGiftSubscriptionAccountId = nonGiftSubscription.accountId
+      val nonGiftQueriesAccount = TestQueriesAccount(id = nonGiftSubscriptionAccountId.get)
 
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns
-        Future(List(nonGiftSubscription))
+        Future(List((nonGiftQueriesAccount, nonGiftSubscription)))
 
       val giftSubscriptionFromSubscriptionService = TestSubscription(
         id = Subscription.Id(giftSubscription.Id),
@@ -166,7 +167,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.name) returns Future(\/.right(None))
 
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) returns Future(TestPaymentSummary())
-      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) returns Future(TestQueriesAccount())
+      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) returns Future(nonGiftQueriesAccount)
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(
         identityId = "200067388",
