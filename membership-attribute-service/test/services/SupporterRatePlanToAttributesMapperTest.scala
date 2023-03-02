@@ -247,6 +247,14 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
         ) should beNone
     }
 
+    "handle unsupported plan id correctly" in {
+      mapper
+        .attributesFromSupporterRatePlans(
+          identityId,
+          List(ratePlanItem("bla")),
+        ) should beNone
+    }
+
     "handle supporter with multiple products correctly" in {
       mapper
         .attributesFromSupporterRatePlans(
@@ -302,14 +310,14 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     }
 
     "have a product rate plan for all active subscriptions" in {
-      val allMappedProductRatePlans: List[String] = productRatePlanMappings("PROD").keys.flatten.toList
+      val allMappedProductRatePlans: List[String] = productRatePlanMappings("PROD").keys.toList
       val allUnmapped = allActiveProductRatePlans.filter { case (name, id) => !allMappedProductRatePlans.contains(id) }
 
       allUnmapped should beEmpty
     }
 
     "find unused rate plans" in {
-      val allMappedProductRatePlans: List[String] = productRatePlanMappings("PROD").keys.flatten.toList
+      val allMappedProductRatePlans: List[String] = productRatePlanMappings("PROD").keys.toList
 
       val allActiveProductRatePlanIds = allActiveProductRatePlans.map(_._1)
       val allUnused = allMappedProductRatePlans.filter(productRatePlanId => !allActiveProductRatePlanIds.contains(productRatePlanId))
