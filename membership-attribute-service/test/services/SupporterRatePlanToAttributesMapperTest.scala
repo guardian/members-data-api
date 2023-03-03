@@ -3,6 +3,7 @@ package services
 import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
+import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 import services.SupporterRatePlanToAttributesMapperTest.allActiveProductRatePlans
@@ -43,6 +44,38 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
         identityId,
         List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea")),
       ) should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution"))
+    }
+
+    "handle a SupporterPlus subscription" in {
+      List(
+        "8a12865b8219d9b401822106192b64dc",
+        "8a12865b8219d9b40182210618a464ba",
+      ).map(planId =>
+        mapper.attributesFromSupporterRatePlans(
+          identityId,
+          List(ratePlanItem(planId)),
+        ) should beSome.which(_.SupporterPlusExpiryDate should beSome(termEndDate)),
+      )
+    }
+
+    "handle a SupporterPlus V2 subscription" in {
+      testMapper(
+        Map(
+          "PROD" -> List(
+            "8a128ed885fc6ded018602296ace3eb8",
+            "8a128ed885fc6ded01860228f77e3d5a",
+          ),
+          "UAT" -> List(
+            "8ad0940885f8901f0186024838f844a1",
+            "8ad094b985f8901601860248d751315c",
+          ),
+          "DEV" -> List(
+            "8ad08cbd8586721c01858804e3275376",
+            "8ad08e1a8586721801858805663f6fab",
+          ),
+        ),
+        _ should beSome.which(_.SupporterPlusExpiryDate should beSome(termEndDate)),
+      )
     }
 
     "identify a Digital Subscription" in {
@@ -236,7 +269,6 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             ratePlanItem(friend),
           ),
         ) should beSome.which(_.Tier should beSome("Supporter"))
-
     }
 
     "handle an empty list of supporterProductRatePlanIds correctly" in {
@@ -326,6 +358,23 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       ) // TODO: Should we remove legacy product rate plan ids from the mapper
       success
     }
+  }
+
+  def testMapper[T](
+                     map: Map[String, List[String]],
+                     matcher: Option[Attributes] => MatchResult[T],
+                   ): List[MatchResult[T]] = {
+    map.flatMap { case (stage, planIds) =>
+      planIds.map(planId => {
+        val mapper = new SupporterRatePlanToAttributesMapper(Stage(stage))
+        matcher(
+          mapper.attributesFromSupporterRatePlans(
+            identityId,
+            List(ratePlanItem(planId)),
+          ),
+        )
+      })
+    }.toList
   }
 }
 

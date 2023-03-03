@@ -42,6 +42,7 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
+  val supporterPlusV2Transformer: AttributeTransformer = supporterPlusTransformer
   val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
     attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
   val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
@@ -71,6 +72,10 @@ object SupporterRatePlanToAttributesMapper {
       "8a12865b8219d9b401822106192b64dc",
       "8a12865b8219d9b40182210618a464ba",
     ) -> supporterPlusTransformer,
+    List(
+      "8a128ed885fc6ded018602296ace3eb8",
+      "8a128ed885fc6ded01860228f77e3d5a"
+    ) -> supporterPlusV2Transformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
       "2c92a0fb4edd70c8014edeaa4e972204",
@@ -183,6 +188,10 @@ object SupporterRatePlanToAttributesMapper {
       "8ad088718219a6b601822036a5801f34",
     ) -> supporterPlusTransformer,
     List(
+      "8ad0940885f8901f0186024838f844a1",
+      "8ad094b985f8901601860248d751315c",
+    ) -> supporterPlusV2Transformer,
+    List(
       "2c92c0f94f2acf73014f2c908f671591",
       "2c92c0f84f2ac59d014f2c94aea9199e",
       "2c92c0f971c65df50171dfabef87093d",
@@ -268,6 +277,10 @@ object SupporterRatePlanToAttributesMapper {
       "8ad09fc281de1ce70181de3b251736a4",
       "8ad09fc281de1ce70181de3b28ee3783",
     ) -> supporterPlusTransformer,
+    List(
+      "8ad08cbd8586721c01858804e3275376",
+      "8ad08e1a8586721801858805663f6fab",
+    ) -> supporterPlusV2Transformer,
     List(
       "2c92c0f84bbfec8b014bc655f4852d9d",
       "2c92c0f94bbffaaa014bc6a4212e205b",
@@ -366,7 +379,6 @@ object SupporterRatePlanToAttributesMapper {
   trait AttributeTransformer {
     def transform(attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem): Attributes
   }
-
 }
 
 sealed abstract class MembershipTier(val name: String, val value: Int)
