@@ -26,35 +26,73 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
 
   "SupporterRatePlanToAttributesMapper" should {
     "identify a Guardian Patron" in {
-      mapper.attributesFromSupporterRatePlans(
-        identityId,
-        List(ratePlanItem("guardian_patron")),
-      ) should beSome.which(_.GuardianPatronExpiryDate should beSome(termEndDate))
+      testMapper(
+        Map(
+          "PROD" -> List(
+            ratePlanItem("guardian_patron"),
+          ),
+          "UAT" -> List(
+            ratePlanItem("guardian_patron"),
+          ),
+          "DEV" -> List(
+            ratePlanItem("guardian_patron"),
+          ),
+        ),
+        _ should beSome.which(_.GuardianPatronExpiryDate should beSome(termEndDate)),
+      )
     }
 
     "identify a monthly contribution" in {
-      mapper.attributesFromSupporterRatePlans(
-        identityId,
-        List(ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97")),
-      ) should beSome.which(_.RecurringContributionPaymentPlan should beSome("Monthly Contribution"))
+      testMapper(
+        Map(
+          "PROD" -> List(
+            ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"),
+          ),
+          "UAT" -> List(
+            ratePlanItem("2c92c0f85ab269be015acd9d014549b7"),
+          ),
+          "DEV" -> List(
+            ratePlanItem("2c92c0f85a6b134e015a7fcd9f0c7855"),
+          ),
+        ),
+        _ should beSome.which(_.RecurringContributionPaymentPlan should beSome("Monthly Contribution")),
+      )
     }
 
     "identify an annual contribution" in {
-      mapper.attributesFromSupporterRatePlans(
-        identityId,
-        List(ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea")),
-      ) should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution"))
+      testMapper(
+        Map(
+          "PROD" -> List(
+            ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea"),
+          ),
+          "UAT" -> List(
+            ratePlanItem("2c92c0f95e1d5c9c015e38f8c87d19a1"),
+          ),
+          "DEV" -> List(
+            ratePlanItem("2c92c0f85e2d19af015e3896e824092c"),
+          ),
+        ),
+        _ should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution")),
+      )
     }
 
     "handle a SupporterPlus subscription" in {
-      List(
-        "8a12865b8219d9b401822106192b64dc",
-        "8a12865b8219d9b40182210618a464ba",
-      ).map(planId =>
-        mapper.attributesFromSupporterRatePlans(
-          identityId,
-          List(ratePlanItem(planId)),
-        ) should beSome.which(_.SupporterPlusExpiryDate should beSome(termEndDate)),
+      testMapper(
+        Map(
+          "PROD" -> List(
+            ratePlanItem("8a12865b8219d9b401822106192b64dc"),
+            ratePlanItem("8a12865b8219d9b40182210618a464ba"),
+          ),
+          "UAT" -> List(
+            ratePlanItem("8ad088718219a6b601822036a6c91f5c"),
+            ratePlanItem("8ad088718219a6b601822036a5801f34"),
+          ),
+          "DEV" -> List(
+            ratePlanItem("8ad09fc281de1ce70181de3b251736a4"),
+            ratePlanItem("8ad09fc281de1ce70181de3b28ee3783"),
+          ),
+        ),
+        _ should beSome.which(_.SupporterPlusExpiryDate should beSome(termEndDate)),
       )
     }
 
@@ -62,16 +100,16 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       testMapper(
         Map(
           "PROD" -> List(
-            "8a128ed885fc6ded018602296ace3eb8",
-            "8a128ed885fc6ded01860228f77e3d5a",
+            ratePlanItem("8a128ed885fc6ded018602296ace3eb8"),
+            ratePlanItem("8a128ed885fc6ded01860228f77e3d5a"),
           ),
           "UAT" -> List(
-            "8ad0940885f8901f0186024838f844a1",
-            "8ad094b985f8901601860248d751315c",
+            ratePlanItem("8ad0940885f8901f0186024838f844a1"),
+            ratePlanItem("8ad094b985f8901601860248d751315c"),
           ),
           "DEV" -> List(
-            "8ad08cbd8586721c01858804e3275376",
-            "8ad08e1a8586721801858805663f6fab",
+            ratePlanItem("8ad08cbd8586721c01858804e3275376"),
+            ratePlanItem("8ad08e1a8586721801858805663f6fab"),
           ),
         ),
         _ should beSome.which(_.SupporterPlusExpiryDate should beSome(termEndDate)),
@@ -361,16 +399,16 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
   }
 
   def testMapper[T](
-                     map: Map[String, List[String]],
-                     matcher: Option[Attributes] => MatchResult[T],
-                   ): List[MatchResult[T]] = {
+      map: Map[String, List[DynamoSupporterRatePlanItem]],
+      matcher: Option[Attributes] => MatchResult[T],
+  ): List[MatchResult[T]] = {
     map.flatMap { case (stage, planIds) =>
-      planIds.map(planId => {
+      planIds.map(item => {
         val mapper = new SupporterRatePlanToAttributesMapper(Stage(stage))
         matcher(
           mapper.attributesFromSupporterRatePlans(
             identityId,
-            List(ratePlanItem(planId)),
+            List(item),
           ),
         )
       })

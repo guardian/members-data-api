@@ -74,7 +74,7 @@ object SupporterRatePlanToAttributesMapper {
     ) -> supporterPlusTransformer,
     List(
       "8a128ed885fc6ded018602296ace3eb8",
-      "8a128ed885fc6ded01860228f77e3d5a"
+      "8a128ed885fc6ded01860228f77e3d5a",
     ) -> supporterPlusV2Transformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
@@ -182,7 +182,7 @@ object SupporterRatePlanToAttributesMapper {
   )
 
   private val uatMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List("guardian_patron") -> guardianPatronTransformer,
+    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
     List(
       "8ad088718219a6b601822036a6c91f5c",
       "8ad088718219a6b601822036a5801f34",
@@ -272,7 +272,7 @@ object SupporterRatePlanToAttributesMapper {
   )
 
   private val devMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List("guardian_patron") -> guardianPatronTransformer,
+    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
     List(
       "8ad09fc281de1ce70181de3b251736a4",
       "8ad09fc281de1ce70181de3b28ee3783",
