@@ -73,6 +73,7 @@ Resources:
   MembershipRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub members-data-api-${Stage}
       AssumeRolePolicyDocument:
         Statement:
         - Effect: Allow
@@ -177,6 +178,7 @@ Resources:
   AutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
+      AutoScalingGroupName: !Sub members-data-api-${Stage}
       LaunchConfigurationName:
         Ref: LaunchConfig
       MinSize: !FindInMap [ StageVariables, !Ref Stage, MinInstances ]
@@ -211,6 +213,7 @@ Resources:
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
+      LaunchConfigurationName: !Sub members-data-api-${Stage}
       ImageId:
         Ref: AmiId
       SecurityGroups:
@@ -239,6 +242,7 @@ Resources:
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      GroupName: !Sub members-data-api-load-balancer-${Stage}
       VpcId:
         Ref: VpcId
       GroupDescription: Open up HTTPS access to load balancer
@@ -255,6 +259,7 @@ Resources:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      GroupName: !Sub members-data-api-instance-${Stage}
       VpcId:
         Ref: VpcId
       GroupDescription: Open up HTTP access to load balancer
@@ -280,6 +285,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
     Properties:
+      FilterName: !Sub members-data-api-${Stage}-default-payment-method-empty-metric-filter
       FilterPattern: "\"default-payment-method-lost\""
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
@@ -323,6 +329,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
     Properties:
+      FilterName: !Sub members-data-api-${Stage}-http-queues-full-metric-filter
       FilterPattern: "\"Max wait queue limit of 256 reached, not scheduling.\""
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
