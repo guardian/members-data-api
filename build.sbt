@@ -26,6 +26,7 @@ val commonSettings = Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
     Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
   ),
   Compile / doc / sources := Seq.empty,
   Compile / packageDoc / publishArtifact := false,
