@@ -13,16 +13,17 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
   val identityId = "999"
   val termEndDate = LocalDate.now().plusDays(5)
 
-  def ratePlanItem(ratePlanId: String, termEndDate: LocalDate = termEndDate) = DynamoSupporterRatePlanItem(
-    identityId,
-    "some-rate-plan-id",
-    ratePlanId,
-    termEndDate,
-    LocalDate.now(),
-    cancellationDate = None,
-    contributionCurrency = None,
-    contributionAmount = None,
-  )
+  def ratePlanItem(ratePlanId: String, termEndDate: LocalDate = termEndDate, contractEffectiveDate: LocalDate = LocalDate.now()) =
+    DynamoSupporterRatePlanItem(
+      identityId,
+      "some-rate-plan-id",
+      ratePlanId,
+      termEndDate,
+      contractEffectiveDate,
+      cancellationDate = None,
+      contributionCurrency = None,
+      contributionAmount = None,
+    )
 
   "SupporterRatePlanToAttributesMapper" should {
     "identify a Guardian Patron" in {
@@ -73,6 +74,19 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           ),
         ),
         _ should beSome.which(_.RecurringContributionPaymentPlan should beSome("Annual Contribution")),
+      )
+    }
+
+    "identify an single contribution" in {
+      val contributionDate = new LocalDate(2023, 1, 1)
+      val item = ratePlanItem("single_contribution", contractEffectiveDate = contributionDate)
+      testMapper(
+        Map(
+          "PROD" -> List(item),
+          "UAT" -> List(item),
+          "DEV" -> List(item),
+        ),
+        _ should beSome.which(_.OneOffContributionDate should beSome(new LocalDate(2023, 1, 1))),
       )
     }
 
