@@ -186,6 +186,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0f9479fb46d0147d0155bf9557a",
       "2c92a0f9479fb46d0147d0155c245581",
     ) -> memberTransformer(Patron),
+    List("single_contribution") -> singleContributionTransformer(),
   )
 
   private val uatMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
@@ -276,6 +277,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f848f362750148f4c2726079d5",
       "2c92c0f848f362750148f4c2724679d3",
     ) -> memberTransformer(Patron),
+    List("single_contribution") -> singleContributionTransformer(),
   )
 
   private val devMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
@@ -366,6 +368,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f845fed48301460578277167c3",
       "2c92c0f9471e145d01471ffd7c304df9",
     ) -> memberTransformer(Patron),
+    List("single_contribution") -> singleContributionTransformer(),
   )
 
   val productRatePlanMappings: Map[Stage, Map[ProductRatePlanId, AttributeTransformer]] =
@@ -379,6 +382,9 @@ object SupporterRatePlanToAttributesMapper {
     map.flatMap { case (list, value) =>
       list.map(_ -> value)
     }
+
+  def singleContributionTransformer(): AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(OneOffContributionDate = Some(item.contractEffectiveDate))
 
   def memberTransformer(tier: MembershipTier): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
     attributes.copy(Tier = getMostValuableTier(tier, attributes.Tier))
