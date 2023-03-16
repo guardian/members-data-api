@@ -70,6 +70,7 @@ Mappings:
       Urgent: "Warning"
 Conditions:
   CreateProdMonitoring: !Equals [ !Ref Stage, PROD ]
+  CreateUnsupportedProductRatePlanAlarm: !Equals [ 1, 2 ] // Disabling the alarm until we can ensure promotions are not longer put in Dymamo (which will trigger the alarm)
 
 Resources:
   MembershipRole:
@@ -296,6 +297,7 @@ Resources:
 
   MembersDataUnsupportedProductRatePlanIdAlarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: CreateUnsupportedProductRatePlanAlarm
     DependsOn:
     - MembersDataUnsupportedProductRatePlanIdMetricFilter
     - MembersDataApiLogGroup
