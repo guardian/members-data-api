@@ -160,6 +160,10 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0fd57d0a9870157d7412f19424f",
       "2c92a0fe57d0a0c40157d74241005544",
       "2c92a0ff58bdf4eb0158f307ed0e02be",
+      "2c92a0fd79ac64b00179ae3f9d474960",
+      "2c92a0086619bf8901661aaac94257fe",
+      "2c92a0ff79ac64e30179ae45669b3a83",
+      "2c92a0086619bf8901661ab545f51b21",
     ) -> guardianWeeklyTransformer,
     List(
       "2c92a0fb4ce4b8e7014ce711d3c37e60",
@@ -186,7 +190,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0f9479fb46d0147d0155bf9557a",
       "2c92a0f9479fb46d0147d0155c245581",
     ) -> memberTransformer(Patron),
-    List("single_contribution") -> singleContributionTransformer(),
+    List("single_contribution") -> singleContributionTransformer,
   )
 
   private val uatMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
@@ -251,6 +255,10 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f867cae0700167f043870d6d0e",
       "2c92c0f8660fb5d601661081ea010391",
       "2c92c0f96df75b51016df8444f36362f",
+      "2c92c0f9660fc4c70166109dfd08092c",
+      "2c92c0f979a6b0910179ae4611f1256f",
+      "2c92c0f8660fb5dd016610858eb90658",
+      "2c92c0f879a6a11e0179ae3fa5bb1313",
     ) -> guardianWeeklyTransformer,
     List(
       "2c92c0f94cc6ea05014cdb4b1d1f037d",
@@ -277,7 +285,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f848f362750148f4c2726079d5",
       "2c92c0f848f362750148f4c2724679d3",
     ) -> memberTransformer(Patron),
-    List("single_contribution") -> singleContributionTransformer(),
+    List("single_contribution") -> singleContributionTransformer,
   )
 
   private val devMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
@@ -342,6 +350,10 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f867cae0700167eff921734f7b",
       "2c92c0f965dc30640165f150c0956859",
       "2c92c0f96ded216a016df491134d4091",
+      "2c92c0f965f2122101660fbc75a16c38",
+      "2c92c0f878ac402c0178acb3a90a3620",
+      "2c92c0f965f212210165f69b94c92d66",
+      "2c92c0f878ac40300178acaa04bb401d",
     ) -> guardianWeeklyTransformer,
     List(
       "2c92c0f94c9ca1c5014c9e5c64ba4260",
@@ -368,7 +380,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f845fed48301460578277167c3",
       "2c92c0f9471e145d01471ffd7c304df9",
     ) -> memberTransformer(Patron),
-    List("single_contribution") -> singleContributionTransformer(),
+    List("single_contribution") -> singleContributionTransformer,
   )
 
   val productRatePlanMappings: Map[Stage, Map[ProductRatePlanId, AttributeTransformer]] =
@@ -383,10 +395,10 @@ object SupporterRatePlanToAttributesMapper {
       list.map(_ -> value)
     }
 
-  def singleContributionTransformer(): AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+  private def singleContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
     attributes.copy(OneOffContributionDate = Some(item.contractEffectiveDate))
 
-  def memberTransformer(tier: MembershipTier): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
+  private def memberTransformer(tier: MembershipTier): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
     attributes.copy(Tier = getMostValuableTier(tier, attributes.Tier))
 
   trait AttributeTransformer {
