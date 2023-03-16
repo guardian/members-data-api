@@ -151,43 +151,73 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     }
 
     "identify a Guardian Weekly" in {
-      val possibleProductRatePlanIds = List(
-        "2c92a0fe6619b4b601661ab300222651", // annual, rest of world delivery
-        "2c92a0ff67cebd140167f0a2f66a12eb", // one year, rest of world deliver
-        "2c92a0086619bf8901661ab02752722f", // quarterly, rest of world delivery
-        "2c92a0076dd9892e016df8503e7c6c48", // three month, rest of world deliver
-        "2c92a0fe6619b4b901661aa8e66c1692", // annual, domestic delivery")
-        "2c92a0ff67cebd0d0167f0a1a834234e", // one year, domestic delivery"
-        "2c92a0fe6619b4b301661aa494392ee2", // quarterly, domestic delivery")
-        "2c92a00e6dd988e2016df85387417498", // three months, domestic delivery
-        // Old pre 2018 Zoned plans
-        "2c92a0fd58cf57000158f30ae6d06f2a", // 1 Year
-        "2c92a0ff58bdf4eb0158f2ecc89c1034", // 1 Year
-        "2c92a0ff58bdf4ee0158f30905e82181", // 1 Year
-        "2c92a0fd5a5adc8b015a5c690d0d1ec6", // 12 Issues
-        "2c92a0ff5a4b85e7015a4cf95d352a07", // 12 Issues
-        "2c92a0ff5a5adca9015a611f77db4431", // 3 Years
-        "2c92a0fc5a2a49f0015a41f473da233a", // 6 Issues
-        "2c92a0fe5a5ad344015a5c67b1144250", // 6 Issues
-        "2c92a0ff59d9d540015a41a40b3e07d3", // 6 Issues
-        "2c92a0fd5a5adc8b015a5c65074b7c41", // 6 Months
-        "2c92a0ff5a5adca7015a5c4af5963efa", // 6 Months
-        "2c92a0fe5a5ad349015a5c61d6e05d8d", // 6 Months Only
-        "2c92a0fe57d0a0c40157d74240de5543", // Annual
-        "2c92a0ff57d0a0b60157d741e722439a", // Annual
-        "2c92a0ff58bdf4eb0158f307eccf02af", // Annual
-        "2c92a0fc6ae918b6016b080950e96d75", // Holiday Credit
-        "2c92a0fc5b42d2c9015b6259f7f40040", // Holiday Credit - old
-        "2c92a0fd57d0a9870157d7412f19424f", // Quarterly
-        "2c92a0fe57d0a0c40157d74241005544", // Quarterly
-        "2c92a0ff58bdf4eb0158f307ed0e02be", // Quarterly
-      )
-      possibleProductRatePlanIds.map(productRatePlanId =>
-        mapper
-          .attributesFromSupporterRatePlans(
-            identityId,
-            List(ratePlanItem(productRatePlanId)),
-          ) should beSome.which(_.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate)),
+      testMapper(
+        Map(
+          "PROD" -> List(
+            "2c92a0fe6619b4b601661ab300222651", // annual, rest of world delivery
+            "2c92a0ff67cebd140167f0a2f66a12eb", // one year, rest of world deliver
+            "2c92a0086619bf8901661ab02752722f", // quarterly, rest of world delivery
+            "2c92a0076dd9892e016df8503e7c6c48", // three month, rest of world deliver
+            "2c92a0fe6619b4b901661aa8e66c1692", // annual, domestic delivery")
+            "2c92a0ff67cebd0d0167f0a1a834234e", // one year, domestic delivery"
+            "2c92a0fe6619b4b301661aa494392ee2", // quarterly, domestic delivery")
+            "2c92a00e6dd988e2016df85387417498", // three months, domestic delivery
+            // Old pre 2018 Zoned plans
+            "2c92a0fd58cf57000158f30ae6d06f2a", // 1 Year
+            "2c92a0ff58bdf4eb0158f2ecc89c1034", // 1 Year
+            "2c92a0ff58bdf4ee0158f30905e82181", // 1 Year
+            "2c92a0fd5a5adc8b015a5c690d0d1ec6", // 12 Issues
+            "2c92a0ff5a4b85e7015a4cf95d352a07", // 12 Issues
+            "2c92a0ff5a5adca9015a611f77db4431", // 3 Years
+            "2c92a0fc5a2a49f0015a41f473da233a", // 6 Issues
+            "2c92a0fe5a5ad344015a5c67b1144250", // 6 Issues
+            "2c92a0ff59d9d540015a41a40b3e07d3", // 6 Issues
+            "2c92a0fd5a5adc8b015a5c65074b7c41", // 6 Months
+            "2c92a0ff5a5adca7015a5c4af5963efa", // 6 Months
+            "2c92a0fe5a5ad349015a5c61d6e05d8d", // 6 Months Only
+            "2c92a0fe57d0a0c40157d74240de5543", // Annual
+            "2c92a0ff57d0a0b60157d741e722439a", // Annual
+            "2c92a0ff58bdf4eb0158f307eccf02af", // Annual
+            "2c92a0fc6ae918b6016b080950e96d75", // Holiday Credit
+            "2c92a0fc5b42d2c9015b6259f7f40040", // Holiday Credit - old
+            "2c92a0fd57d0a9870157d7412f19424f", // Quarterly
+            "2c92a0fe57d0a0c40157d74241005544", // Quarterly
+            "2c92a0ff58bdf4eb0158f307ed0e02be", // Quarterly
+            "2c92a0fd79ac64b00179ae3f9d474960",
+            "2c92a0086619bf8901661aaac94257fe",
+            "2c92a0ff79ac64e30179ae45669b3a83",
+            "2c92a0086619bf8901661ab545f51b21",
+          ).map(ratePlanItem(_)),
+          "UAT" -> List(
+            "2c92c0f9660fc4d70166109a2eb0607c",
+            "2c92c0f967caee360167f044cd0d4adc",
+            "2c92c0f9660fc4d70166109c01465f10",
+            "2c92c0f96df75b5a016df84084fb356d",
+            "2c92c0f9660fc4d70166107fa5412641",
+            "2c92c0f867cae0700167f043870d6d0e",
+            "2c92c0f8660fb5d601661081ea010391",
+            "2c92c0f96df75b51016df8444f36362f",
+            "2c92c0f9660fc4c70166109dfd08092c",
+            "2c92c0f979a6b0910179ae4611f1256f",
+            "2c92c0f8660fb5dd016610858eb90658",
+            "2c92c0f879a6a11e0179ae3fa5bb1313",
+          ).map(ratePlanItem(_)),
+          "DEV" -> List(
+            "2c92c0f965f2122101660fb33ed24a45",
+            "2c92c0f967caee410167eff78e7b5244",
+            "2c92c0f965f2122101660fb81b745a06",
+            "2c92c0f96df75b5a016df81ba1c62609",
+            "2c92c0f965d280590165f16b1b9946c2",
+            "2c92c0f867cae0700167eff921734f7b",
+            "2c92c0f965dc30640165f150c0956859",
+            "2c92c0f96ded216a016df491134d4091",
+            "2c92c0f965f2122101660fbc75a16c38",
+            "2c92c0f878ac402c0178acb3a90a3620",
+            "2c92c0f965f212210165f69b94c92d66",
+            "2c92c0f878ac40300178acaa04bb401d",
+          ).map(ratePlanItem(_)),
+        ),
+        _ should beSome.which(_.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate)),
       )
     }
 
