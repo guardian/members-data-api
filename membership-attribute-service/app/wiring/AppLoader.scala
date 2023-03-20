@@ -17,6 +17,7 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
+import services.mail.{QueueName, SendEmail, SendEmailToSQS}
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService
@@ -56,6 +57,7 @@ class MyComponents(context: Context)
 
   lazy val config = context.initialConfiguration.underlying
   lazy val stage = Stage(config.getString("stage"))
+  lazy val isProd = stage.value == "PROD"
   lazy val createMetrics = new CreateRealMetrics(stage)
 
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
@@ -65,6 +67,9 @@ class MyComponents(context: Context)
   lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
+
+  lazy val emailQueueName = QueueName(if (isProd) "braze-emails-PROD" else "braze-emails-CODE")
+  lazy val sendEmail: SendEmail = new SendEmailToSQS(emailQueueName)
 
   lazy val touchPointBackends = new TouchpointBackends(
     actorSystem,
@@ -106,7 +111,7 @@ class MyComponents(context: Context)
     new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, createMetrics),
     new ExistingPaymentOptionsController(commonActions, controllerComponents, createMetrics),
-    new AccountController(commonActions, controllerComponents, dbService, createMetrics),
+    new AccountController(commonActions, controllerComponents, dbService, sendEmail, createMetrics),
     new PaymentUpdateController(commonActions, controllerComponents, createMetrics),
     new ContactController(commonActions, controllerComponents, createMetrics),
   )

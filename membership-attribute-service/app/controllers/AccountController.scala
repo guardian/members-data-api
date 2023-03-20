@@ -62,6 +62,7 @@ class AccountController(
     commonActions: CommonActions,
     override val controllerComponents: ControllerComponents,
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
+    sendEmail: SendEmail,
     createMetrics: CreateMetrics,
 ) extends BaseController
     with SanitizedLogging {
@@ -320,17 +321,18 @@ class AccountController(
           DeprecatedRequestLogger.logDeprecatedRequest(request)
         }
 
-        val tp = request.touchpoint
+        val services = request.touchpoint
         val userId = request.user.identityId
+        val email = request.user.primaryEmailAddress
         logger.info(s"Attempting to update contribution amount for ${userId}")
         (for {
-          newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm)
+          newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm(request))
           user <- SimpleEitherT.right(userId)
-          sfUser <- SimpleEitherT.fromFutureOption(tp.contactRepository.get(user), s"No SF user $user")
+          contact <- SimpleEitherT.fromFutureOption(services.contactRepository.get(user), s"No SF user $user")
           subscription <- EitherT.fromEither(
-            tp.subscriptionService
-              .current[SubscriptionPlan.Contributor](sfUser)
-              .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $sfUser")(subs)),
+            services.subscriptionService
+              .current[SubscriptionPlan.Contributor](contact)
+              .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $contact")(subs)),
           )
           applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
           currencyGlyph = subscription.plan.charges.price.prices.head.currency.glyph
@@ -338,7 +340,7 @@ class AccountController(
           reasonForChange =
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
           result <- EitherT(
-            tp.zuoraRestService.updateChargeAmount(
+            services.zuoraRestService.updateChargeAmount(
               subscription.name,
               subscription.plan.charges.subRatePlanChargeId,
               subscription.plan.id,
@@ -347,6 +349,20 @@ class AccountController(
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
+          _ <- EitherT.right(
+            sendEmail(
+              EmailData(
+                email,
+                contact.salesforceContactId,
+                "contribution-amount-email",
+                Map(
+                  "first_name" -> contact.firstName.getOrElse(""),
+                  "last_name" -> contact.lastName,
+                  "new_amount" -> s"$currencyGlyph$newPrice",
+                ),
+              ),
+            ),
+          )
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logError(scrub"Failed to update payment amount for user $userId, due to: $message")

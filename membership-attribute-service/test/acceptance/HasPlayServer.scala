@@ -33,6 +33,8 @@ trait HasPlayServer {
     val devPublicConf = Configuration(ConfigFactory.load("DEV.public.conf"))
     val effectiveConfiguration = Configuration(
       "http.port" -> playPort,
+      "play.filters.csrf.header.bypassHeaders.X-Requested-With" -> "*",
+      "play.filters.csrf.header.bypassHeaders.Csrf-Token" -> "nocheck",
       "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl,
       "touchpoint.backend.environments.DEV.identity.apiToken" -> identityApiToken,
     )
