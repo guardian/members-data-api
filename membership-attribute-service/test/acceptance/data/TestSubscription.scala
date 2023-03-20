@@ -4,7 +4,7 @@ import acceptance.data.Randoms.randomId
 import com.gu.memsub
 import com.gu.memsub.promo.PromoCode
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, ReaderType, Subscription}
+import com.gu.memsub.subsv2.{CovariantNonEmptyList, ReaderType, Subscription, SubscriptionPlan}
 import org.joda.time.{DateTime, LocalDate}
 
 object TestSubscription {

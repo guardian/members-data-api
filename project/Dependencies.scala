@@ -16,7 +16,7 @@ object Dependencies {
   val specs2 = PlayImport.specs2 % "test"
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
-  val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
+  val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val membershipCommon = "com.gu" %% "membership-common" % "0.639"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"

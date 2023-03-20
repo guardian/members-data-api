@@ -6,12 +6,14 @@ import acceptance.data.{
   TestAccountSummary,
   TestCatalog,
   TestContact,
+  TestPaidCharge,
   TestPaidSubscriptionPlan,
   TestPaymentSummary,
   TestQueriesAccount,
   TestSubscription,
 }
 import com.gu.i18n.Currency
+import com.gu.memsub.Product.Contribution
 import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
@@ -24,6 +26,7 @@ import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
+import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService
@@ -46,6 +49,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var patronsStripeServiceMock: BasicStripeService = _
+  var sendEmailMock: SendEmail = _
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
@@ -56,6 +60,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
     patronsStripeServiceMock = mock[BasicStripeService]
+    sendEmailMock = mock[SendEmail]
     super.before
   }
 
@@ -69,19 +74,20 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
+      override lazy val sendEmail = sendEmailMock
     }
   }
 
+  val cookies = Map(
+    "GU_U" -> "WyIyMDAwNjczODgiLCIiLCJ1c2VyIiwiIiwxNjc2NDU3MTE5ODk3LDEsMTY2ODYxMzI0ODAwMCx0cnVlXQ.MCwCFHUQjxr9nm5gk15jmWID6lYYVE5NAhR11ko5vRIjNwqGprB8gCzIEPz4Rg",
+    "SC_GU_LA" -> "WyJMQSIsIjIwMDA2NzM4OCIsMTY2ODY4MTExOTg5N10.MCwCFG4nWLgEx96EJjNxwtqKbQBNBaXDAhRYtlpkPp8s_Ysl70rkySriLUKZaw",
+    "SC_GU_U" -> "WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI",
+    "_ga" -> "GA1.2.1716429135.1668613133",
+    "consentUUID" -> "cc457984-4282-49ca-9831-0649017aa0c9_13",
+  ).toList.map { case (key, value) => new Cookie(key, value) }
+
   "AttributeController" should {
     "serve current user's products and data" in {
-      val cookies = Map(
-        "GU_U" -> "WyIyMDAwNjczODgiLCIiLCJ1c2VyIiwiIiwxNjc2NDU3MTE5ODk3LDEsMTY2ODYxMzI0ODAwMCx0cnVlXQ.MCwCFHUQjxr9nm5gk15jmWID6lYYVE5NAhR11ko5vRIjNwqGprB8gCzIEPz4Rg",
-        "SC_GU_LA" -> "WyJMQSIsIjIwMDA2NzM4OCIsMTY2ODY4MTExOTg5N10.MCwCFG4nWLgEx96EJjNxwtqKbQBNBaXDAhRYtlpkPp8s_Ysl70rkySriLUKZaw",
-        "SC_GU_U" -> "WyIyMDAwNjczODgiLDE2NzY0NTcxMTk4OTcsImI3NjE1ODMyYmE5OTQ0NzM4NTA5NTU2OTZiMjM1Yjg5IiwiIiwwXQ.MC0CFFJXLff5geHhf2EY_j_BQizPkUcnAhUAmoipMhDFsFmXuHY-a_ZXVJYPUHI",
-        "_ga" -> "GA1.2.1716429135.1668613133",
-        "consentUUID" -> "cc457984-4282-49ca-9831-0649017aa0c9_13",
-      ).toList.map { case (key, value) => new Cookie(key, value) }
-
       val redirectAdviceRequest = request()
         .withMethod("GET")
         .withPath("/auth/redirect")
@@ -255,6 +261,94 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       (patronProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual stripeSubscription.id
       (patronProduct \ "subscription" \ "accountId").as[String] shouldEqual stripeSubscription.customer.id
       (patronProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual "guardianpatron"
+    }
+
+    "update payment amount and send an email" in {
+      val subscriptionId = "A-S00474148"
+
+      val identityRequest = request()
+        .withMethod("GET")
+        .withPath("/user/me")
+        .withHeader("X-GU-ID-Client-Access-Token", s"Bearer $identityApiToken")
+        .withHeader(
+          "X-GU-ID-FOWARDED-SC-GU-U",
+          "WyIyMDAwNjQ2MTEiLDE2ODY3Nzg3NDQxMTUsIjY5MGVmNmYzMTllYTQwODI4OTBjMGExYTNkOWM5ZTFmIiwiIiwwXQ.MC0CFBUObHNIHJMVasjnW7HHRmeni8GdAhUAkJxvh4IR7UbMc5rL-QWk9J9trTE",
+        )
+
+      identityMockClientAndServer
+        .when(
+          identityRequest,
+        )
+        .respond(
+          response()
+            .withBody(
+              IdentityResponse(
+                userId = 200067388,
+                firstName = "Frank",
+                lastName = "Poole",
+                email = "frank.poole@amail.com",
+              ),
+            ),
+        )
+
+      val contact = TestContact(identityId = "200067388")
+      val emailData = EmailData(
+        "frank.poole@amail.com",
+        contact.salesforceContactId,
+        "contribution-amount-email",
+        Map("first_name" -> "", "last_name" -> "Smith", "new_amount" -> "£12.00"),
+      )
+
+      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+
+      val charge = TestPaidCharge()
+      val plan = TestPaidSubscriptionPlan(product = Contribution, charges = charge)
+      val subscription = TestSubscription(
+        name = Subscription.Name(subscriptionId),
+        plans = CovariantNonEmptyList(plan, Nil),
+      ).asInstanceOf[com.gu.memsub.subsv2.Subscription[SubscriptionPlan.Contributor]]
+
+      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) returns Future(List(subscription))
+
+      zuoraRestServiceMock.updateChargeAmount(
+        subscription.name,
+        charge.subRatePlanChargeId,
+        subscription.plan.id,
+        12.00d,
+        any,
+        subscription.plan.start,
+      )(any) returns Future(\/.right(()))
+
+      sendEmailMock(emailData) returns Future.successful(())
+
+      val httpResponse = Unirest
+        .post(endpointUrl(s"/user-attributes/me/contribution-update-amount/$subscriptionId"))
+        .header("Csrf-Token", "nocheck")
+        .header(
+          "Cookie",
+          "gu_paying_member=false; gu_digital_subscriber=true; gu_hide_support_messaging=true; consentUUID=ee459f1e-5d69-4def-a53c-c4a7b4b826f9_13; _ga=GA1.2.1494602535.1668613308; _gcl_au=1.1.1865802744.1673259395; QuantumMetricUserID=7a6ee3603e3f50079f57a932c7016208; gu_user_features_expiry=1676116644464; gu_recurring_contributor=true; GU_mvt_id=414642; GU_country=GB; GU_CO_COMPLETE={\"userType\":\"guest\",\"product\":\"SupporterPlus\"}; gu.contributions.contrib-timestamp=1678788098733; GU_geo_country=GB; _gid=GA1.2.1515141716.1678982877; GU_U=WyIyMDAwNjQ2MTEiLCIiLCJ1c2VyIiwiIiwxNjg2Nzc4NzQ0MTE1LDAsMTY2NzQwNjI0MTAwMCx0cnVlXQ.MC0CFGunCn-eCA9-AaJSyU1NuDQEHLK5AhUAlXRSJU9xBkZS5IcD4EPutZGjk4g; SC_GU_LA=WyJMQSIsIjIwMDA2NDYxMSIsMTY3OTAwMjc0NDExNV0.MC4CFQCI1EHaTXvNALwrnmCP6MlsgaB65QIVAIZb-ZFs38gpRYy1m6AOU65neA11; SC_GU_U=WyIyMDAwNjQ2MTEiLDE2ODY3Nzg3NDQxMTUsIjY5MGVmNmYzMTllYTQwODI4OTBjMGExYTNkOWM5ZTFmIiwiIiwwXQ.MC0CFBUObHNIHJMVasjnW7HHRmeni8GdAhUAkJxvh4IR7UbMc5rL-QWk9J9trTE; GU_AF1=1694900345726",
+        )
+        .field("newPaymentAmount", "12.00")
+        .asString
+
+      httpResponse.getStatus shouldEqual 200
+
+      contactRepositoryMock.get("200067388") was called
+
+      identityMockClientAndServer.verify(identityRequest)
+      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) was called
+      zuoraRestServiceMock.updateChargeAmount(
+        subscription.name,
+        charge.subRatePlanChargeId,
+        subscription.plan.id,
+        12.00d,
+        any,
+        subscription.plan.start,
+      )(any) was called
+
+      sendEmailMock(emailData) was called
+
+      1 shouldEqual 1
     }
   }
 }

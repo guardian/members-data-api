@@ -121,6 +121,13 @@ Resources:
             - logs:PutLogEvents
             Resource: !GetAtt MembersDataApiLogGroup.Arn
             Effect: Allow
+          - Action:
+              - sqs:GetQueueUrl
+              - sqs:SendMessage
+            Resource:
+              Fn::ImportValue:
+                !Sub "comms-${Stage}-EmailQueueArn"
+            Effect: Allow
       ManagedPolicyArns:
       - !Sub arn:aws:iam::${AWS::AccountId}:policy/guardian-ec2-role-for-ssm
 
