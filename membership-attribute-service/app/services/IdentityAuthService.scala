@@ -30,7 +30,10 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService[UserF
               SafeLogger.warn(s"could not validate okta token - $validationError")
               Left(Forbidden)
             case OktaValidationError(originalException) =>
-              SafeLogger.warn(s"could not validate okta token - $validationError", originalException)
+              SafeLogger.warn(
+                s"could not validate okta token - $validationError. Path: ${requestHeader.path}. User-Agent: ${requestHeader.headers.get("User-Agent")}",
+                originalException,
+              )
               Left(Unauthorised)
             case _ =>
               SafeLogger.warn(s"could not validate okta token - $validationError")
