@@ -7,6 +7,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.salesforce.Contact
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
@@ -23,6 +24,7 @@ import scalaz._
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
+import services.mail.{EmailData, SendEmail}
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
 import utils.Sanitizer.Sanitizer
 import utils.SimpleEitherT.SimpleEitherT
@@ -66,8 +68,10 @@ class AccountController(
     createMetrics: CreateMetrics,
 ) extends BaseController
     with SanitizedLogging {
+
   import AccountHelpers._
   import commonActions._
+
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
 
   val metrics = createMetrics.forService(classOf[AccountController])
@@ -329,7 +333,7 @@ class AccountController(
           newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm(request))
           user <- SimpleEitherT.right(userId)
           contact <- SimpleEitherT.fromFutureOption(services.contactRepository.get(user), s"No SF user $user")
-          subscription <- EitherT.fromEither(
+          subscription <- SimpleEitherT(
             services.subscriptionService
               .current[SubscriptionPlan.Contributor](contact)
               .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $contact")(subs)),
@@ -339,7 +343,7 @@ class AccountController(
           oldPrice = subscription.plan.charges.price.prices.head.amount
           reasonForChange =
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
-          result <- EitherT(
+          result <- SimpleEitherT(
             services.zuoraRestService.updateChargeAmount(
               subscription.name,
               subscription.plan.charges.subRatePlanChargeId,
@@ -349,20 +353,7 @@ class AccountController(
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
-          _ <- EitherT.right(
-            sendEmail(
-              EmailData(
-                email,
-                contact.salesforceContactId,
-                "contribution-amount-email",
-                Map(
-                  "first_name" -> contact.firstName.getOrElse(""),
-                  "last_name" -> contact.lastName,
-                  "new_amount" -> s"$currencyGlyph$newPrice",
-                ),
-              ),
-            ),
-          )
+          _ <- SimpleEitherT.right(sendUpdateAmountMail(newPrice, email, contact, currencyGlyph))
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logError(scrub"Failed to update payment amount for user $userId, due to: $message")
@@ -373,6 +364,21 @@ class AccountController(
         }
       }
     }
+
+  private def sendUpdateAmountMail(newPrice: BigDecimal, email: String, contact: Contact, currencyGlyph: String) = {
+    sendEmail(
+      EmailData(
+        email,
+        contact.salesforceContactId,
+        "payment-amount-change-email",
+        Map(
+          "first_name" -> contact.firstName.getOrElse(""),
+          "last_name" -> contact.lastName,
+          "new_amount" -> s"$currencyGlyph$newPrice",
+        ),
+      ),
+    )
+  }
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1

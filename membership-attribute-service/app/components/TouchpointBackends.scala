@@ -1,7 +1,6 @@
 package components
 
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.CatalogService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
@@ -10,7 +9,7 @@ import services.stripe.BasicStripeService
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
-import services.{HealthCheckableService, SupporterProductDataService}
+import services.{CatalogService, HealthCheckableService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,7 +21,7 @@ class TouchpointBackends(
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[CatalogService[Future]] = None,
+    catalogServiceOverride: Option[CatalogService] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
 )(implicit

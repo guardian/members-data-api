@@ -186,7 +186,7 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
     }
 
   private def getPaymentMethodByAccountId(accountId: AccountId): Future[Option[Queries.PaymentMethod]] = {
-    def getAccount = {
+    val accountFuture = {
       val account = zuoraService.getAccount(accountId)
       account.onComplete {
         case Failure(exception) =>
@@ -207,7 +207,7 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
       paymentMethod
     }
     for {
-      account <- getAccount
+      account <- accountFuture
       paymentMethod <- getPaymentMethod(account)
     } yield paymentMethod
   }

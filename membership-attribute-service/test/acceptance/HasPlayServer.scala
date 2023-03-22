@@ -9,7 +9,8 @@ import play.core.server.{AkkaHttpServer, ServerConfig}
 import wiring.{AppLoader, MyComponents}
 
 import java.io.File
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 trait HasPlayServer {
   this: HasIdentityMockServer =>
@@ -55,7 +56,7 @@ trait HasPlayServer {
 
   def stopPlayServer() = {
     if (application != null) {
-      application.stop()
+      Await.result(application.stop(), Duration.Inf)
     }
     if (server != null) {
       server.stop()

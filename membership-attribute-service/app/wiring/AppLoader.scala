@@ -2,13 +2,12 @@ package wiring
 
 import actions.CommonActions
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.CatalogService
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
 import filters._
 import loghandling.Logstash
-import monitoring.{CreateMetrics, CreateRealMetrics, ErrorHandler, SentryLogging}
+import monitoring.{CreateRealMetrics, ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -24,6 +23,7 @@ import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
 import services.{
+  CatalogService,
   ContributionsStoreDatabaseService,
   HealthCheckableService,
   MobileSubscriptionServiceImpl,
@@ -31,7 +31,7 @@ import services.{
   SupporterProductDataService,
 }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class AppLoader extends ApplicationLoader {
   def load(context: Context): Application = {
@@ -64,7 +64,7 @@ class MyComponents(context: Context)
   lazy val contactRepositoryOverride: Option[ContactRepository] = None
   lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
-  lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
+  lazy val catalogServiceOverride: Option[CatalogService] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
 
@@ -112,7 +112,7 @@ class MyComponents(context: Context)
     new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, createMetrics),
     new ExistingPaymentOptionsController(commonActions, controllerComponents, createMetrics),
     new AccountController(commonActions, controllerComponents, dbService, sendEmail, createMetrics),
-    new PaymentUpdateController(commonActions, controllerComponents, createMetrics),
+    new PaymentUpdateController(commonActions, controllerComponents, sendEmail, createMetrics),
     new ContactController(commonActions, controllerComponents, createMetrics),
   )
 
