@@ -7,23 +7,27 @@ import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentM
 import com.gu.zuora.api.GoCardlessZuoraInstance
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
-import models.AccessScope.updateSelf
+import models.AccessScope.{readSelf, updateSelf}
 import monitoring.CreateMetrics
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, Result}
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
-import utils.SanitizedLogging
+import services.mail.{EmailData, SendEmail}
 import utils.Sanitizer.Sanitizer
+import utils.{SanitizedLogging, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class PaymentUpdateController(commonActions: CommonActions, override val controllerComponents: ControllerComponents, createMetrics: CreateMetrics)
-    extends BaseController
+class PaymentUpdateController(
+    commonActions: CommonActions,
+    override val controllerComponents: ControllerComponents,
+    sendEmail: SendEmail,
+    createMetrics: CreateMetrics,
+) extends BaseController
     with SanitizedLogging {
-
   import AccountHelpers._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
@@ -84,39 +88,39 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
       }
     }
 
+  private def checkDirectDebitUpdateResult(
+      userId: String,
+      freshDefaultPaymentMethodOption: Option[PaymentMethod],
+      bankAccountName: String,
+      bankAccountNumber: String,
+      bankSortCode: String,
+  ): Result = freshDefaultPaymentMethodOption match {
+    case Some(dd: GoCardless)
+        if bankAccountName == dd.accountName &&
+          dd.accountNumber.length > 3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
+          bankSortCode == dd.sortCode =>
+      logger.info(s"Successfully updated direct debit for identity user: $userId")
+      Ok(
+        Json.obj(
+          "accountName" -> dd.accountName,
+          "accountNumber" -> dd.accountNumber,
+          "sortCode" -> dd.sortCode,
+        ),
+      )
+    case Some(_) =>
+      logError(scrub"New payment method for user $userId, does not match the posted Direct Debit details")
+      InternalServerError("")
+    case None =>
+      logError(
+        scrub"default-payment-method-lost: Default payment method for user $userId, was set to nothing, when attempting to update Direct Debit details",
+      )
+      InternalServerError("")
+  }
+
   def updateDirectDebit(subscriptionName: String): Action[AnyContent] =
-    AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { implicit request =>
+    AuthorizeForRecentLoginAndScopes(Return401IfNotSignedInRecently, requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/update-direct-debit/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
-
-        def checkDirectDebitUpdateResult(
-            maybeUserId: Option[String],
-            freshDefaultPaymentMethodOption: Option[PaymentMethod],
-            bankAccountName: String,
-            bankAccountNumber: String,
-            bankSortCode: String,
-        ) = freshDefaultPaymentMethodOption match {
-          case Some(dd: GoCardless)
-              if bankAccountName == dd.accountName &&
-                dd.accountNumber.length > 3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
-                bankSortCode == dd.sortCode =>
-            logger.info(s"Successfully updated direct debit for identity user: $maybeUserId")
-            Ok(
-              Json.obj(
-                "accountName" -> dd.accountName,
-                "accountNumber" -> dd.accountNumber,
-                "sortCode" -> dd.sortCode,
-              ),
-            )
-          case Some(_) =>
-            logError(scrub"New payment method for user $maybeUserId, does not match the posted Direct Debit details")
-            InternalServerError("")
-          case None =>
-            logError(
-              scrub"default-payment-method-lost: Default payment method for user $maybeUserId, was set to nothing, when attempting to update Direct Debit details",
-            )
-            InternalServerError("")
-        }
 
         val updateForm = Form {
           tuple(
@@ -127,24 +131,24 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
         }
 
         val tp = request.touchpoint
-        val maybeUserId = request.redirectAdvice.userId
-        logger.info(s"Attempting to update direct debit for $maybeUserId")
+        val user = request.user
+        val userId = user.identityId
+
+        logger.info(s"Attempting to update direct debit for $userId")
+
         (for {
-          user <- EitherT.fromEither(Future.successful(maybeUserId.toRight("no identity cookie for user")))
-          directDebitDetails <- EitherT.fromEither(
-            Future.successful(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request")),
-          )
+          directDebitDetails <- SimpleEitherT.fromEither(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request"))
           (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
-          sfUser <- EitherT.fromEither(tp.contactRepository.get(user).map(_.toEither.flatMap(_.toRight(s"no SF user $user"))))
-          subscription <- EitherT.fromEither(
+          contact <- SimpleEitherT(tp.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user $userId"))))
+          subscription <- SimpleEitherT(
             tp.subscriptionService
-              .current[SubscriptionPlan.AnyPlan](sfUser)
-              .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
+              .current[SubscriptionPlan.AnyPlan](contact)
+              .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $contact")(subs)),
           )
-          account <- EitherT.fromEither(
+          account <- SimpleEitherT(
             annotateFailableFuture(tp.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
           )
-          billToContact <- EitherT.fromEither(
+          billToContact <- SimpleEitherT(
             annotateFailableFuture(tp.zuoraSoapService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
           )
           bankTransferPaymentMethod = BankTransfer(
@@ -162,17 +166,31 @@ class PaymentUpdateController(commonActions: CommonActions, override val control
             billtoContact = billToContact,
             invoiceTemplateOverride = None,
           )
-          _ <- EitherT.fromEither(
+          _ <- SimpleEitherT(
             annotateFailableFuture(tp.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
           )
-          freshDefaultPaymentMethodOption <- EitherT.fromEither(
+          freshDefaultPaymentMethodOption <- SimpleEitherT(
             annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),
           )
-        } yield checkDirectDebitUpdateResult(maybeUserId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run
+          _ <- SimpleEitherT.rightT(
+            sendEmail(
+              EmailData(
+                emailAddress = user.primaryEmailAddress,
+                salesforceContactId = contact.salesforceContactId,
+                campaignName = "payment-method-changed-email",
+                dataPoints = Map(
+                  "first_name" -> contact.firstName.getOrElse(""),
+                  "last_name" -> contact.lastName,
+                  "payment_method" -> "direct_debit",
+                ),
+              ),
+            ),
+          )
+        } yield checkDirectDebitUpdateResult(userId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run
           .map(_.toEither)
           .map {
             case Left(message) =>
-              logger.warn(s"default-payment-method-lost: failed to update direct debit for user $maybeUserId, due to $message")
+              logger.error(s"Failed to update direct debit for user $userId, due to $message")
               InternalServerError("")
             case Right(result) => result
           }
