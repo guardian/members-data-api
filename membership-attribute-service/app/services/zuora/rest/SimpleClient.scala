@@ -50,7 +50,7 @@ case class SimpleClient(
     parseJson(in).flatMap { jsValue =>
       r.reads(jsValue)
         .asEither
-        .disjunction
+        .toDisjunction
         .leftMap(error => s"json was well formed but not matching the reader: $error, json was << ${Json.prettyPrint(jsValue)} >>")
     }
   }

@@ -34,7 +34,7 @@ object SubscriptionTransform {
   }
 
   def backdoorRatePlanIdsFromJson(subJson: JsValue): Disjunction[String, List[SubIds]] = {
-    val ids = (subJson \ "ratePlans").validate[List[SubIds]](niceListReads(subIdsReads)).asEither.disjunction.leftMap(_.toString)
+    val ids = (subJson \ "ratePlans").validate[List[SubIds]](niceListReads(subIdsReads)).asEither.toDisjunction.leftMap(_.toString)
     // didn't actually check if they're current
 
     ids.leftMap { error =>
@@ -124,12 +124,12 @@ object SubscriptionTransform {
   )(subJson: JsValue): Disjunction[String, Subscription[P]] = {
     import Trace.Traceable
     val planToSubscriptionFunction =
-      subscriptionReads[P](now()).reads(subJson).asEither.disjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
+      subscriptionReads[P](now()).reads(subJson).asEither.toDisjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
 
     val lowLevelPlans = subJson
       .validate[List[SubscriptionZuoraPlan]](subZuoraPlanListReads)
       .asEither
-      .disjunction
+      .toDisjunction
       .leftMap(_.toString)
       .withTrace("validate-lowLevelPlans")
     lowLevelPlans.flatMap { lowLevelPlans =>
