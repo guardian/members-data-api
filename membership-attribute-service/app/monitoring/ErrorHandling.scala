@@ -1,7 +1,4 @@
 package monitoring
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
-import com.typesafe.scalalogging.LazyLogging
 import controllers.{Cached, NoCache}
 import filters.AddGuIdentityHeaders
 import models.ApiErrors.{badRequest, internalError, notFound}
@@ -13,6 +10,8 @@ import play.api.mvc._
 import play.api.routing.Router
 import play.core.SourceMapper
 import services.IdentityAuthService
+import utils.SanitizedLogging
+import utils.Sanitizer.Sanitizer
 
 import scala.concurrent._
 
@@ -25,7 +24,7 @@ class ErrorHandler(
     addGuIdentityHeaders: AddGuIdentityHeaders,
 )(implicit executionContext: ExecutionContext)
     extends DefaultHttpErrorHandler(env, config, sourceMapper, router)
-    with LazyLogging {
+    with SanitizedLogging {
 
   override def onClientError(request: RequestHeader, statusCode: Int, message: String = ""): Future[Result] = {
     super.onClientError(request, statusCode, message).map(Cached(_))
@@ -40,7 +39,7 @@ class ErrorHandler(
   }
 
   override protected def onProdServerError(request: RequestHeader, ex: UsefulException): Future[Result] = {
-    SafeLogger.error(scrub"Error handling request request: $request", ex)
+    logError(scrub"Error handling request request: $request", ex)
     addGuIdentityHeaders.fromIdapiIfMissing(request, internalError)
   }
   override protected def onBadRequest(request: RequestHeader, message: String): Future[Result] = {

@@ -1,20 +1,21 @@
 package services.zuora.rest
 
 import com.gu.memsub.Subscription._
-import com.gu.monitoring.SafeLogger
 import com.gu.salesforce.ContactId
-import services.zuora.rest.ZuoraRestService._
 import com.gu.zuora.rest.{ZuoraCrudResponse, ZuoraResponse}
+import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.LocalDate
 import play.api.libs.json.{JsObject, JsValue, Json}
 import scalaz.std.list._
 import scalaz.{-\/, EitherT, Monad, \/, \/-}
+import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 
 class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implicit val m: Monad[Future], ec: ExecutionContext)
-    extends ZuoraRestService {
+    extends ZuoraRestService
+    with StrictLogging {
 
   def getAccount(accountId: AccountId): Future[String \/ AccountSummary] = {
     simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") // TODO error handling
@@ -105,7 +106,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     val futureMonad = implicitly[Monad[Future]]
 
     if (newSoldToData.isDefined && record.BillToId == record.SoldToId && record.BillToId.isDefined) {
-      SafeLogger.info(s"account ${record.Id.get} has the same billTo and soldTo contact, cloning BillTo into a new SoldTo contact")
+      logger.info(s"account ${record.Id.get} has the same billTo and soldTo contact, cloning BillTo into a new SoldTo contact")
       (for {
         newContactId <- EitherT(cloneContact(record.BillToId.get))
         updateResponse <- EitherT(updateSoldToId(record.Id.get, newContactId))
@@ -166,21 +167,21 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     val futureMonad = implicitly[Monad[Future]]
 
     if (records.isEmpty) {
-      SafeLogger.warn(s"no Zuora accounts with matching crmId for sf contact $sfContactId")
+      logger.warn(s"no Zuora accounts with matching crmId for sf contact $sfContactId")
       futureMonad.point(\/-())
     } else {
-      SafeLogger.info(s"updating ${records.size} accounts : [${records.map(_.Id.get).mkString(", ")}]")
+      logger.info(s"updating ${records.size} accounts : [${records.map(_.Id.get).mkString(", ")}]")
       val responses = records.map { record =>
         val updateSoldTo =
           if (record.sfContactId__c.contains(sfContactId)) soldTo
           else {
-            SafeLogger.info(
+            logger.info(
               s"not updating sold to in zuora account ${record.Id.get} because sfContactId ($sfContactId) doesn't match for zuora contact ${record.sfContactId__c}",
             )
             None
           }
         if (updateSoldTo.isEmpty && billTo.isEmpty) {
-          SafeLogger.info(s"skipping account ${record.Id.get} since soldto and billto do not need to be updated")
+          logger.info(s"skipping account ${record.Id.get} since soldto and billto do not need to be updated")
           futureMonad.point(\/-(()): \/[String, Unit])
         } else {
           val restResponse = updateAccountContacts(record, updateSoldTo, billTo)
@@ -207,7 +208,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     val futureMonad = implicitly[Monad[Future]]
 
     if (billTo.isEmpty && soldTo.isEmpty) {
-      SafeLogger.warn(s"for sf contact ${contactId.salesforceContactId} no soldTo or billTo information provided so update will be skipped")
+      logger.warn(s"for sf contact ${contactId.salesforceContactId} no soldTo or billTo information provided so update will be skipped")
       futureMonad.point(\/-(()))
     } else {
       val response = for {

@@ -10,7 +10,6 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
 import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
 import com.gu.memsub.subsv2.services.Trace.Traceable
-import com.gu.monitoring.SafeLogger
 import com.gu.salesforce.ContactId
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.{Reads => JsReads, _}
@@ -22,11 +21,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 import scala.util.Try
 import _root_.services.zuora.rest.SimpleClient
+import com.typesafe.scalalogging.StrictLogging
 
 class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[CatalogMap], rest: SimpleClient, soap: SoapClient[Future])(implicit
     t: Monad[Future],
     ec: ExecutionContext,
-) extends SubscriptionService {
+) extends SubscriptionService
+    with StrictLogging {
   private implicit val idReads = new JsReads[JsValue] {
     override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
   }
@@ -74,7 +75,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
           SubscriptionTransform.getSubscription[P](catalog, pids)(jsValue).withTrace("getAllValidSubscriptionsFromJson")
         }
         warnOnMissingChargedThroughDate(allSubscriptionsForSubscriberName)
-        allSubscriptionsForSubscriberName.leftMap(error => SafeLogger.warn(s"Error from sub service for $name: $error")).toOption
+        allSubscriptionsForSubscriberName.leftMap(error => logger.warn(s"Error from sub service for $name: $error")).toOption
 
       }
     }
@@ -97,7 +98,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       subscription.foreach { sub =>
         sub.plan match {
           case p: PaidSubscriptionPlan[_, _] if p.chargedThrough.isEmpty =>
-            SafeLogger.warn(s"chargedThroughDate (end of last invoice date) does not exist for ${sub.name}")
+            logger.warn(s"chargedThroughDate (end of last invoice date) does not exist for ${sub.name}")
           case _ => // do nothing
         }
       }
@@ -114,12 +115,12 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       futureCatalog.map { catalog =>
         val highLevelSubscriptions = subJsonsEither.map { subJsons =>
           transform(catalog, pids)(subJsons)
-            .leftMap(e => SafeLogger.warn(s"Error from sub service for contact $contact: $e"))
+            .leftMap(e => logger.warn(s"Error from sub service for contact $contact: $e"))
             .toList
             .flatMap(_.list.toList) // returns an empty list if there's an error
         }
         highLevelSubscriptions
-          .leftMap(e => SafeLogger.warn(s"Error from sub service for contact $contact: $e"))
+          .leftMap(e => logger.warn(s"Error from sub service for contact $contact: $e"))
           .toList
           .flatten // returns an empty list if there's an error
       }
@@ -153,11 +154,11 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
         val highLevelSubscriptions = subJsonsEither.map { subJsons =>
           SubscriptionTransform
             .getCurrentSubscriptions[P](catalog, pids)(subJsons)
-            .leftMap(e => SafeLogger.warn(s"${errorMsg}: $e"))
+            .leftMap(e => logger.warn(s"${errorMsg}: $e"))
             .toList
             .flatMap(_.list.toList) // returns an empty list if there's an error
         }
-        highLevelSubscriptions.leftMap(e => SafeLogger.warn(s"${errorMsg}: $e")).toList.flatten // returns an empty list if there's an error
+        highLevelSubscriptions.leftMap(e => logger.warn(s"${errorMsg}: $e")).toList.flatten // returns an empty list if there's an error
       }
     }
 
@@ -196,7 +197,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
         subJsonsEither.leftMap(e => s"Error from sub service for sf contact $contact: $e").map { subJson =>
           SubscriptionTransform
             .tryTwoReadersForSubscriptionJson[PREFERRED, FALLBACK](catalog, pids)(subJson)
-            .leftMap(e => SafeLogger.debug(s"Error from tryTwoReadersForSubscriptionJson for sf contact $contact: $e"))
+            .leftMap(e => logger.debug(s"Error from tryTwoReadersForSubscriptionJson for sf contact $contact: $e"))
             .fold(_ => None, Some.apply)
         }
       }

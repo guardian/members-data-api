@@ -8,7 +8,7 @@ import com.gu.memsub.subsv2.reads.CommonReads._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.monitoring.SafeLogger
+import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.LocalDate
 import play.api.libs.json.{Reads => JsReads, _}
 import scalaz._
@@ -21,7 +21,7 @@ import scala.util.Try
 
 // this is (all?) the testable stuff without mocking needed
 // we should make the subscription service just getting the json, and then we can have testable pure functions here
-object SubscriptionTransform {
+object SubscriptionTransform extends StrictLogging {
 
   val subIdsReads: JsReads[SubIds] = new JsReads[SubIds] {
     override def reads(json: JsValue): JsResult[SubIds] = {
@@ -38,7 +38,7 @@ object SubscriptionTransform {
     // didn't actually check if they're current
 
     ids.leftMap { error =>
-      SafeLogger.warn(s"Error from sub service for json: $error")
+      logger.warn(s"Error from sub service for json: $error")
     }
 
     ids

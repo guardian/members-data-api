@@ -8,8 +8,7 @@ import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenVa
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog}
-import com.gu.monitoring.SafeLogger._
-import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
+import com.gu.monitoring.ZuoraMetrics
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest
@@ -35,6 +34,8 @@ import software.amazon.awssdk.auth.credentials.{
 }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
+import utils.SanitizedLogging
+import utils.Sanitizer.Sanitizer
 
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
@@ -54,7 +55,7 @@ class TouchpointComponents(
 )(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
-) {
+) extends SanitizedLogging {
   lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
   lazy val environmentConfig = touchpointConfig.getConfig(s"environments." + stage.value)
 
@@ -147,7 +148,7 @@ class TouchpointComponents(
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
     .map(_.fold[CatalogMap](error => { println(s"error: ${error.list.toList.mkString}"); Map() }, _.map))
     .recover { case error =>
-      SafeLogger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
+      logError(scrub"Failed to load the product catalog from Zuora due to: $error")
       throw error
     }
 

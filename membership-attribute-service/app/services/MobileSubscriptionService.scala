@@ -1,9 +1,9 @@
 package services
 
-import models.MobileSubscriptionStatus
 import com.github.nscala_time.time.OrderingImplicits._
-import com.gu.monitoring.SafeLogger
 import com.typesafe.config.Config
+import com.typesafe.scalalogging.StrictLogging
+import models.MobileSubscriptionStatus
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.libs.ws.WSClient
 
@@ -15,7 +15,9 @@ trait MobileSubscriptionService {
 
 }
 
-class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit ec: ExecutionContext) extends MobileSubscriptionService {
+class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit ec: ExecutionContext)
+    extends MobileSubscriptionService
+    with StrictLogging {
   val mobileSubscriptionApiKey = config.getString("mobile.subscription.apiKey")
 
   private val subscriptionURL = config.getString("stage") match {
@@ -39,11 +41,11 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit
         parsedSubs match {
           case JsError(errors) => Left(s"Unable to parse mobile subscription response: $errors")
           case JsSuccess(subs, _) =>
-            SafeLogger.info(s"Successfully retrieved ${subs.size} mobile subscriptions for $identityId")
+            logger.info(s"Successfully retrieved ${subs.size} mobile subscriptions for $identityId")
             val mostRecentValidSub = subs.filter(_.valid).sortBy(_.to).lastOption
             val mostRecentInvalidSub = subs.filterNot(_.valid).sortBy(_.to).lastOption
             val result = mostRecentValidSub.orElse(mostRecentInvalidSub)
-            SafeLogger.info(s"Mobile subscription for $identityId is $result")
+            logger.info(s"Mobile subscription for $identityId is $result")
             Right(result)
         }
       }
