@@ -1,10 +1,7 @@
 name: CI
 on:
-  pull_request:
   workflow_dispatch:
   push:
-    branches:
-      - main
 jobs:
   CI:
     runs-on: ubuntu-latest
@@ -21,13 +18,7 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '11'
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.coursier
-          key: sbt
+          cache: 'sbt'
       - name: CI
         run: |
           LAST_TEAMCITY_BUILD=11657

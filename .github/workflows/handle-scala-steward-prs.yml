@@ -19,6 +19,7 @@ jobs:
       with:
         distribution: corretto
         java-version: 11
+        cache: 'sbt'
     - 
       name: Run tests
       run: sbt test
