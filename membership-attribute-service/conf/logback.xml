@@ -19,7 +19,7 @@
         </rollingPolicy>
 
         <encoder>
-            <pattern>%date [%.-30thread] %logger[%file:%L] %highlight(%level: %msg%n%xException{3})</pattern>
+            <pattern>%date %file:%L [%level]: %msg%n%xException{3}</pattern>
         </encoder>
     </appender>
 
