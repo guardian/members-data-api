@@ -7,10 +7,6 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
-import com.gu.zuora.api.RegionalStripeGateways
-import com.typesafe.scalalogging.LazyLogging
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
@@ -28,8 +24,9 @@ import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
+import utils.Sanitizer.Sanitizer
 import utils.SimpleEitherT.SimpleEitherT
-import utils.{OptionTEither, SimpleEitherT}
+import utils.{OptionTEither, SanitizedLogging, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -67,7 +64,7 @@ class AccountController(
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
     createMetrics: CreateMetrics,
 ) extends BaseController
-    with LazyLogging {
+    with SanitizedLogging {
   import AccountHelpers._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
@@ -154,7 +151,7 @@ class AccountController(
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
-            SafeLogger.error(scrub"Failed to cancel subscription for user $identityId because $apiError")
+            logError(scrub"Failed to cancel subscription for user $identityId because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
             logger.info(s"Successfully cancelled subscription $subscriptionName owned by $identityId")
@@ -176,7 +173,7 @@ class AccountController(
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
-            SafeLogger.error(scrub"Failed to determine effectiveCancellationDate for $userId and $subscriptionName because $apiError")
+            logError(scrub"Failed to determine effectiveCancellationDate for $userId and $subscriptionName because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
             logger.info(
@@ -352,7 +349,7 @@ class AccountController(
           ).leftMap(message => s"Error while updating contribution amount: $message")
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
-            SafeLogger.error(scrub"Failed to update payment amount for user $userId, due to: $message")
+            logError(scrub"Failed to update payment amount for user $userId, due to: $message")
             InternalServerError(message)
           case Right(()) =>
             logger.info(s"Contribution amount updated for user $userId")
