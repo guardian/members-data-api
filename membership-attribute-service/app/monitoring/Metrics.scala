@@ -20,7 +20,7 @@ case class Metrics(service: String, cloudwatch: CloudWatch) extends StrictLoggin
 
     def recordEnd[A](name: String)(value: A): A = {
       val duration = System.currentTimeMillis() - startTime
-      cloudwatch.put(name + " duration ms", duration, StandardUnit.Milliseconds)
+      cloudwatch.put(name + " duration ms", duration.toDouble, StandardUnit.Milliseconds)
       logger.debug(s"$service $name completed in $duration ms")
 
       value
