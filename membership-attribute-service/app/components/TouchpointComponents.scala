@@ -23,6 +23,7 @@ import services._
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
 import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
 import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
+import services.zuora.payment.{ZuoraPaymentService, SetPaymentCard}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
@@ -158,7 +159,7 @@ class TouchpointComponents(
       new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createFineMetrics),
     )
   }
-  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService: ZuoraPaymentService = new ZuoraPaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
@@ -198,4 +199,9 @@ class TouchpointComponents(
       chooseStripe,
       paymentDetailsForSubscription,
     )
+
+  def setPaymentCard(stripePublicKey: String): SetPaymentCard = {
+    val stripeService = chooseStripe.serviceForPublicKey(stripePublicKey).toRight(s"No Stripe service for public key: $stripePublicKey")
+    new SetPaymentCard(paymentService, zuoraSoapService, stripeService)
+  }
 }

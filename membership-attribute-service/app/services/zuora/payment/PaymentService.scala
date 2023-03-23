@@ -1,6 +1,5 @@
-package services.api
+package services.zuora.payment
 
-import _root_.services.stripe.StripeService
 import com.gu.memsub.Subscription.{AccountId, Id}
 import com.gu.memsub._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
@@ -13,16 +12,6 @@ import scala.concurrent.Future
 trait PaymentService {
   def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None): Future[Option[PaymentMethod]]
   def getPaymentCard(accountId: AccountId): Future[Option[PaymentCard]]
-  @Deprecated def setPaymentCardWithStripeToken(
-      accountId: AccountId,
-      stripeToken: String,
-      stripeService: StripeService,
-  ): Future[Option[PaymentCardUpdateResult]]
-  def setPaymentCardWithStripePaymentMethod(
-      accountId: AccountId,
-      stripePaymentMethodID: String,
-      stripeService: StripeService,
-  ): Future[Option[PaymentCardUpdateResult]]
   def paymentDetails(
       sub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
       defaultMandateIdIfApplicable: Option[String] = None,
