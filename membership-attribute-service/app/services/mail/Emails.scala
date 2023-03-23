@@ -7,6 +7,8 @@ import com.gu.salesforce.Contact
 import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat.longDate
 
+import java.text.DecimalFormat
+
 object Emails {
   def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: SubscriptionPlan.AnyPlan): EmailData = {
     EmailData(
@@ -37,12 +39,19 @@ object Emails {
       Map(
         "first_name" -> contact.firstName.getOrElse(""),
         "last_name" -> contact.lastName,
-        "new_amount" -> newPrice.toString(),
+        "new_amount" -> decimalFormat.format(newPrice),
         "currency" -> currency.iso,
         "frequency" -> billingPeriod.noun,
         "next_payment_date" -> longDate().print(nextPaymentDate),
       ),
     )
+  }
+
+  val decimalFormat = {
+    val format = new DecimalFormat()
+    format.setMinimumFractionDigits(2)
+    format.setMaximumFractionDigits(2)
+    format
   }
 }
 
