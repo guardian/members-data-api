@@ -297,12 +297,21 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
             ),
         )
 
-      val contact = TestContact(identityId = "200067388")
+      val contact = TestContact(
+        identityId = "200067388",
+        firstName = Some("Frank"),
+        lastName = "Poole",
+      )
       val emailData = EmailData(
         "frank.poole@amail.com",
         contact.salesforceContactId,
         "payment-amount-change-email",
-        Map("first_name" -> "", "last_name" -> "Smith", "new_amount" -> "£12.00"),
+        Map(
+          "first_name" -> "Frank",
+          "last_name" -> "Poole",
+          "new_amount" -> "12.00",
+          "currency" -> "GPB",
+        ),
       )
 
       contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))

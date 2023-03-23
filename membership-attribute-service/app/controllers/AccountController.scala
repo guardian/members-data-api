@@ -1,6 +1,7 @@
 package controllers
 
 import actions._
+import com.gu.i18n.Currency
 import com.gu.memsub
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
@@ -340,7 +341,8 @@ class AccountController(
               .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $contact")(subs)),
           )
           applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
-          currencyGlyph = subscription.plan.charges.price.prices.head.currency.glyph
+          currency = subscription.plan.charges.price.prices.head.currency
+          currencyGlyph = currency.glyph
           oldPrice = subscription.plan.charges.price.prices.head.amount
           reasonForChange =
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
@@ -354,7 +356,7 @@ class AccountController(
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
-          _ <- sendUpdateAmountMail(newPrice, email, contact, currencyGlyph)
+          _ <- sendUpdateAmountMail(newPrice, email, contact, currency)
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logError(scrub"Failed to update payment amount for user $userId, due to: $message")
@@ -366,8 +368,8 @@ class AccountController(
       }
     }
 
-  private def sendUpdateAmountMail(newPrice: BigDecimal, email: String, contact: Contact, currencyGlyph: String) =
-    SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currencyGlyph)))
+  private def sendUpdateAmountMail(newPrice: BigDecimal, email: String, contact: Contact, currency: Currency) =
+    SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currency)))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1
