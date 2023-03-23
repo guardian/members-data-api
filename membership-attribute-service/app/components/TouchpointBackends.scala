@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
 import services.salesforce.ContactRepository
-import services.stripe.BasicStripeService
+import services.stripe.{BasicStripeService, ChooseStripe}
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
@@ -24,6 +24,7 @@ class TouchpointBackends(
     catalogServiceOverride: Option[CatalogService] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
+    chooseStripeOverride: Option[ChooseStripe] = None,
 )(implicit
     executionContext: ExecutionContext,
 ) {
@@ -39,6 +40,7 @@ class TouchpointBackends(
     catalogServiceOverride,
     zuoraServiceOverride,
     patronsStripeServiceOverride,
+    chooseStripeOverride,
   )(
     actorSystem,
     executionContext,
@@ -55,5 +57,7 @@ class TouchpointBackends(
       zuoraRestServiceOverride,
       catalogServiceOverride,
       zuoraServiceOverride,
+      patronsStripeServiceOverride,
+      chooseStripeOverride,
     )(actorSystem, executionContext)
 }

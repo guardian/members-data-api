@@ -52,6 +52,7 @@ class TouchpointComponents(
     catalogServiceOverride: Option[CatalogService] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
+    chooseStripeOverride: Option[ChooseStripe] = None,
 )(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
@@ -186,7 +187,9 @@ class TouchpointComponents(
       createMetrics,
     )
 
-  lazy val chooseStripe: ChooseStripe = ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership, createMetrics)
+  lazy val chooseStripe: ChooseStripe = chooseStripeOverride.getOrElse(
+    ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership, createMetrics),
+  )
 
   lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
 

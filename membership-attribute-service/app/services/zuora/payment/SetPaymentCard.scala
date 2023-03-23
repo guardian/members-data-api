@@ -28,9 +28,9 @@ class SetPaymentCard(paymentService: ZuoraPaymentService, zuoraService: ZuoraSoa
   )(accountId: AccountId, stripeCardIdentifier: String): Future[PaymentCardUpdateResult] = {
     val createCustomerFunction =
       if (useStripePaymentMethod)
-        stripeService.createCustomerWithStripePaymentMethod _
+        stripeService.createCustomerWithStripePaymentMethod(_)
       else
-        stripeService.createCustomer _
+        stripeService.createCustomer(_)
 
     (for {
       customer <- createCustomerFunction(stripeCardIdentifier)

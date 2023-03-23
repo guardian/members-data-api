@@ -18,7 +18,7 @@ import play.filters.csrf.CSRFComponents
 import router.Routes
 import services.mail.{QueueName, SendEmail, SendEmailToSQS}
 import services.salesforce.ContactRepository
-import services.stripe.BasicStripeService
+import services.stripe.{BasicStripeService, ChooseStripe}
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
@@ -67,6 +67,7 @@ class MyComponents(context: Context)
   lazy val catalogServiceOverride: Option[CatalogService] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
+  lazy val chooseStripeOverride: Option[ChooseStripe] = None
 
   lazy val emailQueueName = QueueName(if (isProd) "braze-emails-PROD" else "braze-emails-CODE")
   lazy val sendEmail: SendEmail = new SendEmailToSQS(emailQueueName)
@@ -82,6 +83,7 @@ class MyComponents(context: Context)
     catalogServiceOverride,
     zuoraSoapServiceOverride,
     patronsStripeServiceOverride,
+    chooseStripeOverride,
   )
   private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
   private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)

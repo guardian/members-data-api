@@ -24,6 +24,7 @@ import scalaz._
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
+import services.mail.Emails.updateAmountEmail
 import services.mail.{EmailData, SendEmail}
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
 import utils.Sanitizer.Sanitizer
@@ -353,7 +354,7 @@ class AccountController(
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
-          _ <- SimpleEitherT.right(sendUpdateAmountMail(newPrice, email, contact, currencyGlyph))
+          _ <- sendUpdateAmountMail(newPrice, email, contact, currencyGlyph)
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logError(scrub"Failed to update payment amount for user $userId, due to: $message")
@@ -365,20 +366,8 @@ class AccountController(
       }
     }
 
-  private def sendUpdateAmountMail(newPrice: BigDecimal, email: String, contact: Contact, currencyGlyph: String) = {
-    sendEmail(
-      EmailData(
-        email,
-        contact.salesforceContactId,
-        "payment-amount-change-email",
-        Map(
-          "first_name" -> contact.firstName.getOrElse(""),
-          "last_name" -> contact.lastName,
-          "new_amount" -> s"$currencyGlyph$newPrice",
-        ),
-      ),
-    )
-  }
+  private def sendUpdateAmountMail(newPrice: BigDecimal, email: String, contact: Contact, currencyGlyph: String) =
+    SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currencyGlyph)))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1
