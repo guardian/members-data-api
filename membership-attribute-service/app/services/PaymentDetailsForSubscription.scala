@@ -1,6 +1,5 @@
 package services
 
-import services.api.PaymentService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.services.model.PaymentDetails
@@ -9,6 +8,7 @@ import com.typesafe.scalalogging.LazyLogging
 import models.ContactAndSubscription
 import scalaz.\/
 import services.DifferentiateSubscription.differentiateSubscription
+import services.zuora.payment.PaymentService
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}

@@ -44,8 +44,7 @@ class PaymentUpdateController(
           tuple("stripePaymentMethodID" -> nonEmptyText, "stripePublicKey" -> nonEmptyText)
         }.bindFromRequest().value
         val tp = request.touchpoint
-        val setPaymentCardFunction =
-          if (updateForm.isDefined) tp.paymentService.setPaymentCardWithStripePaymentMethod _ else tp.paymentService.setPaymentCardWithStripeToken _
+        val useStripePaymentMethod = updateForm.isDefined
         val maybeUserId = request.redirectAdvice.userId
         logger.info(s"Attempting to update card for $maybeUserId")
         (for {
@@ -60,16 +59,7 @@ class PaymentUpdateController(
               .current[SubscriptionPlan.AnyPlan](sfUser)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $sfUser")(subs)),
           )
-          stripeService <- EitherT.fromEither(
-            Future
-              .successful(tp.chooseStripe.serviceForPublicKey(stripePublicKey))
-              .map(_.toRight(s"No Stripe service for public key: $stripePublicKey")),
-          )
-          updateResult <- EitherT.fromEither(
-            setPaymentCardFunction(subscription.accountId, stripeCardIdentifier, stripeService).map(
-              _.toRight("something was missing when attempting to update payment card in Zuora"),
-            ),
-          )
+          updateResult <- tp.setPaymentCard(stripePublicKey)(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
         } yield updateResult match {
           case success: CardUpdateSuccess => {
             logger.info(s"Successfully updated card for identity user: $user")
