@@ -1,5 +1,6 @@
 package services.mail
 
+import com.gu.i18n.Currency
 import com.gu.salesforce.Contact
 
 object Emails {
@@ -16,7 +17,7 @@ object Emails {
     )
   }
 
-  def updateAmountEmail(email: String, contact: Contact, newPrice: BigDecimal, currencyGlyph: String) = {
+  def updateAmountEmail(email: String, contact: Contact, newPrice: BigDecimal, currency: Currency) = {
     EmailData(
       email,
       contact.salesforceContactId,
@@ -24,7 +25,8 @@ object Emails {
       Map(
         "first_name" -> contact.firstName.getOrElse(""),
         "last_name" -> contact.lastName,
-        "new_amount" -> s"$currencyGlyph$newPrice",
+        "new_amount" -> newPrice.toString(),
+        "currency" -> currency.iso,
       ),
     )
   }
