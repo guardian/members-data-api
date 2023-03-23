@@ -1,10 +1,14 @@
 package services.mail
 
 import com.gu.i18n.Currency
+import com.gu.memsub.BillingPeriod.RecurringPeriod
+import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.salesforce.Contact
+import org.joda.time.LocalDate
+import org.joda.time.format.DateTimeFormat.longDate
 
 object Emails {
-  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType): EmailData = {
+  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: SubscriptionPlan.AnyPlan): EmailData = {
     EmailData(
       emailAddress = emailAddress,
       salesforceContactId = contact.salesforceContactId,
@@ -13,11 +17,19 @@ object Emails {
         "first_name" -> contact.firstName.getOrElse(""),
         "last_name" -> contact.lastName,
         "payment_method" -> paymentMethod.valueForEmail,
+        "product_type" -> plan.productName,
       ),
     )
   }
 
-  def updateAmountEmail(email: String, contact: Contact, newPrice: BigDecimal, currency: Currency) = {
+  def updateAmountEmail(
+      email: String,
+      contact: Contact,
+      newPrice: BigDecimal,
+      currency: Currency,
+      billingPeriod: RecurringPeriod,
+      nextPaymentDate: LocalDate,
+  ): EmailData = {
     EmailData(
       email,
       contact.salesforceContactId,
@@ -27,6 +39,8 @@ object Emails {
         "last_name" -> contact.lastName,
         "new_amount" -> newPrice.toString(),
         "currency" -> currency.iso,
+        "frequency" -> billingPeriod.noun,
+        "next_payment_date" -> longDate().print(nextPaymentDate),
       ),
     )
   }

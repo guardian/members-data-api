@@ -3,6 +3,8 @@ package controllers
 import actions._
 import com.gu.i18n.Currency
 import com.gu.memsub
+import com.gu.memsub.BillingPeriod
+import com.gu.memsub.BillingPeriod.RecurringPeriod
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
@@ -340,6 +342,7 @@ class AccountController(
               .current[SubscriptionPlan.Contributor](contact)
               .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $contact")(subs)),
           )
+          billingPeriod = subscription.plan.charges.billingPeriod.asInstanceOf[RecurringPeriod]
           applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
           currency = subscription.plan.charges.price.prices.head.currency
           currencyGlyph = currency.glyph
@@ -356,7 +359,7 @@ class AccountController(
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
-          _ <- sendUpdateAmountMail(newPrice, email, contact, currency)
+          _ <- sendUpdateAmountMail(newPrice, email, contact, currency, billingPeriod, applyFromDate)
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logError(scrub"Failed to update payment amount for user $userId, due to: $message")
@@ -368,8 +371,15 @@ class AccountController(
       }
     }
 
-  private def sendUpdateAmountMail(newPrice: BigDecimal, email: String, contact: Contact, currency: Currency) =
-    SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currency)))
+  private def sendUpdateAmountMail(
+      newPrice: BigDecimal,
+      email: String,
+      contact: Contact,
+      currency: Currency,
+      billingPeriod: RecurringPeriod,
+      nextPaymentDate: LocalDate,
+  ) =
+    SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currency, billingPeriod, nextPaymentDate)))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1
