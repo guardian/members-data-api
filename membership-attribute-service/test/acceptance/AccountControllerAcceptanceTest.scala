@@ -83,7 +83,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     }
   }
 
-  "AttributeController" should {
+  "AccountController" should {
     "serve current user's products and data" in {
       val cookies = Map(
         "GU_U" -> "WyIyMDAwNjczODgiLCIiLCJ1c2VyIiwiIiwxNjc2NDU3MTE5ODk3LDEsMTY2ODYxMzI0ODAwMCx0cnVlXQ.MCwCFHUQjxr9nm5gk15jmWID6lYYVE5NAhR11ko5vRIjNwqGprB8gCzIEPz4Rg",
@@ -310,14 +310,21 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
           "first_name" -> "Frank",
           "last_name" -> "Poole",
           "new_amount" -> "12.00",
-          "currency" -> "GPB",
+          "currency" -> "GBP",
+          "frequency" -> "year",
+          "next_payment_date" -> "11 March 2023",
         ),
       )
 
       contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
 
       val charge = TestPaidCharge()
-      val plan = TestPaidSubscriptionPlan(product = Contribution, charges = charge)
+      val chargedThroughDate = new LocalDate(2023, 3, 11)
+      val plan = TestPaidSubscriptionPlan(
+        product = Contribution,
+        charges = charge,
+        chargedThrough = Some(chargedThroughDate),
+      )
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
         plans = CovariantNonEmptyList(plan, Nil),
@@ -331,7 +338,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         subscription.plan.id,
         12.00d,
         any,
-        subscription.plan.start,
+        chargedThroughDate,
       )(any) returns Future(\/.right(()))
 
       sendEmailMock(emailData) returns Future.successful(())
@@ -358,7 +365,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         subscription.plan.id,
         12.00d,
         any,
-        subscription.plan.start,
+        chargedThroughDate,
       )(any) was called
 
       sendEmailMock(emailData) was called

@@ -63,7 +63,7 @@ class PaymentUpdateController(
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $contact")(subs)),
           )
           updateResult <- tp.setPaymentCard(stripePublicKey)(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
-          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card)
+          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card, subscription.plan)
         } yield updateResult match {
           case success: CardUpdateSuccess => {
             logger.info(s"Successfully updated card for identity user: $user")
@@ -82,8 +82,13 @@ class PaymentUpdateController(
       }
     }
 
-  private def sendPaymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType): SimpleEitherT[Unit] =
-    SimpleEitherT.rightT(sendEmail(paymentMethodChangedEmail(emailAddress, contact, paymentMethod)))
+  private def sendPaymentMethodChangedEmail(
+      emailAddress: String,
+      contact: Contact,
+      paymentMethod: PaymentType,
+      plan: SubscriptionPlan.AnyPlan,
+  ): SimpleEitherT[Unit] =
+    SimpleEitherT.rightT(sendEmail(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, plan)))
 
   private def checkDirectDebitUpdateResult(
       userId: String,
@@ -169,7 +174,7 @@ class PaymentUpdateController(
           freshDefaultPaymentMethodOption <- SimpleEitherT(
             annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),
           )
-          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit)
+          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit, subscription.plan)
         } yield checkDirectDebitUpdateResult(userId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run
           .map(_.toEither)
           .map {
