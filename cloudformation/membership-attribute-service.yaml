@@ -216,7 +216,6 @@ Resources:
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      LaunchConfigurationName: !Sub members-data-api-${Stage}
       ImageId:
         Ref: AmiId
       SecurityGroups:
