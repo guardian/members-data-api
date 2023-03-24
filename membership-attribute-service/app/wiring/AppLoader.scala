@@ -16,22 +16,15 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.mail.{QueueName, SendEmail, SendEmailToSQS}
+import services.mail.{EmailData, QueueName, SendEmail, SendEmailToSQS}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe}
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
-import services.{
-  CatalogService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  MobileSubscriptionServiceImpl,
-  PostgresDatabaseService,
-  SupporterProductDataService,
-}
+import services.{CatalogService, ContributionsStoreDatabaseService, HealthCheckableService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class AppLoader extends ApplicationLoader {
   def load(context: Context): Application = {
@@ -70,7 +63,7 @@ class MyComponents(context: Context)
   lazy val chooseStripeOverride: Option[ChooseStripe] = None
 
   lazy val emailQueueName = QueueName(if (isProd) "braze-emails-PROD" else "braze-emails-CODE")
-  lazy val sendEmail: SendEmail = new SendEmailToSQS(emailQueueName)
+  lazy val sendEmail: SendEmail = _ => Future.successful(())
 
   lazy val touchPointBackends = new TouchpointBackends(
     actorSystem,

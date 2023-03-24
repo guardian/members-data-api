@@ -46,7 +46,7 @@ class PaymentUpdateController(
         val updateForm = Form {
           tuple("stripePaymentMethodID" -> nonEmptyText, "stripePublicKey" -> nonEmptyText)
         }.bindFromRequest().value
-        val tp = request.touchpoint
+        val services = request.touchpoint
         val useStripePaymentMethod = updateForm.isDefined
         val user = request.user
         val userId = user.identityId
@@ -55,14 +55,14 @@ class PaymentUpdateController(
           stripeDetails <- EitherT.fromEither(
             Future.successful(updateForm.orElse(legacyForm).toRight("no 'stripePaymentMethodID' and 'stripePublicKey' submitted with request")),
           )
-          (stripeCardIdentifier, stripePublicKey) = stripeDetails
-          contact <- EitherT.fromEither(tp.contactRepository.get(userId).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $userId"))))
+          contact <- EitherT.fromEither(services.contactRepository.get(userId).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $userId"))))
           subscription <- EitherT.fromEither(
-            tp.subscriptionService
+            services.subscriptionService
               .current[SubscriptionPlan.AnyPlan](contact)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $contact")(subs)),
           )
-          updateResult <- tp.setPaymentCard(stripePublicKey)(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
+          (stripeCardIdentifier, stripePublicKey) = stripeDetails
+          updateResult <- services.setPaymentCard(stripePublicKey)(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
           _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card, subscription.plan)
         } yield updateResult match {
           case success: CardUpdateSuccess => {
@@ -132,7 +132,7 @@ class PaymentUpdateController(
           )
         }
 
-        val tp = request.touchpoint
+        val services = request.touchpoint
         val user = request.user
         val userId = user.identityId
 
@@ -141,17 +141,17 @@ class PaymentUpdateController(
         (for {
           directDebitDetails <- SimpleEitherT.fromEither(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request"))
           (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
-          contact <- SimpleEitherT(tp.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user $userId"))))
+          contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user $userId"))))
           subscription <- SimpleEitherT(
-            tp.subscriptionService
+            services.subscriptionService
               .current[SubscriptionPlan.AnyPlan](contact)
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $contact")(subs)),
           )
           account <- SimpleEitherT(
-            annotateFailableFuture(tp.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
+            annotateFailableFuture(services.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
           )
           billToContact <- SimpleEitherT(
-            annotateFailableFuture(tp.zuoraSoapService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
+            annotateFailableFuture(services.zuoraSoapService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
           )
           bankTransferPaymentMethod = BankTransfer(
             accountHolderName = bankAccountName,
@@ -169,10 +169,10 @@ class PaymentUpdateController(
             invoiceTemplateOverride = None,
           )
           _ <- SimpleEitherT(
-            annotateFailableFuture(tp.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
+            annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
           )
           freshDefaultPaymentMethodOption <- SimpleEitherT(
-            annotateFailableFuture(tp.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),
+            annotateFailableFuture(services.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),
           )
           _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit, subscription.plan)
         } yield checkDirectDebitUpdateResult(userId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run

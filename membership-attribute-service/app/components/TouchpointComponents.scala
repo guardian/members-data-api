@@ -22,8 +22,8 @@ import scalaz.std.scalaFuture._
 import services._
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
 import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
-import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
-import services.zuora.payment.{ZuoraPaymentService, SetPaymentCard}
+import services.subscription.{CancelSubscription, SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
+import services.zuora.payment.{SetPaymentCard, ZuoraPaymentService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
@@ -207,4 +207,6 @@ class TouchpointComponents(
     val stripeService = chooseStripe.serviceForPublicKey(stripePublicKey).toRight(s"No Stripe service for public key: $stripePublicKey")
     new SetPaymentCard(paymentService, zuoraSoapService, stripeService)
   }
+
+  lazy val cancelSubscription = new CancelSubscription(subscriptionService, zuoraRestService)
 }
