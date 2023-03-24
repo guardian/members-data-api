@@ -3,13 +3,13 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientVersion = "1.11.1022"
-  val awsClientV2Version = "2.20.17"
+  val awsClientVersion = "1.12.434"
+  val awsClientV2Version = "2.20.31"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.10"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.8"
-  val postgres = "org.postgresql" % "postgresql" % "42.5.4"
+  val postgres = "org.postgresql" % "postgresql" % "42.6.0"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
@@ -18,7 +18,7 @@ object Dependencies {
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "com.amazonaws" % "aws-java-sdk-sqs" % awsClientVersion
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.635"
+  val membershipCommon = "com.gu" %% "membership-common" % "0.639"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
@@ -29,8 +29,8 @@ object Dependencies {
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
 
-  val jacksonVersion = "2.14.1"
-  val jacksonDatabindVersion = "2.14.1"
+  val jacksonVersion = "2.14.2"
+  val jacksonDatabindVersion = "2.14.2"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
@@ -72,7 +72,7 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-autoscaling" % awsClientVersion,
     netty,
     nettyHttp,
-    "com.google.guava" % "guava" % "30.1.1-jre", // until https://github.com/playframework/playframework/pull/10874
+    "com.google.guava" % "guava" % "31.1-jre", // until https://github.com/playframework/playframework/pull/10874
     akkaHttpCore,
     unirest,
     mockServer,
