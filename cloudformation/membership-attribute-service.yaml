@@ -407,7 +407,8 @@ Resources:
 
   4XXRatioAlarm:
     Type: 'AWS::CloudWatch::Alarm'
-    Condition: CreateProdMonitoring
+#    Condition: CreateProdMonitoring
+    Condition: !Equals [ 1, 2 ] # disabled while we have a high rate of 401s for android app requests
     Properties:
       AlarmName: !Join
         - ' '
