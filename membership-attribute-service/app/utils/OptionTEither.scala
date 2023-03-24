@@ -23,9 +23,9 @@ object OptionTEither {
   def fromOption[A](x: Option[A]): OptionTEither[A] =
     apply(Future.successful(\/.right[String, Option[A]](x)))
 
-  def fromFuture[A](future: Future[A])(implicit ex: ExecutionContext): OptionTEither[A] = {
-    apply(future map { value: A =>
-      \/.right[String, Option[A]](Some(value))
-    })
+  def fromFutureOption[A](future: Future[Option[A]])(implicit ex: ExecutionContext): OptionTEither[A] = {
+    apply(future.map(\/.right[String, Option[A]](_)))
   }
+  def fromFuture[A](future: Future[A])(implicit ex: ExecutionContext): OptionTEither[A] =
+    fromFutureOption(future.map(Some(_)))
 }

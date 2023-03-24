@@ -259,7 +259,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       subscriptionName: memsub.Subscription.Name,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
-  ): EitherT[String, Future, Option[LocalDate]] = {
+  ): SimpleEitherT[Option[LocalDate]] = {
     EitherT(
       OptionT(get[P](subscriptionName, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {

@@ -14,10 +14,12 @@ import acceptance.data.{
 }
 import com.gu.i18n.Currency
 import com.gu.memsub.Product.Contribution
+import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
 import kong.unirest.Unirest
-import org.joda.time.LocalDate
+import org.joda.time.format.DateTimeFormat
+import org.joda.time.{LocalDate, LocalTime}
 import org.mockito.ArgumentMatchers.any
 import org.mockserver.model.Cookie
 import org.mockserver.model.HttpRequest.request
@@ -305,7 +307,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       val emailData = EmailData(
         "frank.poole@amail.com",
         contact.salesforceContactId,
-        "payment-amount-change-email",
+        "payment-amount-changed-email",
         Map(
           "first_name" -> "Frank",
           "last_name" -> "Poole",
@@ -381,5 +383,119 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       1 shouldEqual 1
     }
+
+    "cancel subscription and send an email" in {
+      val subscriptionId = "A-S00474148"
+
+      val identityRequest = request()
+        .withMethod("GET")
+        .withPath("/user/me")
+        .withHeader("X-GU-ID-Client-Access-Token", s"Bearer $identityApiToken")
+        .withHeader(
+          "X-GU-ID-FOWARDED-SC-GU-U",
+          "WyIyMDAwNjQ2MTEiLDE2ODY3Nzg3NDQxMTUsIjY5MGVmNmYzMTllYTQwODI4OTBjMGExYTNkOWM5ZTFmIiwiIiwwXQ.MC0CFBUObHNIHJMVasjnW7HHRmeni8GdAhUAkJxvh4IR7UbMc5rL-QWk9J9trTE",
+        )
+
+      identityMockClientAndServer
+        .when(
+          identityRequest,
+        )
+        .respond(
+          response()
+            .withBody(
+              IdentityResponse(
+                userId = 200067388,
+                firstName = "Frank",
+                lastName = "Poole",
+                email = "frank.poole@amail.com",
+              ),
+            ),
+        )
+
+      val contact = TestContact(
+        identityId = "200067388",
+        firstName = Some("Frank"),
+        lastName = "Poole",
+      )
+      val emailData = EmailData(
+        "frank.poole@amail.com",
+        contact.salesforceContactId,
+        "subscription-cancelled-email",
+        Map(
+          "first_name" -> "Frank",
+          "last_name" -> "Poole",
+          "product_type" -> "Digital Pack",
+          "cancellation_effective_date" -> "5 April 2024",
+        ),
+      )
+
+      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+
+      val subscription = TestSubscription(
+        name = Subscription.Name(subscriptionId),
+        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productName = "Digital Pack"), Nil),
+        termEndDate = new LocalDate(2024, 4, 12),
+      )
+
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns Future(List(subscription))
+
+      val cancellationEffectiveDate = new LocalDate(2024, 4, 5)
+      subscriptionServiceMock.decideCancellationEffectiveDate[SubscriptionPlan.AnyPlan](Name(subscriptionId), any, any)(any) returns SimpleEitherT
+        .right(Some(cancellationEffectiveDate))
+
+      subscriptionServiceMock
+        .subscriptionsForAccountId[SubscriptionPlan.AnyPlan](subscription.accountId)(any) shouldReturn SimpleEitherT.right(List(subscription)).run
+
+      zuoraRestServiceMock.disableAutoPay(subscription.accountId) returns unit()
+
+      zuoraRestServiceMock.updateCancellationReason(Name(subscriptionId), "My reason") returns unit()
+
+      zuoraRestServiceMock.cancelSubscription(Name(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(any) returns unit()
+
+      sendEmailMock(emailData) returns Future.successful(())
+
+      val httpResponse = Unirest
+        .post(endpointUrl(s"/user-attributes/me/cancel/$subscriptionId"))
+        .header("Csrf-Token", "nocheck")
+        .header(
+          "Cookie",
+          "gu_paying_member=false; gu_digital_subscriber=true; gu_hide_support_messaging=true; consentUUID=ee459f1e-5d69-4def-a53c-c4a7b4b826f9_13; _ga=GA1.2.1494602535.1668613308; _gcl_au=1.1.1865802744.1673259395; QuantumMetricUserID=7a6ee3603e3f50079f57a932c7016208; gu_user_features_expiry=1676116644464; gu_recurring_contributor=true; GU_mvt_id=414642; GU_country=GB; GU_CO_COMPLETE={\"userType\":\"guest\",\"product\":\"SupporterPlus\"}; gu.contributions.contrib-timestamp=1678788098733; GU_geo_country=GB; _gid=GA1.2.1515141716.1678982877; GU_U=WyIyMDAwNjQ2MTEiLCIiLCJ1c2VyIiwiIiwxNjg2Nzc4NzQ0MTE1LDAsMTY2NzQwNjI0MTAwMCx0cnVlXQ.MC0CFGunCn-eCA9-AaJSyU1NuDQEHLK5AhUAlXRSJU9xBkZS5IcD4EPutZGjk4g; SC_GU_LA=WyJMQSIsIjIwMDA2NDYxMSIsMTY3OTAwMjc0NDExNV0.MC4CFQCI1EHaTXvNALwrnmCP6MlsgaB65QIVAIZb-ZFs38gpRYy1m6AOU65neA11; SC_GU_U=WyIyMDAwNjQ2MTEiLDE2ODY3Nzg3NDQxMTUsIjY5MGVmNmYzMTllYTQwODI4OTBjMGExYTNkOWM5ZTFmIiwiIiwwXQ.MC0CFBUObHNIHJMVasjnW7HHRmeni8GdAhUAkJxvh4IR7UbMc5rL-QWk9J9trTE; GU_AF1=1694900345726",
+        )
+        .field("reason", "My reason")
+        .asString
+
+      httpResponse.getStatus shouldEqual 200
+
+      contactRepositoryMock.get("200067388") was called
+
+      identityMockClientAndServer.verify(identityRequest)
+      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) was called
+
+      subscriptionServiceMock.decideCancellationEffectiveDate[SubscriptionPlan.AnyPlan](Name(subscriptionId), any, any)(any) was called
+      subscriptionServiceMock.subscriptionsForAccountId[SubscriptionPlan.AnyPlan](subscription.accountId)(any) was called
+      zuoraRestServiceMock.disableAutoPay(subscription.accountId) was called
+      zuoraRestServiceMock.updateCancellationReason(Name(subscriptionId), "My reason") was called
+      zuoraRestServiceMock.cancelSubscription(Name(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(any) was called
+
+      sendEmailMock(emailData) was called
+
+      supporterProductDataServiceMock wasNever called
+      contactRepositoryMock wasNever calledAgain
+      subscriptionServiceMock wasNever calledAgain
+      zuoraRestServiceMock wasNever calledAgain
+      catalogServiceMock wasNever called
+      zuoraSoapServiceMock wasNever called
+      databaseServiceMock wasNever called
+      sendEmailMock wasNever calledAgain
+
+      val responseBody = httpResponse.getBody
+      val responseJson = Json.parse(responseBody)
+      val cancellationDateFormatted = DateTimeFormat.forPattern("yyyy-MM-dd").print(cancellationEffectiveDate)
+      responseJson shouldEqual Json.parse(s"""
+          |{"cancellationEffectiveDate":"$cancellationDateFormatted"}
+          |""".stripMargin)
+    }
   }
+
+  def unit() = Future.successful(\/.right[String, Unit](()))
 }

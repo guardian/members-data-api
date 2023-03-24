@@ -3,7 +3,6 @@ package controllers
 import actions._
 import com.gu.i18n.Currency
 import com.gu.memsub
-import com.gu.memsub.BillingPeriod
 import com.gu.memsub.BillingPeriod.RecurringPeriod
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
@@ -27,8 +26,8 @@ import scalaz._
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter._
 import services._
-import services.mail.Emails.updateAmountEmail
-import services.mail.{EmailData, SendEmail}
+import services.mail.Emails.{subscriptionCancelledEmail, updateAmountEmail}
+import services.mail.SendEmail
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
 import utils.Sanitizer.Sanitizer
 import utils.SimpleEitherT.SimpleEitherT
@@ -85,7 +84,7 @@ class AccountController(
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
-        val tp = request.touchpoint
+        val services = request.touchpoint
         val cancelForm = Form {
           single("reason" -> nonEmptyText)
         }
@@ -111,9 +110,9 @@ class AccountController(
         def disableAutoPayOnlyIfAccountHasOneSubscription(
             accountId: memsub.Subscription.AccountId,
         ): SimpleEitherT[Unit] = {
-          EitherT(tp.subscriptionService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
+          EitherT(services.subscriptionService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
             if (currentSubscriptions.size <= 1)
-              SimpleEitherT(tp.zuoraRestService.disableAutoPay(accountId).map(_.toEither))
+              SimpleEitherT(services.zuoraRestService.disableAutoPay(accountId).map(_.toEither))
             else // do not disable auto pay
               SimpleEitherT.right({})
           }
@@ -124,40 +123,44 @@ class AccountController(
             reason: String,
             accountId: memsub.Subscription.AccountId,
             endOfTermDate: LocalDate,
-        ): Future[Either[ApiError, Option[LocalDate]]] = {
+        ): EitherT[ApiError, Future, Option[LocalDate]] =
           (for {
             _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
-            _ <- EitherT(tp.zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message =>
+            _ <- EitherT(services.zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message =>
               s"Failed to update cancellation reason: $message",
             )
-            _ <- EitherT(tp.zuoraRestService.cancelSubscription(subscriptionName, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
+            _ <- EitherT(services.zuoraRestService.cancelSubscription(subscriptionName, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
               s"Failed to execute Zuora cancellation proper: $message",
             )
-          } yield cancellationEffectiveDate).leftMap(CancelError(_, 500)).run.map(_.toEither)
-        }
+          } yield cancellationEffectiveDate).leftMap(ApiError(_, "", 500))
 
         (for {
-          identityId <- EitherT.right(identityId)
           cancellationReason <- EitherT.fromEither(handleInputBody(cancelForm))
-          sfContact <- EitherT
-            .fromEither(tp.contactRepository.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
+          contact <- EitherT
+            .fromEither(services.contactRepository.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
             .leftMap(CancelError(_, 404))
-          sfSub <- EitherT
+          subscription <- EitherT
             .fromEither(
-              tp.subscriptionService
-                .current[P](sfContact)
-                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $sfContact")(subs)),
+              services.subscriptionService
+                .current[P](contact)
+                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $contact")(subs)),
             )
             .leftMap(CancelError(_, 404))
           accountId <- EitherT.fromEither(
             Future.successful(
-              if (sfSub.name == subscriptionName) Right(sfSub.accountId)
+              if (subscription.name == subscriptionName) Right(subscription.accountId)
               else Left(CancelError(s"$subscriptionName does not belong to $identityId", 503)),
             ),
           )
-          cancellationEffectiveDate <- tp.subscriptionService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
-          _ <- EitherT.fromEither(executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, sfSub.termEndDate))
+          cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
+          _ <- executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, subscription.termEndDate)
           result = cancellationEffectiveDate.getOrElse("now").toString
+          _ <- sendSubscriptionCancelledEmail(
+            request.user.primaryEmailAddress,
+            contact,
+            subscription.plan,
+            cancellationEffectiveDate,
+          )
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
             logError(scrub"Failed to cancel subscription for user $identityId because $apiError")
@@ -359,7 +362,7 @@ class AccountController(
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
-          _ <- sendUpdateAmountMail(newPrice, email, contact, currency, billingPeriod, applyFromDate)
+          _ <- sendUpdateAmountEmail(newPrice, email, contact, currency, billingPeriod, applyFromDate)
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logError(scrub"Failed to update payment amount for user $userId, due to: $message")
@@ -371,15 +374,24 @@ class AccountController(
       }
     }
 
-  private def sendUpdateAmountMail(
+  private def sendUpdateAmountEmail(
       newPrice: BigDecimal,
       email: String,
       contact: Contact,
       currency: Currency,
       billingPeriod: RecurringPeriod,
       nextPaymentDate: LocalDate,
+  ) = SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currency, billingPeriod, nextPaymentDate)))
+
+  private def sendSubscriptionCancelledEmail(
+      email: String,
+      contact: Contact,
+      plan: SubscriptionPlan.AnyPlan,
+      cancellationEffectiveDate: Option[LocalDate],
   ) =
-    SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currency, billingPeriod, nextPaymentDate)))
+    SimpleEitherT
+      .right(sendEmail(subscriptionCancelledEmail(email, contact, plan, cancellationEffectiveDate)))
+      .leftMap(ApiError(_, "Email could not be put on the queue", 500))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1
