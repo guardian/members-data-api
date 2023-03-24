@@ -18,7 +18,7 @@ import models.ApiErrors._
 import models._
 import monitoring.CreateMetrics
 import org.joda.time.LocalDate
-import play.api.data.Form
+import play.api.data.{Form, FormBinding}
 import play.api.data.Forms._
 import play.api.libs.json.{Format, Json}
 import play.api.mvc._
@@ -28,6 +28,8 @@ import services.PaymentFailureAlerter._
 import services._
 import services.mail.Emails.{subscriptionCancelledEmail, updateAmountEmail}
 import services.mail.SendEmail
+import services.subscription.SubscriptionService
+import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.PaymentMethodId
 import utils.Sanitizer.Sanitizer
 import utils.SimpleEitherT.SimpleEitherT
@@ -81,6 +83,18 @@ class AccountController(
 
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
+  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_]): Either[ApiError, String] =
+    cancelForm
+      .bindFromRequest()
+      .value
+      .map { cancellationReason =>
+        Right(cancellationReason)
+      }
+      .getOrElse {
+        logger.warn("No reason for cancellation was submitted with the request.")
+        Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
+      }
+
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
@@ -89,71 +103,29 @@ class AccountController(
           single("reason" -> nonEmptyText)
         }
         val identityId = request.user.identityId
-
-        def handleInputBody(cancelForm: Form[String]): Future[Either[ApiError, String]] = Future.successful {
-          cancelForm
-            .bindFromRequest()
-            .value
-            .map { cancellationReason =>
-              Right(cancellationReason)
-            }
-            .getOrElse {
-              logger.warn("No reason for cancellation was submitted with the request.")
-              Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
-            }
-        }
-
-        /** If user has multiple subscriptions within the same billing account, then disabling auto-pay on the account would stop collecting payments
-          * for all subscriptions including the non-cancelled ones. In this case debt would start to accumulate in the form of positive Zuora account
-          * balance, and if at any point auto-pay is switched back on, then payment for the entire amount would be attempted.
-          */
-        def disableAutoPayOnlyIfAccountHasOneSubscription(
-            accountId: memsub.Subscription.AccountId,
-        ): SimpleEitherT[Unit] = {
-          EitherT(services.subscriptionService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
-            if (currentSubscriptions.size <= 1)
-              SimpleEitherT(services.zuoraRestService.disableAutoPay(accountId).map(_.toEither))
-            else // do not disable auto pay
-              SimpleEitherT.right({})
-          }
-        }
-
-        def executeCancellation(
-            cancellationEffectiveDate: Option[LocalDate],
-            reason: String,
-            accountId: memsub.Subscription.AccountId,
-            endOfTermDate: LocalDate,
-        ): EitherT[ApiError, Future, Option[LocalDate]] =
-          (for {
-            _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
-            _ <- EitherT(services.zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message =>
-              s"Failed to update cancellation reason: $message",
-            )
-            _ <- EitherT(services.zuoraRestService.cancelSubscription(subscriptionName, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
-              s"Failed to execute Zuora cancellation proper: $message",
-            )
-          } yield cancellationEffectiveDate).leftMap(ApiError(_, "", 500))
+        def flatten[T](future: Future[\/[String, Option[T]]], errorMessage: String): SimpleEitherT[T] =
+          SimpleEitherT(future.map(_.toEither.flatMap(_.toRight(errorMessage))))
 
         (for {
-          cancellationReason <- EitherT.fromEither(handleInputBody(cancelForm))
-          contact <- EitherT
-            .fromEither(services.contactRepository.get(identityId).map(_.toEither.flatMap(_.toRight(s"No Salesforce user: $identityId"))))
-            .leftMap(CancelError(_, 404))
-          subscription <- EitherT
-            .fromEither(
-              services.subscriptionService
-                .current[P](contact)
-                .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $contact")(subs)),
-            )
-            .leftMap(CancelError(_, 404))
-          accountId <- EitherT.fromEither(
-            Future.successful(
-              if (subscription.name == subscriptionName) Right(subscription.accountId)
-              else Left(CancelError(s"$subscriptionName does not belong to $identityId", 503)),
-            ),
-          )
+          cancellationReason <- EitherT.fromEither(Future(extractCancellationReason(cancelForm)))
+          contact <-
+            flatten(
+              services.contactRepository.get(identityId),
+              s"No Salesforce user: $identityId",
+            ).leftMap(CancelError(_, 404))
+          subscription <- SimpleEitherT(
+            services.subscriptionService
+              .current[P](contact)
+              .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $contact")(subs)),
+          ).leftMap(CancelError(_, 404))
+          accountId <-
+            (if (subscription.name == subscriptionName)
+               SimpleEitherT.right(subscription.accountId)
+             else
+               SimpleEitherT.left(s"$subscriptionName does not belong to $identityId"))
+              .leftMap(CancelError(_, 503))
           cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
-          _ <- executeCancellation(cancellationEffectiveDate, cancellationReason, accountId, subscription.termEndDate)
+          _ <- services.cancelSubscription(subscriptionName, cancellationEffectiveDate, cancellationReason, accountId, subscription.termEndDate)
           result = cancellationEffectiveDate.getOrElse("now").toString
           _ <- sendSubscriptionCancelledEmail(
             request.user.primaryEmailAddress,
@@ -175,11 +147,11 @@ class AccountController(
   private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
-        val tp = request.touchpoint
+        val services = request.touchpoint
         val userId = request.user.identityId
 
         (for {
-          cancellationEffectiveDate <- tp.subscriptionService
+          cancellationEffectiveDate <- services.subscriptionService
             .decideCancellationEffectiveDate[P](subscriptionName)
             .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
           result = cancellationEffectiveDate.getOrElse("now").toString
