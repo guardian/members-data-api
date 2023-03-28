@@ -4,7 +4,7 @@ import com.gu.i18n.Country
 import com.gu.i18n.Currency.GBP
 import com.gu.zuora.api.StripeUKMembershipGateway
 import com.gu.memsub.Subscription.{AccountId, AccountNumber}
-import com.gu.zuora.rest.ZuoraRestService._
+import services.zuora.rest.ZuoraRestService._
 import org.joda.time.DateTime
 
 object AccountObjectTestData {

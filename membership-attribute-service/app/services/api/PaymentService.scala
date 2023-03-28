@@ -1,12 +1,12 @@
 package services.api
 
+import _root_.services.stripe.StripeService
 import com.gu.memsub.Subscription.{AccountId, Id}
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub._
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.services.model.PaymentDetails
 import com.gu.zuora.soap.models.Queries.Account
 import scalaz.\/
-import _root_.services.StripeService
 
 import scala.concurrent.Future
 

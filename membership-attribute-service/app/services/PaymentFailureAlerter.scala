@@ -1,23 +1,22 @@
 package services
 
-import java.util.Locale
-
 import com.gu.memsub.Product
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.monitoring.SafeLogger
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.gu.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
+import com.typesafe.scalalogging.StrictLogging
 import loghandling.LoggingField.LogFieldString
 import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-
-import scala.concurrent.{ExecutionContext, Future}
 import scalaz.syntax.std.boolean._
+import services.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invoice, Payment, PaymentMethodId, PaymentMethodResponse}
 
-object PaymentFailureAlerter extends LoggingWithLogstashFields {
+import java.util.Locale
+import scala.concurrent.{ExecutionContext, Future}
+
+object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLogging {
 
   private def accountObject(accountSummary: AccountSummary) =
     AccountObject(
@@ -146,13 +145,13 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields {
       case Nil => false
       case invoices => !invoices.forall(invoice => paidInvoiceNumbers.contains(invoice.invoiceNumber))
     }
-    SafeLogger.info(s"${accountId.get} | accountHasMissedPayments: ${unpaidPayableInvoiceOlderThanOneMonth}")
+    logger.info(s"${accountId.get} | accountHasMissedPayments: ${unpaidPayableInvoiceOlderThanOneMonth}")
     unpaidPayableInvoiceOlderThanOneMonth
   }
 
   def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice]): Boolean = {
     val result = !recentInvoices.exists(invoice => invoice.balance > 0 && invoice.invoiceDate.isBefore(DateTime.now.minusMonths(1)))
-    SafeLogger.info(s"${accountId.get} | safeToAllowPaymentUpdate: ${result}")
+    logger.info(s"${accountId.get} | safeToAllowPaymentUpdate: ${result}")
     result
   }
 

@@ -21,8 +21,8 @@ object TestPaidSubscriptionPlan {
       features: List[Feature] = Nil,
       charges: C = TestPaidCharge(),
       chargedThrough: Option[LocalDate] = None, // this is None if the sub hasn't been billed yet (on a free trial)
-      start: LocalDate = LocalDate.now().minusDays(14),
-      end: LocalDate = LocalDate.now().minusDays(14).plusYears(1),
+      start: LocalDate = LocalDate.now().minusDays(13),
+      end: LocalDate = LocalDate.now().minusDays(13).plusYears(1),
   ): PaidSubscriptionPlan[P, C] = PaidSubscriptionPlan(
     id: RatePlanId,
     productRatePlanId,

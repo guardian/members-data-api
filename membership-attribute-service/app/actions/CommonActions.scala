@@ -7,7 +7,6 @@ import controllers.NoCache
 import filters.IsTestUser
 import models.UserFromToken
 import play.api.mvc._
-import services.AuthenticationFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,10 +21,25 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   def noCache(result: Result): Result = NoCache(result)
 
   val NoCacheAction = resultModifier(noCache)
-  def AuthAndBackendViaAuthLibAction(requiredScopes: List[AccessScope]) =
+
+  // TODO: Might need a better name as authoriseForRecentLogin checks for recency and scopes
+  def AuthorizeForScopes(requiredScopes: List[AccessScope]): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
     NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
-  def AuthAndBackendViaIdapiAction(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn) =
-    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser)
+
+  def AuthorizeForRecentLogin(
+      howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
+      requiredScopes: List[AccessScope],
+  ): ActionBuilder[AuthAndBackendRequest, AnyContent] =
+    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes)
+
+  // TODO: Is this redundant, given that authoriseForRecentLogin checks for recency and scopes?
+  def AuthorizeForRecentLoginAndScopes(
+      howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
+      requiredScopes: List[AccessScope],
+  ): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
+    NoCacheAction andThen
+      new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes) andThen
+      new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser
@@ -34,12 +48,10 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   }
 }
 
-class BackendRequest[A](val touchpoint: TouchpointComponents, request: Request[A]) extends WrappedRequest[A](request)
-
 class AuthenticatedUserAndBackendRequest[A](
     val user: UserFromToken,
     val touchpoint: TouchpointComponents,
-    request: Request[A],
+    val request: Request[A],
 ) extends WrappedRequest[A](request)
 
 class AuthAndBackendRequest[A](

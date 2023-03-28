@@ -1,9 +1,9 @@
 package configuration
 
 import com.typesafe.config.Config
-import configuration.OptionalConfig.optionalString
+import configuration.OptionalConfig._
 
 class SentryConfig(private val config: Config) {
   val stage = config.getString("stage")
-  val sentryDsn = optionalString("sentry.dsn", config)
+  val sentryDsn = config.optionalString("sentry.dsn")
 }

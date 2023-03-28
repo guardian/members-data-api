@@ -36,7 +36,6 @@ Mappings:
   Constants:
     Alarm:
       Process: Follow the process in https://docs.google.com/document/d/1_3El3cly9d7u_jPgTcRjLxmdG2e919zCLvmcFCLOYAk/edit
-      Urgent: URGENT 9-5 -
     MetricFilters:
       MetricNamespace: "members-data-api"
   StageVariables:
@@ -50,8 +49,10 @@ Mappings:
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/PROD/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/PROD/*
-      MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName: "PROD - Default Payment Method set to nothing" # can't use !Sub for Stage inside a mapping definition, sigh
-      MembersDataHttpQueuesFullMetricFilterName: "PROD - Http Client Queue full"
+      MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName: "PROD-default-payment-method-set-to-nothing" # can't use !Sub for Stage inside a mapping definition, sigh
+      MembersDataUnsupportedProductRatePlanIdMetricFilterName: "PROD-unsupported-product-rate-plan-id-encountered" # can't use !Sub for Stage inside a mapping definition, sigh
+      MembersDataHttpQueuesFullMetricFilterName: "PROD-http-client-queue-full"
+      Urgent: "URGENT 9-5 -"
 
     CODE:
       MaxInstances: 2
@@ -63,16 +64,20 @@ Mappings:
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/CODE/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/CODE/*
-      MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName: "CODE - Default Payment Method set to nothing"
-      MembersDataHttpQueuesFullMetricFilterName: "CODE - Http Client Queue full"
-
+      MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName: "CODE-default-payment-method-set-to-nothing"
+      MembersDataUnsupportedProductRatePlanIdMetricFilterName: "CODE-unsupported-product-rate-plan-id-encountered"
+      MembersDataHttpQueuesFullMetricFilterName: "CODE-http-client-queue-full"
+      Urgent: "Warning"
 Conditions:
   CreateProdMonitoring: !Equals [ !Ref Stage, PROD ]
+  CreateUnsupportedProductRatePlanAlarm: !Equals [ 1, 2 ] # Disabling the alarm until we can ensure promotions are not longer put in Dymamo (which will trigger the alarm)
+  Create4XXRatioAlarm: !Equals [ 1, 2 ] # disabled while we have a high rate of 401s for android app requests
 
 Resources:
   MembershipRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub members-data-api-${Stage}
       AssumeRolePolicyDocument:
         Statement:
         - Effect: Allow
@@ -177,6 +182,7 @@ Resources:
   AutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
+      AutoScalingGroupName: !Sub members-data-api-${Stage}
       LaunchConfigurationName:
         Ref: LaunchConfig
       MinSize: !FindInMap [ StageVariables, !Ref Stage, MinInstances ]
@@ -230,15 +236,11 @@ Resources:
               aws s3 cp s3://gu-membership-attribute-service-dist/membership/${Stage}/membership-attribute-service/membership-attribute-service_1.0-SNAPSHOT_all.deb /tmp
               dpkg -i /tmp/membership-attribute-service_1.0-SNAPSHOT_all.deb
               mkdir -p /etc/gu
-              aws --region ${AWS::Region} s3 cp s3://gu-reader-revenue-private/membership/members-data-api/${Stage}/members-data-api.private.conf /etc/gu
+              aws s3 cp s3://gu-reader-revenue-private/membership/members-data-api/${Stage}/members-data-api.private.conf /etc/gu
               chown membership-attribute-service /etc/gu/members-data-api.private.conf
               chmod 0600 /etc/gu/members-data-api.private.conf
-
-              wget https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py
-              sed -i -e "s/__DATE/$(date +%F)/" -e 's/__STAGE/${Stage}/' $CONF_DIR/logger.conf
-              python awslogs-agent-setup.py -nr ${AWS::Region} -c $CONF_DIR/logger.conf
-              systemctl enable awslogs
-              systemctl start awslogs
+              
+              /opt/cloudwatch-logs/configure-logs application members ${Stage} data-api /var/log/membership-attribute-service/membership-attribute-service.log;
             - {}
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -280,16 +282,60 @@ Resources:
       LogGroupName: !Sub members-data-api-${Stage}
       RetentionInDays: 14
 
+  MembersDataUnsupportedProductRatePlanIdMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: MembersDataApiLogGroup
+    Properties:
+      FilterName: !Sub members-data-api-${Stage}-unsupported-product-rate-plan-id-metric-filter
+      FilterPattern: "\"Unsupported product rate plan id\""
+      LogGroupName: !Sub members-data-api-${Stage}
+      MetricTransformations:
+      - MetricValue: 1
+        DefaultValue: 0
+        MetricNamespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+        MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataUnsupportedProductRatePlanIdMetricFilterName ]
+
+  MembersDataUnsupportedProductRatePlanIdAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateUnsupportedProductRatePlanAlarm
+    DependsOn:
+    - MembersDataUnsupportedProductRatePlanIdMetricFilter
+    - MembersDataApiLogGroup
+    Properties:
+      AlarmActions:
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - 'Unsupported product rate plan id'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - the /user-attributes/me output might be missing an attribute that should be set because a product rate plan id isn't supported."
+          - !FindInMap [ Constants, Alarm, Process ]
+      EvaluationPeriods: 1
+      Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+      MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataUnsupportedProductRatePlanIdMetricFilterName ]
+      Period: 600
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      TreatMissingData: notBreaching
+
   MembersDataDefaultPaymentMethodLeftEmptyMetricFilter:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
     Properties:
+      FilterName: !Sub members-data-api-${Stage}-default-payment-method-empty-metric-filter
       FilterPattern: "\"default-payment-method-lost\""
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
       - MetricValue: 1
+        DefaultValue: 0
         MetricNamespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
         MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName ]
+
   MembersDataDefaultPaymentMethodLeftEmptyAlarm:
     Type: AWS::CloudWatch::Alarm
     DependsOn:
@@ -299,9 +345,11 @@ Resources:
     Properties:
       AlarmActions:
       - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
-      AlarmName: !Join
+      AlarmName:
+        !Join
         - ' '
-        - - !FindInMap [ Constants, Alarm, Urgent ]
+        -
+          - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
           - !Ref 'Stage'
           - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           - 'Default Payment Method set to nothing'
@@ -309,11 +357,6 @@ Resources:
         - ' '
         - - "Impact - a user has been left with no Default Payment method, so we can't take payment from them indefinitely"
           - !FindInMap [ Constants, Alarm, Process ]
-      Dimensions:
-      - Name: LogGroup
-        Value: !Sub members-data-api-${Stage}
-      - Name: Stage
-        Value: !Sub ${Stage}
       EvaluationPeriods: 1
       Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
       MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataDefaultPaymentMethodLeftEmptyMetricFilterName ]
@@ -327,24 +370,26 @@ Resources:
     Type: AWS::Logs::MetricFilter
     DependsOn: MembersDataApiLogGroup
     Properties:
+      FilterName: !Sub members-data-api-${Stage}-http-queues-full-metric-filter
       FilterPattern: "\"Max wait queue limit of 256 reached, not scheduling.\""
       LogGroupName: !Sub members-data-api-${Stage}
       MetricTransformations:
         - MetricValue: 1
+          DefaultValue: 0
           MetricNamespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataHttpQueuesFullMetricFilterName ]
+
   MembersDataHttpQueuesFullAlarm:
     Type: AWS::CloudWatch::Alarm
     DependsOn:
       - MembersDataHttpQueuesFullMetricFilter
       - MembersDataApiLogGroup
-    Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
         - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
-        - - !FindInMap [ Constants, Alarm, Urgent ]
+        - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
           - !Ref 'Stage'
           - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           - 'Http Client Queue is full'
@@ -352,11 +397,6 @@ Resources:
         - ' '
         - - "Impact - basically app is not responding (no longer serving traffic)"
           - !FindInMap [ Constants, Alarm, Process ]
-      Dimensions:
-        - Name: LogGroup
-          Value: !Sub members-data-api-${Stage}
-        - Name: Stage
-          Value: !Sub ${Stage}
       EvaluationPeriods: 1
       Namespace: !FindInMap [ Constants , MetricFilters , MetricNamespace ]
       MetricName: !FindInMap [ StageVariables , !Ref Stage , MembersDataHttpQueuesFullMetricFilterName ]
@@ -368,11 +408,11 @@ Resources:
 
   4XXRatioAlarm:
     Type: 'AWS::CloudWatch::Alarm'
-    Condition: CreateProdMonitoring
+    Condition: Create4XXRatioAlarm
     Properties:
       AlarmName: !Join
         - ' '
-        - - !FindInMap [ Constants, Alarm, Urgent ]
+        - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
           - !Ref 'Stage'
           - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           - '4XX Ratio has exceeded 20%'
@@ -423,7 +463,7 @@ Resources:
         - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
-        - - !FindInMap [ Constants, Alarm, Urgent ]
+        - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
           - !Ref 'Stage'
           - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           - 'No healthy instances'
@@ -452,7 +492,7 @@ Resources:
         - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
       AlarmName: !Join
         - ' '
-        - - !FindInMap [ Constants, Alarm, Urgent ]
+        - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
           - !Ref 'Stage'
           - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
           - 'High 5XX rate'

@@ -1,6 +1,7 @@
 package services
 
 import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
+import _root_.services.stripe.BasicStripeService
 import com.github.nscala_time.time.Imports.DateTimeFormat
 import com.gu.memsub.BillingPeriod.{Month, RecurringPeriod, Year}
 import com.gu.memsub.Product.GuardianPatron
@@ -12,6 +13,7 @@ import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
+import monitoring.CreateMetrics
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
 import utils.SimpleEitherT.SimpleEitherT
@@ -22,13 +24,17 @@ class GuardianPatronService(
     supporterProductDataService: SupporterProductDataService,
     patronsStripeService: BasicStripeService,
     stripePatronsPublicKey: String,
+    createMetrics: CreateMetrics,
 )(implicit executionContext: ExecutionContext) {
+  private val metrics = createMetrics.forService(classOf[GuardianPatronService])
 
   def getGuardianPatronAccountDetails(userId: String): SimpleEitherT[List[AccountDetails]] = {
-    for {
-      supporterRatePlanItems <- supporterProductDataService.getSupporterRatePlanItems(userId)
-      stripeDetails <- EitherT.rightT(getListDetailsFromStripe(supporterRatePlanItems))
-    } yield stripeDetails
+    metrics.measureDurationEither("getGuardianPatronAccountDetails") {
+      for {
+        supporterRatePlanItems <- supporterProductDataService.getSupporterRatePlanItems(userId)
+        stripeDetails <- EitherT.rightT(getListDetailsFromStripe(supporterRatePlanItems))
+      } yield stripeDetails
+    }
   }
 
   private def getListDetailsFromStripe(items: List[DynamoSupporterRatePlanItem]): Future[List[AccountDetails]] = {
@@ -43,10 +49,13 @@ class GuardianPatronService(
   private def isGuardianPatronProduct(item: DynamoSupporterRatePlanItem) =
     item.productRatePlanId == guardianPatronProductRatePlanId
 
-  private def fetchAccountDetailsFromStripe(subscriptionId: String): Future[AccountDetails] = for {
-    subscription <- patronsStripeService.fetchSubscription(subscriptionId)
-    paymentDetails <- patronsStripeService.fetchPaymentMethod(subscription.customer.id)
-  } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, stripePatronsPublicKey)
+  private def fetchAccountDetailsFromStripe(subscriptionId: String): Future[AccountDetails] =
+    metrics.measureDuration("fetchAccountDetailsFromStripe") {
+      for {
+        subscription <- patronsStripeService.fetchSubscription(subscriptionId)
+        paymentDetails <- patronsStripeService.fetchPaymentMethod(subscription.customer.id)
+      } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, stripePatronsPublicKey)
+    }
 
   private def billingPeriodFromInterval(interval: String): RecurringPeriod = interval match {
     case "year" => Year

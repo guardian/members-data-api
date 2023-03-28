@@ -2,16 +2,13 @@ package wiring
 
 import actions.CommonActions
 import akka.actor.ActorSystem
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
-import com.gu.salesforce.SimpleContactRepository
-import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.rest.ZuoraRestService
+import com.gu.memsub.subsv2.services.CatalogService
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
 import filters._
 import loghandling.Logstash
-import monitoring.{CreateMetrics, ErrorHandler, SentryLogging}
+import monitoring.{CreateMetrics, CreateRealMetrics, ErrorHandler, SentryLogging}
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -20,8 +17,12 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
+import services.salesforce.ContactRepository
+import services.stripe.BasicStripeService
+import services.subscription.SubscriptionService
+import services.zuora.rest.ZuoraRestService
+import services.zuora.soap.ZuoraSoapService
 import services.{
-  BasicStripeService,
   ContributionsStoreDatabaseService,
   HealthCheckableService,
   MobileSubscriptionServiceImpl,
@@ -55,12 +56,12 @@ class MyComponents(context: Context)
 
   lazy val config = context.initialConfiguration.underlying
   lazy val stage = Stage(config.getString("stage"))
-  lazy val createMetrics = new CreateMetrics(stage)
+  lazy val createMetrics = new CreateRealMetrics(stage)
 
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
-  lazy val contactRepositoryOverride: Option[SimpleContactRepository] = None
-  lazy val subscriptionServiceOverride: Option[SubscriptionService[Future]] = None
-  lazy val zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None
+  lazy val contactRepositoryOverride: Option[ContactRepository] = None
+  lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
+  lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
   lazy val catalogServiceOverride: Option[CatalogService[Future]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None

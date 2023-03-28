@@ -6,25 +6,26 @@ import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
-import services.PaymentService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
-import com.gu.monitoring.SafeLogger._
-import com.gu.monitoring.{SafeLogger, ZuoraMetrics}
+import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog}
+import com.gu.monitoring.ZuoraMetrics
 import com.gu.okhttp.RequestRunners
-import com.gu.salesforce.SimpleContactRepository
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway}
-import com.gu.zuora.rest.{SimpleClient, ZuoraRestService}
+import com.gu.zuora.rest
 import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
+import configuration.OptionalConfig._
 import configuration.Stage
 import models.{UserFromToken, UserFromTokenParser}
-import monitoring.CreateMetrics
+import monitoring.{CreateMetrics, CreateNoopMetrics}
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
+import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
+import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
+import services.subscription.{SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
+import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
+import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -33,27 +34,28 @@ import software.amazon.awssdk.auth.credentials.{
 }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
+import utils.SanitizedLogging
+import utils.Sanitizer.Sanitizer
 
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class TouchpointComponents(
     stage: Stage,
     createMetrics: CreateMetrics,
     conf: Config,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
-    contactRepositoryOverride: Option[SimpleContactRepository] = None,
-    subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
-    zuoraRestServiceOverride: Option[ZuoraRestService[Future]] = None,
+    contactRepositoryOverride: Option[ContactRepository] = None,
+    subscriptionServiceOverride: Option[SubscriptionService] = None,
+    zuoraRestServiceOverride: Option[ZuoraRestService] = None,
     catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
 )(implicit
     system: ActorSystem,
     executionContext: ExecutionContext,
-) {
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+) extends SanitizedLogging {
   lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
   lazy val environmentConfig = touchpointConfig.getConfig(s"environments." + stage.value)
 
@@ -68,21 +70,26 @@ class TouchpointComponents(
   lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
   lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
-  lazy val tpConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
-  implicit lazy val _bt: TouchpointBackendConfig = tpConfig
+  lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
 
-  lazy val patronsStripeService: BasicStripeService = patronsStripeServiceOverride
-    .getOrElse(new BasicStripeService(tpConfig.stripePatrons, RequestRunners.futureRunner))
-  lazy val ukStripeService: StripeService = new StripeService(tpConfig.stripeUKMembership, RequestRunners.futureRunner)
-  lazy val auStripeService: StripeService = new StripeService(tpConfig.stripeAUMembership, RequestRunners.futureRunner)
-  lazy val allStripeServices: Seq[StripeService] = Seq(ukStripeService, auStripeService)
-  lazy val stripeServicesByPaymentGateway: Map[PaymentGateway, StripeService] = allStripeServices.map(s => s.paymentGateway -> s).toMap
-  lazy val stripeServicesByPublicKey: Map[String, StripeService] = allStripeServices.map(s => s.publicKey -> s).toMap
+  lazy val useFineMetrics = conf.optionalBoolean("use-fine-metrics", false)
+  lazy val createFineMetrics: CreateMetrics = if (useFineMetrics) createMetrics else CreateNoopMetrics
 
-  lazy val contactRepo: SimpleContactRepository = contactRepositoryOverride.getOrElse(
-    new SimpleContactRepository(tpConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName),
-  )
-  lazy val salesforceService: SalesforceService = new SalesforceService(contactRepo)
+  lazy val patronsStripeService: BasicStripeService = {
+    lazy val patronsBasicHttpStripeService = new HttpBasicStripeService(backendConfig.stripePatrons, RequestRunners.futureRunner)
+    patronsStripeServiceOverride
+      .getOrElse(new BasicStripeServiceWithMetrics(patronsBasicHttpStripeService, createFineMetrics))
+  }
+
+  lazy val salesforce = CreateScalaforce(backendConfig.salesforce, system.scheduler, configuration.ApplicationName.applicationName)
+
+  lazy val contactRepository: ContactRepository = {
+    lazy val simpleContactRepository = new SimpleContactRepository(salesforce)
+    lazy val contactRepositoryWithMetrics = new ContactRepositoryWithMetrics(simpleContactRepository, createFineMetrics)
+
+    contactRepositoryOverride.getOrElse(contactRepositoryWithMetrics)
+  }
+  lazy val salesforceService: SalesforceService = new SalesforceService(salesforce)
 
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
     .credentialsProviders(
@@ -104,24 +111,36 @@ class TouchpointComponents(
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
   private val zuoraMetrics = new ZuoraMetrics(stage.value, configuration.ApplicationName.applicationName)
-  private lazy val zuoraSoapClient =
-    new ClientWithFeatureSupplier(
-      featureCodes = Set.empty,
-      apiConfig = tpConfig.zuoraSoap,
-      httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
-      extendedHttpClient = RequestRunners.futureRunner,
-      metrics = zuoraMetrics,
+
+  lazy val zuoraSoapService = {
+    lazy val zuoraSoapClient =
+      new ClientWithFeatureSupplier(
+        featureCodes = Set.empty,
+        apiConfig = backendConfig.zuoraSoap,
+        httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
+        extendedHttpClient = RequestRunners.futureRunner,
+        metrics = zuoraMetrics,
+      )
+
+    lazy val simpleZuoraSoapService = new SimpleZuoraSoapService(zuoraSoapClient)
+
+    zuoraServiceOverride.getOrElse(
+      new ZuoraSoapServiceWithMetrics(simpleZuoraSoapService, createFineMetrics) with HealthCheckableService {
+        override def checkHealth: Boolean = zuoraSoapClient.isReady
+      },
     )
-  lazy val zuoraService = zuoraServiceOverride.getOrElse(
-    new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
-      override def checkHealth: Boolean = zuoraSoapClient.isReady
-    },
-  )
+  }
 
-  private lazy val zuoraRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
-  lazy val zuoraRestService = zuoraRestServiceOverride.getOrElse(new ZuoraRestService[Future]()(futureInstance(ec), zuoraRestClient))
+  lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
 
-  lazy val catalogRestClient = new SimpleClient[Future](tpConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+  lazy val zuoraRestService: ZuoraRestService = {
+    lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
+    zuoraRestServiceOverride.getOrElse(
+      new ZuoraRestServiceWithMetrics(simpleClientZuoraRestService, createFineMetrics)(executionContext),
+    )
+  }
+
+  lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = catalogServiceOverride.getOrElse(
     new CatalogService[Future](productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
   )
@@ -129,22 +148,26 @@ class TouchpointComponents(
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
     .map(_.fold[CatalogMap](error => { println(s"error: ${error.list.toList.mkString}"); Map() }, _.map))
     .recover { case error =>
-      SafeLogger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
+      logError(scrub"Failed to load the product catalog from Zuora due to: $error")
       throw error
     }
 
-  lazy val subService: SubscriptionService[Future] = subscriptionServiceOverride.getOrElse(
-    new SubscriptionService[Future](productIds, futureCatalog, zuoraRestClient, zuoraService.getAccountIds),
-  )
-  lazy val paymentService: PaymentService = new PaymentService(zuoraService, catalogService.unsafeCatalog.productMap)
+  lazy val subscriptionService: SubscriptionService = {
+    lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService.getAccountIds)
 
-  lazy val idapiService = new IdapiService(tpConfig.idapi, RequestRunners.futureRunner)
+    subscriptionServiceOverride.getOrElse(
+      new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createFineMetrics),
+    )
+  }
+  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
+
+  lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
     issuerUrl = conf.getString("okta.verifier.issuerUrl"),
     audience = conf.getString("okta.verifier.audience"),
   )
   lazy val identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims] = {
-    val apiConfig = tpConfig.idapi
+    val apiConfig = backendConfig.idapi
     val idApiUrl = Uri.unsafeFromString(apiConfig.url)
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
     IdentityPlayAuthService.unsafeInit(
@@ -156,9 +179,14 @@ class TouchpointComponents(
   lazy val identityAuthService = new IdentityAuthService(identityPlayAuthService)
 
   lazy val guardianPatronService =
-    new GuardianPatronService(supporterProductDataService, patronsStripeService, tpConfig.stripePatrons.stripeCredentials.publicKey)
+    new GuardianPatronService(
+      supporterProductDataService,
+      patronsStripeService,
+      backendConfig.stripePatrons.stripeCredentials.publicKey,
+      createMetrics,
+    )
 
-  lazy val chooseStripeService: ChooseStripeService = new ChooseStripeService(stripeServicesByPaymentGateway, ukStripeService)
+  lazy val chooseStripe: ChooseStripe = ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership, createMetrics)
 
   lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
 
@@ -166,9 +194,9 @@ class TouchpointComponents(
     new AccountDetailsFromZuora(
       createMetrics,
       zuoraRestService,
-      contactRepo,
-      subService,
-      chooseStripeService,
+      contactRepository,
+      subscriptionService,
+      chooseStripe,
       paymentDetailsForSubscription,
     )
 }

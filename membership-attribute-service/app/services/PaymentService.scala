@@ -1,16 +1,15 @@
 package services
 
+import _root_.services.stripe.StripeService
+import _root_.services.zuora.soap.ZuoraSoapService
 import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.SubscriptionPlan.Contributor
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingSchedule, Subscription => _, _}
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger.Sanitizer
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.Payment
 import com.gu.stripe.Stripe
 import com.gu.stripe.Stripe.Customer
-import com.gu.zuora.api.ZuoraService
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Queries.Account
 import com.gu.zuora.soap.models.Queries.PaymentMethod._
@@ -19,12 +18,15 @@ import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.{MonadTrans, OptionT, \/}
+import utils.SanitizedLogging
+import utils.Sanitizer.Sanitizer
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
-    extends api.PaymentService {
+class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
+    extends api.PaymentService
+    with SanitizedLogging {
 
   implicit val monadTrans = MonadTrans[OptionT] // it's the only one we use here, really
 
@@ -44,8 +46,8 @@ class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanCha
     lastPaymentDate.onComplete {
       case Failure(exception) =>
         val message = scrub"Failed to get last payment date for sub $sub"
-        SafeLogger.error(message, exception)
-      case Success(_) => SafeLogger.info(s"Successfully got payment details for $sub")
+        logError(message, exception)
+      case Success(_) => logger.info(s"Successfully got payment details for $sub")
     }
 
     val nextPaymentDate = sub.plan match {
@@ -67,8 +69,8 @@ class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanCha
         schedule.onComplete {
           case Failure(exception) =>
             val message = scrub"Failed to get billing schedule for sub $sub"
-            SafeLogger.error(message, exception)
-          case Success(_) => SafeLogger.info(s"Successfully got billing schedule for $sub")
+            logError(message, exception)
+          case Success(_) => logger.info(s"Successfully got billing schedule for $sub")
         }
         schedule
       }
@@ -189,8 +191,8 @@ class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanCha
       account.onComplete {
         case Failure(exception) =>
           val message = scrub"Failed to get account for account $accountId"
-          SafeLogger.error(message, exception)
-        case Success(_) => SafeLogger.info(s"Successfully got account for $accountId")
+          logError(message, exception)
+        case Success(_) => logger.info(s"Successfully got account for $accountId")
       }
       account
     }
@@ -199,8 +201,8 @@ class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanCha
       paymentMethod.onComplete {
         case Failure(exception) =>
           val message = scrub"Failed to get payment method for account $accountId"
-          SafeLogger.error(message, exception)
-        case Success(_) => SafeLogger.info(s"Successfully got payment method for $accountId")
+          logError(message, exception)
+        case Success(_) => logger.info(s"Successfully got payment method for $accountId")
       }
       paymentMethod
     }

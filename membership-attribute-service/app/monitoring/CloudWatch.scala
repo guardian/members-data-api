@@ -2,21 +2,16 @@ package monitoring
 
 import com.amazonaws.handlers.AsyncHandler
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
-import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResult}
+import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResult, StandardUnit}
 import com.typesafe.scalalogging.StrictLogging
 
-trait CloudWatch extends StrictLogging {
-  val stage: String
-  val application: String
-  val service: String
-  val cloudwatch: AmazonCloudWatchAsync
-  lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
-  lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
-  def mandatoryDimensions: Seq[Dimension] = Seq(stageDimension, servicesDimension)
+class CloudWatch(stage: String, application: String, service: String, cloudwatch: AmazonCloudWatchAsync) extends StrictLogging {
+  private lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
+  private lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
 
-  val loggingAsyncHandler = new LoggingAsyncHandler()
+  private val mandatoryDimensions = Seq(stageDimension, servicesDimension)
 
-  protected def put(name: String, count: Double, unit: String): Unit = {
+  protected[monitoring] def put(name: String, count: Double, unit: StandardUnit): Unit = {
     val metric =
       new MetricDatum()
         .withValue(count)
@@ -26,16 +21,16 @@ trait CloudWatch extends StrictLogging {
 
     val request = new PutMetricDataRequest().withNamespace(application).withMetricData(metric)
 
-    cloudwatch.putMetricDataAsync(request, loggingAsyncHandler)
+    cloudwatch.putMetricDataAsync(request, LoggingAsyncHandler)
   }
 }
 
-class LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with StrictLogging {
-  def onError(exception: Exception) {
-    logger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
+object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with StrictLogging {
+  def onError(exception: Exception): Unit = {
+    logger.error(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
   }
 
-  def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult) {
+  def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult): Unit = {
     logger.trace("CloudWatch PutMetricDataRequest - success")
   }
 }

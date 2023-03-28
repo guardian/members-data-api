@@ -1,6 +1,5 @@
 package acceptance
 
-import acceptance.data.Randoms.randomId
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
 import acceptance.data.{
   IdentityResponse,
@@ -13,13 +12,9 @@ import acceptance.data.{
   TestSubscription,
 }
 import com.gu.i18n.Currency
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.memsub.subsv2.services.CatalogService
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
-import com.gu.salesforce.SimpleContactRepository
-import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.rest.ZuoraRestService
-import com.gu.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import kong.unirest.Unirest
 import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any
@@ -29,13 +24,13 @@ import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
-import services.{
-  BasicStripeService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  SupporterProductDataService,
-  SupporterRatePlanToAttributesMapper,
-}
+import services.salesforce.ContactRepository
+import services.stripe.BasicStripeService
+import services.subscription.SubscriptionService
+import services.zuora.rest.ZuoraRestService
+import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
+import services.zuora.soap.ZuoraSoapService
+import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService, SupporterRatePlanToAttributesMapper}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
@@ -43,9 +38,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class AccountControllerAcceptanceTest extends AcceptanceTest {
-  var contactRepositoryMock: SimpleContactRepository = _
-  var subscriptionServiceMock: SubscriptionService[Future] = _
-  var zuoraRestServiceMock: ZuoraRestService[Future] = _
+  var contactRepositoryMock: ContactRepository = _
+  var subscriptionServiceMock: SubscriptionService = _
+  var zuoraRestServiceMock: ZuoraRestService = _
   var catalogServiceMock: CatalogService[Future] = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
@@ -53,9 +48,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var patronsStripeServiceMock: BasicStripeService = _
 
   override protected def before: Unit = {
-    contactRepositoryMock = mock[SimpleContactRepository]
-    subscriptionServiceMock = mock[SubscriptionService[Future]]
-    zuoraRestServiceMock = mock[ZuoraRestService[Future]]
+    contactRepositoryMock = mock[ContactRepository]
+    subscriptionServiceMock = mock[SubscriptionService]
+    zuoraRestServiceMock = mock[ZuoraRestService]
     catalogServiceMock = mock[CatalogService[Future]]
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
@@ -119,7 +114,14 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         )
         .respond(
           response()
-            .withBody(IdentityResponse(userId = 200067388)),
+            .withBody(
+              IdentityResponse(
+                userId = 200067388,
+                firstName = "Frank",
+                lastName = "Poole",
+                email = "frank.poole@amail.com",
+              ),
+            ),
         )
 
       val contact = TestContact(identityId = "200067388")
@@ -127,10 +129,11 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
 
       val giftSubscription = GiftSubscriptionsFromIdentityIdRecord(
-        randomId("giftSubscriptionName"),
-        randomId("giftSubscriptionId"),
-        LocalDate.now().plusYears(1),
+        Id = "giftSubscriptionId",
+        Name = "giftSubscriptionName",
+        TermEndDate = LocalDate.now().plusYears(1),
       )
+
       zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388") returns Future(
         \/.right(
           List(giftSubscription),
@@ -139,6 +142,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val nonGiftSubscription = TestSubscription()
       val nonGiftSubscriptionAccountId = nonGiftSubscription.accountId
+
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns
         Future(List(nonGiftSubscription))
 
@@ -187,6 +191,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         )
         .asString
 
+      httpResponse.getStatus shouldEqual 200
+
       contactRepositoryMock.get("200067388") was called
       supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") was called
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) was called
@@ -212,15 +218,17 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraSoapServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
 
-      httpResponse.getStatus shouldEqual 200
-
       val body = httpResponse.getBody
       val json = Json.parse(body)
 
       identityMockClientAndServer.verify(redirectAdviceRequest)
       identityMockClientAndServer.verify(identityRequest)
 
-      val productsArray = json.as[JsArray].value
+      (json \ "user" \ "firstName").as[String] shouldEqual "Frank"
+      (json \ "user" \ "lastName").as[String] shouldEqual "Poole"
+      (json \ "user" \ "email").as[String] shouldEqual "frank.poole@amail.com"
+
+      val productsArray = (json \ "products").as[JsArray].value
       productsArray.size shouldEqual 3
 
       val membershipProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "membership").get
