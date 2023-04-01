@@ -124,7 +124,11 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
             ),
         )
 
-      val contact = TestContact(identityId = "200067388")
+      val contact = TestContact(
+        identityId = "200067388",
+        firstName = Some("James"),
+        lastName = "Cromwell",
+      )
 
       contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
 
@@ -224,8 +228,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       identityMockClientAndServer.verify(redirectAdviceRequest)
       identityMockClientAndServer.verify(identityRequest)
 
-      (json \ "user" \ "firstName").as[String] shouldEqual "Frank"
-      (json \ "user" \ "lastName").as[String] shouldEqual "Poole"
+      (json \ "user" \ "firstName").as[String] shouldEqual "James"
+      (json \ "user" \ "lastName").as[String] shouldEqual "Cromwell"
       (json \ "user" \ "email").as[String] shouldEqual "frank.poole@amail.com"
 
       val productsArray = (json \ "products").as[JsArray].value

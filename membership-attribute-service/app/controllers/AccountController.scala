@@ -7,6 +7,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.salesforce.Contact
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
@@ -269,12 +270,17 @@ class AccountController(
         val userId = user.identityId
 
         logger.info(s"Attempting to retrieve payment details for identity user: $userId")
+        val contactRepository = request.touchpoint.contactRepository
 
-        paymentDetails(userId, filter, request.touchpoint).toEither
+        val response = for {
+          contact <- SimpleEitherT.fromFutureOption(contactRepository.get(userId), s"No contact found in salesforce for identityId $userId")
+          details <- paymentDetails(userId, contact, filter, request.touchpoint)
+        } yield ProductsResponse.from(user, contact, details)
+
+        response.toEither
           .map {
-            case Right(subscriptionList) =>
+            case Right(response) =>
               logger.info(s"Successfully retrieved payment details result for identity user: $userId")
-              val response = ProductsResponse.from(user, subscriptionList)
               Ok(Json.toJson(response))
             case Left(message) =>
               logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
@@ -285,11 +291,12 @@ class AccountController(
 
   private def paymentDetails(
       userId: String,
+      contact: Contact,
       filter: OptionalSubscriptionsFilter,
       touchpointComponents: TouchpointComponents,
   ): SimpleEitherT[List[AccountDetails]] = {
     for {
-      fromZuora <- touchpointComponents.accountDetailsFromZuora.fetch(userId, filter)
+      fromZuora <- touchpointComponents.accountDetailsFromZuora.fetch(userId, contact, filter)
       fromStripe <- touchpointComponents.guardianPatronService.getGuardianPatronAccountDetails(userId)
     } yield fromZuora ++ fromStripe
   }

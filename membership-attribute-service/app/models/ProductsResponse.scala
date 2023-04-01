@@ -1,5 +1,6 @@
 package models
 
+import com.gu.salesforce.Contact
 import play.api.libs.json._
 
 case class UserDetails(firstName: Option[String], lastName: Option[String], email: String)
@@ -11,11 +12,11 @@ object ProductsResponse {
   implicit val accountDetailsWrites = Writes[AccountDetails](_.toJson)
   implicit val writes = Json.writes[ProductsResponse]
 
-  def from(user: UserFromToken, products: List[AccountDetails]) =
+  def from(user: UserFromToken, contact: Contact, products: List[AccountDetails]) =
     ProductsResponse(
       user = UserDetails(
-        firstName = user.firstName,
-        lastName = user.lastName,
+        firstName = contact.firstName,
+        lastName = Some(contact.lastName).filterNot(_.isEmpty),
         email = user.primaryEmailAddress,
       ),
       products = products,

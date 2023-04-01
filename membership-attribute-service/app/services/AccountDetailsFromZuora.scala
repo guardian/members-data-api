@@ -35,15 +35,19 @@ class AccountDetailsFromZuora(
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
-  def fetch(userId: String, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[AccountDetails]] = {
+  def fetch(userId: String, contact: Contact, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[AccountDetails]] = {
     metrics.measureDurationEither("accountDetailsFromZuora") {
-      SimpleEitherT.fromListT(accountDetailsFromZuoraFor(userId, filter))
+      SimpleEitherT.fromListT(accountDetailsFromZuoraFor(userId, contact, filter))
     }
   }
 
-  private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter): ListT[SimpleEitherT, AccountDetails] = {
+  private def accountDetailsFromZuoraFor(
+      userId: String,
+      contact: Contact,
+      filter: OptionalSubscriptionsFilter,
+  ): ListT[SimpleEitherT, AccountDetails] = {
     for {
-      contactAndSubscription <- allCurrentSubscriptions(userId, filter)
+      contactAndSubscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
       isPaidSubscription = differentiateSubscription(contactAndSubscription).isRight
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
@@ -106,16 +110,6 @@ class AccountDetailsFromZuora(
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
       filtered = applyFilter(filter, contactAndSubscriptions)
     } yield filtered
-  }
-
-  private def allCurrentSubscriptions(
-      userId: String,
-      filter: OptionalSubscriptionsFilter,
-  ): ListTEither[ContactAndSubscription] = {
-    for {
-      contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
-      subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
-    } yield subscription
   }
 
   private def getAccountDetailsParallel(
