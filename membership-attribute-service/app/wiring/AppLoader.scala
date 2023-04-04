@@ -70,7 +70,7 @@ class MyComponents(context: Context)
   lazy val chooseStripeOverride: Option[ChooseStripe] = None
 
   lazy val emailQueueName = QueueName(if (isProd) "braze-emails-PROD" else "braze-emails-CODE")
-  lazy val sendEmail: SendEmail = _ => Future.successful(())
+  lazy val sendEmail: SendEmail = new SendEmailToSQS(emailQueueName)
 
   lazy val touchPointBackends = new TouchpointBackends(
     actorSystem,
