@@ -22,7 +22,14 @@ import services.stripe.{BasicStripeService, ChooseStripe}
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
-import services.{CatalogService, ContributionsStoreDatabaseService, HealthCheckableService, MobileSubscriptionServiceImpl, PostgresDatabaseService, SupporterProductDataService}
+import services.{
+  CatalogService,
+  ContributionsStoreDatabaseService,
+  HealthCheckableService,
+  MobileSubscriptionServiceImpl,
+  PostgresDatabaseService,
+  SupporterProductDataService,
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 
