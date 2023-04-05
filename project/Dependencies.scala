@@ -3,7 +3,7 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientVersion = "1.12.438"
+  val awsClientVersion = "1.12.442"
   val awsClientV2Version = "2.20.31"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "1.7.5"
