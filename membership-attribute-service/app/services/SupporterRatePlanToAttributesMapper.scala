@@ -173,6 +173,8 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0f949efde7c0149f1f18162178e",
     ) -> memberTransformer(Staff),
     List(
+      "8a129ce886834fa90186a20c3ee70b6a", // 2023 price rise annual
+      "8a1287c586832d250186a2040b1548fe", // 2023 price rise monthly
       "2c92a0f94c547592014c69f5b0ff4f7e",
       "2c92a0fb4c5481db014c69f4a1e03bbd",
       "2c92a0fb4bb97034014bbbc562114fef",
