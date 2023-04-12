@@ -37,10 +37,10 @@ object Emails {
       contact.salesforceContactId,
       "subscription-cancelled-email",
       Map(
-        "first_name" -> "Frank",
-        "last_name" -> "Poole",
+        "last_name" -> contact.lastName,
         "product_type" -> plan.productName,
-      ) ++ cancellationEffectiveDate.map("cancellation_effective_date" -> dateFormat.print(_)),
+      ) ++ cancellationEffectiveDate.map("cancellation_effective_date" -> dateFormat.print(_)) ++
+        contact.firstName.map(firstName => "first_name" -> firstName),
     )
   }
 
