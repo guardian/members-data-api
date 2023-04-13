@@ -172,7 +172,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
           "first_name" -> "Frank",
           "last_name" -> "Poole",
           "payment_method" -> "direct_debit",
-          "product_type" -> "Sunday",
+          "product_type" -> "Newspaper - Home Delivery",
         ),
       )
 
@@ -182,7 +182,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productName = "Sunday"), Nil),
+        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Newspaper - Home Delivery"), Nil),
       )
 
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns Future(List(subscription))
@@ -345,7 +345,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productName = "Digital Pack"), Nil),
+        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Digital Pack"), Nil),
       )
 
       subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns Future(List(subscription))

@@ -21,7 +21,7 @@ object Emails {
         "first_name" -> contact.firstName.getOrElse(""),
         "last_name" -> contact.lastName,
         "payment_method" -> paymentMethod.valueForEmail,
-        "product_type" -> plan.productName,
+        "product_type" -> plan.productType,
       ),
     )
   }
@@ -38,7 +38,7 @@ object Emails {
       "subscription-cancelled-email",
       Map(
         "last_name" -> contact.lastName,
-        "product_type" -> plan.productName,
+        "product_type" -> plan.productType,
       ) ++ cancellationEffectiveDate.map("cancellation_effective_date" -> dateFormat.print(_)) ++
         contact.firstName.map(firstName => "first_name" -> firstName),
     )
