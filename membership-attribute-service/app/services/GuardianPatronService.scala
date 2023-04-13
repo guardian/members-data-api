@@ -92,6 +92,7 @@ class GuardianPatronService(
             name = subscription.plan.id,
             description = "Guardian Patron",
             productName = "Guardian Patron",
+            productType = "Membership",
             product = GuardianPatron,
             features = Nil,
             charges = PaidCharge(

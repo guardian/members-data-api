@@ -25,6 +25,7 @@ import org.mockserver.model.Cookie
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
+import play.api.libs.json.Json.parse
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
 import services.mail.{EmailData, SendEmail}
@@ -433,7 +434,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productName = "Digital Pack"), Nil),
+        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Digital Pack"), Nil),
         termEndDate = new LocalDate(2024, 4, 12),
       )
 
