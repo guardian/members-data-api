@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
+    <suppress>
+        <notes><![CDATA[
+          file name: dispatch-core_2.11-0.13.2.jar
+          There are a number of incorrect vulnerabilities showing for this library based on analysis that it may use
+          async-http-client:0.13.2. It actually uses version 2.0.36 so does not have any of these vulnerabilities
+          ]]>
+        </notes>
+        <gav regex="true">^net\.databinder\.dispatch:dispatch-core_2\.11:.*$</gav>
+        <cpe>cpe:/a:async-http-client_project:async-http-client</cpe>
+    </suppress>
+    <!-- The following dependencies are introduced by dispatch-core -->
+    <suppress>
+        <notes><![CDATA[
+           This vulnerability exists in v3.9.2 of Netty. The version used by dispatch-core -> async-http-client
+           is 4.0.51.Final
+           ]]>
+        </notes>
+        <gav regex="true">^org\.asynchttpclient:.*$</gav>
+        <cve>CVE-2014-3488</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+           This vulnerability exists in v3.9.2 of Netty. The version used by dispatch-core -> async-http-client
+           is 4.0.51.Final
+           ]]>
+        </notes>
+        <gav regex="true">^com\.typesafe\.netty:.*$</gav>
+        <cve>CVE-2014-3488</cve>
+    </suppress>
+    <!-- End dispatch-core -->
+</suppressions>
