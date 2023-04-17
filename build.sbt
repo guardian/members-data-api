@@ -56,6 +56,8 @@ val buildDebSettings = Seq(
   ),
 )
 
+val `membership-common` = project in file("membership-common")
+
 val api = Project("membership-attribute-service", file("membership-attribute-service"))
   .enablePlugins(SystemdPlugin, PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging)
   .settings(commonSettings)
@@ -71,5 +73,6 @@ val api = Project("membership-attribute-service", file("membership-attribute-ser
     addCommandAlias("batch-load", "runMain BatchLoader"),
     addCommandAlias("play-artifact", "riffRaffNotifyTeamcity"),
   )
+  .dependsOn(`membership-common`)
 
 val root = project.in(file(".")).aggregate(api)

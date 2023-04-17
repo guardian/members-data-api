@@ -18,7 +18,6 @@ object Dependencies {
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val membershipCommon = "com.gu" %% "membership-common" % "0.640"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.0.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
@@ -64,7 +63,6 @@ object Dependencies {
     awsSQS,
     awsCloudWatch,
     scalaz,
-    membershipCommon,
     specs2.exclude("org.specs2", "specs2-mock_2.13"),
     kinesis,
     logstash,

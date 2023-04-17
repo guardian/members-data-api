@@ -15,6 +15,13 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 
 addSbtPlugin("org.jmotor.sbt" % "sbt-dependency-updates" % "1.2.7")
 
+addSbtPlugin("com.localytics" % "sbt-dynamodb" % "2.0.3") // Needed for membership-common
+
+addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.2.1") // Needed for membership-common
+
+addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.15") // Needed for membership-common
+
+
 libraryDependencies += "org.vafer" % "jdeb" % "1.10"
 
 dependencyOverrides += "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
