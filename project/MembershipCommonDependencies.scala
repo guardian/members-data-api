@@ -1,6 +1,6 @@
 import sbt._
 
-object Dependencies {
+object MembershipCommonDependencies {
 
   val playJsonVersion = "2.9.3"
   val specs2Version = "4.19.0"

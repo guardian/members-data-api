@@ -1,5 +1,5 @@
 import com.localytics.sbt.dynamodb.DynamoDBLocalKeys._
-import Dependencies._
+import MembershipCommonDependencies._
 import sbt.Keys.version
 
 import scala.io.Source
@@ -48,8 +48,6 @@ Test / testOptions += {dynamoDBLocalTestCleanup.value}
 
 Compile / unmanagedResourceDirectories += baseDirectory.value / "conf"
 
-dependencyCheckSuppressionFiles := Seq(file("dependencyCheckSuppression.xml"))
-
 libraryDependencies ++= Seq(
   scalaUri,
   nscalaTime,
@@ -57,7 +55,7 @@ libraryDependencies ++= Seq(
   supportInternationalisation,
   playJson,
   playJsonJoda,
-  specs2 % "test",
+  MembershipCommonDependencies.specs2 % "test",
   specs2Mock % "test",
   specs2Matchers % "test",
   specs2MatchersExtra % "test",
@@ -73,8 +71,6 @@ libraryDependencies ++= Seq(
 )
 
 dependencyOverrides += jacksonDatabind
-
-lazy val root = (project in file("."))
 
 Global / useGpg := false
 
