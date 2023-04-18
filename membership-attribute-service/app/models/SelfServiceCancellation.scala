@@ -1,12 +1,13 @@
 package models
 
 import com.gu.i18n.Country
+import com.gu.i18n.Country._
 import com.gu.memsub.Product
+import com.gu.memsub.Product._
 
 /*
  * this file aims to model https://docs.google.com/spreadsheets/d/1GydjiURBMRk8S_xD4iwbbIBpuXXYI5h3_M87DtRDV8I
  * */
-
 case class SelfServiceCancellation(
     isAllowed: Boolean,
     shouldDisplayEmail: Boolean,
@@ -20,42 +21,35 @@ object SelfServiceCancellation {
   private val ausPhone = "AUS"
   private val allPhones = List(ukRowPhone, usaPhone, ausPhone)
 
-  def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = (product, billingCountry) match {
+  def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = {
 
-    case (Product.Membership | Product.Contribution, _) =>
+    if (isOneOf(product, Membership, Contribution, SupporterPlus)) {
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = allPhones,
       )
-
-    case (_, Some(Country.UK)) =>
+    } else if (billingCountry == Some(UK)) {
       SelfServiceCancellation(
         isAllowed = false,
         shouldDisplayEmail = false,
         phoneRegionsToDisplay = List(ukRowPhone),
       )
-
-    case (_, Some(Country.US) | Some(Country.Canada)) =>
+    } else if (isOneOf(billingCountry, US, Canada)) {
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = List(usaPhone),
       )
-
-    case (_, Some(Country.Australia) | Some(Country.NewZealand)) =>
+    } else {
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
         phoneRegionsToDisplay = allPhones,
       )
-
-    case _ => // ROW
-      SelfServiceCancellation(
-        isAllowed = true,
-        shouldDisplayEmail = true,
-        phoneRegionsToDisplay = allPhones,
-      )
-
+    }
   }
+
+  private def isOneOf[T](product: T, products: T*): Boolean = products.toSet.contains(product)
+  private def isOneOf[T](product: Option[T], products: T*): Boolean = product.isDefined && products.toSet.contains(product.get)
 }
