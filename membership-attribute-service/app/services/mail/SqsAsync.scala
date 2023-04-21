@@ -45,7 +45,7 @@ class SqsAsync extends LazyLogging {
 
   private def sendToUrl(queueUrl: String, payload: String): Future[SendMessageResponse] = {
     val request = SendMessageRequest.builder.queueUrl(queueUrl).messageBody(payload).build()
-    logger.info(s"Sending message to SQS queue $queueUrl")
+    logger.info(s"Sending message to SQS queue $queueUrl:\n$payload")
     client.sendMessage(request).asScala
   }
 }
