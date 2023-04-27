@@ -31,4 +31,27 @@ object MembershipCommonDependencies {
   val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % "2.14.2"
+
+  val dependencies = Seq(
+    scalaUri,
+    nscalaTime,
+    akkaActor,
+    supportInternationalisation,
+    playJson,
+    playJsonJoda,
+    specs2 % "test",
+    specs2Mock % "test",
+    specs2Matchers % "test",
+    specs2MatchersExtra % "test",
+    scalaTest % "test",
+    diff % "test",
+    scalaLogging,
+    awsCloudWatch,
+    okHttp,
+    scalaz,
+    libPhoneNumber,
+    dynamoDB,
+    scalaXml
+  )
 }
+
