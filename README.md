@@ -89,7 +89,7 @@ As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you
 
 ### Starting the API
 1. To start the Members' data API service run `./start-api.sh`.  
-The service will be running on 9400 and use the SupporterAttributesFallback-DEV DynamoDB table.
+The service will be running on 9400.
 
 1. go to https://members-data-api.thegulocal.com/user-attributes/me.
 If you get a 401 response, it probably means your Identity credentials have expired.  

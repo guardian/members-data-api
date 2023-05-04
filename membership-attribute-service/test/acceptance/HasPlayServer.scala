@@ -36,8 +36,8 @@ trait HasPlayServer {
       "http.port" -> playPort,
       "play.filters.csrf.header.bypassHeaders.X-Requested-With" -> "*",
       "play.filters.csrf.header.bypassHeaders.Csrf-Token" -> "nocheck",
-      "touchpoint.backend.environments.DEV.identity.apiUrl" -> identityServerUrl,
-      "touchpoint.backend.environments.DEV.identity.apiToken" -> identityApiToken,
+      "touchpoint.backend.environments.CODE.identity.apiUrl" -> identityServerUrl,
+      "touchpoint.backend.environments.CODE.identity.apiToken" -> identityApiToken,
     )
       .withFallback(devPublicConf)
       .withFallback(configuration)

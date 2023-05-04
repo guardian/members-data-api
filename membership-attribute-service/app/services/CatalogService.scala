@@ -58,7 +58,7 @@ class CatalogService(productIds: ProductIds, fetchCatalog: Future[String \/ JsVa
   ): Validation[NonEmptyList[String], P] = {
     many(plans.filter(_.frontendId.contains(frontendId)), name).flatMap {
       case a if a.size == 1 => Validation.s(a.head)
-      case e => Validation.failureNel(s"Too many plans! $e")
+      case e => Validation.failureNel(s"Too many plans! for name $name with frontendId $frontendId $e")
     }
   }
 

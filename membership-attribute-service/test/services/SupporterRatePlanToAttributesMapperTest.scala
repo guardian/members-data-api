@@ -32,10 +32,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           "PROD" -> List(
             ratePlanItem("guardian_patron"),
           ),
-          "UAT" -> List(
-            ratePlanItem("guardian_patron"),
-          ),
-          "DEV" -> List(
+          "CODE" -> List(
             ratePlanItem("guardian_patron"),
           ),
         ),
@@ -49,10 +46,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           "PROD" -> List(
             ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"),
           ),
-          "UAT" -> List(
-            ratePlanItem("2c92c0f85ab269be015acd9d014549b7"),
-          ),
-          "DEV" -> List(
+          "CODE" -> List(
             ratePlanItem("2c92c0f85a6b134e015a7fcd9f0c7855"),
           ),
         ),
@@ -66,10 +60,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           "PROD" -> List(
             ratePlanItem("2c92a0fc5e1dc084015e37f58c200eea"),
           ),
-          "UAT" -> List(
-            ratePlanItem("2c92c0f95e1d5c9c015e38f8c87d19a1"),
-          ),
-          "DEV" -> List(
+          "CODE" -> List(
             ratePlanItem("2c92c0f85e2d19af015e3896e824092c"),
           ),
         ),
@@ -83,8 +74,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       testMapper(
         Map(
           "PROD" -> List(item),
-          "UAT" -> List(item),
-          "DEV" -> List(item),
+          "CODE" -> List(item),
         ),
         _ should beSome.which(_.OneOffContributionDate should beSome(new LocalDate(2023, 1, 1))),
       )
@@ -97,11 +87,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             ratePlanItem("8a12865b8219d9b401822106192b64dc"),
             ratePlanItem("8a12865b8219d9b40182210618a464ba"),
           ),
-          "UAT" -> List(
-            ratePlanItem("8ad088718219a6b601822036a6c91f5c"),
-            ratePlanItem("8ad088718219a6b601822036a5801f34"),
-          ),
-          "DEV" -> List(
+          "CODE" -> List(
             ratePlanItem("8ad09fc281de1ce70181de3b251736a4"),
             ratePlanItem("8ad09fc281de1ce70181de3b28ee3783"),
           ),
@@ -117,11 +103,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             ratePlanItem("8a128ed885fc6ded018602296ace3eb8"),
             ratePlanItem("8a128ed885fc6ded01860228f77e3d5a"),
           ),
-          "UAT" -> List(
-            ratePlanItem("8ad0940885f8901f0186024838f844a1"),
-            ratePlanItem("8ad094b985f8901601860248d751315c"),
-          ),
-          "DEV" -> List(
+          "CODE" -> List(
             ratePlanItem("8ad08cbd8586721c01858804e3275376"),
             ratePlanItem("8ad08e1a8586721801858805663f6fab"),
           ),
@@ -188,21 +170,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             "2c92a0ff79ac64e30179ae45669b3a83",
             "2c92a0086619bf8901661ab545f51b21",
           ).map(ratePlanItem(_)),
-          "UAT" -> List(
-            "2c92c0f9660fc4d70166109a2eb0607c",
-            "2c92c0f967caee360167f044cd0d4adc",
-            "2c92c0f9660fc4d70166109c01465f10",
-            "2c92c0f96df75b5a016df84084fb356d",
-            "2c92c0f9660fc4d70166107fa5412641",
-            "2c92c0f867cae0700167f043870d6d0e",
-            "2c92c0f8660fb5d601661081ea010391",
-            "2c92c0f96df75b51016df8444f36362f",
-            "2c92c0f9660fc4c70166109dfd08092c",
-            "2c92c0f979a6b0910179ae4611f1256f",
-            "2c92c0f8660fb5dd016610858eb90658",
-            "2c92c0f879a6a11e0179ae3fa5bb1313",
-          ).map(ratePlanItem(_)),
-          "DEV" -> List(
+          "CODE" -> List(
             "2c92c0f965f2122101660fb33ed24a45",
             "2c92c0f967caee410167eff78e7b5244",
             "2c92c0f965f2122101660fb81b745a06",

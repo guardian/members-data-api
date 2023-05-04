@@ -44,8 +44,9 @@ Mappings:
       MinInstances: 3
       NotificationAlarmPeriod: 1200
       InstanceName: PROD:membership-attribute-service
-      DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-PROD
-      DynamoDBSupporterProductDataUATTable: arn:aws:dynamodb:*:*:table/SupporterProductData-UAT
+      DynamoDBSupporterProductDataTables:
+        - arn:aws:dynamodb:*:*:table/SupporterProductData-PROD
+        - arn:aws:dynamodb:*:*:table/SupporterProductData-CODE
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/PROD/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/PROD/*
@@ -59,8 +60,8 @@ Mappings:
       MinInstances: 1
       NotificationAlarmPeriod: 1200
       InstanceName: CODE:membership-attribute-service
-      DynamoDBSupporterProductDataTable: arn:aws:dynamodb:*:*:table/SupporterProductData-DEV
-      DynamoDBSupporterProductDataUATTable: arn:aws:dynamodb:*:*:table/SupporterProductData-UAT
+      DynamoDBSupporterProductDataTables:
+        - arn:aws:dynamodb:*:*:table/SupporterProductData-CODE
       ReadableS3Resources:
         - arn:aws:s3:::gu-membership-attribute-service-dist/membership/CODE/*
         - arn:aws:s3:::gu-reader-revenue-private/membership/members-data-api/CODE/*
@@ -103,13 +104,7 @@ Resources:
             - dynamodb:Query
             - dynamodb:DescribeTable
             Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBSupporterProductDataTable ]
-            Effect: Allow
-          - Action:
-            - dynamodb:Query
-            - dynamodb:DescribeTable
-            Resource:
-              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBSupporterProductDataUATTable ]
+              Fn::FindInMap: [ StageVariables, { Ref: Stage }, DynamoDBSupporterProductDataTables ]
             Effect: Allow
           - Action:
             - cloudwatch:*

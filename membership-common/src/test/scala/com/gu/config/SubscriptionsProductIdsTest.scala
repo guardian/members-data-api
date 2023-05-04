@@ -34,12 +34,10 @@ class SubscriptionsProductIdsTest extends Specification {
 
     "Work with the configs in here" in {
 
-      val dev = ConfigFactory.parseResources("touchpoint.DEV.conf")
-      val uat = ConfigFactory.parseResources("touchpoint.UAT.conf")
+      val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val prod = ConfigFactory.parseResources("touchpoint.PROD.conf")
 
-      SubscriptionsProductIds(dev.getConfig("touchpoint.backend.environments.DEV.zuora.productIds.subscriptions"))
-      SubscriptionsProductIds(uat.getConfig("touchpoint.backend.environments.UAT.zuora.productIds.subscriptions"))
+      SubscriptionsProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds.subscriptions"))
       SubscriptionsProductIds(prod.getConfig("touchpoint.backend.environments.PROD.zuora.productIds.subscriptions"))
       done
     }
