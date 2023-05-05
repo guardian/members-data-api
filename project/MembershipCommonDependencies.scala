@@ -5,10 +5,10 @@ object MembershipCommonDependencies {
   val playJsonVersion = "2.9.3"
   val specs2Version = "4.19.0"
 
-  //versions
+  // versions
   val awsClientVersion = "1.12.387"
   val dynamoDbVersion = "1.12.387"
-  //libraries
+  // libraries
   val supportInternationalisation = "com.gu" %% "support-internationalisation" % "0.16"
   val scalaUri = "io.lemonlabs" %% "scala-uri" % "2.2.0"
   val nscalaTime = "com.github.nscala-time" %% "nscala-time" % "2.32.0"
@@ -19,7 +19,7 @@ object MembershipCommonDependencies {
   val specs2Mock = "org.specs2" %% "specs2-mock" % specs2Version
   val specs2Matchers = "org.specs2" %% "specs2-matcher" % specs2Version
   val specs2MatchersExtra = "org.specs2" %% "specs2-matcher-extra" % specs2Version
-  val scalaTest =  "org.scalatest" %% "scalatest" % "3.2.15"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.15"
   val diff = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.5.3"
   val localDynamoDB = "com.amazonaws" %% "DynamoDBLocal" % dynamoDbVersion
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
@@ -30,7 +30,7 @@ object MembershipCommonDependencies {
   val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.4"
   val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
-  val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % "2.14.2"
+  val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % "2.14.3"
 
   val dependencies = Seq(
     scalaUri,
@@ -51,7 +51,6 @@ object MembershipCommonDependencies {
     scalaz,
     libPhoneNumber,
     dynamoDB,
-    scalaXml
+    scalaXml,
   )
 }
-
