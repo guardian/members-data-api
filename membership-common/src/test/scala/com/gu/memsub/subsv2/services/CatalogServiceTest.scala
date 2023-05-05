@@ -17,15 +17,10 @@ class CatalogServiceTest extends Specification {
 
   "Catalog service" should {
 
-    "Read a catalog in UAT" in {
-      val cats = new CatalogService[Id](productIds, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/CatalogUat.json")), identity, "UAT")
-      cats.catalog.map(_ => true) mustEqual \/.right(true)
-    }
-
-    "Read a catalog in DEV with the config product IDs" in {
-      val dev = ConfigFactory.parseResources("touchpoint.DEV.conf")
-      val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.DEV.zuora.productIds"))
-      val cats = new CatalogService[Id](ids, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), identity, "DEV")
+    "Read a catalog in CODE with the config product IDs" in {
+      val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
+      val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
+      val cats = new CatalogService[Id](ids, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), identity, "CODE")
       cats.catalog.map(_ => true) mustEqual \/.right(true)
     }
   }

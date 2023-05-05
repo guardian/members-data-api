@@ -8,12 +8,10 @@ class HolidayRatePlanIdsTest extends Specification {
 
     "Work with the configs in here" in {
 
-      val dev = ConfigFactory.parseResources("touchpoint.DEV.conf")
-      val uat = ConfigFactory.parseResources("touchpoint.UAT.conf")
+      val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val prod = ConfigFactory.parseResources("touchpoint.PROD.conf")
 
-      HolidayRatePlanIds(dev.getConfig("touchpoint.backend.environments.DEV.zuora.ratePlanIds.discount.deliverycredit"))
-      HolidayRatePlanIds(uat.getConfig("touchpoint.backend.environments.UAT.zuora.ratePlanIds.discount.deliverycredit"))
+      HolidayRatePlanIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.ratePlanIds.discount.deliverycredit"))
       HolidayRatePlanIds(prod.getConfig("touchpoint.backend.environments.PROD.zuora.ratePlanIds.discount.deliverycredit"))
       done
     }

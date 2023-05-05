@@ -4,6 +4,6 @@ import com.gu.config.SubsV2ProductIds
 import com.typesafe.config.ConfigFactory
 
 object Fixtures {
-  lazy val uat = ConfigFactory.parseResources("touchpoint.UAT.conf")
-  lazy val productIds = SubsV2ProductIds(uat.getConfig("touchpoint.backend.environments.UAT.zuora.productIds"))
+  lazy val config = ConfigFactory.parseResources("touchpoint.CODE.conf")
+  lazy val productIds = SubsV2ProductIds(config.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
 }

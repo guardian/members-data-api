@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAs
 
 class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
 
-  val stage = "DEV" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
+  val stage = "CODE" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
     .credentialsProviders(
       ProfileCredentialsProvider.builder.profileName(ProfileName).build,

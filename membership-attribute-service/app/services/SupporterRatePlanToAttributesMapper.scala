@@ -195,102 +195,7 @@ object SupporterRatePlanToAttributesMapper {
     List("single_contribution") -> singleContributionTransformer,
   )
 
-  private val uatMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
-    List(
-      "8ad088718219a6b601822036a6c91f5c",
-      "8ad088718219a6b601822036a5801f34",
-    ) -> supporterPlusTransformer,
-    List(
-      "8ad0940885f8901f0186024838f844a1",
-      "8ad094b985f8901601860248d751315c",
-    ) -> supporterPlusV2Transformer,
-    List(
-      "2c92c0f94f2acf73014f2c908f671591",
-      "2c92c0f84f2ac59d014f2c94aea9199e",
-      "2c92c0f971c65df50171dfabef87093d",
-      "2c92c0f9778c090d017795ef3000352f",
-      "2c92c0f9778c0900017795da493b4f85",
-    ) -> digitalSubTransformer,
-    List("2c92c0f85ab269be015acd9d014549b7") -> monthlyContributionTransformer,
-    List("2c92c0f95e1d5c9c015e38f8c87d19a1") -> annualContributionTransformer,
-    List(
-      "2c92c0f870f682820171070488df42ce",
-      "2c92c0f870f682820171070487f142c4",
-      "2c92c0f870f682820171070477d841e2",
-      "2c92c0f870f68282017107047d054230",
-      "2c92c0f870f682820171070474ee419d",
-      "2c92c0f961f9cf300161fc02a7d805c9",
-      "2c92c0f95aff3b54015b0ee0eb500b2e",
-      "2c92c0f855c9f4b20155d9f1db9b5199",
-      "2c92c0f955ca02910155da254a641fb3",
-      "2c92c0f855c9f4b20155d9f1d3d4512a",
-      "2c92c0f85b8fa30e015b9108a83253c7",
-      "2c92c0f95aff3b54015b0ede33bc04f2",
-      "2c92c0f955ca02900155da27f83c2d9b",
-      "2c92c0f955ca02900155da27ff142e01",
-      "2c92c0f955ca02900155da27f55b2d5f",
-    ) -> paperTransformer,
-    List(
-      "2c92c0f870f682820171070489d542da",
-      "2c92c0f870f68282017107047b214214",
-      "2c92c0f870f682820171070478d441f5",
-      "2c92c0f870f682820171070470ad4120",
-      "2c92c0f870f682820171070481bf4264",
-      "2c92c0f961f9cf350161fc0454283f3e",
-      "2c92c0f858aa38af0158b9dae19110a3",
-      "2c92c0f855c9f4b20155d9f1dd0651ab",
-      "2c92c0f855c9f4540155da2607db6402",
-      "2c92c0f955ca02920155da240cdb4399",
-      "2c92c0f961f9cf300161fbfa943b6f54",
-      "2c92c0f955ca02900155da27f4872d4d",
-      "2c92c0f955ca02900155da27f9402dad",
-      "2c92c0f955ca02900155da27f29e2d13",
-      "2c92c0f955ca02900155da2803b02e33",
-    ) -> paperPlusDigitalTransformer,
-    List(
-      "2c92c0f9660fc4d70166109a2eb0607c",
-      "2c92c0f967caee360167f044cd0d4adc",
-      "2c92c0f9660fc4d70166109c01465f10",
-      "2c92c0f96df75b5a016df84084fb356d",
-      "2c92c0f9660fc4d70166107fa5412641",
-      "2c92c0f867cae0700167f043870d6d0e",
-      "2c92c0f8660fb5d601661081ea010391",
-      "2c92c0f96df75b51016df8444f36362f",
-      "2c92c0f9660fc4c70166109dfd08092c",
-      "2c92c0f979a6b0910179ae4611f1256f",
-      "2c92c0f8660fb5dd016610858eb90658",
-      "2c92c0f879a6a11e0179ae3fa5bb1313",
-    ) -> guardianWeeklyTransformer,
-    List(
-      "2c92c0f94cc6ea05014cdb4b1d1f037d",
-      "2c92c0f848f362750148f4c2727379d7",
-    ) -> memberTransformer(Friend),
-    List(
-      "2c92c0f849f118740149f1d61ad07723",
-    ) -> memberTransformer(Staff),
-    List(
-      "2c92c0f84c5100b6014c569ad3a23d10",
-      "2c92c0f84c5100b6014c569b83b33ebd",
-      "2c92c0f84bbfeca5014bc0c5a9a12427",
-      "2c92c0f84bbfeca5014bc0c5a83f241f",
-    ) -> memberTransformer(Supporter),
-    List(
-      "2c92c0f84c510073014c56948fbe6894",
-      "2c92c0f84c510081014c569327003593",
-      "2c92c0f848f362750148f4c2729379db",
-      "2c92c0f848f362750148f4c2728379d9",
-    ) -> memberTransformer(Partner),
-    List(
-      "2c92c0f94c510a0d014c569070792fa7",
-      "2c92c0f84c510081014c568daa112d2a",
-      "2c92c0f848f362750148f4c2726079d5",
-      "2c92c0f848f362750148f4c2724679d3",
-    ) -> memberTransformer(Patron),
-    List("single_contribution") -> singleContributionTransformer,
-  )
-
-  private val devMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
+  private val codeMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
     List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
     List(
       "8ad09fc281de1ce70181de3b251736a4",
@@ -388,8 +293,7 @@ object SupporterRatePlanToAttributesMapper {
   val productRatePlanMappings: Map[Stage, Map[ProductRatePlanId, AttributeTransformer]] =
     Map(
       "PROD" -> flatten(prodMappings),
-      "UAT" -> flatten(uatMappings),
-      "DEV" -> flatten(devMappings),
+      "CODE" -> flatten(codeMappings),
     )
 
   private def flatten[A, B](map: Map[List[A], B]): Map[A, B] =
