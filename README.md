@@ -71,6 +71,7 @@ drastic increase of load due to breaking news.**
 (you may need to `brew install awscli` to get the command.)  
 `aws s3 cp s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf /etc/gu/ --profile membership`
 
+
 ## Running Locally
 
 1. Get Janus credentials for membership.
