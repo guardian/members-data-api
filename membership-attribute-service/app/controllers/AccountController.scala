@@ -379,6 +379,7 @@ class AccountController(
   def updateCancellationReason(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       metrics.measureDuration("POST /user-attributes/me/update-cancellation-reason/:subscriptionName") {
+        val subName = memsub.Subscription.Name(subscriptionName)
         val services = request.touchpoint
         val cancelForm = Form {
           single("reason" -> nonEmptyText)
@@ -388,7 +389,7 @@ class AccountController(
 
         cancellationReasonEither match {
           case Right(cancellationReason) =>
-            services.zuoraRestService.updateCancellationReason(subscriptionName, cancellationReason).map {
+            services.zuoraRestService.updateCancellationReason(subName, cancellationReason).map {
               case -\/(error) =>
                 logError(scrub"Failed to update cancellation reason for user $identityId because $error")
                 InternalServerError(s"Failed to update cancellation reason with error: $error")
