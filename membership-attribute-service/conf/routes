@@ -10,6 +10,7 @@ GET         /user-attributes/me/mma/:subscriptionName                           
 POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSpecificSub(subscriptionName: String)
 GET         /user-attributes/me/cancellation-date/:subscriptionName             controllers.AccountController.decideCancellationEffectiveDate(subscriptionName: String)
 GET         /user-attributes/me/cancelled-subscriptions                         controllers.AccountController.cancelledSubscriptions()
+POST        /user-attributes/me/update-cancellation-reason/:subscriptionName    controllers.AccountController.updateCancellationReason(subscriptionName: String)
 
 GET         /user-attributes/me/reminders                                       controllers.AccountController.reminders
 
