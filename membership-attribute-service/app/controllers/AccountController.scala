@@ -376,6 +376,33 @@ class AccountController(
   def cancelSpecificSub(subscriptionName: String): Action[AnyContent] =
     cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
 
+  def updateCancellationReason(subscriptionName: String): Action[AnyContent] =
+    AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+      metrics.measureDuration("POST /user-attributes/me/update-cancellation-reason/:subscriptionName") {
+        val subName = memsub.Subscription.Name(subscriptionName)
+        val services = request.touchpoint
+        val cancelForm = Form {
+          single("reason" -> nonEmptyText)
+        }
+        val identityId = request.user.identityId
+        val cancellationReasonEither = extractCancellationReason(cancelForm)
+
+        cancellationReasonEither match {
+          case Right(cancellationReason) =>
+            services.zuoraRestService.updateCancellationReason(subName, cancellationReason).map {
+              case -\/(error) =>
+                logError(scrub"Failed to update cancellation reason for user $identityId because $error")
+                InternalServerError(s"Failed to update cancellation reason with error: $error")
+              case \/-(_) =>
+                logger.info(s"Successfully updated cancellation reason for subscription $subscriptionName owned by $identityId")
+                NoContent
+            }
+          case Left(apiError) =>
+            Future.successful(BadRequest(Json.toJson(apiError)))
+        }
+      }
+    }
+
   def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
     getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
 
