@@ -6,6 +6,7 @@ import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.salesforce.Contact
 import com.gu.services.model.PaymentDetails
+import com.typesafe.scalalogging.LazyLogging
 import controllers.AccountController
 import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
 import models.{AccountDetails, ContactAndSubscription, DeliveryAddress}
@@ -32,7 +33,7 @@ class AccountDetailsFromZuora(
     subscriptionService: SubscriptionService,
     chooseStripe: ChooseStripe,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
-)(implicit executionContext: ExecutionContext) {
+)(implicit executionContext: ExecutionContext) extends LazyLogging {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
   def fetch(userId: String, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[AccountDetails]] = {
@@ -52,6 +53,18 @@ class AccountDetailsFromZuora(
       alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield {
+      logger.debug(s"userId: $userId")
+      logger.debug(s"filter: $filter")
+      logger.debug(s"contactAndSubscription: $contactAndSubscription")
+      logger.debug(s"isPaidSubscription: $isPaidSubscription")
+      logger.debug(s"paymentDetails: $paymentDetails")
+      logger.debug(s"accountSummary: $accountSummary")
+      logger.debug(s"effectiveCancellationDate: $effectiveCancellationDate")
+      logger.debug(s"country: $country")
+      logger.debug(s"stripePublicKey: $stripePublicKey")
+      logger.debug(s"alertText: $alertText")
+      logger.debug(s"isAutoRenew: $isAutoRenew")
+
       AccountDetails(
         contactId = contactAndSubscription.contact.salesforceContactId,
         regNumber = None,
@@ -72,23 +85,28 @@ class AccountDetailsFromZuora(
     }
   }
 
-  private def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
+  private def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] = {
+    logger.debug(s"id: $id")
     zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
+  }
 
   private def nonGiftContactAndSubscriptionsFor(contact: Contact): Future[List[ContactAndSubscription]] = {
+    logger.debug(s"contact: $contact")
     subscriptionService
       .current[SubscriptionPlan.AnyPlan](contact)
       .map(_.map(ContactAndSubscription(contact, _, isGiftRedemption = false)))
   }
 
   private def applyFilter(
-      filter: OptionalSubscriptionsFilter,
-      contactAndSubscriptions: List[ContactAndSubscription],
-  ): List[ContactAndSubscription] = {
+                           filter: OptionalSubscriptionsFilter,
+                           contactAndSubscriptions: List[ContactAndSubscription],
+                         ): List[ContactAndSubscription] = {
     filter match {
       case FilterBySubName(subscriptionName) =>
+        logger.debug(s"filter: FilterBySubName($subscriptionName)")
         contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
       case FilterByProductType(productType) =>
+        logger.debug(s"filter: FilterByProductType($productType)")
         contactAndSubscriptions.filter(contactAndSubscription =>
           productIsInstanceOfProductType(
             contactAndSubscription.subscription.plan.product,
@@ -96,6 +114,7 @@ class AccountDetailsFromZuora(
           ),
         )
       case NoFilter =>
+        logger.debug("filter: NoFilter")
         contactAndSubscriptions
     }
   }
@@ -105,22 +124,38 @@ class AccountDetailsFromZuora(
       nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
       filtered = applyFilter(filter, contactAndSubscriptions)
-    } yield filtered
+    } yield {
+      logger.debug(s"userId: $userId")
+      logger.debug(s"contact: $contact")
+      logger.debug(s"filter: $filter")
+      logger.debug(s"nonGiftContactAndSubscriptions: $nonGiftContactAndSubscriptions")
+      logger.debug(s"contactAndSubscriptions: $contactAndSubscriptions")
+      logger.debug(s"filtered: $filtered")
+
+      filtered
+    }
   }
 
   private def allCurrentSubscriptions(
-      userId: String,
-      filter: OptionalSubscriptionsFilter,
-  ): ListTEither[ContactAndSubscription] = {
+                                       userId: String,
+                                       filter: OptionalSubscriptionsFilter,
+                                     ): ListTEither[ContactAndSubscription] = {
     for {
       contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
       subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
-    } yield subscription
+    } yield {
+      logger.debug(s"userId: $userId")
+      logger.debug(s"filter: $filter")
+      logger.debug(s"contact: $contact")
+      logger.debug(s"subscription: $subscription")
+
+      subscription
+    }
   }
 
   private def getAccountDetailsParallel(
-      contactAndSubscription: ContactAndSubscription,
-  ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
+                                         contactAndSubscription: ContactAndSubscription,
+                                       ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
     metrics.measureDurationEither("getAccountDetailsParallel") {
       // Run all these api calls in parallel to improve response times
       val paymentDetailsFuture =
@@ -156,7 +191,14 @@ class AccountDetailsFromZuora(
         paymentDetails <- SimpleEitherT(paymentDetailsFuture)
         accountSummary <- SimpleEitherT(accountSummaryFuture)
         effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
-      } yield (paymentDetails, accountSummary, effectiveCancellationDate)
+      } yield {
+        logger.debug(s"contactAndSubscription: $contactAndSubscription")
+        logger.debug(s"paymentDetails: $paymentDetails")
+        logger.debug(s"accountSummary: $accountSummary")
+        logger.debug(s"effectiveCancellationDate: $effectiveCancellationDate")
+
+        (paymentDetails, accountSummary, effectiveCancellationDate)
+      }
     }
   }
 
