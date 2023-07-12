@@ -33,7 +33,8 @@ class AccountDetailsFromZuora(
     subscriptionService: SubscriptionService,
     chooseStripe: ChooseStripe,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
-)(implicit executionContext: ExecutionContext) extends LazyLogging {
+)(implicit executionContext: ExecutionContext)
+    extends LazyLogging {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
   def fetch(userId: String, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[AccountDetails]] = {
@@ -98,9 +99,9 @@ class AccountDetailsFromZuora(
   }
 
   private def applyFilter(
-                           filter: OptionalSubscriptionsFilter,
-                           contactAndSubscriptions: List[ContactAndSubscription],
-                         ): List[ContactAndSubscription] = {
+      filter: OptionalSubscriptionsFilter,
+      contactAndSubscriptions: List[ContactAndSubscription],
+  ): List[ContactAndSubscription] = {
     filter match {
       case FilterBySubName(subscriptionName) =>
         logger.debug(s"filter: FilterBySubName($subscriptionName)")
@@ -137,9 +138,9 @@ class AccountDetailsFromZuora(
   }
 
   private def allCurrentSubscriptions(
-                                       userId: String,
-                                       filter: OptionalSubscriptionsFilter,
-                                     ): ListTEither[ContactAndSubscription] = {
+      userId: String,
+      filter: OptionalSubscriptionsFilter,
+  ): ListTEither[ContactAndSubscription] = {
     for {
       contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
       subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
@@ -154,8 +155,8 @@ class AccountDetailsFromZuora(
   }
 
   private def getAccountDetailsParallel(
-                                         contactAndSubscription: ContactAndSubscription,
-                                       ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
+      contactAndSubscription: ContactAndSubscription,
+  ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
     metrics.measureDurationEither("getAccountDetailsParallel") {
       // Run all these api calls in parallel to improve response times
       val paymentDetailsFuture =
