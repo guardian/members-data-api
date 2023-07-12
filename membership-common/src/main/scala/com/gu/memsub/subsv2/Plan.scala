@@ -239,9 +239,9 @@ object CatalogPlan {
 
   type Contributor[+B <: BillingPeriod] = CatalogPlan[Product.Contribution, PaidCharge[Contributor.type, B], Current]
 
-  type Digipack[+B <: BillingPeriod] = CatalogPlan[Product.ZDigipack, PaidCharge[Digipack.type, B], Current]
+  type Digipack[+B <: BillingPeriod] = CatalogPlan[Product.Digipack, PaidCharge[Digipack.type, B], Current]
 
-  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.ZSupporterPlus, SupporterPlusContribution[BillingPeriod], Current]
+  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.SupporterPlus, PaidChargeList, Current]
 
   type Delivery = CatalogPlan[Product.Delivery, PaperCharges, Current]
   type Voucher = CatalogPlan[Product.Voucher, PaperCharges, Current]
@@ -381,8 +381,7 @@ sealed trait PaidChargeList extends ChargeList {
   def subRatePlanChargeId: SubscriptionRatePlanChargeId
 }
 
-case class SupporterPlusContribution[+BP <: BillingPeriod](billingPeriod: BP, benefitLine: Option[PricingSummary], contributionLine: Option[PricingSummary], subRatePlanChargeId: SubscriptionRatePlanChargeId) extends PaidChargeList with SingleBenefit[SupporterPlus.type] {
-  def benefit: Benefit.SupporterPlus.type = SupporterPlus
+case class SupporterPlusContribution[+B <: Benefit, +BP <: BillingPeriod](benefit: B, billingPeriod: BP, benefitLine: Option[PricingSummary], contributionLine: Option[PricingSummary], subRatePlanChargeId: SubscriptionRatePlanChargeId) extends PaidChargeList with SingleBenefit[B] {
   def benefits: NonEmptyList[Benefit] = NonEmptyList(SupporterPlus)
   def price: PricingSummary = (benefitLine ++ contributionLine).reduce(_ |+| _)
 }
@@ -523,8 +522,8 @@ object SubscriptionPlan {
   type Patron = PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Patron.type, BillingPeriod]]
 
   type ContentSubscription = PaidSubscriptionPlan[Product.ContentSubscription, PaidChargeList]
-  type Digipack = PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]]
-  type SupporterPlus = PaidSubscriptionPlan[Product.ZSupporterPlus, SupporterPlusContribution[BillingPeriod]]
+  type Digipack = PaidSubscriptionPlan[Product.Digipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]]
+  type SupporterPlus = PaidSubscriptionPlan[Product.SupporterPlus, SupporterPlusContribution[Benefit.SupporterPlus.type, BillingPeriod]]
   type Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges]
   type Voucher = PaidSubscriptionPlan[Product.Voucher, PaperCharges]
   type DigitalVoucher = PaidSubscriptionPlan[Product.DigitalVoucher, PaperCharges]

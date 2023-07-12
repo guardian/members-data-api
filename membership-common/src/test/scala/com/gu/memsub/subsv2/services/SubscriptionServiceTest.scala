@@ -131,7 +131,7 @@ class SubscriptionServiceTest extends Specification {
       startDate,
       endDate
     )
-    def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack = PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
+    def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack = PaidSubscriptionPlan[Product.Digipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
       RatePlanId("idDigipack"),
       ProductRatePlanId("prpi"),
       "Digipack",

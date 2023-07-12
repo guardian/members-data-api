@@ -49,7 +49,7 @@ trait SubscriptionTestData {
       endDate,
     )
   def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack =
-    PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
+    PaidSubscriptionPlan[Product.Digipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
       RatePlanId("idDigipack"),
       ProductRatePlanId("prpi"),
       "Digipack",

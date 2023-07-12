@@ -107,8 +107,8 @@ object Product {
 
   type Membership = Membership.type
   type GuardianPatron = GuardianPatron.type
-  type ZDigipack = Digipack.type
-  type ZSupporterPlus = SupporterPlus.type
+  type Digipack = Digipack.type
+  type SupporterPlus = SupporterPlus.type
   type Delivery = Delivery.type
   type Voucher = Voucher.type
   type DigitalVoucher = DigitalVoucher.type
