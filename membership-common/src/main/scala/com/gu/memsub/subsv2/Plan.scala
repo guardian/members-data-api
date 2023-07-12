@@ -381,7 +381,8 @@ sealed trait PaidChargeList extends ChargeList {
   def subRatePlanChargeId: SubscriptionRatePlanChargeId
 }
 
-case class SupporterPlusContribution[+BP <: BillingPeriod](billingPeriod: BP, benefitLine: Option[PricingSummary], contributionLine: Option[PricingSummary], subRatePlanChargeId: SubscriptionRatePlanChargeId) extends PaidChargeList {
+case class SupporterPlusContribution[+BP <: BillingPeriod](billingPeriod: BP, benefitLine: Option[PricingSummary], contributionLine: Option[PricingSummary], subRatePlanChargeId: SubscriptionRatePlanChargeId) extends PaidChargeList with SingleBenefit[SupporterPlus.type] {
+  def benefit: Benefit.SupporterPlus.type = SupporterPlus
   def benefits: NonEmptyList[Benefit] = NonEmptyList(SupporterPlus)
   def price: PricingSummary = (benefitLine ++ contributionLine).reduce(_ |+| _)
 }
