@@ -54,17 +54,17 @@ class AccountDetailsFromZuora(
       alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield {
-      logger.debug(s"userId: $userId")
-      logger.debug(s"filter: $filter")
-      logger.debug(s"contactAndSubscription: $contactAndSubscription")
-      logger.debug(s"isPaidSubscription: $isPaidSubscription")
-      logger.debug(s"paymentDetails: $paymentDetails")
-      logger.debug(s"accountSummary: $accountSummary")
-      logger.debug(s"effectiveCancellationDate: $effectiveCancellationDate")
-      logger.debug(s"country: $country")
-      logger.debug(s"stripePublicKey: $stripePublicKey")
-      logger.debug(s"alertText: $alertText")
-      logger.debug(s"isAutoRenew: $isAutoRenew")
+      logger.info(s"userId: $userId")
+      logger.info(s"filter: $filter")
+      logger.info(s"contactAndSubscription: $contactAndSubscription")
+      logger.info(s"isPaidSubscription: $isPaidSubscription")
+      logger.info(s"paymentDetails: $paymentDetails")
+      logger.info(s"accountSummary: $accountSummary")
+      logger.info(s"effectiveCancellationDate: $effectiveCancellationDate")
+      logger.info(s"country: $country")
+      logger.info(s"stripePublicKey: $stripePublicKey")
+      logger.info(s"alertText: $alertText")
+      logger.info(s"isAutoRenew: $isAutoRenew")
 
       AccountDetails(
         contactId = contactAndSubscription.contact.salesforceContactId,
@@ -87,12 +87,12 @@ class AccountDetailsFromZuora(
   }
 
   private def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] = {
-    logger.debug(s"id: $id")
+    logger.info(s"id: $id")
     zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
   }
 
   private def nonGiftContactAndSubscriptionsFor(contact: Contact): Future[List[ContactAndSubscription]] = {
-    logger.debug(s"contact: $contact")
+    logger.info(s"contact: $contact")
     subscriptionService
       .current[SubscriptionPlan.AnyPlan](contact)
       .map(_.map(ContactAndSubscription(contact, _, isGiftRedemption = false)))
@@ -104,10 +104,10 @@ class AccountDetailsFromZuora(
   ): List[ContactAndSubscription] = {
     filter match {
       case FilterBySubName(subscriptionName) =>
-        logger.debug(s"filter: FilterBySubName($subscriptionName)")
+        logger.info(s"filter: FilterBySubName($subscriptionName)")
         contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
       case FilterByProductType(productType) =>
-        logger.debug(s"filter: FilterByProductType($productType)")
+        logger.info(s"filter: FilterByProductType($productType)")
         contactAndSubscriptions.filter(contactAndSubscription =>
           productIsInstanceOfProductType(
             contactAndSubscription.subscription.plan.product,
@@ -115,7 +115,7 @@ class AccountDetailsFromZuora(
           ),
         )
       case NoFilter =>
-        logger.debug("filter: NoFilter")
+        logger.info("filter: NoFilter")
         contactAndSubscriptions
     }
   }
@@ -126,12 +126,12 @@ class AccountDetailsFromZuora(
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
       filtered = applyFilter(filter, contactAndSubscriptions)
     } yield {
-      logger.debug(s"userId: $userId")
-      logger.debug(s"contact: $contact")
-      logger.debug(s"filter: $filter")
-      logger.debug(s"nonGiftContactAndSubscriptions: $nonGiftContactAndSubscriptions")
-      logger.debug(s"contactAndSubscriptions: $contactAndSubscriptions")
-      logger.debug(s"filtered: $filtered")
+      logger.info(s"userId: $userId")
+      logger.info(s"contact: $contact")
+      logger.info(s"filter: $filter")
+      logger.info(s"nonGiftContactAndSubscriptions: $nonGiftContactAndSubscriptions")
+      logger.info(s"contactAndSubscriptions: $contactAndSubscriptions")
+      logger.info(s"filtered: $filtered")
 
       filtered
     }
@@ -145,10 +145,10 @@ class AccountDetailsFromZuora(
       contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
       subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
     } yield {
-      logger.debug(s"userId: $userId")
-      logger.debug(s"filter: $filter")
-      logger.debug(s"contact: $contact")
-      logger.debug(s"subscription: $subscription")
+      logger.info(s"userId: $userId")
+      logger.info(s"filter: $filter")
+      logger.info(s"contact: $contact")
+      logger.info(s"subscription: $subscription")
 
       subscription
     }
@@ -193,10 +193,10 @@ class AccountDetailsFromZuora(
         accountSummary <- SimpleEitherT(accountSummaryFuture)
         effectiveCancellationDate <- SimpleEitherT(effectiveCancellationDateFuture)
       } yield {
-        logger.debug(s"contactAndSubscription: $contactAndSubscription")
-        logger.debug(s"paymentDetails: $paymentDetails")
-        logger.debug(s"accountSummary: $accountSummary")
-        logger.debug(s"effectiveCancellationDate: $effectiveCancellationDate")
+        logger.info(s"contactAndSubscription: $contactAndSubscription")
+        logger.info(s"paymentDetails: $paymentDetails")
+        logger.info(s"accountSummary: $accountSummary")
+        logger.info(s"effectiveCancellationDate: $effectiveCancellationDate")
 
         (paymentDetails, accountSummary, effectiveCancellationDate)
       }
