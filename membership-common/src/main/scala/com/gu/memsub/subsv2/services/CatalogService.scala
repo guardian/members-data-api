@@ -99,7 +99,10 @@ class CatalogService[M[_] : Monad](productIds: ProductIds, fetchCatalog: M[Strin
       one[SupporterPlus[Month.type]](plans, "Supporter Plus month", FrontendId.Monthly) |@|
         one[SupporterPlus[Year.type]](plans, "Supporter Plus year", FrontendId.Yearly)
       ) (SupporterPlusPlans)
-    contributor <- one[Contributor](plans, "Contributor month", FrontendId.Monthly)
+    contributor <- (
+      one[Contributor[Month.type]](plans, "Contributor month", FrontendId.Monthly) |@|
+        one[Contributor[Year.type]](plans, "Contributor year", FrontendId.Yearly)
+      ) (ContributionPlans)
     voucher <- many[Voucher](plans, "Paper voucher")
     digitalVoucher <- many[DigitalVoucher](plans, "Paper digital voucher")
     delivery <- many[Delivery](plans, "Paper delivery")

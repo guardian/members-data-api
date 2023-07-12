@@ -237,10 +237,12 @@ object CatalogPlan {
   type Partner[+B <: BillingPeriod] = CatalogPlan[Product.Membership, PaidCharge[Partner.type, B], Current]
   type Patron[+B <: BillingPeriod] = CatalogPlan[Product.Membership, PaidCharge[Patron.type, B], Current]
 
-  type Contributor = CatalogPlan[Product.Contribution, PaidCharge[Contributor.type, Month.type], Current]
+  type Contributor[+B <: BillingPeriod] = CatalogPlan[Product.Contribution, PaidCharge[Contributor.type, B], Current]
 
   type Digipack[+B <: BillingPeriod] = CatalogPlan[Product.ZDigipack, PaidCharge[Digipack.type, B], Current]
-  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.SupporterPlus, PaidCharge[SupporterPlus.type, B], Current]
+
+  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.SupporterPlus, PaidChargeList, Current]
+
   type Delivery = CatalogPlan[Product.Delivery, PaperCharges, Current]
   type Voucher = CatalogPlan[Product.Voucher, PaperCharges, Current]
   type DigitalVoucher = CatalogPlan[Product.DigitalVoucher, PaperCharges, Current]
@@ -274,6 +276,10 @@ case class DigipackPlans(month: CatalogPlan.Digipack[Month.type], quarter: Catal
 }
 
 case class SupporterPlusPlans(month: CatalogPlan.SupporterPlus[Month.type], year: CatalogPlan.SupporterPlus[Year.type]) {
+  lazy val plans = List(month, year)
+}
+
+case class ContributionPlans(month: CatalogPlan.Contributor[Month.type], year: CatalogPlan.Contributor[Year.type]) {
   lazy val plans = List(month, year)
 }
 
@@ -328,19 +334,19 @@ case class WeeklyPlans(
 }
 
 case class Catalog(
-  friend: CatalogPlan.Friend,
-  staff: CatalogPlan.Staff,
-  supporter: PaidMembershipPlans[Supporter.type],
-  partner: PaidMembershipPlans[Partner.type],
-  patron: PaidMembershipPlans[Patron.type],
-  digipack: DigipackPlans,
-  supporterPlus: SupporterPlusPlans,
-  contributor: CatalogPlan.Contributor,
-  voucher: NonEmptyList[CatalogPlan.Voucher],
-  digitalVoucher: NonEmptyList[CatalogPlan.DigitalVoucher],
-  delivery: NonEmptyList[CatalogPlan.Delivery],
-  weekly: WeeklyPlans,
-  map: Map[ProductRatePlanId, CatalogZuoraPlan]
+                    friend: CatalogPlan.Friend,
+                    staff: CatalogPlan.Staff,
+                    supporter: PaidMembershipPlans[Supporter.type],
+                    partner: PaidMembershipPlans[Partner.type],
+                    patron: PaidMembershipPlans[Patron.type],
+                    digipack: DigipackPlans,
+                    supporterPlus: SupporterPlusPlans,
+                    contributor: ContributionPlans,
+                    voucher: NonEmptyList[CatalogPlan.Voucher],
+                    digitalVoucher: NonEmptyList[CatalogPlan.DigitalVoucher],
+                    delivery: NonEmptyList[CatalogPlan.Delivery],
+                    weekly: WeeklyPlans,
+                    map: Map[ProductRatePlanId, CatalogZuoraPlan]
 ) {
   lazy val productMap: Map[ProductRatePlanChargeId, Benefit] =
     map.values.flatMap(p => p.benefits).toMap

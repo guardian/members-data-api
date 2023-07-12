@@ -112,7 +112,10 @@ class CatalogService(productIds: ProductIds, fetchCatalog: Future[String \/ JsVa
       one[SupporterPlus[Month.type]](plans, "Supporter Plus month", FrontendId.Monthly) |@|
         one[SupporterPlus[Year.type]](plans, "Supporter Plus year", FrontendId.Yearly)
     )(SupporterPlusPlans)
-    contributor <- one[Contributor](plans, "Contributor month", FrontendId.Monthly)
+    contribution <- (
+      one[Contributor[Month.type]](plans, "Contributor month", FrontendId.Monthly) |@|
+        one[Contributor[Year.type]](plans, "Contributor year", FrontendId.Yearly)
+      )(ContributionPlans)
     voucher <- many[Voucher](plans, "Paper voucher")
     digitalVoucher <- many[DigitalVoucher](plans, "Paper digital voucher")
     delivery <- many[Delivery](plans, "Paper delivery")
@@ -151,7 +154,7 @@ class CatalogService(productIds: ProductIds, fetchCatalog: Future[String \/ JsVa
     weekly = WeeklyPlans(weeklyZoneA, weeklyZoneB, weeklyZoneC, weeklyDomestic, weeklyRestOfWorld)
 
     map <- Validation.s[NonEmptyList[String]](plans.map(p => p.id -> p).toMap)
-  } yield Catalog(friend, staff, supporter, partner, patron, digipack, supporterPlus, contributor, voucher, digitalVoucher, delivery, weekly, map)
+  } yield Catalog(friend, staff, supporter, partner, patron, digipack, supporterPlus, contribution, voucher, digitalVoucher, delivery, weekly, map)
 
   lazy val catalog: Future[NonEmptyList[String] \/ Catalog] = (for {
     plans <- EitherT[String, Future, List[CatalogZuoraPlan]](joinUp).leftMap(_.wrapNel)

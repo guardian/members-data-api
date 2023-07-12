@@ -2,44 +2,13 @@ package acceptance.data
 
 import acceptance.data.Randoms.randomId
 import acceptance.data.TestCatalogPlan.{monthlyPaid, oneYearPaid, paperCharges, quarterlyPaid, sixWeeksPaid, threeMonthsPaid, yearlyPaid}
-import acceptance.data.TestPlans.{testDigipackPlans, testPaidMembershipPlans, testSupporterPlusPlans, weeklyPlans}
+import acceptance.data.TestPlans.{testContributionPlans, testDigipackPlans, testPaidMembershipPlans, testSupporterPlusPlans, weeklyPlans}
 import com.gu.i18n.Currency
-import com.gu.memsub.Benefit.{
-  FridayPaper,
-  Friend,
-  MondayPaper,
-  PaperDay,
-  Partner,
-  Patron,
-  SaturdayPaper,
-  Staff,
-  SundayPaper,
-  Supporter,
-  ThursdayPaper,
-  TuesdayPaper,
-  WednesdayPaper,
-}
+import com.gu.memsub.Benefit.{FridayPaper, Friend, MondayPaper, PaperDay, Partner, Patron, SaturdayPaper, Staff, SundayPaper, Supporter, ThursdayPaper, TuesdayPaper, WednesdayPaper}
 import com.gu.memsub.BillingPeriod.{Month, OneYear, Quarter, SixWeeks, ThreeMonths, Year}
 import com.gu.memsub.Product.Membership
 import com.gu.memsub.Subscription.ProductRatePlanId
-import com.gu.memsub.subsv2.{
-  Catalog,
-  CatalogPlan,
-  CatalogZuoraPlan,
-  ChargeList,
-  DigipackPlans,
-  FreeCharge,
-  PaidCharge,
-  PaidMembershipPlans,
-  PaperCharges,
-  SupporterPlusPlans,
-  WeeklyDomesticPlans,
-  WeeklyPlans,
-  WeeklyRestOfWorldPlans,
-  WeeklyZoneAPlans,
-  WeeklyZoneBPlans,
-  WeeklyZoneCPlans,
-}
+import com.gu.memsub.subsv2.{Catalog, CatalogPlan, CatalogZuoraPlan, ChargeList, ContributionPlans, DigipackPlans, FreeCharge, PaidCharge, PaidMembershipPlans, PaperCharges, SupporterPlusPlans, WeeklyDomesticPlans, WeeklyPlans, WeeklyRestOfWorldPlans, WeeklyZoneAPlans, WeeklyZoneBPlans, WeeklyZoneCPlans}
 import com.gu.memsub.{Benefit, BillingPeriod, Current, PricingSummary, Product, Status}
 import scalaz.NonEmptyList
 
@@ -177,6 +146,13 @@ object TestPlans {
     )
   }
 
+  def testContributionPlans(): ContributionPlans = {
+    ContributionPlans(
+      monthlyPaid(Product.Contribution, Benefit.Contributor, "Contributor monthly", 20),
+      yearlyPaid(Product.Contribution, Benefit.Contributor, "Contributor annual", 240),
+    )
+  }
+
   def testSupporterPlusPlans(): SupporterPlusPlans = {
     SupporterPlusPlans(
       monthlyPaid(Product.SupporterPlus, Benefit.SupporterPlus, "SupporterPlus", 20),
@@ -230,7 +206,7 @@ object TestCatalog {
       patron: PaidMembershipPlans[Patron.type] = testPaidMembershipPlans(Patron),
       digipack: DigipackPlans = testDigipackPlans(),
       supporterPlus: SupporterPlusPlans = testSupporterPlusPlans(),
-      contributor: CatalogPlan.Contributor = monthlyPaid(Product.Contribution, Benefit.Contributor, "Contributor", 12),
+      contributor: ContributionPlans = testContributionPlans(),
       voucher: NonEmptyList[CatalogPlan.Voucher] = NonEmptyList(paperCharges(Product.Voucher, "Voucher")),
       digitalVoucher: NonEmptyList[CatalogPlan.DigitalVoucher] = NonEmptyList(paperCharges(Product.DigitalVoucher, "DigitalVoucher")),
       delivery: NonEmptyList[CatalogPlan.Delivery] = NonEmptyList(paperCharges(Product.Delivery, "Delivery")),
