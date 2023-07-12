@@ -241,7 +241,7 @@ object CatalogPlan {
 
   type Digipack[+B <: BillingPeriod] = CatalogPlan[Product.ZDigipack, PaidCharge[Digipack.type, B], Current]
 
-  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.SupporterPlus, PaidChargeList, Current]
+  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.SupporterPlus, SupporterPlusContribution[BillingPeriod], Current]
 
   type Delivery = CatalogPlan[Product.Delivery, PaperCharges, Current]
   type Voucher = CatalogPlan[Product.Voucher, PaperCharges, Current]
@@ -381,6 +381,11 @@ sealed trait PaidChargeList extends ChargeList {
   def subRatePlanChargeId: SubscriptionRatePlanChargeId
 }
 
+case class SupporterPlusContribution[+BP <: BillingPeriod](billingPeriod: BP, benefitLine: Option[PricingSummary], contributionLine: Option[PricingSummary], subRatePlanChargeId: SubscriptionRatePlanChargeId) extends PaidChargeList {
+  def benefits: NonEmptyList[Benefit] = NonEmptyList(SupporterPlus)
+  def price: PricingSummary = (benefitLine ++ contributionLine).reduce(_ |+| _)
+}
+
 /**
   * Generic version of single free / paid charge
   * This is to allow exhaustive matches on tier in membership
@@ -518,7 +523,7 @@ object SubscriptionPlan {
 
   type ContentSubscription = PaidSubscriptionPlan[Product.ContentSubscription, PaidChargeList]
   type Digipack = PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]]
-  type SupporterPlus = PaidSubscriptionPlan[Product.SupporterPlus, PaidCharge[Benefit.SupporterPlus.type, BillingPeriod]]
+  type SupporterPlus = PaidSubscriptionPlan[Product.SupporterPlus, SupporterPlusContribution[BillingPeriod]]
   type Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges]
   type Voucher = PaidSubscriptionPlan[Product.Voucher, PaperCharges]
   type DigitalVoucher = PaidSubscriptionPlan[Product.DigitalVoucher, PaperCharges]
