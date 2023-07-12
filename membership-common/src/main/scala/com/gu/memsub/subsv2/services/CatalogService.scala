@@ -11,7 +11,7 @@ import com.gu.memsub.subsv2.CatalogPlan._
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.CatJsonReads._
 import com.gu.memsub.subsv2.reads.CatPlanReads
-import com.gu.memsub.subsv2.reads.CatPlanReads._
+import com.gu.memsub.subsv2.reads.CatPlanReads.{s, _}
 import com.gu.memsub.subsv2.reads.ChargeListReads.{ProductIds, _}
 import com.gu.zuora.rest.SimpleClient
 import play.api.libs.json.{Reads => JsReads, _}
