@@ -96,8 +96,8 @@ class CatalogService[M[_] : Monad](productIds: ProductIds, fetchCatalog: M[Strin
         one[Digipack[Year.type]](plans, "Digipack year", FrontendId.Yearly)
       ) (DigipackPlans)
     supporterPlus <- (
-      one[SupporterPlus[Month.type]](plans, "Supporter Plus month", FrontendId.Monthly) |@|
-        one[SupporterPlus[Year.type]](plans, "Supporter Plus year", FrontendId.Yearly)
+      one[SupporterPlus[Month.type]](plans, "Supporter Plus month", FrontendId.Monthly)(s) |@|
+        one[SupporterPlus[Year.type]](plans, "Supporter Plus year", FrontendId.Yearly)(s)
       ) (SupporterPlusPlans)
     contributor <- (
       one[Contributor[Month.type]](plans, "Contributor month", FrontendId.Monthly) |@|
