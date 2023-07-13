@@ -140,6 +140,7 @@ object ChargeListReads {
   implicit def readPaidChargeList: ChargeListReads[PaidChargeList] = new ChargeListReads[PaidChargeList] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidChargeList] = {
       readPaperChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
+        readSupporterPlusV2ChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
        readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges)
     }.withTrace("readPaidChargeList")
   }
@@ -176,6 +177,15 @@ object ChargeListReads {
     override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaperCharges] = {
       val chargeMap = charges.flatMap(c => cat.get(c.productRatePlanChargeId).map(_ -> c.pricing))
       (getDays(chargeMap) |@| findDigipack(chargeMap))(PaperCharges).withTrace("readPaperChargeList")
+    }
+  }
+
+  implicit def readSupporterPlusV2ChargeList: ChargeListReads[SupporterPlusCharges] = new ChargeListReads[SupporterPlusCharges] {
+
+    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
+      println("readSupporterPlusV2ChargeList")
+      val chargeMap = charges.flatMap(c => cat.get(c.productRatePlanChargeId).map(_ -> c.pricing))
+      Validation.success(SupporterPlusCharges(Month)).ensure("test".wrapNel)(_ => true)
     }
   }
 

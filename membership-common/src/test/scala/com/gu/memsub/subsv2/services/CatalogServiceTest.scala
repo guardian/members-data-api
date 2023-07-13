@@ -21,7 +21,7 @@ class CatalogServiceTest extends Specification {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
       val cats = new CatalogService[Id](ids, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), identity, "CODE")
-      cats.catalog.map(_ => true) mustEqual \/.right(true)
+      cats.catalog.map(catalog => catalog.supporterPlus.plans.size) mustEqual \/.right(2)
     }
   }
 }
@@ -35,7 +35,8 @@ object CatalogServiceTest {
         .message("test")
         .code(200)
         .body(ResponseBody.create(MediaType.parse("application/json"), Resource.getJson(path).toString))
-        .protocol(Protocol.HTTP_1_1).build()
+        .protocol(Protocol.HTTP_1_1)
+        .build()
 
     val restConfig = ZuoraRestConfig("foo", "http://localhost", "joe", "public")
     new SimpleClient[Id](restConfig, runner)
