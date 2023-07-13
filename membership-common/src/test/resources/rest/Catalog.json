@@ -320,17 +320,17 @@
               "model": "FlatFee",
               "uom": null,
               "pricingSummary": [
-                "USD2",
+                "USD0",
                 "NZD0",
-                "EUR2",
-                "GBP2",
-                "CAD2",
+                "EUR0",
+                "GBP0",
+                "CAD0",
                 "AUD0"
               ],
               "pricing": [
                 {
                   "currency": "USD",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -348,7 +348,7 @@
                 },
                 {
                   "currency": "EUR",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -357,7 +357,7 @@
                 },
                 {
                   "currency": "GBP",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -366,7 +366,7 @@
                 },
                 {
                   "currency": "CAD",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -574,17 +574,17 @@
               "model": "FlatFee",
               "uom": null,
               "pricingSummary": [
-                "USD2",
+                "USD0",
                 "NZD0",
-                "EUR2",
-                "GBP2",
-                "CAD2",
+                "EUR0",
+                "GBP0",
+                "CAD0",
                 "AUD0"
               ],
               "pricing": [
                 {
                   "currency": "USD",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -602,7 +602,7 @@
                 },
                 {
                   "currency": "EUR",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -611,7 +611,7 @@
                 },
                 {
                   "currency": "GBP",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
@@ -620,7 +620,7 @@
                 },
                 {
                   "currency": "CAD",
-                  "price": 2,
+                  "price": 0,
                   "tiers": null,
                   "includedUnits": null,
                   "overagePrice": null,
