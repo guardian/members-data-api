@@ -191,7 +191,7 @@ object TestPlans {
         name = "SupporterPlus",
         charges = SupporterPlusCharges(Year),
         status = Status.current,
-      )
+      ),
     )
   }
 
