@@ -183,13 +183,13 @@ object TestPlans {
       TestCatalogPlan(
         product = Product.SupporterPlus,
         name = "SupporterPlus",
-        charges = SupporterPlusCharges(Month),
+        charges = SupporterPlusCharges(Month, List(TestPricingSummary.gbp(10), TestPricingSummary.gbp(0))),
         status = Status.current,
       ),
       TestCatalogPlan(
         product = Product.SupporterPlus,
         name = "SupporterPlus",
-        charges = SupporterPlusCharges(Year),
+        charges = SupporterPlusCharges(Year, List(TestPricingSummary.gbp(95), TestPricingSummary.gbp(0))),
         status = Status.current,
       ),
     )
