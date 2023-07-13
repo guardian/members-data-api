@@ -192,7 +192,9 @@ object ChargeListReads {
 
     override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
       val pricingSummaries = charges.map(_.pricing)
-      Validation.success(SupporterPlusCharges(Month, pricingSummaries)).ensure("test".wrapNel)(_ => true)
+      Validation.success[NonEmptyList[String], SupporterPlusCharges](
+        SupporterPlusCharges(Month, pricingSummaries),
+      )
     }
   }
 
