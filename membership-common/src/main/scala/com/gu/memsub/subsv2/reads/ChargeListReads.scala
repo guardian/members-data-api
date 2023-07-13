@@ -140,6 +140,7 @@ object ChargeListReads {
   implicit def readPaidChargeList: ChargeListReads[PaidChargeList] = new ChargeListReads[PaidChargeList] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidChargeList] = {
       readPaperChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
+        readSupporterPlusV2Plans[BillingPeriod].read(cat, charges) orElse2
        readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges)
     }.withTrace("readPaidChargeList")
   }
@@ -178,6 +179,18 @@ object ChargeListReads {
       (getDays(chargeMap) |@| findDigipack(chargeMap))(PaperCharges).withTrace("readPaperChargeList")
     }
   }
+
+  implicit def readSupporterPlusV2Plans[BP <: BillingPeriod](implicit product: ChargeReads[SupporterPlus.type], bp: ChargeReads[BP]): ChargeListReads[PaidCharge[Benefit.SupporterPlus.type, BP]] = new ChargeListReads[PaidCharge[P, BP]] {
+    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidCharge[Benefit.SupporterPlus.type, BP]] = {
+      val chargeMap = charges.flatMap(c => cat.get(c.productRatePlanChargeId).map(_ -> c.pricing))
+      (chargeMap.collect { case (SupporterPlus, p) => } match {
+        case Nil => Validation.success[NonEmptyList[String], Option[PricingSummary]](None)
+        case n :: Nil => Validation.failureNel("Not a v2 plan")
+        case line1 :: line2 :: Nil => Validation.s[NonEmptyList[String]](Some(n._2))  // @Pascal, can you fix this bit?!
+      })(SupporterPlusPlans).withTrace("readSupporterPlusV2Plans")
+    }
+  }
+
 
   implicit def readSingle[B <: Benefit : ChargeReads]: ChargeListReads[ChargeList with SingleBenefit[B]] =
     new ChargeListReads[ChargeList with SingleBenefit[B]] {
