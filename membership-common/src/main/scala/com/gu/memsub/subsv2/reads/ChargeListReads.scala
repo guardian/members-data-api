@@ -140,7 +140,8 @@ object ChargeListReads {
   implicit def readPaidChargeList: ChargeListReads[PaidChargeList] = new ChargeListReads[PaidChargeList] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidChargeList] = {
       readPaperChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
-       readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges)
+        readSupporterPlusV2ChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
+        readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges)
     }.withTrace("readPaidChargeList")
   }
 
@@ -179,7 +180,17 @@ object ChargeListReads {
     }
   }
 
-  implicit def readSingle[B <: Benefit : ChargeReads]: ChargeListReads[ChargeList with SingleBenefit[B]] =
+  implicit def readSupporterPlusV2ChargeList: ChargeListReads[SupporterPlusCharges] = new ChargeListReads[SupporterPlusCharges] {
+
+    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
+      val pricingSummaries = charges.map(_.pricing)
+      Validation.success[NonEmptyList[String], SupporterPlusCharges](
+        SupporterPlusCharges(Month, pricingSummaries),
+      )
+    }
+  }
+
+  implicit def readSingle[B <: Benefit: ChargeReads]: ChargeListReads[ChargeList with SingleBenefit[B]] =
     new ChargeListReads[ChargeList with SingleBenefit[B]] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList with SingleBenefit[B]] = {
       readPaidCharge[B, BillingPeriod].read(cat, charges).map(identity[ChargeList with SingleBenefit[B]]) orElse2
