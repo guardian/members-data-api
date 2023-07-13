@@ -4,11 +4,43 @@ import acceptance.data.Randoms.randomId
 import acceptance.data.TestCatalogPlan.{monthlyPaid, oneYearPaid, paperCharges, quarterlyPaid, sixWeeksPaid, threeMonthsPaid, yearlyPaid}
 import acceptance.data.TestPlans.{testContributionPlans, testDigipackPlans, testPaidMembershipPlans, testSupporterPlusPlans, weeklyPlans}
 import com.gu.i18n.Currency
-import com.gu.memsub.Benefit.{FridayPaper, Friend, MondayPaper, PaperDay, Partner, Patron, SaturdayPaper, Staff, SundayPaper, Supporter, ThursdayPaper, TuesdayPaper, WednesdayPaper}
+import com.gu.memsub.Benefit.{
+  FridayPaper,
+  Friend,
+  MondayPaper,
+  PaperDay,
+  Partner,
+  Patron,
+  SaturdayPaper,
+  Staff,
+  SundayPaper,
+  Supporter,
+  ThursdayPaper,
+  TuesdayPaper,
+  WednesdayPaper,
+}
 import com.gu.memsub.BillingPeriod.{Month, OneYear, Quarter, SixWeeks, ThreeMonths, Year}
 import com.gu.memsub.Product.Membership
 import com.gu.memsub.Subscription.ProductRatePlanId
-import com.gu.memsub.subsv2.{Catalog, CatalogPlan, CatalogZuoraPlan, ChargeList, ContributionPlans, DigipackPlans, FreeCharge, PaidCharge, PaidMembershipPlans, PaperCharges, SupporterPlusPlans, WeeklyDomesticPlans, WeeklyPlans, WeeklyRestOfWorldPlans, WeeklyZoneAPlans, WeeklyZoneBPlans, WeeklyZoneCPlans}
+import com.gu.memsub.subsv2.{
+  Catalog,
+  CatalogPlan,
+  CatalogZuoraPlan,
+  ChargeList,
+  ContributionPlans,
+  DigipackPlans,
+  FreeCharge,
+  PaidCharge,
+  PaidMembershipPlans,
+  PaperCharges,
+  SupporterPlusPlans,
+  WeeklyDomesticPlans,
+  WeeklyPlans,
+  WeeklyRestOfWorldPlans,
+  WeeklyZoneAPlans,
+  WeeklyZoneBPlans,
+  WeeklyZoneCPlans,
+}
 import com.gu.memsub.{Benefit, BillingPeriod, Current, PricingSummary, Product, Status}
 import scalaz.NonEmptyList
 

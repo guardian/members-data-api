@@ -115,7 +115,7 @@ class CatalogService(productIds: ProductIds, fetchCatalog: Future[String \/ JsVa
     contribution <- (
       one[Contributor[Month.type]](plans, "Contributor month", FrontendId.Monthly) |@|
         one[Contributor[Year.type]](plans, "Contributor year", FrontendId.Yearly)
-      )(ContributionPlans)
+    )(ContributionPlans)
     voucher <- many[Voucher](plans, "Paper voucher")
     digitalVoucher <- many[DigitalVoucher](plans, "Paper digital voucher")
     delivery <- many[Delivery](plans, "Paper delivery")
