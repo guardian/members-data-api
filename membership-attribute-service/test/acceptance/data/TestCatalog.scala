@@ -33,6 +33,7 @@ import com.gu.memsub.subsv2.{
   PaidMembershipPlans,
   PaperCharges,
   SupporterPlusPlans,
+  SupporterPlusCharges,
   WeeklyDomesticPlans,
   WeeklyPlans,
   WeeklyRestOfWorldPlans,
@@ -179,8 +180,18 @@ object TestPlans {
 
   def testSupporterPlusPlans(): SupporterPlusPlans = {
     SupporterPlusPlans(
-      monthlyPaid(Product.SupporterPlus, Benefit.SupporterPlus, "SupporterPlus", 20),
-      yearlyPaid(Product.SupporterPlus, Benefit.SupporterPlus, "SupporterPlus", 240),
+      TestCatalogPlan(
+        product = Product.SupporterPlus,
+        name = "SupporterPlus",
+        charges = SupporterPlusCharges(Month),
+        status = Status.current,
+      ),
+      TestCatalogPlan(
+        product = Product.SupporterPlus,
+        name = "SupporterPlus",
+        charges = SupporterPlusCharges(Year),
+        status = Status.current,
+      )
     )
   }
 
