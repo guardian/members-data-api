@@ -21,10 +21,9 @@ class CatalogServiceTest extends Specification {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
       val cats = new CatalogService[Id](ids, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), identity, "CODE")
-      cats.catalog.map {
-        catalog =>
-          catalog.supporterPlus.year.charges.billingPeriod mustEqual Year
-          catalog.supporterPlus.plans.size
+      cats.catalog.map { catalog =>
+        catalog.supporterPlus.year.charges.billingPeriod mustEqual Year
+        catalog.supporterPlus.plans.size
       } mustEqual \/.right(2)
 
     }

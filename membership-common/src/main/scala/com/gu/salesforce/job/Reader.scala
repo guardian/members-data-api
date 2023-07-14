@@ -5,19 +5,20 @@ import okhttp3.Response
 import scala.util.{Failure, Success, Try}
 import scala.xml.{XML, Node}
 
-/**
- * Converts the body of a Response to an object of type T.
- * Assumes that the body is XML
- *
- * @tparam T The type of result this Reader returns
- */
+/** Converts the body of a Response to an object of type T. Assumes that the body is XML
+  *
+  * @tparam T
+  *   The type of result this Reader returns
+  */
 sealed trait Reader[T <: Result] {
-  /**
-   * Checks the response status code and attempts to convert its body to XML
-   *
-   * @param response The Response object
-   * @return A Left if the response was invalid or a Right with the object of type T
-   */
+
+  /** Checks the response status code and attempts to convert its body to XML
+    *
+    * @param response
+    *   The Response object
+    * @return
+    *   A Left if the response was invalid or a Right with the object of type T
+    */
   def read(response: Response): Either[Error, T] = {
     response.code() match {
       case 200 | 201 =>
@@ -30,13 +31,13 @@ sealed trait Reader[T <: Result] {
     }
   }
 
-  /**
-   * Converts the XML to the object of type T
-   * No error checking is done, it is assumed that the correct XML tree exists
-   *
-   * @param node The XML to read
-   * @return The resulting object
-   */
+  /** Converts the XML to the object of type T No error checking is done, it is assumed that the correct XML tree exists
+    *
+    * @param node
+    *   The XML to read
+    * @return
+    *   The resulting object
+    */
   def extract(node: Node): T
 }
 
@@ -58,13 +59,15 @@ object Implicits {
   implicit val batchInfoListReader = Reader[BatchInfoList] { node =>
     val batches = (node \ "batchInfo").map(batchInfoReader.extract)
 
-    batches.find(_.failed).fold {
-      if (batches.forall(_.completed)) {
-        CompletedBatchList(batches)
-      } else {
-        InProcessBatchList()
-      }
-    }(FailedBatchList)
+    batches
+      .find(_.failed)
+      .fold {
+        if (batches.forall(_.completed)) {
+          CompletedBatchList(batches)
+        } else {
+          InProcessBatchList()
+        }
+      }(FailedBatchList)
   }
 
   implicit val queryResultReader = Reader { node =>

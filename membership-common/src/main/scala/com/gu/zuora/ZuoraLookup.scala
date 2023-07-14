@@ -260,6 +260,7 @@ object ZuoraLookup {
     "Western Sahara" -> "EH",
     "Yemen" -> "YE",
     "Zambia" -> "ZM",
-    "Zimbabwe" -> "ZW").toMap
+    "Zimbabwe" -> "ZW",
+  ).toMap
 
 }

@@ -19,7 +19,7 @@ case class StripeCredentials(secretKey: String, publicKey: String)
 object StripeCredentials {
   def fromConfig(config: Config, variant: String) = StripeCredentials(
     secretKey = config.getString(s"stripe.$variant.key.secret"),
-    publicKey = config.getString(s"stripe.$variant.key.public")
+    publicKey = config.getString(s"stripe.$variant.key.public"),
   )
 }
 
@@ -28,26 +28,34 @@ case class BasicStripeServiceConfig(stripeCredentials: StripeCredentials, versio
 object BasicStripeServiceConfig {
   def from(config: Config, variant: String = "api") = BasicStripeServiceConfig(
     StripeCredentials.fromConfig(config, variant),
-    StripeServiceConfig.stripeVersion(config, variant)
+    StripeServiceConfig.stripeVersion(config, variant),
   )
 }
 
-case class StripeServiceConfig(envName: String, credentials: StripeCredentials, stripeAccountCountry: Country, invoiceTemplateOverride: Option[InvoiceTemplate], version: Option[String])
+case class StripeServiceConfig(
+    envName: String,
+    credentials: StripeCredentials,
+    stripeAccountCountry: Country,
+    invoiceTemplateOverride: Option[InvoiceTemplate],
+    version: Option[String],
+)
 
 object StripeServiceConfig {
-  def from(config: Config, environmentName: String, stripeAccountCountry: Country, variant: String = "api", version: Option[String] = None) = StripeServiceConfig(
-    environmentName,
-    StripeCredentials.fromConfig(config, variant),
-    stripeAccountCountry,
-    InvoiceTemplates.fromConfig(config.getConfig("zuora.invoiceTemplateIds")).find(_.country == stripeAccountCountry),
-    stripeVersion(config, variant)
-  )
+  def from(config: Config, environmentName: String, stripeAccountCountry: Country, variant: String = "api", version: Option[String] = None) =
+    StripeServiceConfig(
+      environmentName,
+      StripeCredentials.fromConfig(config, variant),
+      stripeAccountCountry,
+      InvoiceTemplates.fromConfig(config.getConfig("zuora.invoiceTemplateIds")).find(_.country == stripeAccountCountry),
+      stripeVersion(config, variant),
+    )
 
-  def stripeVersion(config: Config, variant: String = "api"): Option[String] = config.hasPath(s"stripe.${variant}.version").option(config.getString(s"stripe.${variant}.version"))
+  def stripeVersion(config: Config, variant: String = "api"): Option[String] =
+    config.hasPath(s"stripe.${variant}.version").option(config.getString(s"stripe.${variant}.version"))
 }
 
 class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext)
-  extends WebServiceHelper[StripeObject, Stripe.Error] {
+    extends WebServiceHelper[StripeObject, Stripe.Error] {
   val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
   val httpClient: FutureHttpClient = client
 
@@ -67,13 +75,10 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
 
     @Deprecated
     def create(card: String): Future[Customer] =
-      post[Customer]("customers", Map(
-        "card" -> Seq(card)))
+      post[Customer]("customers", Map("card" -> Seq(card)))
 
     def createWithStripePaymentMethod(stripePaymentMethodID: String): Future[Customer] = for {
-      createCustomerResponse <- post[CreateCustomerResponse]("customers", Map(
-        "payment_method" -> Seq(stripePaymentMethodID))
-      )
+      createCustomerResponse <- post[CreateCustomerResponse]("customers", Map("payment_method" -> Seq(stripePaymentMethodID)))
       synthesisedCustomerWithCardDetail <- read(createCustomerResponse.id)
     } yield synthesisedCustomerWithCardDetail
 
@@ -88,21 +93,22 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
   }
 
   object PaymentMethod {
-    def read(customerId: String): Future[CustomersPaymentMethods] = get[CustomersPaymentMethods](s"payment_methods",
-      "customer" -> customerId,
-      "type" -> "card"
-    )
+    def read(customerId: String): Future[CustomersPaymentMethods] =
+      get[CustomersPaymentMethods](s"payment_methods", "customer" -> customerId, "type" -> "card")
   }
 
   object Charge {
     def create(amount: Int, currency: Currency, email: String, description: String, cardToken: String, meta: Map[String, String]) =
-      post[Charge]("charges", Map(
-        "currency" -> Seq(currency.toString),
-        "description" -> Seq(description),
-        "amount" -> Seq(amount.toString),
-        "receipt_email" -> Seq(email),
-        "source" -> Seq(cardToken)
-      ) ++ meta.map { case (k, v) => s"metadata[$k]" -> Seq(v) })
+      post[Charge](
+        "charges",
+        Map(
+          "currency" -> Seq(currency.toString),
+          "description" -> Seq(description),
+          "amount" -> Seq(amount.toString),
+          "receipt_email" -> Seq(email),
+          "source" -> Seq(cardToken),
+        ) ++ meta.map { case (k, v) => s"metadata[$k]" -> Seq(v) },
+      )
   }
 
   object BalanceTransaction {
@@ -110,19 +116,18 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
       get[BalanceTransaction](id)
 
     def read(balanceId: String) = {
-      find("balance/history/" + balanceId).map(_.some.collect {
-        case b: Stripe.BalanceTransaction => b
+      find("balance/history/" + balanceId).map(_.some.collect { case b: Stripe.BalanceTransaction =>
+        b
       })
     }
   }
-
 
   object Event {
     def find(id: String): Future[Stripe.Event[StripeObject]] =
       get[Stripe.Event[StripeObject]](s"events/$id")
 
     def findCharge(id: String): Future[Option[Stripe.Event[Charge]]] =
-      find(id).map(_.some.collect { case e@Stripe.Event(_, c: Stripe.Charge, _) => e.copy[Charge](`object` = c) })
+      find(id).map(_.some.collect { case e @ Stripe.Event(_, c: Stripe.Charge, _) => e.copy[Charge](`object` = c) })
   }
 
   object Subscription {
@@ -132,7 +137,7 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
 }
 
 class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext)
-  extends BasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client) {
+    extends BasicStripeService(BasicStripeServiceConfig(apiConfig.credentials, apiConfig.version), client) {
   val publicKey: String = apiConfig.credentials.publicKey
   val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
   val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)

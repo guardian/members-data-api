@@ -1,27 +1,25 @@
 package com.gu.salesforce.job
 
-/**
- * Defines an HTTP request which should return an object of type T
- *
- * @tparam T The expected resultant object
- */
+/** Defines an HTTP request which should return an object of type T
+  *
+  * @tparam T
+  *   The expected resultant object
+  */
 sealed trait Action[T <: Result] {
-  /**
-   * The URL to send the request to
-   */
+
+  /** The URL to send the request to
+    */
   val url: String
 
   def name = getClass.getSimpleName
 }
 
-/**
- * A GET request
- */
+/** A GET request
+  */
 sealed trait ReadAction[T <: Result] extends Action[T]
 
-/**
- * A POST request
- */
+/** A POST request
+  */
 sealed trait WriteAction[T <: Result] extends Action[T] {
   // Can't make this Elem because queries have to be plain text (despite Content-Type
   // having to be application/xml

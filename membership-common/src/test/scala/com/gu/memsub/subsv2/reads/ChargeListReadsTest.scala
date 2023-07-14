@@ -13,21 +13,22 @@ import com.softwaremill.diffx.generic.auto.diffForCaseClass
 import org.scalatest.flatspec.AnyFlatSpec
 import scalaz.{Failure, NonEmptyList, Success, ValidationNel}
 
-
 class ChargeListReadsTest extends AnyFlatSpec {
 
   val planChargeMap = Map[ProductRatePlanChargeId, Benefit](
     ProductRatePlanChargeId("weekly") -> Weekly,
     ProductRatePlanChargeId("supporter") -> Supporter,
     ProductRatePlanChargeId("sunday") -> SundayPaper,
-    ProductRatePlanChargeId("digipack") -> Digipack
+    ProductRatePlanChargeId("digipack") -> Digipack,
   )
 
   val supporterCharge = ZuoraCharge.apply(
     productRatePlanChargeId = ProductRatePlanChargeId("supporter"),
-    pricing = PricingSummary(Map(
-      GBP -> Price(11.99f, GBP)
-    )),
+    pricing = PricingSummary(
+      Map(
+        GBP -> Price(11.99f, GBP),
+      ),
+    ),
     billingPeriod = Some(ZMonth),
     specificBillingPeriod = None,
     model = "FlatFee",
@@ -35,14 +36,16 @@ class ChargeListReadsTest extends AnyFlatSpec {
     `type` = "Recurring",
     endDateCondition = SubscriptionEnd,
     upToPeriods = None,
-    upToPeriodsType = None
+    upToPeriodsType = None,
   )
 
   val weeklyCharge = ZuoraCharge.apply(
     productRatePlanChargeId = ProductRatePlanChargeId("weekly"),
-    pricing = PricingSummary(Map(
-      GBP -> Price(30.0f, GBP)
-    )),
+    pricing = PricingSummary(
+      Map(
+        GBP -> Price(30.0f, GBP),
+      ),
+    ),
     billingPeriod = Some(ZMonth),
     specificBillingPeriod = None,
     model = "FlatFee",
@@ -50,14 +53,16 @@ class ChargeListReadsTest extends AnyFlatSpec {
     `type` = "Recurring",
     endDateCondition = SubscriptionEnd,
     upToPeriods = None,
-    upToPeriodsType = None
+    upToPeriodsType = None,
   )
 
   val paperCharge = ZuoraCharge.apply(
     productRatePlanChargeId = ProductRatePlanChargeId("sunday"),
-    pricing = PricingSummary(Map(
-      GBP -> Price(15.12f, GBP)
-    )),
+    pricing = PricingSummary(
+      Map(
+        GBP -> Price(15.12f, GBP),
+      ),
+    ),
     billingPeriod = Some(ZMonth),
     specificBillingPeriod = None,
     model = "FlatFee",
@@ -65,14 +70,16 @@ class ChargeListReadsTest extends AnyFlatSpec {
     `type` = "Recurring",
     endDateCondition = SubscriptionEnd,
     upToPeriods = None,
-    upToPeriodsType = None
+    upToPeriodsType = None,
   )
 
   val digipackCharge = ZuoraCharge.apply(
     productRatePlanChargeId = ProductRatePlanChargeId("digipack"),
-    pricing = PricingSummary(Map(
-      GBP -> Price(11.99f, GBP)
-    )),
+    pricing = PricingSummary(
+      Map(
+        GBP -> Price(11.99f, GBP),
+      ),
+    ),
     billingPeriod = Some(ZMonth),
     specificBillingPeriod = None,
     model = "FlatFee",
@@ -80,7 +87,7 @@ class ChargeListReadsTest extends AnyFlatSpec {
     `type` = "Recurring",
     endDateCondition = SubscriptionEnd,
     upToPeriods = None,
-    upToPeriodsType = None
+    upToPeriodsType = None,
   )
 
   "product reads" should "read any supporter as any benefit successfully" in {

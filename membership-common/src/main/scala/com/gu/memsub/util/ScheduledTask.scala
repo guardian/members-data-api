@@ -8,10 +8,9 @@ import scala.concurrent.duration._
 import java.util.concurrent.atomic.AtomicReference
 import scala.util.{Failure, Success}
 
-/**
-  * Use ScheduledTask only when initial value is well defined.
+/** Use ScheduledTask only when initial value is well defined.
   */
-trait ScheduledTask[T]  {
+trait ScheduledTask[T] {
   val initialValue: T
 
   val initialDelay: FiniteDuration
@@ -40,13 +39,9 @@ trait ScheduledTask[T]  {
 }
 
 object ScheduledTask {
-  def apply[T](taskName: String,
-               initValue: T,
-               initDelay: FiniteDuration,
-               intervalPeriod: FiniteDuration)
-              (f: => Future[T])
-              (implicit actorSys: ActorSystem,
-               ec: ExecutionContext) =
+  def apply[T](taskName: String, initValue: T, initDelay: FiniteDuration, intervalPeriod: FiniteDuration)(
+      f: => Future[T],
+  )(implicit actorSys: ActorSystem, ec: ExecutionContext) =
     new ScheduledTask[T] {
       val system = actorSys
       val executionContext = ec

@@ -28,7 +28,7 @@ import scala.util.{Failure, Success}
 object ZuoraSoapService {
 
   def latestInvoiceItems(items: Seq[SoapQueries.InvoiceItem]): Seq[SoapQueries.InvoiceItem] = {
-    if(items.isEmpty)
+    if (items.isEmpty)
       items
     else {
       val sortedItems = items.sortBy(_.chargeNumber)
@@ -46,7 +46,8 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     soapClient.query[SoapQueries.Account](SimpleFilter("crmId", contactId.salesforceAccountId))
 
   def getAccountIds(contactId: ContactId): Future[List[AccountId]] =
-    soapClient.query[SoapQueries.Account](SimpleFilter("crmId", contactId.salesforceAccountId))
+    soapClient
+      .query[SoapQueries.Account](SimpleFilter("crmId", contactId.salesforceAccountId))
       .map(_.map(a => AccountId(a.id)).toList)
 
   override def getAccount(accountId: AccountId): Future[SoapQueries.Account] =
@@ -62,7 +63,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     val invoices = soapClient.authenticatedRequest(action(subscriptionId, paymentDate)).map(_.invoiceItems)
     invoices recover {
       case e: Error => Nil
-      case e:Throwable => throw e
+      case e: Throwable => throw e
     }
   }
 
@@ -84,19 +85,24 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     previewInvoices(subscriptionId, contractAcceptanceDate, PreviewInvoicesViaAmend(number) _)
   }
 
-  private def setDefaultPaymentMethod(accountId: AccountId, paymentMethodId: String, paymentGateway: PaymentGateway, invoiceTemplateOverride: Option[InvoiceTemplate]) = {
+  private def setDefaultPaymentMethod(
+      accountId: AccountId,
+      paymentMethodId: String,
+      paymentGateway: PaymentGateway,
+      invoiceTemplateOverride: Option[InvoiceTemplate],
+  ) = {
     soapClient.authenticatedRequest(
       action = UpdateAccountPayment(
         accountId = accountId.get,
         defaultPaymentMethodId = SetTo(paymentMethodId),
         paymentGatewayName = paymentGateway.gatewayName,
         autoPay = Some(true),
-        maybeInvoiceTemplateId = invoiceTemplateOverride.map(_.id)
-      )
+        maybeInvoiceTemplateId = invoiceTemplateOverride.map(_.id),
+      ),
     )
   }
 
-  //When setting the payment gateway in the account we have to clear the default payment method to avoid conflicts
+  // When setting the payment gateway in the account we have to clear the default payment method to avoid conflicts
   private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway) = {
     soapClient.authenticatedRequest(
       action = UpdateAccountPayment(
@@ -104,22 +110,33 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
         defaultPaymentMethodId = Clear,
         paymentGatewayName = paymentGateway.gatewayName,
         autoPay = Some(false),
-        maybeInvoiceTemplateId = None
-      )
+        maybeInvoiceTemplateId = None,
+      ),
     )
   }
 
-   // Creates a payment method in zuora and sets it as default in the specified account.To satisfy zuora validations this has to be done in three steps
-   override def createPaymentMethod(command: CreatePaymentMethod): Future[UpdateResult] = for {
-     _ <- setGatewayAndClearDefaultMethod(command.accountId, command.paymentGateway) //We need to set gateway correctly because it must match with the payment method we'll create below
-     createMethodResult <- soapClient.extendedAuthenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
-     result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway, command.invoiceTemplateOverride)
-   } yield result
+  // Creates a payment method in zuora and sets it as default in the specified account.To satisfy zuora validations this has to be done in three steps
+  override def createPaymentMethod(command: CreatePaymentMethod): Future[UpdateResult] = for {
+    _ <- setGatewayAndClearDefaultMethod(
+      command.accountId,
+      command.paymentGateway,
+    ) // We need to set gateway correctly because it must match with the payment method we'll create below
+    createMethodResult <- soapClient.extendedAuthenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
+    result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway, command.invoiceTemplateOverride)
+  } yield result
 
-  override def createCreditCardPaymentMethod(accountId: AccountId, stripeCustomer: Stripe.Customer, paymentGateway: PaymentGateway, invoiceTemplateOverride: Option[InvoiceTemplate]): Future[UpdateResult] = {
+  override def createCreditCardPaymentMethod(
+      accountId: AccountId,
+      stripeCustomer: Stripe.Customer,
+      paymentGateway: PaymentGateway,
+      invoiceTemplateOverride: Option[InvoiceTemplate],
+  ): Future[UpdateResult] = {
     val card = stripeCustomer.card
     for {
-      r <- setGatewayAndClearDefaultMethod(accountId, paymentGateway) //We need to set gateway correctly because it must match with the payment method
+      r <- setGatewayAndClearDefaultMethod(
+        accountId,
+        paymentGateway,
+      ) // We need to set gateway correctly because it must match with the payment method
       paymentMethod <- soapClient.authenticatedRequest(
         CreateCreditCardReferencePaymentMethod(
           accountId = accountId.get,
@@ -129,8 +146,8 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
           cardCountry = CountryGroup.countryByCode(card.country),
           expirationMonth = card.exp_month,
           expirationYear = card.exp_year,
-          cardType = card.`type`
-        )
+          cardType = card.`type`,
+        ),
       )
       result <- setDefaultPaymentMethod(accountId, paymentMethod.id, paymentGateway, invoiceTemplateOverride)
     } yield result
@@ -138,7 +155,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
 
   override def createPayPalPaymentMethod(accountId: AccountId, payPalBaid: String, email: String): Future[UpdateResult] =
     for {
-      r <- setGatewayAndClearDefaultMethod(accountId, PayPal) //We need to set gateway correctly because it must match with the payment method
+      r <- setGatewayAndClearDefaultMethod(accountId, PayPal) // We need to set gateway correctly because it must match with the payment method
       paymentMethod <- soapClient.authenticatedRequest(CreatePayPalReferencePaymentMethod(accountId.get, payPalBaid, email))
       result <- setDefaultPaymentMethod(accountId, paymentMethod.id, PayPal, None)
     } yield result
@@ -187,26 +204,24 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
      * it amended, not the new version post amendment.
      */
 
-      for {
-        subscription <- soapClient.queryOne[Subscription](SimpleFilter("id", subscriptionId))
-        allSubVersions <- soapClient.query[Subscription](SimpleFilter("Name", subscription.name))
-        latestSubscriptionId = allSubVersions.sortBy(_.version).map(_.id).last
-        action = UpdatePromoCode(latestSubscriptionId, code.get)
-        _ <- soapClient.authenticatedRequest[UpdateResult](new XmlWriterAction(action)(updatePromoCodeWrites))
-      } yield ()
+    for {
+      subscription <- soapClient.queryOne[Subscription](SimpleFilter("id", subscriptionId))
+      allSubVersions <- soapClient.query[Subscription](SimpleFilter("Name", subscription.name))
+      latestSubscriptionId = allSubVersions.sortBy(_.version).map(_.id).last
+      action = UpdatePromoCode(latestSubscriptionId, code.get)
+      _ <- soapClient.authenticatedRequest[UpdateResult](new XmlWriterAction(action)(updatePromoCodeWrites))
+    } yield ()
 
   }
 
-  override def downgradePlan(subscriptionId: S.Id,
-                             currentRatePlan: RatePlanId,
-                             futureRatePlanId: ProductRatePlanId,
-                             effectiveFrom: LocalDate): Future[AmendResult] =
+  override def downgradePlan(
+      subscriptionId: S.Id,
+      currentRatePlan: RatePlanId,
+      futureRatePlanId: ProductRatePlanId,
+      effectiveFrom: LocalDate,
+  ): Future[AmendResult] =
     soapClient.authenticatedRequest(
-      DowngradePlan(
-        subscriptionId.get,
-        currentRatePlan.get,
-        futureRatePlanId.get,
-        effectiveFrom)
+      DowngradePlan(subscriptionId.get, currentRatePlan.get, futureRatePlanId.get, effectiveFrom),
     )
 
   override def cancelPlan(subscription: S.Id, rp: RatePlanId, cancelDate: LocalDate) =
@@ -227,7 +242,8 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
       AndFilter(
         SimpleFilter("StartDateTime", DateTimeHelpers.formatDateTime(startDate), ">="),
         ("SubscriptionNumber", subscriptionNumber.get),
-        ("UOM", unitOfMeasure))
+        ("UOM", unitOfMeasure),
+      ),
     )
 
   override def createFreeEventUsage(accountId: AccountId, subscriptionNumber: S.Name, description: String, quantity: Int): Future[CreateResult] =
@@ -244,15 +260,14 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     soapClient.queryOne[SoapQueries.PaymentMethod](SimpleFilter("Id", id))
 
   override def updateActivationDate(subscriptionId: Id): Future[Unit] =
-    soapClient.authenticatedRequest[UpdateResult](Update(subscriptionId.get, "Subscription",  Seq(
-      "ActivationDate__c" -> DateTime.now().toString))
-    ) map(_ => ()) andThen {
+    soapClient.authenticatedRequest[UpdateResult](
+      Update(subscriptionId.get, "Subscription", Seq("ActivationDate__c" -> DateTime.now().toString)),
+    ) map (_ => ()) andThen {
       case Success(_) => SafeLogger.debug(s"Updated activation date for subscription ${subscriptionId.get}")
       case Failure(e) => SafeLogger.error(scrub"Error while trying to update activation date for subscription: ${subscriptionId.get}", e)
     }
 
   override def createContribution(con: Contribute): Future[SubscribeResult] =
     soapClient.extendedAuthenticatedRequest[SubscribeResult](new XmlWriterAction(con)(contributeWrites))
-
 
 }

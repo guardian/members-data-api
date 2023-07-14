@@ -6,11 +6,8 @@ import okhttp3.{Request, Response}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SimpleContactRepository(
-    salesforceConfig: SalesforceConfig,
-    scheduler: Scheduler,
-    appName: String)(implicit executionContext: ExecutionContext)
-  extends ContactRepository {
+class SimpleContactRepository(salesforceConfig: SalesforceConfig, scheduler: Scheduler, appName: String)(implicit executionContext: ExecutionContext)
+    extends ContactRepository {
 
   val salesforce: Scalaforce = new Scalaforce {
     val application: String = appName

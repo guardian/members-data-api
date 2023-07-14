@@ -8,7 +8,6 @@ import com.gu.zuora.soap.models.Result
 import io.lemonlabs.uri.dsl._
 import org.specs2.mutable.Specification
 
-
 class ActionTest extends Specification {
 
   case class TestResult() extends Result
@@ -57,6 +56,5 @@ class ActionTest extends Specification {
       action.sanitized must not contain "secret"
     }
   }
-
 
 }

@@ -33,9 +33,8 @@ object Actions {
     override def sanitized = "<api:login>...</api:login>"
   }
 
-  /**
-   * See https://knowledgecenter.zuora.com/BC_Developers/SOAP_API/E_SOAP_API_Calls/update_call
-   */
+  /** See https://knowledgecenter.zuora.com/BC_Developers/SOAP_API/E_SOAP_API_Calls/update_call
+    */
   case class Update(zObjectId: String, objectType: String, fields: Seq[(String, String)]) extends Action[UpdateResult] {
     val objectNamespace = s"ns2:$objectType"
 
@@ -46,15 +45,24 @@ object Actions {
         <ns1:zObjects  xsi:type={objectNamespace}>
           <ns2:Id>{zObjectId}</ns2:Id>
           {
-          fields.map { case (k, v) =>
-            Elem("ns2", k, Null, TopScope, false, Text(v))
-          }
-          }
+        fields.map { case (k, v) =>
+          Elem("ns2", k, Null, TopScope, false, Text(v))
+        }
+      }
         </ns1:zObjects>
       </ns1:update>
   }
 
-  case class CreateCreditCardReferencePaymentMethod(accountId: String, cardId: String, customerId: String, last4: String, cardCountry: Option[Country], expirationMonth: Int, expirationYear: Int, cardType: String) extends Action[CreateResult] {
+  case class CreateCreditCardReferencePaymentMethod(
+      accountId: String,
+      cardId: String,
+      customerId: String,
+      last4: String,
+      cardCountry: Option[Country],
+      expirationMonth: Int,
+      expirationYear: Int,
+      cardType: String,
+  ) extends Action[CreateResult] {
     override def additionalLogInfo = Map("AccountId" -> accountId)
 
     val body =
@@ -65,27 +73,27 @@ object Actions {
           <ns2:SecondTokenId>{customerId}</ns2:SecondTokenId>
           <ns2:Type>CreditCardReferenceTransaction</ns2:Type>
           {
-            cardCountry.map { country =>
-              <ns2:CreditCardCountry>{country.alpha2}</ns2:CreditCardCountry>
-            } getOrElse NodeSeq.Empty
-          }
+        cardCountry.map { country =>
+          <ns2:CreditCardCountry>{country.alpha2}</ns2:CreditCardCountry>
+        } getOrElse NodeSeq.Empty
+      }
           <ns2:CreditCardNumber>{last4}</ns2:CreditCardNumber>
           <ns2:CreditCardExpirationMonth>{expirationMonth}</ns2:CreditCardExpirationMonth>
           <ns2:CreditCardExpirationYear>{expirationYear}</ns2:CreditCardExpirationYear>
           {
-            // see CreditCardType allowed values
-            // https://knowledgecenter.zuora.com/DC_Developers/G_SOAP_API/E1_SOAP_API_Object_Reference/PaymentMethod
-            (cardType.toLowerCase.replaceAll(" ", "") match {
-              case "mastercard" => Some("MasterCard")
-              case "visa" => Some("Visa")
-              case "amex" => Some("AmericanExpress")
-              case "americanexpress" => Some("AmericanExpress")
-              case "discover" => Some("Discover")
-              case _ => None // TODO perhaps log invalid card type
-            }) map { cardType =>
-              <ns2:CreditCardType>{cardType}</ns2:CreditCardType>
-            } getOrElse NodeSeq.Empty
-          }
+        // see CreditCardType allowed values
+        // https://knowledgecenter.zuora.com/DC_Developers/G_SOAP_API/E1_SOAP_API_Object_Reference/PaymentMethod
+        (cardType.toLowerCase.replaceAll(" ", "") match {
+          case "mastercard" => Some("MasterCard")
+          case "visa" => Some("Visa")
+          case "amex" => Some("AmericanExpress")
+          case "americanexpress" => Some("AmericanExpress")
+          case "discover" => Some("Discover")
+          case _ => None // TODO perhaps log invalid card type
+        }) map { cardType =>
+          <ns2:CreditCardType>{cardType}</ns2:CreditCardType>
+        } getOrElse NodeSeq.Empty
+      }
         </ns1:zObjects>
       </ns1:create>
   }
@@ -107,13 +115,25 @@ object Actions {
 
   sealed trait ZuoraNullableId
   object Clear extends ZuoraNullableId
-  case class SetTo(value:String) extends ZuoraNullableId
+  case class SetTo(value: String) extends ZuoraNullableId
 
-  case class UpdateAccountPayment(accountId: String, defaultPaymentMethodId: ZuoraNullableId, paymentGatewayName: String, autoPay: Option[Boolean], maybeInvoiceTemplateId: Option[String]) extends Action[UpdateResult] {
+  case class UpdateAccountPayment(
+      accountId: String,
+      defaultPaymentMethodId: ZuoraNullableId,
+      paymentGatewayName: String,
+      autoPay: Option[Boolean],
+      maybeInvoiceTemplateId: Option[String],
+  ) extends Action[UpdateResult] {
 
-    override def additionalLogInfo = Map("AccountId" -> accountId, "DefaultPaymentMethodId" -> defaultPaymentMethodId.toString, "PaymentGateway" -> paymentGatewayName, "AutoPay" -> autoPay.toString, "InvoiceTemplateOverride" -> maybeInvoiceTemplateId.mkString)
+    override def additionalLogInfo = Map(
+      "AccountId" -> accountId,
+      "DefaultPaymentMethodId" -> defaultPaymentMethodId.toString,
+      "PaymentGateway" -> paymentGatewayName,
+      "AutoPay" -> autoPay.toString,
+      "InvoiceTemplateOverride" -> maybeInvoiceTemplateId.mkString,
+    )
 
-    //We use two different vals here because order matters in the xml and zuora requires the clearing and settings lines to be in different places
+    // We use two different vals here because order matters in the xml and zuora requires the clearing and settings lines to be in different places
     val (setPaymentMethodLine, clearPaymentMethodLine) = defaultPaymentMethodId match {
       case SetTo(p) => (<ns2:DefaultPaymentMethodId>{p}</ns2:DefaultPaymentMethodId>, NodeSeq.Empty)
       case Clear => (NodeSeq.Empty, <ns2:fieldsToNull>DefaultPaymentMethodId</ns2:fieldsToNull>)
@@ -137,21 +157,18 @@ object Actions {
 
   }
 
-  /**
-   * A hack to get when a subscription charge dates will be effective. While it's possible to get this data from an
-   * Invoice of a subscription that charges the user immediately (e.g. annual partner sign up), it's not possible to get this for data
-   * for subscriptions that charge in the future (subs offer that charges 6 months in). To achieve the latter an amend
-   * call with preview can be used - this works for the first case too
-   *
-   * The dummy amend also sets the subscription to be evergreen - an infinite term length
-   * while the real subscriptions have one year terms. This is so we still get invoices for annual subs which
-   * have already been billed
-   *
-   */
+  /** A hack to get when a subscription charge dates will be effective. While it's possible to get this data from an Invoice of a subscription that
+    * charges the user immediately (e.g. annual partner sign up), it's not possible to get this for data for subscriptions that charge in the future
+    * (subs offer that charges 6 months in). To achieve the latter an amend call with preview can be used - this works for the first case too
+    *
+    * The dummy amend also sets the subscription to be evergreen - an infinite term length while the real subscriptions have one year terms. This is
+    * so we still get invoices for annual subs which have already been billed
+    */
   case class PreviewInvoicesViaAmend(numberOfPeriods: Int = 2)(subscriptionId: String, paymentDate: LocalDate = now) extends Action[AmendResult] {
-    override def additionalLogInfo = Map("SubscriptionId" -> subscriptionId, "PaymentDate" -> paymentDate.toString, "NumberOfPeriods" -> numberOfPeriods.toString)
+    override def additionalLogInfo =
+      Map("SubscriptionId" -> subscriptionId, "PaymentDate" -> paymentDate.toString, "NumberOfPeriods" -> numberOfPeriods.toString)
 
-    val date = if(now isBefore paymentDate) paymentDate else now
+    val date = if (now isBefore paymentDate) paymentDate else now
 
     val body = {
       <ns1:amend>
@@ -180,7 +197,7 @@ object Actions {
   case class PreviewInvoicesTillEndOfTermViaAmend(subscriptionId: String, paymentDate: LocalDate = now) extends Action[AmendResult] {
     override def additionalLogInfo = Map("SubscriptionId" -> subscriptionId, "PaymentDate" -> paymentDate.toString)
 
-    val date = if(now isBefore paymentDate) paymentDate else now
+    val date = if (now isBefore paymentDate) paymentDate else now
 
     val body = {
       <ns1:amend>
@@ -206,12 +223,11 @@ object Actions {
     }
   }
 
-  case class CancelPlan(subscriptionId: String, subscriptionRatePlanId: String, date: LocalDate)
-    extends Action[AmendResult] {
+  case class CancelPlan(subscriptionId: String, subscriptionRatePlanId: String, date: LocalDate) extends Action[AmendResult] {
     override def additionalLogInfo = Map(
       "SubscriptionId" -> subscriptionId,
       "RatePlanId" -> subscriptionRatePlanId,
-      "Date" -> date.toString
+      "Date" -> date.toString,
     )
 
     val body = {
@@ -237,12 +253,13 @@ object Actions {
     }
   }
 
-  case class DowngradePlan(subscriptionId: String, subscriptionRatePlanId: String, newRatePlanId: String, date: LocalDate) extends Action[AmendResult] {
+  case class DowngradePlan(subscriptionId: String, subscriptionRatePlanId: String, newRatePlanId: String, date: LocalDate)
+      extends Action[AmendResult] {
     override def additionalLogInfo = Map(
       "SubscriptionId" -> subscriptionId,
       "Existing RatePlanId" -> subscriptionRatePlanId,
       "New RatePlanId" -> newRatePlanId,
-      "Date" -> date.toString
+      "Date" -> date.toString,
     )
 
     override val singleTransaction = true
@@ -293,10 +310,10 @@ object Actions {
   case class CreateFreeEventUsage(accountId: String, description: String, quantity: Int, subscriptionNumber: String) extends Action[CreateResult] {
     val startDateTime = formatDateTime(DateTime.now)
     override def additionalLogInfo = Map(
-    "AccountId" -> accountId,
-    "Description" -> description,
-    "Quantity" -> quantity.toString,
-    "SubscriptionNumber" -> subscriptionNumber
+      "AccountId" -> accountId,
+      "Description" -> description,
+      "Quantity" -> quantity.toString,
+      "SubscriptionNumber" -> subscriptionNumber,
     )
 
     override protected val body: Elem =

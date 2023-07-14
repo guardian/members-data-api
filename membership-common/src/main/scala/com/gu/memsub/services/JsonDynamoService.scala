@@ -26,7 +26,8 @@ class JsonDynamoService[A, M[_]](table: Table)(implicit m: Monad[M]) {
   }
 
   def add(p: A)(implicit formatter: Writes[A]): M[Unit] = Monad[M].point {
-    val item = Json.fromJson[Item](Json.toJson(p))
+    val item = Json
+      .fromJson[Item](Json.toJson(p))
       .getOrElse(throw new IllegalStateException(s"Unable to convert $p to item"))
     table.putItem(item)
     ()
@@ -35,14 +36,22 @@ class JsonDynamoService[A, M[_]](table: Table)(implicit m: Monad[M]) {
   def find[B](b: B)(implicit of: OWrites[B], r: Reads[A]): M[List[A]] = Monad[M].point {
     val primaryKey = table.describe().getKeySchema.get(0).getAttributeName
     val jsonItem = Json.toJson(b)
-    val dynamoResult = (jsonItem \ primaryKey).validate[String].asOpt.fold {
-      itemFormat.reads(jsonItem).fold(err => Seq.empty, { itemFromJson =>
-        val filters = itemFromJson.asMap().asScala.map { case (k, v) => new ScanFilter(k).eq(v): ScanFilter }.toSeq
-        table.scan(new ScanSpec().withScanFilters(filters:_*)).iterator().asScala.toSeq
-      })
-    } { keyValue =>
-      Option(table.getItem(new GetItemSpec().withPrimaryKey(primaryKey, keyValue))).toSeq
-    }
+    val dynamoResult = (jsonItem \ primaryKey)
+      .validate[String]
+      .asOpt
+      .fold {
+        itemFormat
+          .reads(jsonItem)
+          .fold(
+            err => Seq.empty,
+            { itemFromJson =>
+              val filters = itemFromJson.asMap().asScala.map { case (k, v) => new ScanFilter(k).eq(v): ScanFilter }.toSeq
+              table.scan(new ScanSpec().withScanFilters(filters: _*)).iterator().asScala.toSeq
+            },
+          )
+      } { keyValue =>
+        Option(table.getItem(new GetItemSpec().withPrimaryKey(primaryKey, keyValue))).toSeq
+      }
     dynamoResult.flatMap(i => Json.fromJson[A](Json.toJson[Item](i)).asOpt).toList
   }
 }
@@ -56,7 +65,7 @@ object JsonDynamoService {
     },
     new Writes[Item] {
       def writes(o: Item): JsValue = Json.parse(o.toJSON)
-    }
+    },
   )
 
   def forTable[A](table: String)(implicit e: ExecutionContext): JsonDynamoService[A, Future] = {

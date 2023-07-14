@@ -7,7 +7,6 @@ import org.joda.time.DateTime
 import scala.xml.{Elem, NodeSeq}
 import scalaz.Writer
 
-
 object Command {
 
   def write[T](w: T => Elem): XmlWriter[T] = new XmlWriter[T] {
@@ -31,20 +30,20 @@ object Command {
       <ns2:PaymentGateway>{t.paymentGateway.gatewayName}</ns2:PaymentGateway>
       {invoiceTemplateId}
     </ns1:Account>
-}
+  }
 
-    implicit val creditCardReferenceTransactionWrites = getCreditCardReferenceWrites(
-      parent =  <ns1:PaymentMethod xsi:type="ns2:PaymentMethod"></ns1:PaymentMethod>,
-      accountId = None
-    )
+  implicit val creditCardReferenceTransactionWrites = getCreditCardReferenceWrites(
+    parent = <ns1:PaymentMethod xsi:type="ns2:PaymentMethod"></ns1:PaymentMethod>,
+    accountId = None,
+  )
 
-  private def getCreditCardReferenceWrites(parent:Elem, accountId: Option[AccountId]): XmlWriter[CreditCardReferenceTransaction] = write[CreditCardReferenceTransaction] { t =>
+  private def getCreditCardReferenceWrites(parent: Elem, accountId: Option[AccountId]): XmlWriter[CreditCardReferenceTransaction] =
+    write[CreditCardReferenceTransaction] { t =>
+      val accountIdLine = accountId.map(ac => <ns2:AccountId>{ac.get}</ns2:AccountId>) getOrElse NodeSeq.Empty
+      val countryLine = t.cardCountry.map(c => <ns2:CreditCardCountry>{c.alpha2}</ns2:CreditCardCountry>) getOrElse NodeSeq.Empty
 
-    val accountIdLine = accountId.map(ac => <ns2:AccountId>{ac.get}</ns2:AccountId>) getOrElse NodeSeq.Empty
-    val countryLine = t.cardCountry.map(c => <ns2:CreditCardCountry>{c.alpha2}</ns2:CreditCardCountry>) getOrElse NodeSeq.Empty
-
-    val content =
-      <placeholder>
+      val content =
+        <placeholder>
         {accountIdLine}
         <ns2:TokenId>{t.cardId}</ns2:TokenId>
         <ns2:SecondTokenId>{t.customerId}</ns2:SecondTokenId>
@@ -56,15 +55,15 @@ object Command {
         <ns2:CreditCardType>{t.cardType.replaceAll(" ", "")}</ns2:CreditCardType>
     </placeholder>
 
-    parent.copy(child = parent.child ++ content.child)
-  }
+      parent.copy(child = parent.child ++ content.child)
+    }
 
-private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]): XmlWriter[PayPalReferenceTransaction] = write[PayPalReferenceTransaction] { t =>
+  private def getPaypalReferenceWrites(parent: Elem, accountId: Option[AccountId]): XmlWriter[PayPalReferenceTransaction] =
+    write[PayPalReferenceTransaction] { t =>
+      val accountIdLine = accountId.map(ac => <ns2:AccountId>{ac.get}</ns2:AccountId>) getOrElse NodeSeq.Empty
 
-  val accountIdLine = accountId.map(ac => <ns2:AccountId>{ac.get}</ns2:AccountId>) getOrElse NodeSeq.Empty
-
-  val content =
-    <placeholder>
+      val content =
+        <placeholder>
       {accountIdLine}
       <ns2:PaypalBaid>{t.baId}</ns2:PaypalBaid>
       <ns2:PaypalEmail>{t.email}</ns2:PaypalEmail>
@@ -72,10 +71,9 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
       <ns2:Type>PayPal</ns2:Type>
     </placeholder>
 
-  parent.copy(child = parent.child ++ content.child)
-}
-  private def getBankTransferWrites(parent:Elem, accountId: Option[AccountId]): XmlWriter[BankTransfer] = write[BankTransfer] { t =>
-
+      parent.copy(child = parent.child ++ content.child)
+    }
+  private def getBankTransferWrites(parent: Elem, accountId: Option[AccountId]): XmlWriter[BankTransfer] = write[BankTransfer] { t =>
     val accountIdLine = accountId.map(ac => <ns2:AccountId>{ac.get}</ns2:AccountId>) getOrElse NodeSeq.Empty
 
     val content =
@@ -95,12 +93,12 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
   }
 
   implicit val bankTransferWrites = getBankTransferWrites(
-      parent =  <ns1:PaymentMethod xsi:type="ns2:PaymentMethod"></ns1:PaymentMethod>,
-      accountId = None
-    )
+    parent = <ns1:PaymentMethod xsi:type="ns2:PaymentMethod"></ns1:PaymentMethod>,
+    accountId = None,
+  )
   implicit val payPalReferenceTransactionWrites = getPaypalReferenceWrites(
-    parent =  <ns1:PaymentMethod xsi:type="ns2:PaymentMethod"></ns1:PaymentMethod>,
-    accountId = None
+    parent = <ns1:PaymentMethod xsi:type="ns2:PaymentMethod"></ns1:PaymentMethod>,
+    accountId = None,
   )
 
   implicit val paymentMethodWrites = write[PaymentMethod] {
@@ -109,8 +107,7 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
     case p: PayPalReferenceTransaction => XmlWriter.write(p).value
   }
 
-  implicit val createPaymentMethodWrites = write[CreatePaymentMethod] { t=>
-
+  implicit val createPaymentMethodWrites = write[CreatePaymentMethod] { t =>
     val zParent = <ns1:zObjects xsi:type="ns2:PaymentMethod"></ns1:zObjects>
     val someAccountId = Some(t.accountId)
 
@@ -141,32 +138,29 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
       <ns1:RatePlanCharge>
         <ns2:ProductRatePlanChargeId>{a.productRatePlanChargeId}</ns2:ProductRatePlanChargeId>
 
-        {a.discountPercentage.toSeq.map(dp =>
-          <ns2:DiscountPercentage>{dp}</ns2:DiscountPercentage>
-        )}
+        {a.discountPercentage.toSeq.map(dp => <ns2:DiscountPercentage>{dp}</ns2:DiscountPercentage>)}
 
-        {a.endDateCondition.toSeq.map( endDate => {
-          endDate match {
-            case SubscriptionEnd =>
-              <ns2:EndDateCondition>SubscriptionEnd</ns2:EndDateCondition>
-            case FixedPeriod(upToPeriods, upToPeriodsType) =>
-              <ns2:UpToPeriods>{upToPeriods}</ns2:UpToPeriods>
+        {
+      a.endDateCondition.toSeq.map(endDate => {
+        endDate match {
+          case SubscriptionEnd =>
+            <ns2:EndDateCondition>SubscriptionEnd</ns2:EndDateCondition>
+          case FixedPeriod(upToPeriods, upToPeriodsType) =>
+            <ns2:UpToPeriods>{upToPeriods}</ns2:UpToPeriods>
               <ns2:UpToPeriodsType>{periodType(upToPeriodsType)}</ns2:UpToPeriodsType>
               <ns2:EndDateCondition>FixedPeriod</ns2:EndDateCondition>
-            }
-          }
-        )}
+        }
+      })
+    }
 
-        {a.triggerDate.toSeq.map(triggerDate =>
-          <ns2:TriggerEvent>SpecificDate</ns2:TriggerEvent>
-          <ns2:TriggerDate>{triggerDate}</ns2:TriggerDate>
-        )}
+        {
+      a.triggerDate.toSeq.map(triggerDate => <ns2:TriggerEvent>SpecificDate</ns2:TriggerEvent>
+          <ns2:TriggerDate>{triggerDate}</ns2:TriggerDate>)
+    }
 
-        {a.billingPeriod.toSeq.map(bp =>
-          <ns2:BillingPeriod>{periodType(bp)}</ns2:BillingPeriod>
-        )}
+        {a.billingPeriod.toSeq.map(bp => <ns2:BillingPeriod>{periodType(bp)}</ns2:BillingPeriod>)}
 
-        {a.price.toSeq.map( p => <ns2:Price>{p}</ns2:Price>)}
+        {a.price.toSeq.map(p => <ns2:Price>{p}</ns2:Price>)}
       </ns1:RatePlanCharge>
     </ns1:RatePlanChargeData>
   }
@@ -178,11 +172,11 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
       </ns1:RatePlan>
       {t.chargeOverride.toSeq.map(a => XmlWriter.write(a).value)}
       <ns1:SubscriptionProductFeatureList>
-        {t.featureIds.map(id =>
-        <ns1:SubscriptionProductFeature xsi:type="ns2:SubscriptionProductFeature">
+        {
+      t.featureIds.map(id => <ns1:SubscriptionProductFeature xsi:type="ns2:SubscriptionProductFeature">
           <ns2:FeatureId>{id}</ns2:FeatureId>
-        </ns1:SubscriptionProductFeature>
-      )}
+        </ns1:SubscriptionProductFeature>)
+    }
       </ns1:SubscriptionProductFeatureList>
     </ns1:RatePlanData>
   }
@@ -198,22 +192,19 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
       <ns2:State>{contact.address.countyOrState}</ns2:State>
       <ns2:Country>{contact.address.country.fold(contact.address.countryName)(_.alpha2)}</ns2:Country>
       {
-      contact.email.map(email =>
-        <ns2:WorkEmail>{email}</ns2:WorkEmail>
-      ).getOrElse(NodeSeq.Empty)}
+      contact.email.map(email => <ns2:WorkEmail>{email}</ns2:WorkEmail>).getOrElse(NodeSeq.Empty)
+    }
       {
-      contact.deliveryInstructions.map(instructions =>
-        <ns2:SpecialDeliveryInstructions__c>{instructions}</ns2:SpecialDeliveryInstructions__c>
-      ).getOrElse(NodeSeq.Empty)}
+      contact.deliveryInstructions
+        .map(instructions => <ns2:SpecialDeliveryInstructions__c>{instructions}</ns2:SpecialDeliveryInstructions__c>)
+        .getOrElse(NodeSeq.Empty)
+    }
       {
-      contact.phone.map(phone =>
-        <ns2:WorkPhone>{phone.format}</ns2:WorkPhone>
-      ).getOrElse(NodeSeq.Empty)}
+      contact.phone.map(phone => <ns2:WorkPhone>{phone.format}</ns2:WorkPhone>).getOrElse(NodeSeq.Empty)
+    }
       {
-      contact.name.title.map(title =>
-        <ns2:Title__c>{title.title}</ns2:Title__c>
-      ).getOrElse(NodeSeq.Empty)
-      }
+      contact.name.title.map(title => <ns2:Title__c>{title.title}</ns2:Title__c>).getOrElse(NodeSeq.Empty)
+    }
     </ns1:SoldToContact>
   }
 
@@ -225,10 +216,9 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
       val soldToContactNode = command.soldToContact.fold[NodeSeq](NodeSeq.Empty)(soldToContact => XmlWriter.write(soldToContact).value)
       val ipCountryNode = command.ipCountry.fold[NodeSeq](NodeSeq.Empty)(c => <ns2:IPCountry__c>{c.alpha2}</ns2:IPCountry__c>)
       val paymentNode = command.paymentMethod.fold[NodeSeq](NodeSeq.Empty)(h => XmlWriter.write(h).value)
-      val promotionCodeNode = command.promoCode.fold[NodeSeq](NodeSeq.Empty)(code =>
-        <ns2:InitialPromotionCode__c>{code.get}</ns2:InitialPromotionCode__c>
-        <ns2:PromotionCode__c>{code.get}</ns2:PromotionCode__c>
-      )
+      val promotionCodeNode =
+        command.promoCode.fold[NodeSeq](NodeSeq.Empty)(code => <ns2:InitialPromotionCode__c>{code.get}</ns2:InitialPromotionCode__c>
+        <ns2:PromotionCode__c>{code.get}</ns2:PromotionCode__c>)
       val supplierCodeNode = command.supplierCode.fold[NodeSeq](NodeSeq.Empty)(code => <ns2:SupplierCode__c>{code.get}</ns2:SupplierCode__c>)
 
       Writer(
@@ -237,9 +227,9 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
           "Rate plan ID" -> command.ratePlans.head.productRatePlanId,
           "Current time" -> s"$now in sunny ${now.getZone.getID}",
           "Customer acceptance" -> command.contractAcceptance.toString,
-          "Contract effective" -> command.contractEffective.toString
+          "Contract effective" -> command.contractEffective.toString,
         ),
-      <ns1:subscribe>
+        <ns1:subscribe>
         <ns1:subscribes>
           {XmlWriter.write(command.account).value}{paymentNode}
           <ns1:BillToContact xsi:type="ns2:Contact">
@@ -253,14 +243,10 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
             <ns2:Country>{command.address.country.fold(command.address.countryName)(_.alpha2)}</ns2:Country>
             <ns2:WorkEmail>{command.email}</ns2:WorkEmail>
             {
-            command.phone.map(phone =>
-              <ns2:WorkPhone>{phone.format}</ns2:WorkPhone>
-            ).getOrElse(NodeSeq.Empty)
-            }{
-            command.name.title.map(title =>
-              <ns2:Title__c>{title.title}</ns2:Title__c>
-            ).getOrElse(NodeSeq.Empty)
-            }
+          command.phone.map(phone => <ns2:WorkPhone>{phone.format}</ns2:WorkPhone>).getOrElse(NodeSeq.Empty)
+        }{
+          command.name.title.map(title => <ns2:Title__c>{title.title}</ns2:Title__c>).getOrElse(NodeSeq.Empty)
+        }
           </ns1:BillToContact>
           <ns1:PreviewOptions>
             <ns1:EnablePreviewMode>false</ns1:EnablePreviewMode>
@@ -287,8 +273,9 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
             </ns1:Subscription>{command.ratePlans.list.toList.map(ratePlan => XmlWriter.write(ratePlan).value)}
           </ns1:SubscriptionData>
         </ns1:subscribes>
-      </ns1:subscribe>
-    )}
+      </ns1:subscribe>,
+      )
+    }
   }
 
   implicit val contributeWrites = new XmlWriter[Contribute] {
@@ -304,7 +291,7 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
           "Rate plan ID" -> t.ratePlans.head.productRatePlanId,
           "Current time" -> s"$now in sunny ${now.getZone.getID}",
           "Customer acceptance" -> t.contractAcceptance.toString,
-          "Contract effective" -> t.contractEffective.toString
+          "Contract effective" -> t.contractEffective.toString,
         ),
         <ns1:subscribe>
           <ns1:subscribes>
@@ -335,8 +322,9 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
               </ns1:Subscription>{t.ratePlans.list.toList.map(ratePlan => XmlWriter.write(ratePlan).value)}
             </ns1:SubscriptionData>
           </ns1:subscribes>
-        </ns1:subscribe>
-      )}
+        </ns1:subscribe>,
+      )
+    }
   }
 
   implicit val updatePromoCodeWrites = write[UpdatePromoCode] { t =>
@@ -352,8 +340,8 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
     val dateStr = DateTime.now().toLocalDate
     <ns1:amend>
       <ns1:requests>
-        {t.plansToRemove.map(oldPlan =>
-          <ns1:Amendments>
+        {
+      t.plansToRemove.map(oldPlan => <ns1:Amendments>
             <ns2:ContractEffectiveDate>{dateStr}</ns2:ContractEffectiveDate>
             <ns2:CustomerAcceptanceDate>{dateStr}</ns2:CustomerAcceptanceDate>
             <ns2:Name>Upgrade</ns2:Name>
@@ -365,8 +353,8 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
             <ns2:Status>Completed</ns2:Status>
             <ns2:SubscriptionId>{t.subscriptionId}</ns2:SubscriptionId>
             <ns2:Type>RemoveProduct</ns2:Type>
-          </ns1:Amendments>
-        )}
+          </ns1:Amendments>)
+    }
         <ns1:Amendments>
           <ns2:ContractEffectiveDate>{dateStr}</ns2:ContractEffectiveDate>
           <ns2:CustomerAcceptanceDate>{dateStr}</ns2:CustomerAcceptanceDate>
@@ -377,8 +365,8 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
           <ns2:TermStartDate>{dateStr}</ns2:TermStartDate>
           <ns2:Type>TermsAndConditions</ns2:Type>
         </ns1:Amendments>
-        {t.newRatePlans.list.toList.map(plan =>
-          <ns1:Amendments>
+        {
+      t.newRatePlans.list.toList.map(plan => <ns1:Amendments>
             <ns2:ContractEffectiveDate>{dateStr}</ns2:ContractEffectiveDate>
             <ns2:CustomerAcceptanceDate>{dateStr}</ns2:CustomerAcceptanceDate>
             <ns2:Name>Upgrade</ns2:Name>
@@ -386,8 +374,8 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
             <ns2:Status>Completed</ns2:Status>
             <ns2:SubscriptionId>{t.subscriptionId}</ns2:SubscriptionId>
             <ns2:Type>NewProduct</ns2:Type>
-          </ns1:Amendments>
-        )}
+          </ns1:Amendments>)
+    }
         <ns1:AmendOptions>
           <ns1:GenerateInvoice>true</ns1:GenerateInvoice>Rat
           <ns1:InvoiceProcessingOptions>
@@ -459,8 +447,8 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
           <ns2:Type>Renewal</ns2:Type>
         </ns1:Amendments>
         {editTermDatesAmendment}
-        {renewCommand.newRatePlans.list.toList.map(plan =>
-         <ns1:Amendments>
+        {
+      renewCommand.newRatePlans.list.toList.map(plan => <ns1:Amendments>
           <ns2:ContractEffectiveDate>{renewCommand.newTermStartDate}</ns2:ContractEffectiveDate>
           <ns2:CustomerAcceptanceDate>{renewCommand.newTermStartDate}</ns2:CustomerAcceptanceDate>
           <ns2:Name>addRatePlan</ns2:Name>
@@ -468,8 +456,8 @@ private def getPaypalReferenceWrites(parent:Elem, accountId: Option[AccountId]):
           <ns2:Status>Completed</ns2:Status>
           <ns2:SubscriptionId>{renewCommand.subscriptionId}</ns2:SubscriptionId>
           <ns2:Type>NewProduct</ns2:Type>
-        </ns1:Amendments>
-      )}
+        </ns1:Amendments>)
+    }
       </ns1:requests>
     </ns1:amend>
   }

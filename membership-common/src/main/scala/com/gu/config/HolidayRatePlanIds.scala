@@ -7,6 +7,6 @@ object HolidayRatePlanIds {
   def apply(config: Config): HolidayRatePlanIds =
     HolidayRatePlanIds(
       prpId = ProductRatePlanId(config.getString("plan")),
-      prpcId = ProductRatePlanChargeId(config.getString("charge"))
+      prpcId = ProductRatePlanChargeId(config.getString("charge")),
     )
 }

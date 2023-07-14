@@ -15,7 +15,5 @@ object ZuoraApiConfig {
     ZuoraRestConfig(environmentName, c getString "zuora.api.restUrl", username(c), password(c))
 }
 
-
 case class ZuoraRestConfig(envName: String, url: Uri, username: String, password: String)
 case class ZuoraSoapConfig(envName: String, url: Uri, username: String, password: String)
-

@@ -25,16 +25,21 @@ abstract class ContactRepository(implicit ec: ExecutionContext) {
   }
 
   def updateIdentityId(contact: ContactId, newIdentityId: String): Future[Throwable \/ Unit] = {
-    salesforce.Contact.update(SFContactId(contact.salesforceContactId), Keys.IDENTITY_ID, newIdentityId)
-      .map(\/.r[Throwable].apply).recover { case e: Throwable => \/.l[Unit](e)}
+    salesforce.Contact
+      .update(SFContactId(contact.salesforceContactId), Keys.IDENTITY_ID, newIdentityId)
+      .map(\/.r[Throwable].apply)
+      .recover { case e: Throwable => \/.l[Unit](e) }
   }
 
   import com.gu.memsub.subsv2.reads.Trace.{Traceable => T1}
   import com.gu.memsub.subsv2.services.Trace.Traceable
 
-  private def toEither[A](j: JsResult[A]): String \/ A = j.fold({ errors =>
-    \/.left[String, A](errors.toString)
-  },\/.right)
+  private def toEither[A](j: JsResult[A]): String \/ A = j.fold(
+    { errors =>
+      \/.left[String, A](errors.toString)
+    },
+    \/.right,
+  )
 
   private def get(key: String, value: String): Future[String \/ Option[Contact]] = {
     salesforce.Contact.read(key, value).map { failableJsonContact =>
@@ -75,22 +80,27 @@ abstract class ContactRepository(implicit ec: ExecutionContext) {
     case class PersonContactIdResponse(records: List[PersonContactId])
 
     implicit val PersonContactIdFormatter = new Reads[PersonContactId] {
-      override def reads(json: JsValue) = JsSuccess(PersonContactId(
-        get = (json \ "Person_Contact__c").as[String]
-      ))
+      override def reads(json: JsValue) = JsSuccess(
+        PersonContactId(
+          get = (json \ "Person_Contact__c").as[String],
+        ),
+      )
     }
 
     implicit val PersonContactIdResponseFormatter = new Reads[PersonContactIdResponse] {
-      override def reads(json: JsValue) = JsSuccess(PersonContactIdResponse(
-        records = (json \ "records").as[List[PersonContactId]]
-      ))
+      override def reads(json: JsValue) = JsSuccess(
+        PersonContactIdResponse(
+          records = (json \ "records").as[List[PersonContactId]],
+        ),
+      )
     }
 
     val query = s"SELECT Person_Contact__c FROM Account WHERE Account.Id = '$accountId'"
 
     def responseParser(responseJson: JsValue): \/[String, PersonContactId] = {
       responseJson.asOpt[PersonContactIdResponse] match {
-        case Some(personContactIds) => personContactIds.records.headOption.map(\/.r[String].apply).getOrElse(\/.l[PersonContactId](s"Account: $accountId has no Person Contact."))
+        case Some(personContactIds) =>
+          personContactIds.records.headOption.map(\/.r[String].apply).getOrElse(\/.l[PersonContactId](s"Account: $accountId has no Person Contact."))
         case None => \/.l[PersonContactId](s"Query: $query returned an invalid response")
       }
     }

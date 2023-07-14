@@ -7,8 +7,8 @@ import play.api.libs.json.Json
 
 import scala.util.control.Exception._
 
-case class NormalisedTelephoneNumber(countryCode:String, localNumber: String) {
-  def format:String = s"+$countryCode$localNumber"
+case class NormalisedTelephoneNumber(countryCode: String, localNumber: String) {
+  def format: String = s"+$countryCode$localNumber"
 }
 
 object NormalisedTelephoneNumber {

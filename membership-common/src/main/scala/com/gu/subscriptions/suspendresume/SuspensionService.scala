@@ -20,11 +20,10 @@ import scalaz.syntax.nel._
 import scalaz.syntax.std.option._
 import scalaz.{EitherT, Monad, NonEmptyList, Semigroup, Validation, ValidationNel, \/}
 
-/**
-  * This service handles the wiring / HTTP side of suspending and resuming zuora subscriptions
-  * namely it validates incoming holiday requests and if valid constructs JSON to send to Zuora or returns errors
+/** This service handles the wiring / HTTP side of suspending and resuming zuora subscriptions namely it validates incoming holiday requests and if
+  * valid constructs JSON to send to Zuora or returns errors
   */
-object SuspensionService  {
+object SuspensionService {
 
   implicit class BetterLocalDate(in: LocalDate) {
     def withDayOfMonthOrLastDay(dayToSet: Int): LocalDate = {
@@ -59,14 +58,14 @@ object SuspensionService  {
   case class HolidayRenewCommand(sub: com.gu.memsub.subsv2.Subscription[SubscriptionPlan.Delivery])
 
   case class ZuoraResponse(
-                            success: Boolean,
-                            processId: Option[String],
-                            reasons: Option[List[ZuoraReason]]
-                          )
+      success: Boolean,
+      processId: Option[String],
+      reasons: Option[List[ZuoraReason]],
+  )
 
   case class ZuoraReason(code: Long, message: String)
 
-  case class ZuoraResults(results:Seq[ZuoraResult])
+  case class ZuoraResults(results: Seq[ZuoraResult])
   case class ZuoraResult(SubscriptionId: String, TotalDeltaTcv: Double, AmendmentIds: Seq[String], TotalDeltaMrr: Double, Success: Boolean)
 
   sealed trait RefundError {
@@ -100,15 +99,18 @@ object SuspensionService  {
   }
 
   private def checkIntersections(holiday: PaymentHoliday, current: Seq[HolidayRefund]) = {
-    val currentIntervals = current.map(r => Try(new Interval(r._2.start.toDateTimeAtStartOfDay, r._2.finish.plusDays(1).toDateTimeAtStartOfDay.minusMillis(1))))
+    val currentIntervals =
+      current.map(r => Try(new Interval(r._2.start.toDateTimeAtStartOfDay, r._2.finish.plusDays(1).toDateTimeAtStartOfDay.minusMillis(1))))
     val prospectiveInterval = new Interval(holiday.start.toDateTimeAtStartOfDay, holiday.finish.plusDays(1).toDateTimeAtStartOfDay.minusMillis(1))
-    currentIntervals.forall(cur => cur.map(_.overlaps(prospectiveInterval)) match {
-      case Success(true) => false // if overlaps, then is not ok
-      case Success(false) => true // if doesn't overlap, then it's ok
-      case Failure(ex) =>
-        SafeLogger.error(scrub"broken holiday ended before it started! Sub: ${holiday.subscription.get}", ex)
-        true // if we couldn't read the holiday period, it's ok, but log an error for someone to sort it out
-    })
+    currentIntervals.forall(cur =>
+      cur.map(_.overlaps(prospectiveInterval)) match {
+        case Success(true) => false // if overlaps, then is not ok
+        case Success(false) => true // if doesn't overlap, then it's ok
+        case Failure(ex) =>
+          SafeLogger.error(scrub"broken holiday ended before it started! Sub: ${holiday.subscription.get}", ex)
+          true // if we couldn't read the holiday period, it's ok, but log an error for someone to sort it out
+      },
+    )
   }
 
   def validateHoliday(holiday: PaymentHoliday, today: LocalDate = now()): ValidationNel[RefundError, Unit] = {
@@ -132,7 +134,7 @@ object SuspensionService  {
 
 }
 
-class SuspensionService[M[_] : Monad](plans: HolidayRatePlanIds, simpleRest: SimpleClient[M]) {
+class SuspensionService[M[_]: Monad](plans: HolidayRatePlanIds, simpleRest: SimpleClient[M]) {
 
   import SuspensionService._
 
@@ -157,18 +159,27 @@ class SuspensionService[M[_] : Monad](plans: HolidayRatePlanIds, simpleRest: Sim
   }
 
   def renewIfNeeded(sub: com.gu.memsub.subsv2.Subscription[SubscriptionPlan.Delivery], holiday: PaymentHoliday): M[\/[String, Unit]] = {
-    subThatNeedsRenewing(sub, holiday).map { sub =>
-      val response = simpleRest.post[HolidayRenewCommand, ZuoraResults]("action/amend", HolidayRenewCommand(sub))
-      response.map(_.flatMap { response =>
-        if (response.results.forall(_.Success)) \/.r[String](()) else {
-          SafeLogger.warn("we tried to renew, but it didn't work")
-          \/.l[Unit]("Renewal call failed.")
-        }
-      })
-    }.getOrElse(\/.right[String, Unit](()).point[M])
+    subThatNeedsRenewing(sub, holiday)
+      .map { sub =>
+        val response = simpleRest.post[HolidayRenewCommand, ZuoraResults]("action/amend", HolidayRenewCommand(sub))
+        response.map(_.flatMap { response =>
+          if (response.results.forall(_.Success)) \/.r[String](())
+          else {
+            SafeLogger.warn("we tried to renew, but it didn't work")
+            \/.l[Unit]("Renewal call failed.")
+          }
+        })
+      }
+      .getOrElse(\/.right[String, Unit](()).point[M])
   }
 
-  def addHoliday(in: PaymentHoliday, bs: BillingSchedule, billCycleDay: Int, termEndDate: LocalDate, today: LocalDate = now): M[ErrNel \/ PaymentHolidaySuccess] = {
+  def addHoliday(
+      in: PaymentHoliday,
+      bs: BillingSchedule,
+      billCycleDay: Int,
+      termEndDate: LocalDate,
+      today: LocalDate = now,
+  ): M[ErrNel \/ PaymentHolidaySuccess] = {
     def err(reason: RefundError) = EitherT.left[ErrNel, M, PaymentHolidaySuccess](toNel(reason))
 
     (for {
@@ -176,7 +187,12 @@ class SuspensionService[M[_] : Monad](plans: HolidayRatePlanIds, simpleRest: Sim
       currentHolidays <- EitherT(getUnfinishedHolidays(in.subscription, today)).leftMap(e => toNel(BadZuoraJson(e)))
       _ <- Monad[ET].unlessM(checkIntersections(in, currentHolidays))(err(AlreadyOnHoliday))
       refund <- EitherT((calculateRefund(holidayToDays(in.start, in.finish), bs) \/> toNel(NoRefundDue)).point[M])
-      response <- EitherT(simpleRest.put[HolidayRefundCommand, ZuoraResponse](s"subscriptions/${in.subscription.get}", HolidayRefundCommand((refund, in), billCycleDay, termEndDate, bs))).leftMap(e => toNel(BadZuoraJson(e)))
+      response <- EitherT(
+        simpleRest.put[HolidayRefundCommand, ZuoraResponse](
+          s"subscriptions/${in.subscription.get}",
+          HolidayRefundCommand((refund, in), billCycleDay, termEndDate, bs),
+        ),
+      ).leftMap(e => toNel(BadZuoraJson(e)))
       _ <- Monad[ET].unlessM(response.success)(err(BadZuoraJson(s"response indicated no success: $response")))
     } yield PaymentHolidaySuccess(refund)).run
   }

@@ -31,7 +31,7 @@ class PromoServiceTest extends Specification {
 
   val planCatalog = Map[ProductRatePlanId, BillingPeriod](
     freePrpId -> BillingPeriod.Month,
-    paidPrpId -> BillingPeriod.Month
+    paidPrpId -> BillingPeriod.Month,
   )
 
   val upgrade = Amend("sub ID", Seq(freePrpId.get), NonEmptyList(RatePlan(paidPrpId.get, None)))
@@ -40,15 +40,21 @@ class PromoServiceTest extends Specification {
   val trialPromo = promoFor("trial", paidPrpId).ofType(FreeTrial(Days.days(28)))
   val service = new PromoService(StaticPromotionCollection(capitalPromo, lowerPromo, trialPromo), discounter)
 
-  /**
-    * Adapt this test to use the new code
+  /** Adapt this test to use the new code
     */
-  def applyPromotion[A >: Both <: PromoContext, B](command: B, code: Option[PromoCode], country: Option[Country])
-                    (implicit matcher: PromotionValidator[A], applicator: PromotionApplicator[A, B]): B = {
-    
-    service.validateMany[A](country.getOrElse(UK), ProductRatePlanId(upgrade.newRatePlans.head.productRatePlanId))(code).map(_.map(
-      applicator.apply(_, planCatalog(_), discountIds)(command)
-    ).getOrElse(command)).fold[B](_ => command, identity)
+  def applyPromotion[A >: Both <: PromoContext, B](command: B, code: Option[PromoCode], country: Option[Country])(implicit
+      matcher: PromotionValidator[A],
+      applicator: PromotionApplicator[A, B],
+  ): B = {
+
+    service
+      .validateMany[A](country.getOrElse(UK), ProductRatePlanId(upgrade.newRatePlans.head.productRatePlanId))(code)
+      .map(
+        _.map(
+          applicator.apply(_, planCatalog(_), discountIds)(command),
+        ).getOrElse(command),
+      )
+      .fold[B](_ => command, identity)
   }
 
   "PromoService" should {
@@ -100,13 +106,11 @@ class PromoServiceTest extends Specification {
         override def title = None
       }
 
-
-
       val address = Address("123", "Fake St", "Faketown", "Kent", "1234", "GB")
       val account = Account(contact, "12345", GBP, autopay = false, paymentGateway = DefaultGateway)
       val email = "test-email-123@thegulocal.com"
-      val janFirst = new LocalDate(2016,1,1)
-      val janSecond = new LocalDate(2016,1,2)
+      val janFirst = new LocalDate(2016, 1, 1)
+      val janSecond = new LocalDate(2016, 1, 2)
       val subscribe = Subscribe(
         account = account,
         ratePlans = NonEmptyList(RatePlan(paidPrpId.get, None)),
@@ -116,7 +120,7 @@ class PromoServiceTest extends Specification {
         email = email,
         contractEffective = janFirst,
         contractAcceptance = janSecond,
-        readerType = Direct
+        readerType = Direct,
       )
 
       val promoted = applyPromotion[NewUsers, Subscribe](subscribe, trialPromo.codes.head.some, UK.some)

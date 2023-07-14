@@ -60,12 +60,13 @@ object CatPlanReads {
       legacy.read(p, c).map(identity[Status]) orElse currentReads.read(p, c).map(identity[Status])
   }
 
-  implicit def planReads[P <: Product : CatPlanReads, C <: ChargeList : ChargeListReads, S <: Status : CatPlanReads] = new CatPlanReads[CatalogPlan[P, C, S]] {
-    override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, CatalogPlan[P, C, S]] = (
-      implicitly[ChargeListReads[C]].read(c.benefits, c.charges) |@|
-      implicitly[CatPlanReads[P]].read(p, c) |@|
-      implicitly[CatPlanReads[S]].read(p, c)) { case(charges, product, s) =>
-        CatalogPlan(c.id, product, c.name, c.description, Try(c.saving.get.toInt).toOption, charges, s)
-      }
-  }
+  implicit def planReads[P <: Product: CatPlanReads, C <: ChargeList: ChargeListReads, S <: Status: CatPlanReads] =
+    new CatPlanReads[CatalogPlan[P, C, S]] {
+      override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, CatalogPlan[P, C, S]] =
+        (implicitly[ChargeListReads[C]].read(c.benefits, c.charges) |@|
+          implicitly[CatPlanReads[P]].read(p, c) |@|
+          implicitly[CatPlanReads[S]].read(p, c)) { case (charges, product, s) =>
+          CatalogPlan(c.id, product, c.name, c.description, Try(c.saving.get.toInt).toOption, charges, s)
+        }
+    }
 }

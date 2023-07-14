@@ -21,9 +21,9 @@ class ClientWithFeatureSupplier(
     apiConfig: ZuoraSoapConfig,
     httpClient: FutureHttpClient,
     extendedHttpClient: FutureHttpClient,
-    metrics: ZuoraMetrics = NoOpZuoraMetrics
+    metrics: ZuoraMetrics = NoOpZuoraMetrics,
 )(implicit actorSystem: ActorSystem, ec: ExecutionContext)
-  extends Client(apiConfig, httpClient, extendedHttpClient, metrics) {
+    extends Client(apiConfig, httpClient, extendedHttpClient, metrics) {
 
   // FIXME: This is strange and should be removed. Seems to be used only by membership-frontend which is essentially a dead product
   val featuresSupplier = new AtomicReference[Future[Seq[Feature]]](null)
@@ -34,7 +34,9 @@ class ClientWithFeatureSupplier(
     query[Feature](SimpleFilter("Status", "Active")).map { features =>
       val diff = featureCodes &~ features.map(_.code).toSet
       if (diff.nonEmpty) {
-        SafeLogger.error(scrub"Zuora ${apiConfig.envName} is missing the following product features: ${diff.mkString(", ")}. Please update configuration ASAP!")
+        SafeLogger.error(
+          scrub"Zuora ${apiConfig.envName} is missing the following product features: ${diff.mkString(", ")}. Please update configuration ASAP!",
+        )
       }
       featuresSupplier.set(Future.successful(features))
       logger.info("Successfully refreshed features")

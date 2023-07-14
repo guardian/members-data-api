@@ -23,7 +23,7 @@ object CatJsonReads {
       (__ \ "endDateCondition").read[EndDateCondition] and
       (__ \ "upToPeriods").readNullable[Int] and
       (__ \ "upToPeriodsType").readNullable[UpToPeriodsType]
-    ) (ZuoraCharge.apply(_, _, _, _, _, _, _, _, _, _))
+  )(ZuoraCharge.apply(_, _, _, _, _, _, _, _, _, _))
 
   implicit val ProductReads = new Reads[Benefit] {
     override def reads(json: JsValue): JsResult[Benefit] = json match {
@@ -35,15 +35,17 @@ object CatJsonReads {
   implicit val catalogZuoraPlanBenefitReads: Reads[(ProductRatePlanChargeId, Benefit)] = (
     (__ \ "id").read[String].map(ProductRatePlanChargeId) and
       (__ \ "ProductType__c").read[Benefit]
-    ) (_ -> _)
+  )(_ -> _)
 
   implicit val listOfProductsReads = new Reads[Map[ProductRatePlanChargeId, Benefit]] {
     override def reads(json: JsValue): JsResult[Map[ProductRatePlanChargeId, Benefit]] = json match {
-      case JsArray(vals) => vals
-        .map(_.validate[(ProductRatePlanChargeId, Benefit)])
-        .filter(_.isSuccess).toList // bad things are happening here, we're chucking away errors
-        .sequence[JsResult, (ProductRatePlanChargeId, Benefit)]
-        .map(_.toMap)
+      case JsArray(vals) =>
+        vals
+          .map(_.validate[(ProductRatePlanChargeId, Benefit)])
+          .filter(_.isSuccess)
+          .toList // bad things are happening here, we're chucking away errors
+          .sequence[JsResult, (ProductRatePlanChargeId, Benefit)]
+          .map(_.toMap)
       case _ => JsError("No valid benefits found")
     }
   }
@@ -68,21 +70,23 @@ object CatJsonReads {
         (__ \ "productRatePlanCharges").read[Map[ProductRatePlanChargeId, Benefit]](listOfProductsReads) and
         (__ \ "status").read[Status] and
         (__ \ "FrontendId__c").readNullable[String].map(_.flatMap(FrontendId.get)) and
-        Reads.pure(productType)
-        ) (CatalogZuoraPlan.apply _).reads(json)
+        Reads.pure(productType))(CatalogZuoraPlan.apply _).reads(json)
     }
 
   implicit val catalogZuoraPlanListReads: Reads[List[CatalogZuoraPlan]] =
     (json: JsValue) =>
       json \ "products" match {
         case JsDefined(JsArray(products)) =>
-          products.toList.map { product =>
-            val productId = (product \ "id").as[String]
-            val productType = (product \ "ProductType__c").asOpt[String]
-            val reads = catalogZuoraPlanReads(productType, ProductId(productId))
-            (product \ "productRatePlans").validate[List[CatalogZuoraPlan]](niceListReads(reads))
-          }
-            .filter(_.isSuccess).sequence[JsResult, List[CatalogZuoraPlan]].map(_.flatten)
+          products.toList
+            .map { product =>
+              val productId = (product \ "id").as[String]
+              val productType = (product \ "ProductType__c").asOpt[String]
+              val reads = catalogZuoraPlanReads(productType, ProductId(productId))
+              (product \ "productRatePlans").validate[List[CatalogZuoraPlan]](niceListReads(reads))
+            }
+            .filter(_.isSuccess)
+            .sequence[JsResult, List[CatalogZuoraPlan]]
+            .map(_.flatten)
         case a => JsError(s"No product array found, got $a")
       }
 }

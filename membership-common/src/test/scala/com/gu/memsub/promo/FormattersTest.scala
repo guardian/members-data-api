@@ -22,10 +22,10 @@ class FormattersTest extends Specification {
 
   implicit val itemFormatter = JsonDynamoService.itemFormat
 
-  val errors: Seq[PromoError] = Seq(InvalidCountry,InvalidProductRatePlan,NoSuchCode,ExpiredPromotion)
+  val errors: Seq[PromoError] = Seq(InvalidCountry, InvalidProductRatePlan, NoSuchCode, ExpiredPromotion)
   val prpId = ProductRatePlanId("test")
 
-  for (error:PromoError <- errors){
+  for (error: PromoError <- errors) {
     "Each PromoError" should {
 
       val json = Json.toJson(error)
@@ -40,7 +40,7 @@ class FormattersTest extends Specification {
     "Write promo channels as a JSON map" in {
       val promo = promoFor("PARTNER99", prpId)
       (Json.toJson(promo) \ "codes").get mustEqual Json.obj(
-        "testChannel" -> JsArray(Seq(JsString("PARTNER99")))
+        "testChannel" -> JsArray(Seq(JsString("PARTNER99"))),
       )
     }
 
@@ -108,18 +108,24 @@ class FormattersTest extends Specification {
 
     "Read a Membership LandingPage with a hero / non hero image correctly" in {
       val promotion = Resource.getJson("promo/membership/images.json").as[AnyPromotion].asMembership.get
-      promotion.landingPage.heroImage.get mustEqual HeroImage(alignment = Bottom, image =
-        ResponsiveImageGroup(availableImages = Seq(
-          ResponsiveImage("http://example.com", 50),
-          ResponsiveImage("http://example.com", 20),
-          ResponsiveImage("http://example.com", 30)
-        )))
+      promotion.landingPage.heroImage.get mustEqual HeroImage(
+        alignment = Bottom,
+        image = ResponsiveImageGroup(availableImages =
+          Seq(
+            ResponsiveImage("http://example.com", 50),
+            ResponsiveImage("http://example.com", 20),
+            ResponsiveImage("http://example.com", 30),
+          ),
+        ),
+      )
       promotion.landingPage.image.get mustEqual
-        ResponsiveImageGroup(availableImages = Seq(
-          ResponsiveImage("http://example.com", 5),
-          ResponsiveImage("http://example.com", 2),
-          ResponsiveImage("http://example.com", 3)
-        ))
+        ResponsiveImageGroup(availableImages =
+          Seq(
+            ResponsiveImage("http://example.com", 5),
+            ResponsiveImage("http://example.com", 2),
+            ResponsiveImage("http://example.com", 3),
+          ),
+        )
     }
 
     "Read a Membership LandingPage for a discount correctly" in {

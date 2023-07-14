@@ -11,14 +11,13 @@ import scalaz.syntax.functor.ToFunctorOps
 import scalaz.{Functor, \/}
 import scala.util.{Success, Try}
 
-/**
-  * This is the smallest client required to talk to Zuora over REST
-  * It just authenticates calls, adds the right URL and lets you send JSON via a particular request method
+/** This is the smallest client required to talk to Zuora over REST It just authenticates calls, adds the right URL and lets you send JSON via a
+  * particular request method
   */
-case class SimpleClient[M[_] : Functor](
-  config: ZuoraRestConfig,
-  run: Request => M[OKHttpResponse],
-  metrics: ZuoraMetrics = NoOpZuoraMetrics
+case class SimpleClient[M[_]: Functor](
+    config: ZuoraRestConfig,
+    run: Request => M[OKHttpResponse],
+    metrics: ZuoraMetrics = NoOpZuoraMetrics,
 ) {
   def authenticated(url: String): Request.Builder = {
     metrics.countRequest() // to count total number of request hitting Zuora
@@ -48,7 +47,10 @@ case class SimpleClient[M[_] : Functor](
 
   def parseResponse[B](in: OKHttpResponse)(implicit r: Reads[B]): String \/ B = {
     parseJson(in).flatMap { jsValue =>
-      r.reads(jsValue).asEither.disjunction.leftMap(error => s"json was well formed but not matching the reader: $error, json was << ${Json.prettyPrint(jsValue)} >>")
+      r.reads(jsValue)
+        .asEither
+        .disjunction
+        .leftMap(error => s"json was well formed but not matching the reader: $error, json was << ${Json.prettyPrint(jsValue)} >>")
     }
   }
 
@@ -65,7 +67,7 @@ case class SimpleClient[M[_] : Functor](
   def put[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A]): M[String \/ B] =
     run(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
 
-  def putJson [B](url: String, in: JsValue)(implicit r: Reads[B]): M[String \/ B] =
+  def putJson[B](url: String, in: JsValue)(implicit r: Reads[B]): M[String \/ B] =
     run(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
 
   def post[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A]): M[String \/ B] =

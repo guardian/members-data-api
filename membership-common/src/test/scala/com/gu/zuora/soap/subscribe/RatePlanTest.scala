@@ -15,7 +15,23 @@ class RatePlanTest extends Specification {
 
     def discount(period: Option[PeriodType], featureIds: Seq[String] = Nil) = {
       val edc = period.fold[EndDateCondition](SubscriptionEnd)(p => FixedPeriod(3, p))
-      XmlWriter.write(RatePlan("123", Some(ChargeOverride(productRatePlanChargeId = "cid", discountPercentage = 20d.some, triggerDate =  None, endDateCondition = edc.some, billingPeriod = period)), featureIds)).value
+      XmlWriter
+        .write(
+          RatePlan(
+            "123",
+            Some(
+              ChargeOverride(
+                productRatePlanChargeId = "cid",
+                discountPercentage = 20d.some,
+                triggerDate = None,
+                endDateCondition = edc.some,
+                billingPeriod = period,
+              ),
+            ),
+            featureIds,
+          ),
+        )
+        .value
 
     }
 
@@ -43,17 +59,17 @@ class RatePlanTest extends Specification {
        * but its fun to try new things like this in a narrow scope
        */
 
-      val bp = Lens.lensu[RatePlan, Option[PeriodType]] (
+      val bp = Lens.lensu[RatePlan, Option[PeriodType]](
         // so this function does the annoying copying that we want to avoid repeating all over the place
         (a, value) => a.copy(chargeOverride = a.chargeOverride.map(_.copy(billingPeriod = value))),
-        _.chargeOverride.flatMap(_.billingPeriod)
+        _.chargeOverride.flatMap(_.billingPeriod),
       )
 
       (XmlWriter.write(ratePlan).value \\ "BillingPeriod").text mustEqual "Annual"
 
       // see here because we did all the tedious copying in the lens its easy to test more cases
-      (XmlWriter.write(bp.mod(_=>Quarters.some, ratePlan)).value \\ "BillingPeriod").text mustEqual "Quarter"
-      (XmlWriter.write(bp.mod(_=>Months.some, ratePlan)).value \\ "BillingPeriod").text mustEqual "Month"
+      (XmlWriter.write(bp.mod(_ => Quarters.some, ratePlan)).value \\ "BillingPeriod").text mustEqual "Quarter"
+      (XmlWriter.write(bp.mod(_ => Months.some, ratePlan)).value \\ "BillingPeriod").text mustEqual "Month"
     }
 
     "generate correct XML for a discounted rateplan for 3 months" in {
