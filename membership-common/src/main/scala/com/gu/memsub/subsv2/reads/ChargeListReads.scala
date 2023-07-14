@@ -186,7 +186,7 @@ object ChargeListReads {
       case sub :: contr :: Nil => (
         bp.read(cat, sub) |@| bp.read(cat, contr)
           ).apply( { case (b1, b2) => SupporterPlusCharges(b1, charges.map(_.pricing)) })
-      case _ => Validation.failureNel(s"Badly structured Supporter Plus v2 sub")
+      case _ => Validation.failureNel(s"Not a Supporter Plus v2 sub")
     }
   }
 
