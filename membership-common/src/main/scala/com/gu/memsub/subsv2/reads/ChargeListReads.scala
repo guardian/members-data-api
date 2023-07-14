@@ -140,8 +140,8 @@ object ChargeListReads {
   implicit def readPaidChargeList: ChargeListReads[PaidChargeList] = new ChargeListReads[PaidChargeList] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidChargeList] = {
       readPaperChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
-        readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges) orElse2
-        readSupporterPlusV2ChargeList.read(cat, charges).map(identity[PaidChargeList])
+      readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges) orElse2
+      readSupporterPlusV2ChargeList.read(cat, charges)
     }.withTrace("readPaidChargeList")
   }
 
