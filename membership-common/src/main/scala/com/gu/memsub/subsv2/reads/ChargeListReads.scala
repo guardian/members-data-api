@@ -182,11 +182,24 @@ object ChargeListReads {
 
   implicit def readSupporterPlusV2ChargeList: ChargeListReads[SupporterPlusCharges] = new ChargeListReads[SupporterPlusCharges] {
 
-    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
+    def getBillingPeriod(charges: List[ZuoraCharge]): ValidationNel[String, BillingPeriod] = {
+      val billingPeriods = charges.flatMap(_.billingPeriod).distinct
+      billingPeriods match {
+        case Nil => Validation.failureNel("No billing period found")
+        case b :: Nil => Validation.success[NonEmptyList[String], BillingPeriod](b.toBillingPeriod)
+        case _ => Validation.failureNel("Too many billing periods found")
+      }
+    }
+
+    def getPricingSummaries(charges: List[ZuoraCharge]): ValidationNel[String, List[PricingSummary]] = {
       val pricingSummaries = charges.map(_.pricing)
-      Validation.success[NonEmptyList[String], SupporterPlusCharges](
-        SupporterPlusCharges(Month, pricingSummaries),
-      )
+      Validation
+        .success[NonEmptyList[String], List[PricingSummary]](pricingSummaries)
+        .ensure("No pricing summaries found".wrapNel)(_.nonEmpty)
+    }
+
+    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
+      (getBillingPeriod(charges) |@| getPricingSummaries(charges)).apply(SupporterPlusCharges)
     }
   }
 

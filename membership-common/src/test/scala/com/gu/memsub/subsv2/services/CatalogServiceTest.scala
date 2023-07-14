@@ -1,5 +1,6 @@
 package com.gu.memsub.subsv2.services
 import com.gu.config.SubsV2ProductIds
+import com.gu.memsub.BillingPeriod.Year
 import com.gu.memsub.Subscription.ProductId
 import com.gu.zuora.ZuoraRestConfig
 import com.gu.zuora.rest.SimpleClient
@@ -9,7 +10,6 @@ import com.gu.memsub.subsv2.Fixtures._
 import io.lemonlabs.uri.dsl._
 import com.typesafe.config.ConfigFactory
 import utils.Resource
-
 import scalaz.Id._
 import scalaz.\/
 
@@ -21,7 +21,12 @@ class CatalogServiceTest extends Specification {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
       val cats = new CatalogService[Id](ids, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), identity, "CODE")
-      cats.catalog.map(catalog => catalog.supporterPlus.plans.size) mustEqual \/.right(2)
+      cats.catalog.map {
+        catalog =>
+          catalog.supporterPlus.year.charges.billingPeriod mustEqual Year
+          catalog.supporterPlus.plans.size
+      } mustEqual \/.right(2)
+
     }
   }
 }
