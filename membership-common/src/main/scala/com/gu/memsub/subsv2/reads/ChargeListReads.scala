@@ -180,13 +180,13 @@ object ChargeListReads {
     }
   }
 
-  implicit def readSupporterPlusV2ChargeList: ChargeListReads[SupporterPlusCharges] = new ChargeListReads[SupporterPlusCharges] {
+  implicit def readSupporterPlusV2ChargeList[BP <: BillingPeriod](implicit bp: ChargeReads[BP]): ChargeListReads[SupporterPlusCharges] = new ChargeListReads[SupporterPlusCharges] {
 
-    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
-      val pricingSummaries = charges.map(_.pricing)
-      Validation.success[NonEmptyList[String], SupporterPlusCharges](
-        SupporterPlusCharges(Month, pricingSummaries),
-      )
+    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = charges match {
+      case sub :: contr :: Nil => (
+        bp.read(cat, sub) |@| bp.read(cat, contr)
+          ).apply( { case (b1, b2) => SupporterPlusCharges(b1, charges.map(_.pricing)) })
+      case _ => Validation.failureNel(s"Badly structured Supporter Plus v2 sub")
     }
   }
 
