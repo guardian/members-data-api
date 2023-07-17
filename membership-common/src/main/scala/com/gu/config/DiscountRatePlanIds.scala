@@ -3,7 +3,6 @@ package com.gu.config
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId}
 import com.typesafe.config.Config
 
-
 case class DiscountRatePlan(planId: ProductRatePlanId, planChargeId: ProductRatePlanChargeId)
 case class DiscountRatePlanIds(percentageDiscount: DiscountRatePlan)
 
@@ -12,7 +11,7 @@ object DiscountRatePlanIds {
     DiscountRatePlanIds(
       DiscountRatePlan(
         ProductRatePlanId(config.getString("discount.percentage.plan")),
-        ProductRatePlanChargeId(config.getString("discount.percentage.charge"))
-      )
+        ProductRatePlanChargeId(config.getString("discount.percentage.charge")),
+      ),
     )
 }

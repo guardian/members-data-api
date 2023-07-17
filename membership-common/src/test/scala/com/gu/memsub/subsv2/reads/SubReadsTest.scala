@@ -23,29 +23,35 @@ class SubReadsTest extends Specification {
     "Discard discount rate plans when reading JSON" in {
 
       val plans = Resource.getJson("rest/plans/Promo.json").validate[List[SubscriptionZuoraPlan]].get
-      plans  mustEqual List(SubscriptionZuoraPlan(
-        id = RatePlanId("2c92c0f957220b5d01573252b3bb7c71"),
-        productRatePlanId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591"),
-        productName = "Digital Pack",
-        features = List.empty,
-        chargedThroughDate = None,
-        charges = NonEmptyList(ZuoraCharge(
-          id = SubscriptionRatePlanChargeId("2c92c0f957220b5d01573252b3c67c72"),
-          productRatePlanChargeId = ProductRatePlanChargeId("2c92c0f94f2acf73014f2c91940a166d"),
-          pricing = PricingSummary(Map(
-            GBP -> Price(11.99f, GBP)
-          )),
-          billingPeriod = Some(ZMonth),
-          model = "FlatFee",
-          name = "Digital Pack Monthly",
-          `type` = "Recurring",
-          endDateCondition = SubscriptionEnd,
-          upToPeriods = None,
-          upToPeriodsType = None
-        )),
-        start = 2 Oct 2016,
-        end = 16 Sep 2017
-      ))
+      plans mustEqual List(
+        SubscriptionZuoraPlan(
+          id = RatePlanId("2c92c0f957220b5d01573252b3bb7c71"),
+          productRatePlanId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591"),
+          productName = "Digital Pack",
+          features = List.empty,
+          chargedThroughDate = None,
+          charges = NonEmptyList(
+            ZuoraCharge(
+              id = SubscriptionRatePlanChargeId("2c92c0f957220b5d01573252b3c67c72"),
+              productRatePlanChargeId = ProductRatePlanChargeId("2c92c0f94f2acf73014f2c91940a166d"),
+              pricing = PricingSummary(
+                Map(
+                  GBP -> Price(11.99f, GBP),
+                ),
+              ),
+              billingPeriod = Some(ZMonth),
+              model = "FlatFee",
+              name = "Digital Pack Monthly",
+              `type` = "Recurring",
+              endDateCondition = SubscriptionEnd,
+              upToPeriods = None,
+              upToPeriodsType = None,
+            ),
+          ),
+          start = 2 Oct 2016,
+          end = 16 Sep 2017,
+        ),
+      )
     }
 
     "Set hasPendingFreePlan to true when you're pending a downgrade to friend" in {
@@ -62,17 +68,22 @@ class SubReadsTest extends Specification {
         productType = "",
         product = Product.Membership,
         features = List.empty,
-        charges = PaidCharge(Partner, BillingPeriod.Month, PricingSummary(Map.empty), ProductRatePlanChargeId("prpcId"), SubscriptionRatePlanChargeId("")),
+        charges =
+          PaidCharge(Partner, BillingPeriod.Month, PricingSummary(Map.empty), ProductRatePlanChargeId("prpcId"), SubscriptionRatePlanChargeId("")),
         chargedThrough = Some(finalPartnerDay),
         start = 26 Oct 2015,
-        end = finalPartnerDay
+        end = finalPartnerDay,
       )
 
       val subOnFinalPartnerDay = subscriptionReads[SubscriptionPlan.Partner](finalPartnerDay)
-        .reads(json).get.apply(NonEmptyList(partnerPlan))
+        .reads(json)
+        .get
+        .apply(NonEmptyList(partnerPlan))
 
       val subOnFirstFriendDay = subscriptionReads[SubscriptionPlan.Partner](firstFriendDay)
-        .reads(json).get.apply(NonEmptyList(partnerPlan)) // ignore the plan please, it is not important here
+        .reads(json)
+        .get
+        .apply(NonEmptyList(partnerPlan)) // ignore the plan please, it is not important here
 
       subOnFinalPartnerDay.hasPendingFreePlan mustEqual true
       subOnFirstFriendDay.hasPendingFreePlan mustEqual false
@@ -95,11 +106,11 @@ class SubReadsTest extends Specification {
           billingPeriod = Quarter,
           price = PricingSummary(Map.empty),
           chargeId = ProductRatePlanChargeId("prpcid"),
-          subRatePlanChargeId = SubscriptionRatePlanChargeId("rpcid")
+          subRatePlanChargeId = SubscriptionRatePlanChargeId("rpcid"),
         ),
         chargedThrough = None,
         start = now,
-        end = now
+        end = now,
       )
       val subscription =
         SubJsonReads.subscriptionReads[AnyPlan](now).reads(json).get(NonEmptyList(plan))

@@ -1,6 +1,5 @@
 package com.gu.exacttarget
 
-
 import org.specs2.mutable.Specification
 
 class DataExtensionTest extends Specification {

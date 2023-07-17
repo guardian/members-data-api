@@ -6,7 +6,7 @@ import io.lemonlabs.uri.dsl._
 class ResponsiveImageTest extends Specification {
 
   val largeImage: Uri = "https://media.guim.co.uk/bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683/1000.jpg"
-  val mediumImage: Uri= "https://media.guim.co.uk/bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683/500.jpg"
+  val mediumImage: Uri = "https://media.guim.co.uk/bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683/500.jpg"
   val smallImage: Uri = "https://media.guim.co.uk/bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683/140.jpg"
 
   "ResponsiveImageGroup" should {
@@ -14,21 +14,21 @@ class ResponsiveImageTest extends Specification {
     "generate a src and srcset information for a sequence of images" in {
 
       val imageGroup = ResponsiveImageGroup(
-        altText=None,
+        altText = None,
         availableImages = Seq(
           ResponsiveImage(
-            path=largeImage,
-            width=1000
+            path = largeImage,
+            width = 1000,
           ),
           ResponsiveImage(
-            path=mediumImage,
-            width=500
+            path = mediumImage,
+            width = 500,
           ),
           ResponsiveImage(
-            path=smallImage,
-            width=140
-          )
-        )
+            path = smallImage,
+            width = 140,
+          ),
+        ),
       )
 
       imageGroup.smallestImage mustEqual smallImage
@@ -36,7 +36,7 @@ class ResponsiveImageTest extends Specification {
       imageGroup.srcset mustEqual List(
         smallImage + " 140w",
         mediumImage + " 500w",
-        largeImage + " 1000w"
+        largeImage + " 1000w",
       ).mkString(", ")
 
     }
@@ -48,12 +48,12 @@ class ResponsiveImageTest extends Specification {
     "generate a src and srcset information for a generated image group" in {
 
       val imageGroup = ResponsiveImageGroup(
-        name=None,
-        altText=None,
-        availableImages=ResponsiveImageGenerator(
-          id="bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683",
-          sizes=List(1000,500,140)
-        )
+        name = None,
+        altText = None,
+        availableImages = ResponsiveImageGenerator(
+          id = "bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683",
+          sizes = List(1000, 500, 140),
+        ),
       )
 
       imageGroup.smallestImage.toString mustEqual smallImage.toString
@@ -61,7 +61,7 @@ class ResponsiveImageTest extends Specification {
       imageGroup.srcset mustEqual List(
         smallImage.toString + " 140w",
         mediumImage.toString + " 500w",
-        largeImage.toString + " 1000w"
+        largeImage.toString + " 1000w",
       ).mkString(", ")
 
     }

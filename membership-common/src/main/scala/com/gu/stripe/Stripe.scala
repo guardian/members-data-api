@@ -12,13 +12,14 @@ object Stripe {
 
   // see https://stripe.com/docs/api#errors
   case class Error(
-    `type`: String,
-    charge: Option[String] = None,
-    message: Option[String] = None,
-    code: Option[String] = None,
-    decline_code: Option[String] = None,
-    param: Option[String] = None
-  ) extends Throwable with StripeObject {
+      `type`: String,
+      charge: Option[String] = None,
+      message: Option[String] = None,
+      code: Option[String] = None,
+      decline_code: Option[String] = None,
+      param: Option[String] = None,
+  ) extends Throwable
+      with StripeObject {
     override def getMessage: String = s"message: $message; type: ${`type`}; code: $code; decline_code: $decline_code"
   }
 
@@ -31,15 +32,15 @@ object Stripe {
   }
 
   case class Subscription(
-    id: String,
-    created: LocalDate,
-    currentPeriodStart: LocalDate,
-    currentPeriodEnd: LocalDate,
-    cancelledAt: Option[LocalDate],
-    cancelAtPeriodEnd: Boolean,
-    customer: SubscriptionCustomer,
-    plan: SubscriptionPlan,
-    status: String,
+      id: String,
+      created: LocalDate,
+      currentPeriodStart: LocalDate,
+      currentPeriodEnd: LocalDate,
+      cancelledAt: Option[LocalDate],
+      cancelAtPeriodEnd: Boolean,
+      customer: SubscriptionCustomer,
+      plan: SubscriptionPlan,
+      status: String,
   ) extends StripeObject {
     // https://stripe.com/docs/api/subscriptions/object#subscription_object-status
     def isCancelled = status == "canceled" || status == "unpaid"
@@ -86,19 +87,27 @@ object Stripe {
   case class CustomersPaymentMethods(private val data: List[StripePaymentMethod]) extends StripeObject {
     val cardStripeList = StripeList(
       total_count = data.length,
-      data = data.map(stripePaymentMethod => stripePaymentMethod.card.asTraditional(stripePaymentMethod.id))
+      data = data.map(stripePaymentMethod => stripePaymentMethod.card.asTraditional(stripePaymentMethod.id)),
     )
   }
 
-  case class Charge(id: String, amount: Int, balance_transaction: Option[String], created: Int, currency: String, livemode: Boolean,
-                    paid: Boolean, refunded: Boolean, receipt_email: String, metadata: Map[String, String], source: Source) extends StripeObject {
-  }
+  case class Charge(
+      id: String,
+      amount: Int,
+      balance_transaction: Option[String],
+      created: Int,
+      currency: String,
+      livemode: Boolean,
+      paid: Boolean,
+      refunded: Boolean,
+      receipt_email: String,
+      metadata: Map[String, String],
+      source: Source,
+  ) extends StripeObject {}
 
   case class Source(country: String) extends StripeObject
 
-
   case class BalanceTransaction(id: String, source: String, amount: Int) extends StripeObject
-
 
   object Deserializer {
     implicit val sourceFormat = Json.format[Source]
@@ -108,7 +117,7 @@ object Stripe {
 
     // for stripe objects nested within Event objects
     val readsObject: Reads[StripeObject] = Reads { json =>
-      readsCharge.reads(json) //orElse readsCustomer.reads(json) etc
+      readsCharge.reads(json) // orElse readsCustomer.reads(json) etc
     }
 
     implicit val readsError = Reads { json =>
@@ -122,18 +131,16 @@ object Stripe {
         (jsValue \ "last4").validate[String] and
         (jsValue \ "exp_month").validate[Int] and
         (jsValue \ "exp_year").validate[Int] and
-        (jsValue \ "country").validate[String]
-        )(Card)
+        (jsValue \ "country").validate[String])(Card)
     }
 
     implicit val readsSource = Json.reads[Source]
 
     implicit val readsEvent: Reads[Event[StripeObject]] = (
       (__ \ "id").read[String] and
-      (__ \ "data" \ "object").read(readsObject) and
-      (__ \ "livemode").read[Boolean]
+        (__ \ "data" \ "object").read(readsObject) and
+        (__ \ "livemode").read[Boolean]
     )(Event.apply[StripeObject] _)
-
 
     implicit def readsList[T](implicit reads: Reads[Seq[T]]): Reads[StripeList[T]] =
       ((JsPath \ "total_count").read[Int] and (JsPath \ "data").read[Seq[T]])(StripeList[T] _)
@@ -141,19 +148,20 @@ object Stripe {
     implicit val readsCreateCustomerResponse: Reads[CreateCustomerResponse] = Json.reads[CreateCustomerResponse]
 
     implicit val currencyReads: Reads[Currency] = Reads {
-      case JsString(str) => Currency.fromString(str.toUpperCase) match {
-        case Some(currency) => JsSuccess(currency)
-        case None => JsError(s"$str is not a valid currency code")
-      }
+      case JsString(str) =>
+        Currency.fromString(str.toUpperCase) match {
+          case Some(currency) => JsSuccess(currency)
+          case None => JsError(s"$str is not a valid currency code")
+        }
       case _ => JsError(s"Missing currency code in Stripe response")
     }
-    implicit val readsPlan: Reads[SubscriptionPlan] = Reads {
-      jsValue => (
+    implicit val readsPlan: Reads[SubscriptionPlan] = Reads { jsValue =>
+      (
         (jsValue \ "id").validate[String] and
-        (jsValue \ "amount").validate[Int] and
-        (jsValue \ "interval").validate[String] and
-        (jsValue \ "currency").validate[Currency]
-        )(SubscriptionPlan)
+          (jsValue \ "amount").validate[Int] and
+          (jsValue \ "interval").validate[String] and
+          (jsValue \ "currency").validate[Currency]
+      )(SubscriptionPlan)
     }
 
     implicit val readsLocalDate: Reads[LocalDate] = Reads {
@@ -161,8 +169,8 @@ object Stripe {
       case _ => JsError("Expected an epoch second for the date format")
     }
 
-    implicit val readsSubscription: Reads[Subscription] = Reads {
-      jsValue => ((jsValue \ "id").validate[String] and
+    implicit val readsSubscription: Reads[Subscription] = Reads { jsValue =>
+      ((jsValue \ "id").validate[String] and
         (jsValue \ "created").validate[LocalDate] and
         (jsValue \ "current_period_start").validate[LocalDate] and
         (jsValue \ "current_period_end").validate[LocalDate] and
@@ -170,16 +178,14 @@ object Stripe {
         (jsValue \ "cancel_at_period_end").validate[Boolean] and
         (jsValue \ "customer").validate[SubscriptionCustomer] and
         (jsValue \ "plan").validate[SubscriptionPlan] and
-        (jsValue \ "status").validate[String]
-        )(Subscription)
+        (jsValue \ "status").validate[String])(Subscription)
     }
 
     implicit val readsStripeCustomer: Reads[SubscriptionCustomer] = Json.reads[SubscriptionCustomer]
 
     implicit val readsCustomer: Reads[Customer] = Reads { jsValue =>
       ((jsValue \ "id").validate[String] and
-        ((jsValue \ "cards").validate[StripeList[Card]] orElse (jsValue \ "sources").validate[StripeList[Card]])
-        )(Customer)
+        ((jsValue \ "cards").validate[StripeList[Card]] orElse (jsValue \ "sources").validate[StripeList[Card]]))(Customer)
     }
 
     implicit val readsStripePaymentMethodCard: Reads[StripePaymentMethodCard] = Json.reads[StripePaymentMethodCard]
@@ -187,8 +193,7 @@ object Stripe {
     implicit val readsStripePaymentMethod: Reads[StripePaymentMethod] = Reads { jsValue =>
       ((jsValue \ "id").validate[String] and
         (jsValue \ "card").validate[StripePaymentMethodCard] and
-        (jsValue \ "customer").validate[String]
-        )(StripePaymentMethod)
+        (jsValue \ "customer").validate[String])(StripePaymentMethod)
     }
 
     implicit val readsCustomersPaymentMethods: Reads[CustomersPaymentMethods] = Json.reads[CustomersPaymentMethods]
@@ -200,5 +205,3 @@ object Stripe {
     implicit val writesError = Json.writes[Error]
   }
 }
-
-

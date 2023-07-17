@@ -18,6 +18,8 @@ object PricingSummary {
 
   implicit object PricingSemigroup extends Semigroup[PricingSummary] {
     override def append(f1: PricingSummary, f2: => PricingSummary): PricingSummary =
-      PricingSummary(f1.underlying.keySet.intersect(f2.underlying.keySet).map(c => c -> Price(f1.underlying(c).amount + f2.underlying(c).amount, c)).toMap)
+      PricingSummary(
+        f1.underlying.keySet.intersect(f2.underlying.keySet).map(c => c -> Price(f1.underlying(c).amount + f2.underlying(c).amount, c)).toMap,
+      )
   }
 }

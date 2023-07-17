@@ -12,8 +12,6 @@ trait WelcomeEmailDataExtension extends DataExtension {
   override def getTSKey: String = s"triggered-send-keys.$name.welcome1"
 }
 
-
-
 case object PaperVoucherDataExtension extends WelcomeEmailDataExtension {
   val name = "paper-voucher"
 }
@@ -112,7 +110,7 @@ object DataExtension {
     SupporterAbandonedCartEaseExtension,
     FirstFailedPaymentExtension,
     SecondFailedPaymentExtension,
-    ThirdFailedPaymentExtension
+    ThirdFailedPaymentExtension,
   ).map(e => e.name -> e).toMap
 
   def getByName(name: String): Option[DataExtension] = extensionsByName.get(name)

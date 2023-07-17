@@ -36,11 +36,9 @@ object RefundCalculator {
     }
   }
 
-  /**
-    * There are customers who have invoice adjustments on their subscriptions.
-    * These adjustments cover things like compensation discounts, pro-rated late payments, no-charge extended terms, etc.
-    * None of these product rate plan charges should affect the notional "value" of the subscription, and therefore
-    * should not affect any refund the customer gets for a suspended paper, or when somehow cancelling their subscription.
+  /** There are customers who have invoice adjustments on their subscriptions. These adjustments cover things like compensation discounts, pro-rated
+    * late payments, no-charge extended terms, etc. None of these product rate plan charges should affect the notional "value" of the subscription,
+    * and therefore should not affect any refund the customer gets for a suspended paper, or when somehow cancelling their subscription.
     */
   def dayToPrice(bs: BillingSchedule)(day: LocalDate): Option[Float] = {
     val paperDay = dayToProduct(day)

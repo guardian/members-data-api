@@ -25,7 +25,7 @@ import scala.collection.immutable.Map
 object Formatters {
 
   implicit val ErrorWrites: Writes[PromoError] = new Writes[PromoError] {
-    override def writes(e: PromoError) = Json.obj("errorMessage"-> e.msg)
+    override def writes(e: PromoError) = Json.obj("errorMessage" -> e.msg)
   }
 
   object Common {
@@ -54,14 +54,16 @@ object Formatters {
         override def reads(json: JsValue): JsResult[CampaignGroup] = {
           // The only legacy serialisations of productFamily (in Campaign) will be migrated to use the CampaignGroup instead.
           val campaignGroupOpt = (json \ "productFamily").validate[String].asOpt orElse (json \ "group").validate[String].asOpt
-          campaignGroupOpt.flatMap(CampaignGroup.fromId).fold[JsResult[CampaignGroup]](
-            JsError(s"Bad campagin group ${campaignGroupOpt.mkString}")
-          )(campaignGroupFormat => JsSuccess(campaignGroupFormat))
+          campaignGroupOpt
+            .flatMap(CampaignGroup.fromId)
+            .fold[JsResult[CampaignGroup]](
+              JsError(s"Bad campagin group ${campaignGroupOpt.mkString}"),
+            )(campaignGroupFormat => JsSuccess(campaignGroupFormat))
         }
       },
       new OWrites[CampaignGroup] {
         override def writes(o: CampaignGroup): JsObject = Json.obj("group" -> o.id)
-      }
+      },
     )
 
     implicit val campaignCodeFormat: OFormat[CampaignCode] =
@@ -69,12 +71,11 @@ object Formatters {
 
     implicit val campaignFormat: OFormat[Campaign] = (
       __.format[CampaignCode] and
-      __.format[CampaignGroup] and
-      (__ \ "name").format[String] and
-      (__ \ "sortDate").formatNullable[DateTime]
+        __.format[CampaignGroup] and
+        (__ \ "name").format[String] and
+        (__ \ "sortDate").formatNullable[DateTime]
     )(Campaign, unlift(Campaign.unapply))
   }
-
 
   object PromotionFormatters {
 
@@ -99,7 +100,7 @@ object Formatters {
           case Centre => JsString("centre")
           case Top => JsString("top")
         }
-      }
+      },
     )
 
     implicit val heroImage = Json.format[HeroImage]
@@ -118,7 +119,7 @@ object Formatters {
           case Grey => JsString("grey")
           case White => JsString("white")
         }
-      }
+      },
     )
 
     implicit val countrySetFormat = Format(Reads.set[Country], Writes.set[Country])
@@ -129,8 +130,8 @@ object Formatters {
         // Supports the legacy serialisations of productFamily key as the identifier of a LandingPage type
         override def reads(json: JsValue): JsResult[LandingPage] = (json \ "productFamily").toOption orElse (json \ "type").toOption match {
           case Some(JsString(Membership.id)) => Json.reads[MembershipLandingPage].reads(json)
-          case Some(JsString(DigitalPack.id))  => Json.reads[DigitalPackLandingPage].reads(json)
-          case Some(JsString(Newspaper.id))  => Json.reads[NewspaperLandingPage].reads(json)
+          case Some(JsString(DigitalPack.id)) => Json.reads[DigitalPackLandingPage].reads(json)
+          case Some(JsString(Newspaper.id)) => Json.reads[NewspaperLandingPage].reads(json)
           case Some(JsString(GuardianWeekly.id)) => Json.reads[WeeklyLandingPage].reads(json)
           case _ => JsError("Unknown landing page type")
         }
@@ -144,7 +145,7 @@ object Formatters {
             case wlp: WeeklyLandingPage => Json.writes[WeeklyLandingPage].writes(wlp) ++ Json.obj("type" -> GuardianWeekly.id)
           }
         }
-      }
+      },
     )
 
     implicit val membershipLandingPageFormat: Format[MembershipLandingPage] = Json.format[MembershipLandingPage]
@@ -157,11 +158,11 @@ object Formatters {
     implicit val promoCodeScalaSetFormat = Format(Reads.set[PromoCode], Writes.set[PromoCode])
 
     implicit val promoCodeMapReads = Reads.map[Set[PromoCode]].map { m =>
-      m.map { case (key, code) => (Channel(key), code)}
+      m.map { case (key, code) => (Channel(key), code) }
     }
 
     implicit val promoCodeMapWrites = Writes.map[Set[PromoCode]].contramap[Map[Channel, Set[PromoCode]]] { m =>
-      m.map { case (key, code) => (key.get, code)}
+      m.map { case (key, code) => (key.get, code) }
     }
 
     implicit val campaignCodeFormat: OFormat[CampaignCode] =
@@ -183,7 +184,6 @@ object Formatters {
         }
       }
     }
-
 
     implicit val doubleReads = new Reads[DoubleType[PromoContext]] {
       override def reads(json: JsValue): JsResult[DoubleType[PromoContext]] = (json \ "a", json \ "b") match {
@@ -208,11 +208,12 @@ object Formatters {
         def writes(in: PromotionType[PromoContext]): JsObject = {
           val o: JsObject = in match {
             case p: PercentDiscount => Json.writes[PercentDiscount].writes(p)
-            case DoubleType(a, b) => Json.obj(
-              "a" -> promotionTypeFormat.writes(a),
-              "b" -> promotionTypeFormat.writes(b),
-              "name" -> PromotionType.double
-            )
+            case DoubleType(a, b) =>
+              Json.obj(
+                "a" -> promotionTypeFormat.writes(a),
+                "b" -> promotionTypeFormat.writes(b),
+                "name" -> PromotionType.double,
+              )
             case f: FreeTrial => Json.writes[FreeTrial].writes(f)
             case i: Incentive => Json.writes[Incentive].writes(i)
             case r: Retention.type => Json.obj()
@@ -220,11 +221,11 @@ object Formatters {
           }
           o ++ Json.obj("name" -> in.name)
         }
-      }
+      },
     )
 
     implicit val promotionFormat: OFormat[AnyPromotion] = (
-        __.format[UUID] and
+      __.format[UUID] and
         (__ \ "name").format[String] and
         (__ \ "description").format[String] and
         (__ \ "appliesTo").format[AppliesTo] and
@@ -234,6 +235,6 @@ object Formatters {
         (__ \ "starts").format[DateTime] and
         (__ \ "expires").formatNullable[DateTime] and
         (__ \ "promotionType").format[PromotionType[PromoContext]]
-      ) (Promotion.apply[PromotionType[PromoContext], Option, LandingPage], unlift(Promotion.unapply[PromotionType[PromoContext], Option, LandingPage]))
+    )(Promotion.apply[PromotionType[PromoContext], Option, LandingPage], unlift(Promotion.unapply[PromotionType[PromoContext], Option, LandingPage]))
   }
 }

@@ -17,15 +17,16 @@ object Diff {
 
   implicit val benefitDiff: Diffx[Benefit] = Diffx.diffForString.contramap(_.id)
   implicit def paidChargeListDiff[TheBenefit <: Benefit, TheBillingPeriod <: BillingPeriod](implicit
-    e1: Diffx[PaperCharges],
-    e2: Diffx[PaidCharge[TheBenefit, TheBillingPeriod]]
-  ): Diffx[PaidChargeList] = (left: PaidChargeList, right: PaidChargeList, context: DiffContext) => (left, right) match {
-    case (cl: PaperCharges, cr: PaperCharges) =>
-      Diffx[PaperCharges].apply(cl, cr)
-    case (cl: PaidCharge[TheBenefit, TheBillingPeriod], cr: PaidCharge[TheBenefit, TheBillingPeriod]) =>
-      Diffx[PaidCharge[TheBenefit, TheBillingPeriod]].apply(cl, cr)
-    case _ =>
-      DiffResultValue(left, right)
-  }
+      e1: Diffx[PaperCharges],
+      e2: Diffx[PaidCharge[TheBenefit, TheBillingPeriod]],
+  ): Diffx[PaidChargeList] = (left: PaidChargeList, right: PaidChargeList, context: DiffContext) =>
+    (left, right) match {
+      case (cl: PaperCharges, cr: PaperCharges) =>
+        Diffx[PaperCharges].apply(cl, cr)
+      case (cl: PaidCharge[TheBenefit, TheBillingPeriod], cr: PaidCharge[TheBenefit, TheBillingPeriod]) =>
+        Diffx[PaidCharge[TheBenefit, TheBillingPeriod]].apply(cl, cr)
+      case _ =>
+        DiffResultValue(left, right)
+    }
 
 }

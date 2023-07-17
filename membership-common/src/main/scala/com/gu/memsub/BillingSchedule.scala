@@ -15,9 +15,7 @@ import scala.math.BigDecimal._
 import scalaz.syntax.std.list._
 import scalaz.{NonEmptyList, Zipper}
 
-/**
-  * The high-level version of preview invoices
-  * This is to a Zuora BillingPreview what Subscription is to a Zuora SOAP/REST sub
+/** The high-level version of preview invoices This is to a Zuora BillingPreview what Subscription is to a Zuora SOAP/REST sub
   */
 case class BillingSchedule(invoices: NonEmptyList[Bill]) {
   def first: Bill = invoices.head
@@ -26,12 +24,11 @@ case class BillingSchedule(invoices: NonEmptyList[Bill]) {
     case class Cursor(remaingCredit: Float = creditBalance, invoicesSoFar: List[Bill] = List.empty) {
       def toNel = NonEmptyList.fromSeq(invoicesSoFar.head, invoicesSoFar.tail)
     }
-    val processedInvoices = invoices.list.foldLeft(Cursor()) {
-      case (cursor, nextInvoice) =>
-        val creditToTransfer = min(nextInvoice.amount, cursor.remaingCredit)
-        val newRemainder = cursor.remaingCredit - creditToTransfer
-        val creditedInvoice = nextInvoice.receiveCredit(creditToTransfer)
-        Cursor(newRemainder, cursor.invoicesSoFar :+ creditedInvoice)
+    val processedInvoices = invoices.list.foldLeft(Cursor()) { case (cursor, nextInvoice) =>
+      val creditToTransfer = min(nextInvoice.amount, cursor.remaingCredit)
+      val newRemainder = cursor.remaingCredit - creditToTransfer
+      val creditedInvoice = nextInvoice.receiveCredit(creditToTransfer)
+      Cursor(newRemainder, cursor.invoicesSoFar :+ creditedInvoice)
     }
     BillingSchedule(processedInvoices.toNel)
   }
@@ -54,10 +51,11 @@ object BillingSchedule {
     private val charges = items.list.filter(_.amount > 0f)
     private val deductions = items.list.filter(_.amount < 0f).map(_.amount).toList ++ accountCredit.filter(_ > 0f).map(_ * -1)
     val totalGross: Float = charges.map(_.amount.setScale(2, HALF_UP)).toList.sum.toFloat // amount excluding deductions
-    val totalDeductions: Float = deductions.map(-_.setScale(2, HALF_DOWN)).sum.toFloat  // amount deducted
+    val totalDeductions: Float = deductions.map(-_.setScale(2, HALF_DOWN)).sum.toFloat // amount deducted
     val amount: Float = totalGross - totalDeductions
     def addItem(item: BillItem): Bill = copy(items = items.<::(item))
-    override lazy val toString = s"\n$date:\n${items.list.toList.mkString("\n")}\n${accountCredit.map(c => s"Credit:\t-$c\n").mkString}Total:\t$amount\n"
+    override lazy val toString =
+      s"\n$date:\n${items.list.toList.mkString("\n")}\n${accountCredit.map(c => s"Credit:\t-$c\n").mkString}Total:\t$amount\n"
     def receiveCredit(amount: Float): Bill = if (amount > 0) this.copy(accountCredit = Some(amount)) else this
   }
 
@@ -93,9 +91,13 @@ object BillingSchedule {
     }
 
     invoices.toList
-      .groupBy1(_.serviceStartDate).toList
+      .groupBy1(_.serviceStartDate)
+      .toList
       .map((Bill.fromGroupedItems(finder) _).tupled)
-      .sortBy(_.date).toNel.toOption.map(invs => BillingSchedule(sortOutCredits(invs.toZipper)))
+      .sortBy(_.date)
+      .toNel
+      .toOption
+      .map(invs => BillingSchedule(sortOutCredits(invs.toZipper)))
   }
 
   def rolledUp(in: BillingSchedule): (Bill, Seq[Bill]) = {

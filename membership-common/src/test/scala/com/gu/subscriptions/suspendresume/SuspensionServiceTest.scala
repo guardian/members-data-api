@@ -52,15 +52,14 @@ class SuspensionServiceTest extends Specification with JsonMatchers {
       holidayToDays(day + 2.days, day) mustEqual Seq(day, day + 1.day, day + 2.days)
     }
   }
-"auto renew" should {
-  "correctly parse zuora response" in {
+  "auto renew" should {
+    "correctly parse zuora response" in {
 
-    val json = Resource.getJson("rest/AmendmentResult.json")
-    json.as[ZuoraResults] mustEqual ZuoraResults(Seq(ZuoraResult("1", 2.0, Seq("3"), 0.0, true)))
+      val json = Resource.getJson("rest/AmendmentResult.json")
+      json.as[ZuoraResults] mustEqual ZuoraResults(Seq(ZuoraResult("1", 2.0, Seq("3"), 0.0, true)))
 
+    }
   }
-}
-
 
   "Suspension Holiday to suspended days" should {
     val start = 2 Aug 2016
@@ -103,41 +102,49 @@ class SuspensionServiceTest extends Specification with JsonMatchers {
 
   "Amend from refund function that converts a Refund into a JSON object representing a Zuora update" should {
 
-    val bs = BillingSchedule(NonEmptyList(
-      Bill(30 Oct 2016, 1.month, NonEmptyList(
-        BillItem("Sunday Paper", Some(SundayPaper), 30.0f, 30.0f)
-      ))
-    ))
+    val bs = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          30 Oct 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Sunday Paper", Some(SundayPaper), 30.0f, 30.0f),
+          ),
+        ),
+      ),
+    )
     val plans = HolidayRatePlanIds(prpId = ProductRatePlanId("Skegness"), prpcId = ProductRatePlanChargeId("Is so bracing"))
-    val json = amendFromRefund(plans).writes(HolidayRefundCommand((20, PaymentHoliday(subName, 1 Sep 2016, 14 Sep 2016)), 30, now.plusYears(1), bs)).toString
+    val json =
+      amendFromRefund(plans).writes(HolidayRefundCommand((20, PaymentHoliday(subName, 1 Sep 2016, 14 Sep 2016)), 30, now.plusYears(1), bs)).toString
 
     "Set all four start dates(!) to the beginning of your holiday" in {
-      json must /("add") /# 0 /("contractEffectiveDate" -> "2016-09-01")
-      json must /("add") /# 0 /("serviceActivationDate" -> "2016-09-01")
-      json must /("add") /# 0 /("customerAcceptanceDate" -> "2016-09-01")
-      json must /("add") /# 0 / "chargeOverrides" /# 0 /("HolidayStart__c" -> "2016-09-01")
+      json must /("add") /# 0 / ("contractEffectiveDate" -> "2016-09-01")
+      json must /("add") /# 0 / ("serviceActivationDate" -> "2016-09-01")
+      json must /("add") /# 0 / ("customerAcceptanceDate" -> "2016-09-01")
+      json must /("add") /# 0 / "chargeOverrides" /# 0 / ("HolidayStart__c" -> "2016-09-01")
     }
 
     "Set HolidayEnd__c to the last day that you're on holiday (so suspensions are inclusive of the end date)" in {
-      json must /("add") /# 0 / "chargeOverrides" /# 0 /("HolidayEnd__c" -> "2016-09-14")
+      json must /("add") /# 0 / "chargeOverrides" /# 0 / ("HolidayEnd__c" -> "2016-09-14")
     }
 
     "Include the right Zuora IDs" in {
-      json must /("add") /# 0 /("productRatePlanId" -> "Skegness")
-      json must /("add") /# 0 / "chargeOverrides" /# 0 /("productRatePlanChargeId" -> "Is so bracing")
+      json must /("add") /# 0 / ("productRatePlanId" -> "Skegness")
+      json must /("add") /# 0 / "chargeOverrides" /# 0 / ("productRatePlanChargeId" -> "Is so bracing")
     }
 
     "Negate the given price" in {
-      json must /("add") /# 0 / "chargeOverrides" /# 0 /("price" -> -20)
+      json must /("add") /# 0 / "chargeOverrides" /# 0 / ("price" -> -20)
     }
 
     "Set the correct specificEndDate date to the next bill date" in {
-      json must /("add") /# 0 / "chargeOverrides" /# 0 /("specificEndDate" -> "2016-10-30")
+      json must /("add") /# 0 / "chargeOverrides" /# 0 / ("specificEndDate" -> "2016-10-30")
     }
 
     "Not make you a refund for -1 days if you're taking one day of holiday" in {
-      val json = amendFromRefund(plans).writes(HolidayRefundCommand((20, PaymentHoliday(subName, 1 Sep 2016, 1 Sep 2016)), 31, now.plusYears(1), bs)).toString
-      json must /("add") /# 0 / "chargeOverrides" /# 0 /("HolidayEnd__c" -> "2016-09-01")
+      val json =
+        amendFromRefund(plans).writes(HolidayRefundCommand((20, PaymentHoliday(subName, 1 Sep 2016, 1 Sep 2016)), 31, now.plusYears(1), bs)).toString
+      json must /("add") /# 0 / "chargeOverrides" /# 0 / ("HolidayEnd__c" -> "2016-09-01")
     }
   }
 
@@ -155,53 +162,93 @@ class SuspensionServiceTest extends Specification with JsonMatchers {
 
     type RequestSpy[A] = Writer[List[Request], A]
 
-    val sundayBS = BillingSchedule(NonEmptyList(Bill(new LocalDate("2016-07-01"), 1.month, NonEmptyList(
-        BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f)
-    ))))
+    val sundayBS = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          new LocalDate("2016-07-01"),
+          1.month,
+          NonEmptyList(
+            BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
+          ),
+        ),
+      ),
+    )
 
-    val discountBS = BillingSchedule(NonEmptyList(
-      Bill(1 Jul 2016, 1.month, NonEmptyList(
-        BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
-        BillItem("Discount", None, -5.0f, 100.0f)
-      )),
-      Bill(1 Aug 2016, 1.month, NonEmptyList(
-        BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
-        BillItem("Discount", None, -5.0f, 100.0f)
-      )),
-      Bill(1 Sep 2016, 1.month, NonEmptyList(
-        BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
-        BillItem("Discount", None, -5.0f, 100.0f)
-      ))
-    ))
+    val discountBS = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Jul 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
+            BillItem("Discount", None, -5.0f, 100.0f),
+          ),
+        ),
+        Bill(
+          1 Aug 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
+            BillItem("Discount", None, -5.0f, 100.0f),
+          ),
+        ),
+        Bill(
+          1 Sep 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
+            BillItem("Discount", None, -5.0f, 100.0f),
+          ),
+        ),
+      ),
+    )
 
     // I think really this is a symptom of some unfortunate under-abstraction
-    val spyRun: Request => RequestSpy[Response] = r => Writer(List(r), r.method match {
-      case "GET" => response(Resource.getJson("rest/Holiday.json").toString)
-      case "PUT" => response(Json.obj("success" -> true).toString)
-    })
+    val spyRun: Request => RequestSpy[Response] = r =>
+      Writer(
+        List(r),
+        r.method match {
+          case "GET" => response(Resource.getJson("rest/Holiday.json").toString)
+          case "PUT" => response(Json.obj("success" -> true).toString)
+        },
+      )
 
     val instance = new SuspensionService(plans, SimpleClient[RequestSpy](config, spyRun))
 
     "Return an error if you try to get a refund for days you don't get the paper on" in {
-      instance.addHoliday(PaymentHoliday(subName, 21 Mar 2016, 22 Mar 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(NonEmptyList(NoRefundDue)) // suspension attempted before first paper date
-      instance.addHoliday(PaymentHoliday(subName, 20 Jun 2016, 21 Jun 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(NonEmptyList(NoRefundDue)) // migrated sub which has no advance bill
-      instance.addHoliday(PaymentHoliday(subName, 18 Jul 2016, 19 Jul 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(NonEmptyList(NoRefundDue))
-      instance.addHoliday(PaymentHoliday(subName, 20 Sep 2016, 21 Sep 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(NonEmptyList(NoRefundDue)) // suspension attempted after last paper date
+      instance.addHoliday(PaymentHoliday(subName, 21 Mar 2016, 22 Mar 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(
+        NonEmptyList(NoRefundDue),
+      ) // suspension attempted before first paper date
+      instance.addHoliday(PaymentHoliday(subName, 20 Jun 2016, 21 Jun 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(
+        NonEmptyList(NoRefundDue),
+      ) // migrated sub which has no advance bill
+      instance.addHoliday(PaymentHoliday(subName, 18 Jul 2016, 19 Jul 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(
+        NonEmptyList(NoRefundDue),
+      )
+      instance.addHoliday(PaymentHoliday(subName, 20 Sep 2016, 21 Sep 2016), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.left(
+        NonEmptyList(NoRefundDue),
+      ) // suspension attempted after last paper date
     }
 
     "Give you a refund if you do get the paper on the days, even if you're not paying" in {
       val start = 15 Jul 2016
-      instance.addHoliday(PaymentHoliday(subName, start, start.plusDays(14)), discountBS, 31, today.plusYears(1), today).value mustEqual \/.right(PaymentHolidaySuccess(0f))
+      instance.addHoliday(PaymentHoliday(subName, start, start.plusDays(14)), discountBS, 31, today.plusYears(1), today).value mustEqual \/.right(
+        PaymentHolidaySuccess(0f),
+      )
     }
 
     "Return a PaymentHolidaySuccess if everything is okay" in {
       val start = 15 Jul 2016
-      instance.addHoliday(PaymentHoliday(subName, start, start.plusDays(14)), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.right(PaymentHolidaySuccess(2.31f))
+      instance.addHoliday(PaymentHoliday(subName, start, start.plusDays(14)), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.right(
+        PaymentHolidaySuccess(2.31f),
+      )
     }
 
     "Allow a suspension for migrated subs, now past their this-month's billing date, charging as per their next bill" in {
       val start = 10 Jun 2016
-      instance.addHoliday(PaymentHoliday(subName, start, start.plusDays(14)), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.right(PaymentHolidaySuccess(2.31f))
+      instance.addHoliday(PaymentHoliday(subName, start, start.plusDays(14)), sundayBS, 31, today.plusYears(1), today).value mustEqual \/.right(
+        PaymentHolidaySuccess(2.31f),
+      )
     }
 
     "Send off an HTTP request to the right Zuora endpoint if we have a valid holiday to book" in {
@@ -225,7 +272,6 @@ class SuspensionServiceTest extends Specification with JsonMatchers {
       boundaryEnd.value mustEqual \/.left(NonEmptyList(AlreadyOnHoliday))
     }
 
-
     "When calling the get holiday function" should {
 
       "Ignore any deleted charges" in {
@@ -234,9 +280,15 @@ class SuspensionServiceTest extends Specification with JsonMatchers {
         val name = Subscription.Name("subscriptionNumber")
 
         instance.getUnfinishedHolidays(name, 1 Jan 2016).toOption.get mustEqual Seq(
-          (3.59f, PaymentHoliday(name, 28 Aug 2016, 28 Aug 2016)),  // Tests start == HolidayStart__c takes precidence over segment 2's effectiveStartDate
-          (3.59f, PaymentHoliday(name, 4 Sep 2016, 4 Sep 2016)),    // Tests start == effectiveStartDate
-          (7.18f, PaymentHoliday(name, 11 Sep 2016, 18 Sep 2016))   // Tests start == HolidayStart__c, effectiveStartDate is same as the RPC is segment 1
+          (
+            3.59f,
+            PaymentHoliday(name, 28 Aug 2016, 28 Aug 2016),
+          ), // Tests start == HolidayStart__c takes precidence over segment 2's effectiveStartDate
+          (3.59f, PaymentHoliday(name, 4 Sep 2016, 4 Sep 2016)), // Tests start == effectiveStartDate
+          (
+            7.18f,
+            PaymentHoliday(name, 11 Sep 2016, 18 Sep 2016),
+          ), // Tests start == HolidayStart__c, effectiveStartDate is same as the RPC is segment 1
         )
       }
 

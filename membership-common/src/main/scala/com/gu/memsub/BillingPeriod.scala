@@ -61,25 +61,25 @@ object BillingPeriod {
     override def adjective = "3 years"
     override def monthsInPeriod = 36
   }
-  case object SixWeeks extends OneOffPeriod{
+  case object SixWeeks extends OneOffPeriod {
     override def noun = "6 weeks"
     override def adverb = "6 weeks"
     override def adjective = "6 weeks"
     override def monthsInPeriod = 1 // todo this doesn't make sense for periods that are not a exact number of months
   }
-  case object SixMonths extends OneOffPeriod{
+  case object SixMonths extends OneOffPeriod {
     override def noun = "6 months"
     override def adverb = "6 months"
     override def adjective = "6 months"
     override def monthsInPeriod = 6
   }
-  case object ThreeMonths extends OneOffPeriod{
+  case object ThreeMonths extends OneOffPeriod {
     override def noun = "3 months"
     override def adverb = "3 months"
     override def adjective = "3 months"
     override def monthsInPeriod = 3
   }
-  case object OneTimeChargeBillingPeriod extends OneOffPeriod{
+  case object OneTimeChargeBillingPeriod extends OneOffPeriod {
     override def noun = "One time charge"
     override def adverb = "One time charge"
     override def adjective = "One time charge"

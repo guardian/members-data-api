@@ -11,10 +11,10 @@ import scala.reflect.internal.util.StringOps
 object ContactDeserializer {
 
   object Keys {
-    //This object is also used for the keys when contacts are serialized.
+    // This object is also used for the keys when contacts are serialized.
     val CONTACT_ID = "Id"
     val ACCOUNT_ID = "AccountId"
-    val TITLE = "Salutation" //Salesforce uses 'Salutation' field to store title.
+    val TITLE = "Salutation" // Salesforce uses 'Salutation' field to store title.
     val FIRST_NAME = "FirstName"
     val LAST_NAME = "LastName"
     val IDENTITY_ID = "IdentityID__c"
@@ -48,7 +48,7 @@ object ContactDeserializer {
   implicit val sfDateReads = JodaReads.jodaDateReads("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
   implicit val contact: Reads[Contact] = (
-      (__ \ IDENTITY_ID).readNullable[String] and
+    (__ \ IDENTITY_ID).readNullable[String] and
       (__ \ REG_NUMBER).readNullable[String] and
       (__ \ TITLE).readNullable[String] and
       (__ \ FIRST_NAME).readNullable[String] and
@@ -63,6 +63,6 @@ object ContactDeserializer {
       (__ \ MAILING_COUNTRY).readNullable[String] and
       (__ \ DELIVERY_INSTRUCTIONS).readNullable[String] and
       (__ \ RECORD_TYPE_ID).readNullable[String]
-    ) (Contact)
+  )(Contact)
 
 }

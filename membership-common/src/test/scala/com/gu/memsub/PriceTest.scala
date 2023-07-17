@@ -3,7 +3,7 @@ package com.gu.memsub
 import com.gu.i18n.Currency._
 import org.specs2.mutable.Specification
 
-class PriceTest extends Specification  {
+class PriceTest extends Specification {
   "A price" should {
     "be prettified" in {
       Price(4.99f, USD).pretty shouldEqual "US$4.99"

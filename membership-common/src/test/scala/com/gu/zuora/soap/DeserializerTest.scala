@@ -30,23 +30,19 @@ class DeserializerTest extends Specification {
 
   "any ZuoraResult" should {
     "return a FaultError" in {
-      "fault-error".as[Authentication].left.get mustEqual ZuoraFault(
-        "fns:INVALID_VALUE",
-        "Invalid login. User name and password do not match.")
+      "fault-error".as[Authentication].left.get mustEqual ZuoraFault("fns:INVALID_VALUE", "Invalid login. User name and password do not match.")
     }
 
     "return a API_DISABLED if API is not accessible " in {
-      "result-error-fatal".as[SubscribeResult].left.get mustEqual ZuoraPartialError(
-        "API_DISABLED",
-        "The API was disabled.",
-        ApiDisabled)
+      "result-error-fatal".as[SubscribeResult].left.get mustEqual ZuoraPartialError("API_DISABLED", "The API was disabled.", ApiDisabled)
     }
 
     "return a TRANSACTION_FAILED if card payment is declined" in {
       "result-error-non-fatal".as[SubscribeResult].left.get mustEqual ZuoraPartialError(
         "TRANSACTION_FAILED",
         "Transaction declined.generic_decline - Your card was declined.",
-        TransactionFailed)
+        TransactionFailed,
+      )
     }
 
     "return XmlParseError if XML is invalid" in {
@@ -58,11 +54,12 @@ class DeserializerTest extends Specification {
 
     "return a PaymentGatewayError" in {
       "payment-gateway-error".as[SubscribeResult].left.get mustEqual PaymentGatewayError(
-          "TRANSACTION_FAILED",
-          "Transaction declined.generic_decline - Your card was declined.",
-          "Your card was declined.",
-          "Declined",
-          GenericDecline)
+        "TRANSACTION_FAILED",
+        "Transaction declined.generic_decline - Your card was declined.",
+        "Your card was declined.",
+        "Declined",
+        GenericDecline,
+      )
     }
   }
 
@@ -120,8 +117,7 @@ class DeserializerTest extends Specification {
     }
 
     "not allow iterable queries" in {
-      "query-not-done".as[QueryResult].left.get mustEqual QueryError(
-        "The query was not complete (we don't support iterating query results)")
+      "query-not-done".as[QueryResult].left.get mustEqual QueryError("The query was not complete (we don't support iterating query results)")
     }
   }
 
@@ -147,7 +143,17 @@ class DeserializerTest extends Specification {
       accounts.size mustEqual 2
 
       accounts(0) mustEqual Account("2c92c0f8483f1ca401485f0168f1614c", "BillToId", "SoldToId", 0, 0, Some(Currency.GBP), None, None, None)
-      accounts(1) mustEqual Account("2c92c0f9483f301e01485efe9af6743e", "BillToId", "SoldToId", 31, 2.1f, Some(Currency.GBP), Some("1"), Some("003g0000010iD8CAAU"), Some(StripeUKMembershipGateway))
+      accounts(1) mustEqual Account(
+        "2c92c0f9483f301e01485efe9af6743e",
+        "BillToId",
+        "SoldToId",
+        31,
+        2.1f,
+        Some(Currency.GBP),
+        Some("1"),
+        Some("003g0000010iD8CAAU"),
+        Some(StripeUKMembershipGateway),
+      )
     }
 
     "extract an Amendment" in {
@@ -155,10 +161,18 @@ class DeserializerTest extends Specification {
 
       amendments.size mustEqual 2
 
-      amendments(0) mustEqual Amendment("2c92c0f847cdc31e0147cf2439b76ae6", "RemoveProduct",
-        new LocalDate("2015-08-13"), "2c92c0f847cdc31e0147cf24396f6ae1")
-      amendments(1) mustEqual Amendment("2c92c0f847cdc31e0147cf24390d6ad7", "NewProduct",
-        new LocalDate("2015-08-13"), "2c92c0f847cdc31e0147cf2111ba6173")
+      amendments(0) mustEqual Amendment(
+        "2c92c0f847cdc31e0147cf2439b76ae6",
+        "RemoveProduct",
+        new LocalDate("2015-08-13"),
+        "2c92c0f847cdc31e0147cf24396f6ae1",
+      )
+      amendments(1) mustEqual Amendment(
+        "2c92c0f847cdc31e0147cf24390d6ad7",
+        "NewProduct",
+        new LocalDate("2015-08-13"),
+        "2c92c0f847cdc31e0147cf2111ba6173",
+      )
 
     }
 
@@ -175,9 +189,15 @@ class DeserializerTest extends Specification {
 
       ratePlanCharges.size mustEqual 1
 
-      ratePlanCharges(0) mustEqual RatePlanCharge("2c92c0f94878e82801487917701931c5",
-        Some(new LocalDate("2015-09-15")), new LocalDate("2014-09-15"),
-        None, None, None, 135.0f)
+      ratePlanCharges(0) mustEqual RatePlanCharge(
+        "2c92c0f94878e82801487917701931c5",
+        Some(new LocalDate("2015-09-15")),
+        new LocalDate("2014-09-15"),
+        None,
+        None,
+        None,
+        135.0f,
+      )
     }
 
     "extract a Subscription" in {
@@ -185,9 +205,36 @@ class DeserializerTest extends Specification {
 
       subscriptions.size mustEqual 3
 
-      subscriptions(0) mustEqual Subscription("2c92c0f847cdc31e0147cf2111ba6173", "Sub1", "1", 1, new LocalDate("2015-04-01"), new LocalDate("2015-04-01"), new LocalDate("2015-10-01"), None)
-      subscriptions(1) mustEqual Subscription("2c92c0f847cdc31e0147cf243a166af0", "Sub2", "1", 2, new LocalDate("2015-04-01"), new LocalDate("2015-04-01"), new LocalDate("2015-10-01"), None)
-      subscriptions(2) mustEqual Subscription("2c92c0f847cdc31e0147cf24396f6ae1", "Sub3", "1", 3, new LocalDate("2015-04-01"), new LocalDate("2015-04-01"), new LocalDate("2015-10-01"), None)
+      subscriptions(0) mustEqual Subscription(
+        "2c92c0f847cdc31e0147cf2111ba6173",
+        "Sub1",
+        "1",
+        1,
+        new LocalDate("2015-04-01"),
+        new LocalDate("2015-04-01"),
+        new LocalDate("2015-10-01"),
+        None,
+      )
+      subscriptions(1) mustEqual Subscription(
+        "2c92c0f847cdc31e0147cf243a166af0",
+        "Sub2",
+        "1",
+        2,
+        new LocalDate("2015-04-01"),
+        new LocalDate("2015-04-01"),
+        new LocalDate("2015-10-01"),
+        None,
+      )
+      subscriptions(2) mustEqual Subscription(
+        "2c92c0f847cdc31e0147cf24396f6ae1",
+        "Sub3",
+        "1",
+        3,
+        new LocalDate("2015-04-01"),
+        new LocalDate("2015-04-01"),
+        new LocalDate("2015-10-01"),
+        None,
+      )
 
     }
 

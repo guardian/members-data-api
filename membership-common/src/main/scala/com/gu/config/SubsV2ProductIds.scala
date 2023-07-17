@@ -19,6 +19,6 @@ object SubsV2ProductIds {
     partner = ProductId(config.getString("membership.partner")),
     patron = ProductId(config.getString("membership.patron")),
     staff = ProductId(config.getString("membership.staff")),
-    contributor = ProductId(config.getString("contributions.contributor"))
+    contributor = ProductId(config.getString("contributions.contributor")),
   )
 }

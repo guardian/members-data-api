@@ -9,17 +9,17 @@ import com.gu.zuora.{ZuoraApiConfig, ZuoraRestConfig, ZuoraSoapConfig}
 import com.gu.monitoring.SafeLogger
 
 case class TouchpointBackendConfig(
-  environmentName: String,
-  salesforce: SalesforceConfig,
-  stripePatrons: BasicStripeServiceConfig,
-  stripeUKMembership: StripeServiceConfig,
-  stripeUKContributions: StripeServiceConfig,
-  stripeAUMembership: StripeServiceConfig,
-  stripeAUContributions: StripeServiceConfig,
-  payPal: PayPalConfig,
-  zuoraSoap: ZuoraSoapConfig,
-  zuoraRest: ZuoraRestConfig,
-  idapi: IdapiConfig
+    environmentName: String,
+    salesforce: SalesforceConfig,
+    stripePatrons: BasicStripeServiceConfig,
+    stripeUKMembership: StripeServiceConfig,
+    stripeUKContributions: StripeServiceConfig,
+    stripeAUMembership: StripeServiceConfig,
+    stripeAUContributions: StripeServiceConfig,
+    payPal: PayPalConfig,
+    zuoraSoap: ZuoraSoapConfig,
+    zuoraRest: ZuoraRestConfig,
+    idapi: IdapiConfig,
 )
 
 object TouchpointBackendConfig {
@@ -48,14 +48,14 @@ object TouchpointBackendConfig {
       environmentName,
       SalesforceConfig.from(envBackendConf, environmentName),
       BasicStripeServiceConfig.from(envBackendConf, "patrons"),
-      StripeServiceConfig.from(envBackendConf, environmentName, Country.UK),                      // uk-membership
+      StripeServiceConfig.from(envBackendConf, environmentName, Country.UK), // uk-membership
       StripeServiceConfig.from(envBackendConf, environmentName, Country.UK, variant = "giraffe"), // uk-contributions
       StripeServiceConfig.from(envBackendConf, environmentName, Country.Australia, variant = "au-membership"),
       StripeServiceConfig.from(envBackendConf, environmentName, Country.Australia, variant = "au-contributions"),
       PayPalConfig.fromConfig(envBackendConf, environmentName),
       ZuoraApiConfig.soap(envBackendConf, environmentName),
       ZuoraApiConfig.rest(envBackendConf, environmentName),
-      IdapiConfig.from(envBackendConf, environmentName)
+      IdapiConfig.from(envBackendConf, environmentName),
     )
   }
 }

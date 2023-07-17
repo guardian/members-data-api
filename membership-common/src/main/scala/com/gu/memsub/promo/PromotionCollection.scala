@@ -23,14 +23,17 @@ case class StaticPromotionCollection(all: AnyPromotion*) extends PromotionCollec
 }
 
 // a collection of promotions backed by DynamoDB
-class DynamoPromoCollection(promoStorage: JsonDynamoService[AnyPromotion, Future], intervalPeriod: FiniteDuration = 5.minutes)(implicit e: ExecutionContext, a: ActorSystem) extends PromotionCollection {
+class DynamoPromoCollection(promoStorage: JsonDynamoService[AnyPromotion, Future], intervalPeriod: FiniteDuration = 5.minutes)(implicit
+    e: ExecutionContext,
+    a: ActorSystem,
+) extends PromotionCollection {
   val initialFuturePromotions = promoStorage.all
   val futureTask = initialFuturePromotions.map { initialPromos =>
     val task = ScheduledTask[Seq[AnyPromotion]](
       taskName = "Promotions",
       initValue = initialPromos,
       initDelay = intervalPeriod,
-      intervalPeriod = intervalPeriod
+      intervalPeriod = intervalPeriod,
     )(promoStorage.all)
     task.start()
     task

@@ -13,12 +13,14 @@ import scalaz.\/
 import scalaz.syntax.either._
 
 class PromotionTest extends Specification {
-  val config    = ProductFamilyRatePlanIds.config()("DEV", Subscriptions)
-  val prpIds    = DigitalPackRatePlanIds.fromConfig(config)
+  val config = ProductFamilyRatePlanIds.config()("DEV", Subscriptions)
+  val prpIds = DigitalPackRatePlanIds.fromConfig(config)
 
   def generatePromotion(starts: DateTime, expires: DateTime) =
     promoFor("TEST01", prpIds.digitalPackMonthly, prpIds.digitalPackYearly, prpIds.digitalPackQuaterly).copy(
-      starts = starts, expires = Some(expires), promotionType = FreeTrial(Days.days(5))
+      starts = starts,
+      expires = Some(expires),
+      promotionType = FreeTrial(Days.days(5)),
     )
 
   "Promotion" should {
@@ -66,7 +68,7 @@ class PromotionTest extends Specification {
       expiredPromotion.copy(promotionType = Tracking).validateFor(invalidRatePlan, US) must_=== \/.left[PromoError, Unit](InvalidCountry)
 
       // check Retention promotions check against the rate plan InvalidProductRatePlan
-     activePromotion.copy(promotionType = Retention).validateFor(invalidRatePlan, UK) must_=== \/.left[PromoError, Unit](InvalidProductRatePlan)
+      activePromotion.copy(promotionType = Retention).validateFor(invalidRatePlan, UK) must_=== \/.left[PromoError, Unit](InvalidProductRatePlan)
       expiredPromotion.copy(promotionType = Retention).validateFor(yearlyRatePlan, US) must_=== \/.left[PromoError, Unit](InvalidCountry)
     }
   }

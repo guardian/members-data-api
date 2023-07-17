@@ -28,10 +28,11 @@ class JsonDynamoServiceTest extends Specification {
       .build()
 
     val dynamo = new DynamoDB(client)
-    val table = dynamo.createTable("tests",
+    val table = dynamo.createTable(
+      "tests",
       Seq(new KeySchemaElement("uuid", KeyType.HASH)).asJava,
       Seq(new AttributeDefinition("uuid", ScalarAttributeType.S)).asJava,
-      new ProvisionedThroughput(50L, 50L)
+      new ProvisionedThroughput(50L, 50L),
     )
 
     val service = new JsonDynamoService[AnyPromotion, Id](table)
@@ -39,7 +40,7 @@ class JsonDynamoServiceTest extends Specification {
       promoFor("PARTNER99", prpId),
       promoFor("PARTNER99", prpId).ofType(PercentDiscount(None, 40)).withCampaign("Hello"),
       promoFor("PARTNER99", prpId).ofType(FreeTrial(Days.days(40))).withCampaign("Hello"),
-      promoFor("PARTNER99", prpId).ofType(Incentive("foo", Some("bar"), None))
+      promoFor("PARTNER99", prpId).ofType(Incentive("foo", Some("bar"), None)),
     ).sortBy(_.uuid)
     promos.foreach(service.add)
 

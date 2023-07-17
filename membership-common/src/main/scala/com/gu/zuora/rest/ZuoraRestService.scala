@@ -31,41 +31,45 @@ object ZuoraRestService {
     }
   }
 
-  def jsStringOrNull(value : Option[String]) = value.map(JsString(_)).getOrElse(JsNull)
+  def jsStringOrNull(value: Option[String]) = value.map(JsString(_)).getOrElse(JsNull)
   def isoDateStringAsDateTime(dateString: String): DateTime = ISODateTimeFormat.dateTimeParser().parseDateTime(dateString)
 
-  case class AddressData(address1: Option[String],
-                         address2: Option[String],
-                         city: Option[String],
-                         state: Option[String],
-                         zipCode: Option[String],
-                         country: String) {
+  case class AddressData(
+      address1: Option[String],
+      address2: Option[String],
+      city: Option[String],
+      state: Option[String],
+      zipCode: Option[String],
+      country: String,
+  ) {
     def asJsObject: JsObject = Json.obj(
       "address1" -> jsStringOrNull(address1),
       "city" -> jsStringOrNull(city),
       "country" -> JsString(country),
       "address2" -> jsStringOrNull(address2),
       "state" -> jsStringOrNull(state),
-      "zipCode" -> jsStringOrNull(zipCode)
+      "zipCode" -> jsStringOrNull(zipCode),
     )
 
   }
 
-  //these classes looks similar to what we use in RestQuery maybe we can remove that duplication
-  case class ContactData(title: Option[String],
-                         firstName: String,
-                         lastName: String,
-                         specialDeliveryInstructions: Option[String],
-                         workEmail: Option[String],
-                         companyName: Option[String],
-                         address: AddressData) {
+  // these classes looks similar to what we use in RestQuery maybe we can remove that duplication
+  case class ContactData(
+      title: Option[String],
+      firstName: String,
+      lastName: String,
+      specialDeliveryInstructions: Option[String],
+      workEmail: Option[String],
+      companyName: Option[String],
+      address: AddressData,
+  ) {
     def asJsObject: JsObject = Json.obj(
       "firstName" -> JsString(firstName),
       "lastName" -> JsString(lastName),
       "Title__c" -> jsStringOrNull(title),
       "SpecialDeliveryInstructions__c" -> jsStringOrNull(specialDeliveryInstructions),
       "workEmail" -> jsStringOrNull(workEmail),
-      "Company_Name__c" -> jsStringOrNull(companyName)
+      "Company_Name__c" -> jsStringOrNull(companyName),
     ) ++ address.asJsObject
 
   }
@@ -77,12 +81,12 @@ object ZuoraRestService {
       val billtoJson = command.billTo.map(billto => Json.obj("billToContact" -> billto.asJsObject))
       val soldToJson = command.soldTo.map(soldto => Json.obj("soldToContact" -> soldto.asJsObject))
 
-      val maybeDisableEmailInvoices = command.billTo.flatMap{ billTocontact =>
-          if(billTocontact.workEmail.isEmpty) {
-            Some(Json.obj("invoiceDeliveryPrefsEmail" -> JsBoolean(false)))
-          } else {
-            None
-          }
+      val maybeDisableEmailInvoices = command.billTo.flatMap { billTocontact =>
+        if (billTocontact.workEmail.isEmpty) {
+          Some(Json.obj("invoiceDeliveryPrefsEmail" -> JsBoolean(false)))
+        } else {
+          None
+        }
       }
 
       val jsonParts = List(billtoJson, soldToJson, maybeDisableEmailInvoices).flatten
@@ -93,8 +97,8 @@ object ZuoraRestService {
   case class UpdateAccountIdentityIdCommand(identityId: String)
 
   implicit val updateAccountWithIdentityIdWrites = new Writes[UpdateAccountIdentityIdCommand] {
-    override def writes(c: UpdateAccountIdentityIdCommand): JsValue =   Json.obj(
-      "IdentityId__c" -> c.identityId
+    override def writes(c: UpdateAccountIdentityIdCommand): JsValue = Json.obj(
+      "IdentityId__c" -> c.identityId,
     )
   }
 
@@ -105,7 +109,7 @@ object ZuoraRestService {
       Json.obj(
         "cancellationPolicy" -> "SpecificDate",
         "cancellationEffectiveDate" -> command.cancellationEffectiveDate,
-        "invoiceCollect" -> false
+        "invoiceCollect" -> false,
       )
   }
 
@@ -114,7 +118,7 @@ object ZuoraRestService {
   implicit val renewSubscriptionCommandWrites = new Writes[RenewSubscriptionCommand] {
     override def writes(command: RenewSubscriptionCommand): JsValue =
       Json.obj(
-        "invoiceCollect" -> false
+        "invoiceCollect" -> false,
       )
   }
 
@@ -124,7 +128,7 @@ object ZuoraRestService {
     override def writes(command: UpdateCancellationSubscriptionCommand): JsValue = {
       Json.obj(
         "CancellationReason__c" -> command.cancellationReason,
-        "UserCancellationReason__c" -> command.userCancellationReason
+        "UserCancellationReason__c" -> command.userCancellationReason,
       )
     }
   }
@@ -134,7 +138,7 @@ object ZuoraRestService {
   implicit val disableAutoPayCommand = new Writes[DisableAutoPayCommand] {
     override def writes(command: DisableAutoPayCommand): JsValue = {
       Json.obj(
-        "autoPay" -> false
+        "autoPay" -> false,
       )
     }
   }
@@ -146,18 +150,19 @@ object ZuoraRestService {
       Json.obj(
         "billToContact" ->
           Json.obj(
-            "workEmail" -> command.email
-          )
+            "workEmail" -> command.email,
+          ),
       )
     }
   }
 
   case class UpdateChargeCommand(
-    price: Double,
-    ratePlanChargeId: SubscriptionRatePlanChargeId,
-    ratePlanId: RatePlanId,
-    applyFromDate: LocalDate,
-    note: String)
+      price: Double,
+      ratePlanChargeId: SubscriptionRatePlanChargeId,
+      ratePlanId: RatePlanId,
+      applyFromDate: LocalDate,
+      note: String,
+  )
 
   implicit val updateChargeCommandWrites = new Writes[UpdateChargeCommand] {
     override def writes(command: UpdateChargeCommand): JsValue = {
@@ -166,19 +171,19 @@ object ZuoraRestService {
         "update" ->
           Json.arr(
             Json.obj(
-            "chargeUpdateDetails" ->
-              Json.arr(
-                Json.obj(
-                  "price" -> command.price,
-                  "ratePlanChargeId" -> command.ratePlanChargeId.get
-                )
-              ),
+              "chargeUpdateDetails" ->
+                Json.arr(
+                  Json.obj(
+                    "price" -> command.price,
+                    "ratePlanChargeId" -> command.ratePlanChargeId.get,
+                  ),
+                ),
               "contractEffectiveDate" -> command.applyFromDate,
               "customerAcceptanceDate" -> command.applyFromDate,
               "serviceActivationDate" -> command.applyFromDate,
-              "ratePlanId" -> command.ratePlanId.get
-            )
-          )
+              "ratePlanId" -> command.ratePlanId.get,
+            ),
+          ),
       )
     }
   }
@@ -189,74 +194,81 @@ object ZuoraRestService {
   case class SalesforceContactId(get: String) extends AnyVal
 
   case class AccountSummary(
-    id: AccountId,
-    accountNumber: AccountNumber,
-    identityId: Option[String],
-    billToContact: BillToContact,
-    soldToContact: SoldToContact,
-    invoices: List[Invoice],
-    payments: List[Payment],
-    currency: Option[Currency],
-    balance: Double,
-    defaultPaymentMethod: Option[DefaultPaymentMethod],
-    sfContactId: SalesforceContactId
+      id: AccountId,
+      accountNumber: AccountNumber,
+      identityId: Option[String],
+      billToContact: BillToContact,
+      soldToContact: SoldToContact,
+      invoices: List[Invoice],
+      payments: List[Payment],
+      currency: Option[Currency],
+      balance: Double,
+      defaultPaymentMethod: Option[DefaultPaymentMethod],
+      sfContactId: SalesforceContactId,
   )
   case class ObjectAccount(
-    id: AccountId,
-    autoPay: Option[Boolean],
-    defaultPaymentMethodId: Option[PaymentMethodId],
-    currency: Option[Currency]
+      id: AccountId,
+      autoPay: Option[Boolean],
+      defaultPaymentMethodId: Option[PaymentMethodId],
+      currency: Option[Currency],
   )
   case class BillToContact(
-    email: Option[String],
-    country: Option[Country]
+      email: Option[String],
+      country: Option[Country],
   )
   case class SoldToContact(
-    title: Option[Title],
-    firstName: Option[String],
-    lastName: String,
-    email: Option[String],
-    address1: Option[String],
-    address2: Option[String],
-    city: Option[String],
-    postCode: Option[String],
-    state: Option[String],
-    country: Option[Country]
+      title: Option[Title],
+      firstName: Option[String],
+      lastName: String,
+      email: Option[String],
+      address1: Option[String],
+      address2: Option[String],
+      city: Option[String],
+      postCode: Option[String],
+      state: Option[String],
+      country: Option[Country],
   )
 
   case class InvoiceId(get: String) extends AnyVal
   case class Invoice(
-    id: InvoiceId,
-    invoiceNumber: String,
-    invoiceDate: DateTime,
-    dueDate: DateTime,
-    amount: Double,
-    balance: Double,
-    status: String
+      id: InvoiceId,
+      invoiceNumber: String,
+      invoiceDate: DateTime,
+      dueDate: DateTime,
+      amount: Double,
+      balance: Double,
+      status: String,
   )
 
   case class PaidInvoice(invoiceNumber: String, appliedPaymentAmount: Double)
 
   case class Payment(
-    status: String,
-    paidInvoices: List[PaidInvoice]
+      status: String,
+      paidInvoices: List[PaidInvoice],
   )
 
   case class PaymentMethodId(get: String) extends AnyVal
   case class DefaultPaymentMethod(id: PaymentMethodId)
 
-  case class AccountObject(Id: AccountId, Balance: Double = 0, Currency: Option[Currency], DefaultPaymentMethodId: Option[PaymentMethodId] = None, PaymentGateway: Option[PaymentGateway] = None, LastInvoiceDate: Option[DateTime] = None)
+  case class AccountObject(
+      Id: AccountId,
+      Balance: Double = 0,
+      Currency: Option[Currency],
+      DefaultPaymentMethodId: Option[PaymentMethodId] = None,
+      PaymentGateway: Option[PaymentGateway] = None,
+      LastInvoiceDate: Option[DateTime] = None,
+  )
 
   case class GetAccountsQueryResponse(
-    records: List[AccountObject],
-    size: Int
+      records: List[AccountObject],
+      size: Int,
   )
 
   case class AccountsByCrmIdResponseRecord(Id: AccountId, SoldToId: Option[String], BillToId: Option[String], sfContactId__c: Option[String])
 
   case class AccountsByCrmIdResponse(
-    records: List[AccountsByCrmIdResponseRecord],
-    size: Int
+      records: List[AccountsByCrmIdResponseRecord],
+      size: Int,
   )
   object AccountsByCrmIdResponseRecord {
     implicit val reads: Reads[AccountsByCrmIdResponseRecord] = Json.reads[AccountsByCrmIdResponseRecord]
@@ -268,15 +280,15 @@ object ZuoraRestService {
   case class GiftSubscriptionsFromIdentityIdRecord(Name: String, Id: String, TermEndDate: LocalDate)
 
   case class GiftSubscriptionsFromIdentityIdResponse(
-    records: List[GiftSubscriptionsFromIdentityIdRecord],
-    size: Int
+      records: List[GiftSubscriptionsFromIdentityIdRecord],
+      size: Int,
   )
   object GiftSubscriptionsFromIdentityIdRecord {
     implicit val reads: Reads[GiftSubscriptionsFromIdentityIdRecord] = (
       (JsPath \ "Name").read[String] and
         (JsPath \ "Id").read[String] and
         (JsPath \ "TermEndDate").read[LocalDate]
-      )(GiftSubscriptionsFromIdentityIdRecord.apply _)
+    )(GiftSubscriptionsFromIdentityIdRecord.apply _)
   }
   object GiftSubscriptionsFromIdentityIdResponse {
     implicit val reads: Reads[GiftSubscriptionsFromIdentityIdResponse] = Json.reads[GiftSubscriptionsFromIdentityIdResponse]
@@ -298,42 +310,42 @@ object ZuoraRestService {
 
   implicit val billToContactReads: Reads[BillToContact] = (
     (JsPath \ "workEmail").readNullable[String].filter(_ != "") and
-    (JsPath \ "country").read[String].map(ZuoraLookup.country)
-    )(BillToContact.apply _)
+      (JsPath \ "country").read[String].map(ZuoraLookup.country)
+  )(BillToContact.apply _)
 
   implicit val soldToContactReads: Reads[SoldToContact] =
     (
       (JsPath \ "Title__c").readNullable[String].map(_.flatMap(Title.fromString)) and
-      (JsPath \ "firstName").readNullable[String] and
-      (JsPath \ "lastName").read[String] and
-      (JsPath \ "workEmail").readNullable[String] and
-      (JsPath \ "address1").readNullable[String] and
-      (JsPath \ "address2").readNullable[String] and
-      (JsPath \ "city").readNullable[String] and
-      (JsPath \ "zipCode").readNullable[String] and
-      (JsPath \ "state").readNullable[String] and
-      (JsPath \ "country").read[String].map(ZuoraLookup.country)
+        (JsPath \ "firstName").readNullable[String] and
+        (JsPath \ "lastName").read[String] and
+        (JsPath \ "workEmail").readNullable[String] and
+        (JsPath \ "address1").readNullable[String] and
+        (JsPath \ "address2").readNullable[String] and
+        (JsPath \ "city").readNullable[String] and
+        (JsPath \ "zipCode").readNullable[String] and
+        (JsPath \ "state").readNullable[String] and
+        (JsPath \ "country").read[String].map(ZuoraLookup.country)
     )(SoldToContact.apply _)
 
   implicit val invoiceReads: Reads[Invoice] =
     (
       (JsPath \ "id").read[String].map(InvoiceId.apply) and
-      (JsPath \ "invoiceNumber").read[String] and
-      (JsPath \ "invoiceDate").read[String].map(isoDateStringAsDateTime) and
-      (JsPath \ "dueDate").read[String].map(isoDateStringAsDateTime) and
-      (JsPath \ "amount").read[Double] and
-      (JsPath \ "balance").read[Double] and
-      (JsPath \ "status").read[String]
+        (JsPath \ "invoiceNumber").read[String] and
+        (JsPath \ "invoiceDate").read[String].map(isoDateStringAsDateTime) and
+        (JsPath \ "dueDate").read[String].map(isoDateStringAsDateTime) and
+        (JsPath \ "amount").read[Double] and
+        (JsPath \ "balance").read[Double] and
+        (JsPath \ "status").read[String]
     )(Invoice.apply _)
 
   implicit val paidInvoiceReads: Reads[PaidInvoice] = (
     (JsPath \ "invoiceNumber").read[String] and
-    (JsPath \ "appliedPaymentAmount").read[Double]
+      (JsPath \ "appliedPaymentAmount").read[Double]
   )(PaidInvoice.apply _)
 
   implicit val paymentReads: Reads[Payment] = (
     (JsPath \ "status").read[String] and
-    (JsPath \ "paidInvoices").read[List[PaidInvoice]]
+      (JsPath \ "paidInvoices").read[List[PaidInvoice]]
   )(Payment.apply _)
 
   implicit val paymentMethodIdReads: Reads[PaymentMethodId] = JsPath.read[String].map(PaymentMethodId.apply)
@@ -341,7 +353,7 @@ object ZuoraRestService {
 
   implicit val accountSummaryReads: Reads[AccountSummary] = (
     (__ \ "basicInfo" \ "id").read[String].map(AccountId.apply) and
-    (__ \ "basicInfo" \ "accountNumber").read[String].map(AccountNumber.apply) and
+      (__ \ "basicInfo" \ "accountNumber").read[String].map(AccountNumber.apply) and
       (__ \ "basicInfo" \ "IdentityId__c").readNullable[String] and
       (__ \ "billToContact").read[BillToContact] and
       (__ \ "soldToContact").read[SoldToContact] and
@@ -355,9 +367,9 @@ object ZuoraRestService {
 
   implicit val objectAccountReads: Reads[ObjectAccount] = (
     (__ \ "Id").read[String].map(AccountId.apply) and
-    (__ \ "AutoPay").readNullable[Boolean] and
-    (__ \ "DefaultPaymentMethodId").readNullable[PaymentMethodId] and
-    (__ \ "Currency").read[Option[Currency]]
+      (__ \ "AutoPay").readNullable[Boolean] and
+      (__ \ "DefaultPaymentMethodId").readNullable[PaymentMethodId] and
+      (__ \ "Currency").read[Option[Currency]]
   )(ObjectAccount.apply _)
 
   implicit val nameReads: Reads[AccountId] = JsPath.read[String].map(AccountId.apply)
@@ -378,10 +390,10 @@ object ZuoraRestService {
 
 }
 
-class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
+class ZuoraRestService[M[_]: Monad](implicit simpleRest: SimpleClient[M]) {
 
   def getAccount(accountId: AccountId): M[String \/ AccountSummary] = {
-    simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") //TODO error handling
+    simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") // TODO error handling
   }
 
   def getObjectAccount(accountId: AccountId): M[String \/ ObjectAccount] = {
@@ -389,7 +401,8 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
   }
 
   def getAccounts(identityId: String): M[String \/ GetAccountsQueryResponse] = {
-    val queryString = s"select Id, Balance, Currency, DefaultPaymentMethodId, PaymentGateway, LastInvoiceDate from account where IdentityId__c = '$identityId' and Status = 'Active'"
+    val queryString =
+      s"select Id, Balance, Currency, DefaultPaymentMethodId, PaymentGateway, LastInvoiceDate from account where IdentityId__c = '$identityId' and Status = 'Active'"
     simpleRest.post[RestQuery, GetAccountsQueryResponse]("action/query", RestQuery(queryString))
   }
 
@@ -400,12 +413,14 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
 
   def getGiftSubscriptionRecordsFromIdentityId(identityId: String): M[String \/ List[GiftSubscriptionsFromIdentityIdRecord]] = {
     val today = LocalDate.now().toString("yyyy-MM-dd")
-    val queryString = s"select name, id, termEndDate from subscription where GifteeIdentityId__c = '${identityId}' and status = 'Active' and termEndDate >= '$today'"
+    val queryString =
+      s"select name, id, termEndDate from subscription where GifteeIdentityId__c = '${identityId}' and status = 'Active' and termEndDate >= '$today'"
     val response = simpleRest.post[RestQuery, GiftSubscriptionsFromIdentityIdResponse]("action/query", RestQuery(queryString))
     EitherT(response).map(_.records).run
   }
 
-  def getPaymentMethod(paymentMethodId: String): M[String \/ PaymentMethodResponse] = simpleRest.get[PaymentMethodResponse](s"object/payment-method/$paymentMethodId")
+  def getPaymentMethod(paymentMethodId: String): M[String \/ PaymentMethodResponse] =
+    simpleRest.get[PaymentMethodResponse](s"object/payment-method/$paymentMethodId")
 
   def addEmail(accountId: AccountId, email: String): M[String \/ Unit] = {
 
@@ -413,7 +428,12 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
 
     val restResponse = for {
       account <- EitherT(getAccount(accountId))
-      _ <- EitherT(future.point(if (account.billToContact.email.isEmpty) \/.r[String](()) else \/.l[Unit](s"email is already set in zuora to ${account.billToContact.email}")))
+      _ <- EitherT(
+        future.point(
+          if (account.billToContact.email.isEmpty) \/.r[String](())
+          else \/.l[Unit](s"email is already set in zuora to ${account.billToContact.email}"),
+        ),
+      )
       restResponse <- EitherT(simpleRest.put[UpdateAccountCommand, ZuoraResponse](s"accounts/${accountId.get}", UpdateAccountCommand(email = email)))
     } yield restResponse
 
@@ -425,20 +445,25 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     val futureMonad = implicitly[Monad[M]]
 
     val validated = futureMonad.map(restResponse.run) {
-      case \/-(zuoraResponse) => if (zuoraResponse.success) \/.r[String](zuoraResponse) else \/.l[ZuoraResponse](zuoraResponse.error.getOrElse("Zuora returned with success = false"))
+      case \/-(zuoraResponse) =>
+        if (zuoraResponse.success) \/.r[String](zuoraResponse)
+        else \/.l[ZuoraResponse](zuoraResponse.error.getOrElse("Zuora returned with success = false"))
       case -\/(e) => \/.l[ZuoraResponse](e)
     }
 
     EitherT(validated)
   }
 
-
-  def updateAccountContacts(record: AccountsByCrmIdResponseRecord, soldTo: Option[ContactData], billTo: Option[ContactData])(implicit ex: ExecutionContext): M[\/[String, ZuoraResponse]] = {
+  def updateAccountContacts(record: AccountsByCrmIdResponseRecord, soldTo: Option[ContactData], billTo: Option[ContactData])(implicit
+      ex: ExecutionContext,
+  ): M[\/[String, ZuoraResponse]] = {
     val futureMonad = implicitly[Monad[M]]
 
     (for {
       updated <- EitherT(splitContactsIfNecessary(record, soldTo))
-      updateResponse <- EitherT(simpleRest.put[UpdateContactsCommand, ZuoraResponse](s"accounts/${record.Id.get}", UpdateContactsCommand(soldTo = soldTo, billTo = billTo)))
+      updateResponse <- EitherT(
+        simpleRest.put[UpdateContactsCommand, ZuoraResponse](s"accounts/${record.Id.get}", UpdateContactsCommand(soldTo = soldTo, billTo = billTo)),
+      )
     } yield updateResponse).run
   }
 
@@ -446,7 +471,7 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     val command = UpdateAccountIdentityIdCommand(identityId)
     val futureMonad = implicitly[Monad[M]]
     (for {
-      response <- EitherT(simpleRest.put[UpdateAccountIdentityIdCommand, ZuoraResponse](s"accounts/${accountId.get}",command))
+      response <- EitherT(simpleRest.put[UpdateAccountIdentityIdCommand, ZuoraResponse](s"accounts/${accountId.get}", command))
     } yield {
       response
     }).run
@@ -471,7 +496,7 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     val futureMonad = implicitly[Monad[M]]
 
     val body = Json.obj(
-      "SoldToId" -> soldToId
+      "SoldToId" -> soldToId,
     )
 
     futureMonad.map(simpleRest.putJson[ZuoraCrudResponse](s"object/account/$accountId", body)) {
@@ -508,7 +533,12 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     response.run
   }
 
-  private def updateAllAccountContacts(sfContactId: String, records: List[AccountsByCrmIdResponseRecord], soldTo: Option[ContactData], billTo: Option[ContactData])(implicit ex: ExecutionContext): M[\/[String, Unit]] = {
+  private def updateAllAccountContacts(
+      sfContactId: String,
+      records: List[AccountsByCrmIdResponseRecord],
+      soldTo: Option[ContactData],
+      billTo: Option[ContactData],
+  )(implicit ex: ExecutionContext): M[\/[String, Unit]] = {
     val futureMonad = implicitly[Monad[M]]
 
     if (records.isEmpty) {
@@ -517,10 +547,14 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     } else {
       SafeLogger.info(s"updating ${records.size} accounts : [${records.map(_.Id.get).mkString(", ")}]")
       val responses = records.map { record =>
-        val updateSoldTo = if (record.sfContactId__c.contains(sfContactId)) soldTo else {
-          SafeLogger.info(s"not updating sold to in zuora account ${record.Id.get} because sfContactId ($sfContactId) doesn't match for zuora contact ${record.sfContactId__c}")
-          None
-        }
+        val updateSoldTo =
+          if (record.sfContactId__c.contains(sfContactId)) soldTo
+          else {
+            SafeLogger.info(
+              s"not updating sold to in zuora account ${record.Id.get} because sfContactId ($sfContactId) doesn't match for zuora contact ${record.sfContactId__c}",
+            )
+            None
+          }
         if (updateSoldTo.isEmpty && billTo.isEmpty) {
           SafeLogger.info(s"skipping account ${record.Id.get} since soldto and billto do not need to be updated")
           futureMonad.point(\/-(()): \/[String, Unit])
@@ -528,7 +562,8 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
           val restResponse = updateAccountContacts(record, updateSoldTo, billTo)
           futureMonad.map(restResponse) {
             case (\/-(ZuoraResponse(true, _))) => \/.r[String](())
-            case (\/-(ZuoraResponse(false, error))) => \/.l[Unit](s"account id: ${record.Id.get} ${error.getOrElse("zuora responded with success = false")}")
+            case (\/-(ZuoraResponse(false, error))) =>
+              \/.l[Unit](s"account id: ${record.Id.get} ${error.getOrElse("zuora responded with success = false")}")
             case (-\/(error)) => \/.l[Unit](s"account id: ${record.Id.get} $error")
           }
         }
@@ -544,7 +579,9 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     }
   }
 
-  def updateZuoraBySfContact(contactId: ContactId, soldTo: Option[ContactData], billTo: Option[ContactData])(implicit ex: ExecutionContext): M[String \/ Unit] = {
+  def updateZuoraBySfContact(contactId: ContactId, soldTo: Option[ContactData], billTo: Option[ContactData])(implicit
+      ex: ExecutionContext,
+  ): M[String \/ Unit] = {
     val futureMonad = implicitly[Monad[M]]
 
     if (billTo.isEmpty && soldTo.isEmpty) {
@@ -553,34 +590,43 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     } else {
       val response = for {
         accounts <- EitherT(getAccountByCrmId(contactId.salesforceAccountId))
-        restResponse <- EitherT(updateAllAccountContacts(sfContactId = contactId.salesforceContactId, records = accounts.records, soldTo = soldTo, billTo = billTo))
+        restResponse <- EitherT(
+          updateAllAccountContacts(sfContactId = contactId.salesforceContactId, records = accounts.records, soldTo = soldTo, billTo = billTo),
+        )
       } yield restResponse
       response.run
     }
   }
 
   def cancelSubscription(
-    subscriptionName: Name,
-    termEndDate: LocalDate,
-    maybeChargedThroughDate: Option[LocalDate] // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
+      subscriptionName: Name,
+      termEndDate: LocalDate,
+      maybeChargedThroughDate: Option[
+        LocalDate,
+      ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
   )(implicit ex: ExecutionContext): M[String \/ Unit] = {
 
     // FIXME: Not always safe assumption. There are multiple scenarios to consider
     //   1. Free trial should be explicitly handled: val cancellationEffectiveDate = if(sub.startDate <= today && sub.acceptanceDate > today) LocalDate.now
     //   2. If outside trial, and invoiced, ChargedThroughDate should always exist: val cancellationEffectiveDate = ChargedThroughDate
     //   3. If outside trial, and invoiced, but ChargedThroughDate does not exist, then it is a likely logic error. Investigate ASAP!. Currently it happens after Contributions amount change.
-    val cancellationEffectiveDate = maybeChargedThroughDate.getOrElse(LocalDate.now) // immediate cancellation for subs which aren't yet invoiced (e.g. during digipack trial)
+    val cancellationEffectiveDate =
+      maybeChargedThroughDate.getOrElse(LocalDate.now) // immediate cancellation for subs which aren't yet invoiced (e.g. during digipack trial)
 
     val extendTermIfNeeded = maybeChargedThroughDate
       .filter(_.isAfter(termEndDate)) // we need to extend the term if they've paid past their term end date, otherwise cancel call will fail
-      .map(_ => EitherT(simpleRest.put[RenewSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}/renew", RenewSubscriptionCommand())))
+      .map(_ =>
+        EitherT(simpleRest.put[RenewSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}/renew", RenewSubscriptionCommand())),
+      )
       .getOrElse(EitherT.right[String, M, ZuoraResponse](ZuoraResponse(success = true)))
 
     val cancelCommand = CancelSubscriptionCommand(cancellationEffectiveDate)
 
     val restResponse = for {
       _ <- extendTermIfNeeded
-      cancelResponse <- EitherT(simpleRest.put[CancelSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}/cancel", cancelCommand))
+      cancelResponse <- EitherT(
+        simpleRest.put[CancelSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}/cancel", cancelCommand),
+      )
     } yield cancelResponse
 
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
@@ -589,7 +635,12 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
   def updateCancellationReason(subscriptionName: Name, userCancellationReason: String): M[String \/ Unit] = {
     val future = implicitly[Monad[M]]
     val restResponse = for {
-      restResponse <- EitherT(simpleRest.put[UpdateCancellationSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}", UpdateCancellationSubscriptionCommand(cancellationReason = "Customer", userCancellationReason = userCancellationReason)))
+      restResponse <- EitherT(
+        simpleRest.put[UpdateCancellationSubscriptionCommand, ZuoraResponse](
+          s"subscriptions/${subscriptionName.get}",
+          UpdateCancellationSubscriptionCommand(cancellationReason = "Customer", userCancellationReason = userCancellationReason),
+        ),
+      )
     } yield restResponse
 
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
@@ -605,8 +656,16 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
   }
 
-  def updateChargeAmount(subscriptionName: Name, ratePlanChargeId: SubscriptionRatePlanChargeId, ratePlanId: RatePlanId, amount: Double, reason: String, applyFromDate: LocalDate)(implicit ex:ExecutionContext): M[\/[String, Unit]] = {
-    val updateCommand = UpdateChargeCommand(price = amount, ratePlanChargeId = ratePlanChargeId, ratePlanId = ratePlanId, applyFromDate = applyFromDate, note = reason)
+  def updateChargeAmount(
+      subscriptionName: Name,
+      ratePlanChargeId: SubscriptionRatePlanChargeId,
+      ratePlanId: RatePlanId,
+      amount: Double,
+      reason: String,
+      applyFromDate: LocalDate,
+  )(implicit ex: ExecutionContext): M[\/[String, Unit]] = {
+    val updateCommand =
+      UpdateChargeCommand(price = amount, ratePlanChargeId = ratePlanChargeId, ratePlanId = ratePlanId, applyFromDate = applyFromDate, note = reason)
     val restResponse = for {
       restResponse <- EitherT(simpleRest.put[UpdateChargeCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}", updateCommand))
     } yield restResponse
@@ -619,7 +678,7 @@ class ZuoraRestService[M[_] : Monad](implicit simpleRest: SimpleClient[M]) {
       amendment <- EitherT(simpleRest.get[Amendment](s"amendments/subscriptions/${name.get}"))
       cancelledSub <- EitherT(simpleRest.get[CancelledSubscription](s"subscriptions/${name.get}"))
     } yield {
-      if (amendment.`type`.contains("Cancellation") && cancelledSub.status == "Cancelled" )
+      if (amendment.`type`.contains("Cancellation") && cancelledSub.status == "Cancelled")
         Some(cancelledSub.subscriptionEndDate)
       else
         None

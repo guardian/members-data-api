@@ -5,14 +5,13 @@ import com.gu.memsub.promo.Promotion.AnyPromotion
 import io.lemonlabs.uri.dsl._
 import org.joda.time.DateTime
 
-/**
-  * Promotions are quite laborious to construct
-  * So these are helper methods for unit tests
+/** Promotions are quite laborious to construct So these are helper methods for unit tests
   */
 object PromotionStub {
 
   implicit class PromoModifier(p: AnyPromotion) {
-    def ofType[P <: PromotionType[PromoContext]](newType: P): Promotion[P, Option, LandingPage] = p.copy[P, Option, LandingPage](promotionType = newType)
+    def ofType[P <: PromotionType[PromoContext]](newType: P): Promotion[P, Option, LandingPage] =
+      p.copy[P, Option, LandingPage](promotionType = newType)
     def withCampaign(newCampaign: String) = p.copy[PromotionType[PromoContext], Option, LandingPage](campaign = CampaignCode(newCampaign))
   }
 
@@ -22,10 +21,17 @@ object PromotionStub {
     appliesTo = AppliesTo.ukOnly(ids.toSet),
     campaign = CampaignCode("C"),
     channelCodes = Map(Channel("testChannel") -> Set(PromoCode(code))),
-    landingPage = Some(DigitalPackLandingPage(Some("Page"), Some("Desc"), Some("Roundel"), Some(ResponsiveImageGroup(availableImages = Seq(ResponsiveImage("http://example.com", 0)))), Some(Blue))),
+    landingPage = Some(
+      DigitalPackLandingPage(
+        Some("Page"),
+        Some("Desc"),
+        Some("Roundel"),
+        Some(ResponsiveImageGroup(availableImages = Seq(ResponsiveImage("http://example.com", 0)))),
+        Some(Blue),
+      ),
+    ),
     starts = DateTime.now().minusDays(1),
     expires = Some(DateTime.now().plusDays(1)),
-    promotionType = Tracking
+    promotionType = Tracking,
   )
 }
-
