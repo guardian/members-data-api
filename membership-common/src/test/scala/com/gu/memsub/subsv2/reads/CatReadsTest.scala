@@ -68,8 +68,8 @@ class CatReadsTest extends AnyFlatSpec {
             productRatePlanChargeId = ProductRatePlanChargeId("2c92c0f96df75b5a016df81ba1e9260b"),
             pricing = PricingSummary(
               Map(
-                GBP -> Price(60f, GBP),
-                USD -> Price(81.3f, USD),
+                GBP -> Price(74.4f, GBP),
+                USD -> Price(90f, USD),
                 CAD -> Price(86.25f, CAD),
                 AUD -> Price(106.0f, AUD),
                 NZD -> Price(132.5f, NZD),
