@@ -15,6 +15,8 @@ import scalaz.syntax.std.boolean._
 import scalaz.syntax.std.option._
 import scalaz.Validation.FlatMap._
 
+import scala.util.Try
+
 /** Try to convert a single ZuoraCharge into some type A
   */
 trait ChargeReads[A] {
@@ -194,7 +196,12 @@ object ChargeListReads {
       val billingPeriods = charges.flatMap(_.billingPeriod).distinct
       billingPeriods match {
         case Nil => Validation.failureNel("No billing period found")
-        case b :: Nil => Validation.success[NonEmptyList[String], BillingPeriod](b.toBillingPeriod)
+        case b :: Nil => Validation
+          .success[NonEmptyList[String], BillingPeriod](b.toBillingPeriod)
+          .ensure(s"Supporter plus V2 must have a Monthly or Annual billing period, not $b".wrapNel) {
+            case Month | Year => true
+            case _ => false
+          }
         case _ => Validation.failureNel("Too many billing periods found")
       }
     }
