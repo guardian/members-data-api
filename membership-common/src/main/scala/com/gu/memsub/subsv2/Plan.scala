@@ -69,7 +69,7 @@ sealed trait ZBillingPeriod extends ZuoraEnum {
     case ZThreeYears => ThreeYears
     case ZSpecificWeeks => OneTimeChargeBillingPeriod
     case ZSpecificMonths => OneTimeChargeBillingPeriod
-    case _ => throw new IllegalArgumentException(s"Zuora billing period not supported: ${this.id}")
+    case ZWeek => throw new IllegalArgumentException("ZWeek billing period is not supported")
   }
 }
 
