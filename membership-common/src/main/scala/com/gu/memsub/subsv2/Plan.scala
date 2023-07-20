@@ -61,12 +61,15 @@ object EndDateCondition {
 
 sealed trait ZBillingPeriod extends ZuoraEnum {
   def toBillingPeriod: BillingPeriod = this match {
+    case ZMonth => Month
+    case ZQuarter => Quarter
+    case ZSemiAnnual => SixMonths
     case ZYear => Year
     case ZTwoYears => TwoYears
     case ZThreeYears => ThreeYears
-    case ZMonth => Month
-    case ZQuarter => Quarter
-    case _ => throw new IllegalArgumentException("Zuora billing period not supported")
+    case ZSpecificWeeks => OneTimeChargeBillingPeriod
+    case ZSpecificMonths => OneTimeChargeBillingPeriod
+    case _ => throw new IllegalArgumentException(s"Zuora billing period not supported: ${this.id}")
   }
 }
 
