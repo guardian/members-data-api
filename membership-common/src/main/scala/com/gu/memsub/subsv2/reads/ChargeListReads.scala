@@ -15,8 +15,6 @@ import scalaz.syntax.std.boolean._
 import scalaz.syntax.std.option._
 import scalaz.Validation.FlatMap._
 
-import scala.util.Try
-
 /** Try to convert a single ZuoraCharge into some type A
   */
 trait ChargeReads[A] {
