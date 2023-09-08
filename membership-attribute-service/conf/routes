@@ -27,10 +27,4 @@ PUT         /user-attributes/me/delivery-address/:contactId                     
 # OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
 GET         /user-attributes/me/features                                controllers.AttributeController.features
-
-GET         /user-attributes/me/mma-digitalpack                         controllers.AccountController.digitalPackDetails
-GET         /user-attributes/me/mma-membership                          controllers.AccountController.membershipDetails
-GET         /user-attributes/me/mma-monthlycontribution                 controllers.AccountController.monthlyContributionDetails
-GET         /user-attributes/me/mma-paper                               controllers.AccountController.paperDetails
-
 POST        /user-attributes/me/contribution-update-amount              controllers.AccountController.contributionUpdateAmount
