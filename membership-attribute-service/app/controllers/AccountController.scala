@@ -307,7 +307,7 @@ class AccountController(
         val services = request.touchpoint
         val userId = request.user.identityId
         val email = request.user.primaryEmailAddress
-        logger.info(s"Attempting to update contribution amount for ${userId}")
+        logger.info(s"Attempting to update contribution amount for $userId")
         (for {
           newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm(request))
           user <- SimpleEitherT.right(userId)
@@ -413,24 +413,6 @@ class AccountController(
   def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] = updateContributionAmount(
     Some(memsub.Subscription.Name(subscriptionName)),
   )
-
-  @Deprecated def membershipDetails: Action[AnyContent] =
-    paymentDetails[SubscriptionPlan.PaidMember, SubscriptionPlan.FreeMember]("GET /user-attributes/me/mma-membership")
-
-  @Deprecated def monthlyContributionDetails: Action[AnyContent] = {
-    implicit val nothingReads = SubPlanReads.nothingReads
-    paymentDetails[SubscriptionPlan.Contributor, Nothing]("GET /user-attributes/me/mma-monthlycontribution")
-  }
-
-  @Deprecated def digitalPackDetails: Action[AnyContent] = {
-    implicit val nothingReads = SubPlanReads.nothingReads
-    paymentDetails[SubscriptionPlan.Digipack, Nothing]("GET /user-attributes/me/mma-digitalpack")
-  }
-
-  @Deprecated def paperDetails: Action[AnyContent] = {
-    implicit val nothingReads = SubPlanReads.nothingReads
-    paymentDetails[SubscriptionPlan.PaperPlan, Nothing]("GET /user-attributes/me/mma-paper")
-  }
 
   def allPaymentDetails(productType: Option[String]): Action[AnyContent] =
     anyPaymentDetails(
