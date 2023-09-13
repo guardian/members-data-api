@@ -60,6 +60,9 @@ object Product {
   case object Delivery extends Paper {
     val name = "delivery"
   }
+  case object NationalDelivery extends Paper {
+    val name = "nationalDelivery"
+  }
   case object Voucher extends Paper {
     val name = "voucher"
   }
@@ -90,6 +93,7 @@ object Product {
     case SupporterPlus.name => Some(SupporterPlus)
     case Membership.name => Some(Membership)
     case Delivery.name => Some(Delivery)
+    case NationalDelivery.name => Some(NationalDelivery)
     case Voucher.name => Some(Voucher)
     case DigitalVoucher.name => Some(DigitalVoucher)
     case WeeklyZoneA.name => Some(WeeklyZoneA)
@@ -105,6 +109,7 @@ object Product {
   type ZDigipack = Digipack.type
   type SupporterPlus = SupporterPlus.type
   type Delivery = Delivery.type
+  type NationalDelivery = NationalDelivery.type
   type Voucher = Voucher.type
   type DigitalVoucher = DigitalVoucher.type
   type WeeklyZoneA = WeeklyZoneA.type
