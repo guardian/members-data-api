@@ -114,9 +114,9 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0ff56fe33f001572334561765c1",
       "2c92a0fd596d321a0159735a7b150e43",
       // National Delivery
-      "8a12999f8a268c57018a27ebfd721883",
-      "8a12999f8a268c57018a27ebe868150c",
-      "8a12999f8a268c57018a27ebe31414a4",
+      "8a12999f8a268c57018a27ebfd721883", // Sixday
+      "8a12999f8a268c57018a27ebe868150c", // Weekend
+      "8a12999f8a268c57018a27ebe31414a4", // Everyday
     ) -> paperTransformer,
     List(
       "2c92a00870ec598001710740ce702ff0",
