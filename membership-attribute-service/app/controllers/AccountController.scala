@@ -168,67 +168,6 @@ class AccountController(
       }
     }
 
-  @Deprecated
-  private def paymentDetails[P <: SubscriptionPlan.Paid: SubPlanReads, F <: SubscriptionPlan.Free: SubPlanReads](metricName: String) =
-    AuthorizeForScopes(requiredScopes = List(completeReadSelf)).async { implicit request =>
-      metrics.measureDuration(metricName) {
-        DeprecatedRequestLogger.logDeprecatedRequest(request)
-
-        implicit val tp: TouchpointComponents = request.touchpoint
-
-        def getPaymentMethod(id: PaymentMethodId) = tp.zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
-
-        val userId = request.user.identityId
-
-        logger.info(s"Deprecated function called: Attempting to retrieve payment details for identity user: ${userId.mkString}")
-        (for {
-          user <- OptionTEither.some(userId)
-          contact <- OptionTEither(tp.contactRepository.get(user))
-          freeOrPaidSub <- OptionTEither(
-            tp.subscriptionService
-              .either[F, P](contact)
-              .map(_.leftMap(message => s"couldn't read sub from zuora for crmId ${contact.salesforceAccountId} due to $message")),
-          ).map(_.toEither)
-          sub: Subscription[AnyPlan] = freeOrPaidSub.fold(identity, identity)
-          paymentDetails <- OptionTEither.liftOption(tp.paymentService.paymentDetails(\/.fromEither(freeOrPaidSub)).map(Right(_)).recover { case x =>
-            Left(s"error retrieving payment details for subscription: ${sub.name}. Reason: $x")
-          })
-          accountSummary <- OptionTEither.liftOption(tp.zuoraRestService.getAccount(sub.accountId).map(_.toEither).recover { case x =>
-            Left(s"error receiving account summary for subscription: ${sub.name} with account id ${sub.accountId}. Reason: $x")
-          })
-          stripePublicKey = tp.chooseStripe.publicKeyForCountry(accountSummary.billToContact.country)
-          alertText <- OptionTEither.fromFuture(alertText(accountSummary, sub, getPaymentMethod))
-          cancellationEffectiveDate <- OptionTEither.liftOption(tp.zuoraRestService.getCancellationEffectiveDate(sub.name).map(_.toEither))
-          isAutoRenew = sub.autoRenew
-        } yield AccountDetails(
-          contactId = contact.salesforceContactId,
-          regNumber = contact.regNumber,
-          email = accountSummary.billToContact.email,
-          deliveryAddress = None,
-          subscription = sub,
-          paymentDetails = paymentDetails,
-          billingCountry = accountSummary.billToContact.country,
-          stripePublicKey = stripePublicKey.key,
-          accountHasMissedRecentPayments = false,
-          safeToUpdatePaymentMethod = true,
-          isAutoRenew = isAutoRenew,
-          alertText = alertText,
-          accountId = accountSummary.id.get,
-          cancellationEffectiveDate,
-        ).toJson).run.run.map(_.toEither).map {
-          case Right(Some(result)) =>
-            logger.info(s"Successfully retrieved payment details result for identity user: ${userId.mkString}")
-            Ok(result)
-          case Right(None) =>
-            logger.info(s"identity user doesn't exist in SF: ${userId.mkString}")
-            Ok(Json.obj())
-          case Left(message) =>
-            logger.warn(s"Unable to retrieve payment details result for identity user ${userId.mkString} due to $message")
-            InternalServerError("Failed to retrieve payment details due to an internal error")
-        }
-      }
-    }
-
   def reminders: Action[AnyContent] =
     AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/reminders") {
