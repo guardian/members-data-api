@@ -10,6 +10,7 @@ object SubsV2ProductIds {
     weeklyDomestic = ProductId(config.getString("subscriptions.weeklyDomestic")),
     weeklyRestOfWorld = ProductId(config.getString("subscriptions.weeklyRestOfWorld")),
     delivery = ProductId(config.getString("subscriptions.delivery")),
+    nationalDelivery = ProductId(config.getString("subscriptions.nationalDelivery")),
     voucher = ProductId(config.getString("subscriptions.voucher")),
     digitalVoucher = ProductId(config.getString("subscriptions.digitalVoucher")),
     digipack = ProductId(config.getString("subscriptions.digipack")),

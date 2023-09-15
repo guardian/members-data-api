@@ -64,6 +64,7 @@ object ChargeListReads {
       voucher: ProductId,
       digitalVoucher: ProductId,
       delivery: ProductId,
+      nationalDelivery: ProductId,
       contributor: ProductId,
   )
 

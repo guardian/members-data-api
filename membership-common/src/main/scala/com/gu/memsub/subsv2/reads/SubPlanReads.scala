@@ -38,6 +38,7 @@ object SubPlanReads {
   implicit val voucherReads: SubPlanReads[Voucher] = findProduct(_.voucher.point[List], Voucher)
   implicit val digitalVoucherReads: SubPlanReads[DigitalVoucher] = findProduct(_.digitalVoucher.point[List], DigitalVoucher)
   implicit val deliveryReads: SubPlanReads[Delivery] = findProduct(_.delivery.point[List], Delivery)
+  implicit val nationalDeliveryReads: SubPlanReads[NationalDelivery] = findProduct(_.nationalDelivery.point[List], NationalDelivery)
   implicit val zDigipackReads: SubPlanReads[ZDigipack] = findProduct(_.digipack.point[List], Digipack)
   implicit val supporterPlusReads: SubPlanReads[SupporterPlus] = findProduct(_.supporterPlus.point[List], SupporterPlus)
   implicit val membershipReads: SubPlanReads[Membership] =
@@ -68,6 +69,7 @@ object SubPlanReads {
       (voucherReads.read(p, z, c).map(identity[Paper]) orElse2
         digitalVoucherReads.read(p, z, c) orElse2
         deliveryReads.read(p, z, c) orElse2
+        nationalDeliveryReads.read(p, z, c) orElse2
         weeklyZoneAReads.read(p, z, c) orElse2
         weeklyZoneBReads.read(p, z, c) orElse2
         weeklyZoneCReads.read(p, z, c)) orElse2
