@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.identity.IdapiService
-import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
+import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaAudience, OktaIssuerUrl, OktaTokenValidationConfig}
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.monitoring.ZuoraMetrics
@@ -26,12 +26,7 @@ import services.subscription.{CancelSubscription, SubscriptionService, Subscript
 import services.zuora.payment.{SetPaymentCard, ZuoraPaymentService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
-  EnvironmentVariableCredentialsProvider,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 import utils.SanitizedLogging
@@ -164,8 +159,9 @@ class TouchpointComponents(
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
-    issuerUrl = conf.getString("okta.verifier.issuerUrl"),
-    audience = conf.getString("okta.verifier.audience"),
+    issuerUrl = OktaIssuerUrl(conf.getString("okta.verifier.issuerUrl")),
+    audience = Some(OktaAudience(conf.getString("okta.verifier.audience"))),
+    clientId = None,
   )
   lazy val identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims] = {
     val apiConfig = backendConfig.idapi

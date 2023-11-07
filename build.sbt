@@ -1,4 +1,4 @@
-import scala.sys.process._
+import scala.sys.process.*
 import scala.io.Source
 import scala.util.Try
 
@@ -23,7 +23,7 @@ def buildInfoSettings = Seq(
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.13.10",
+  scalaVersion := "2.13.12",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
@@ -65,7 +65,7 @@ val `membership-common` =
       Seq(
         name := "membership-common",
         organization := "com.gu",
-        scalaVersion := "2.13.10",
+        scalaVersion := "2.13.12",
         scalacOptions := Seq("-feature", "-deprecation"),
         crossScalaVersions := Seq(scalaVersion.value),
         Compile / doc / sources := List(), // no docs please

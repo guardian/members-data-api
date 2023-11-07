@@ -1,12 +1,12 @@
-import sbt._
+import sbt.*
 
 object MembershipCommonDependencies {
 
-  val playJsonVersion = "2.9.3"
-  val specs2Version = "4.19.0"
+  val playJsonVersion = "2.9.4"
+  val specs2Version = "4.19.2"
 
   //versions
-  val awsClientVersion = "1.12.387"
+  val awsClientVersion = "1.12.472"
   val dynamoDbVersion = "1.12.387"
   //libraries
   val supportInternationalisation = "com.gu" %% "support-internationalisation" % "0.16"
@@ -20,14 +20,14 @@ object MembershipCommonDependencies {
   val specs2Matchers = "org.specs2" %% "specs2-matcher" % specs2Version
   val specs2MatchersExtra = "org.specs2" %% "specs2-matcher-extra" % specs2Version
   val scalaTest =  "org.scalatest" %% "scalatest" % "3.2.15"
-  val diff = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.5.3"
+  val diff = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.8.2"
   val localDynamoDB = "com.amazonaws" %% "DynamoDBLocal" % dynamoDbVersion
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val awsS3 = "com.amazonaws" % "aws-java-sdk-s3" % awsClientVersion
   val okHttp = "com.squareup.okhttp3" % "okhttp" % "4.10.0"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
-  val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.4"
+  val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.12"
   val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % "2.14.2"
