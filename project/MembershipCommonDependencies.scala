@@ -2,7 +2,7 @@ import sbt.*
 
 object MembershipCommonDependencies {
 
-  val playJsonVersion = "2.9.4"
+  val playJsonVersion = "3.0.1"
   val specs2Version = "4.19.2"
 
   //versions
@@ -10,17 +10,17 @@ object MembershipCommonDependencies {
   val dynamoDbVersion = "1.12.387"
   //libraries
   val supportInternationalisation = "com.gu" %% "support-internationalisation" % "0.16"
-  val scalaUri = "io.lemonlabs" %% "scala-uri" % "2.2.0"
+  val scalaUri = "io.lemonlabs" %% "scala-uri" % "4.0.3"
   val nscalaTime = "com.github.nscala-time" %% "nscala-time" % "2.32.0"
-  val akkaActor = "com.typesafe.akka" %% "akka-actor" % "2.6.20"
-  val playJson = "com.typesafe.play" %% "play-json" % playJsonVersion
-  val playJsonJoda = "com.typesafe.play" %% "play-json-joda" % playJsonVersion
+  val akkaActor = "org.apache.pekko" %% "pekko-actor" % "1.0.1"
+  val playJson = "org.playframework" %% "play-json" % playJsonVersion
+  val playJsonJoda = "org.playframework" %% "play-json-joda" % playJsonVersion
   val specs2 = "org.specs2" %% "specs2-core" % specs2Version
   val specs2Mock = "org.specs2" %% "specs2-mock" % specs2Version
   val specs2Matchers = "org.specs2" %% "specs2-matcher" % specs2Version
   val specs2MatchersExtra = "org.specs2" %% "specs2-matcher-extra" % specs2Version
   val scalaTest =  "org.scalatest" %% "scalatest" % "3.2.15"
-  val diff = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.8.2"
+  val diff = "com.softwaremill.diffx" %% "diffx-scalatest-should" % "0.9.0"
   val localDynamoDB = "com.amazonaws" %% "DynamoDBLocal" % dynamoDbVersion
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion

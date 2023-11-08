@@ -32,7 +32,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import utils.Resource
 import scalaz.Id.Id
 import scalaz.{\/, \/-}
-import com.softwaremill.diffx.scalatest.DiffMatcher._
+import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import org.scalatest.matchers.should.Matchers._
 
 class ZuoraRestServiceTest extends AnyFlatSpec {
@@ -144,7 +144,7 @@ class ZuoraRestServiceTest extends AnyFlatSpec {
           sfContactId = SalesforceContactId("sfContactId"),
         ),
       )
-    result should matchTo(expected)
+    result shouldMatchTo(expected)
   }
 
   "getAccounts" should "parse valid json" in {
@@ -226,7 +226,7 @@ class ZuoraRestServiceTest extends AnyFlatSpec {
 
 object ZuoraRestServiceTest {
 
-  import io.lemonlabs.uri.dsl._
+  import io.lemonlabs.uri.typesafe.dsl._
 
   def client(path: String) = {
     val runner = (r: Request) =>

@@ -60,7 +60,7 @@ val buildDebSettings = Seq(
 
 val `membership-common` =
   (project in file("membership-common"))
-    .enablePlugins(DynamoDBLocalPlugin, SbtPgp, Sonatype)
+    .enablePlugins(SbtPgp, Sonatype)
     .settings(
       Seq(
         name := "membership-common",
@@ -89,12 +89,6 @@ val `membership-common` =
           else
             Some("releases" at nexus + "service/local/staging/deploy/maven2")
         },
-        dynamoDBLocalVersion := "2016-04-19",
-        dynamoDBLocalDownloadDir := file("dynamodb-local"),
-        startDynamoDBLocal := startDynamoDBLocal.dependsOn(Test / compile).value,
-        Test / testQuick := (Test / testQuick).dependsOn(startDynamoDBLocal).evaluated,
-        Test / test := (Test / test).dependsOn(startDynamoDBLocal).value,
-        Test / testOptions += dynamoDBLocalTestCleanup.value,
         Compile / unmanagedResourceDirectories += baseDirectory.value / "conf",
         libraryDependencies ++= MembershipCommonDependencies.dependencies,
         dependencyOverrides += MembershipCommonDependencies.jacksonDatabind,

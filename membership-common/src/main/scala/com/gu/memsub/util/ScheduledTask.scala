@@ -1,6 +1,6 @@
 package com.gu.memsub.util
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.gu.monitoring.SafeLogger
 import com.gu.monitoring.SafeLogger._
 import scala.concurrent.{ExecutionContext, Future}

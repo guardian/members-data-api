@@ -1,6 +1,6 @@
 package com.gu.zuora.rest
 import com.gu.zuora.ZuoraRestConfig
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3.{MediaType, Protocol, Request, Response => OkResponse, ResponseBody}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._

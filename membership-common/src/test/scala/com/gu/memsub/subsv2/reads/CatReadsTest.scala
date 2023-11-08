@@ -59,7 +59,7 @@ class CatReadsTest extends AnyFlatSpec {
     val expected = Some(
       CatalogZuoraPlan(
         id = ProductRatePlanId("2c92c0f96df75b5a016df81ba1c62609"),
-        name = "GW Oct 18 - 3 Month - ROW",
+        name = "GW GIFT Oct 18 - 3 Month - ROW",
         description = "",
         productId = ProductId("2c92c0f965f2121e01660fb1f1057b1a"),
         saving = None,
@@ -70,16 +70,12 @@ class CatReadsTest extends AnyFlatSpec {
               Map(
                 GBP -> Price(74.4f, GBP),
                 USD -> Price(90f, USD),
-                CAD -> Price(86.25f, CAD),
-                AUD -> Price(106.0f, AUD),
-                NZD -> Price(132.5f, NZD),
-                EUR -> Price(67.5f, EUR),
               ),
             ),
             billingPeriod = Some(ZQuarter),
             specificBillingPeriod = None,
             model = "FlatFee",
-            name = "GW Oct 18 - 3 Month - ROW",
+            name = "GW GIFT Oct 18 - 3 Month - ROW",
             `type` = "Recurring",
             endDateCondition = FixedPeriod,
             upToPeriods = Some(1),

@@ -3,7 +3,7 @@ logLevel := Level.Warn
 
 resolvers += Resolver.typesafeRepo("releases")
 
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.8.20")
+addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.0")
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.7.0")
 
@@ -14,8 +14,6 @@ addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "1.1.18")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 
 addSbtPlugin("org.jmotor.sbt" % "sbt-dependency-updates" % "1.2.7")
-
-addSbtPlugin("com.localytics" % "sbt-dynamodb" % "2.0.3") // Needed for membership-common
 
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.2.1") // Needed for membership-common
 

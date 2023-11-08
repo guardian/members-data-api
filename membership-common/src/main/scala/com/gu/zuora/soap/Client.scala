@@ -1,6 +1,6 @@
 package com.gu.zuora.soap
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
 import okhttp3.Request.Builder
 import okhttp3._
