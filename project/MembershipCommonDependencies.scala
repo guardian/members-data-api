@@ -9,10 +9,10 @@ object MembershipCommonDependencies {
   val awsClientVersion = "1.12.472"
   val dynamoDbVersion = "1.12.387"
   //libraries
-  val supportInternationalisation = "com.gu" %% "support-internationalisation" % "0.16"
+  val supportInternationalisation = "com.gu" %% "support-internationalisation" % "0.16" exclude("com.typesafe.scala-logging", "scala-logging_2.13")// it's not actually used and is the 2.13 version
   val scalaUri = "io.lemonlabs" %% "scala-uri" % "4.0.3"
   val nscalaTime = "com.github.nscala-time" %% "nscala-time" % "2.32.0"
-  val akkaActor = "org.apache.pekko" %% "pekko-actor" % "1.0.1"
+  val pekkoActor = "org.apache.pekko" %% "pekko-actor" % "1.0.1"
   val playJson = "org.playframework" %% "play-json" % playJsonVersion
   val playJsonJoda = "org.playframework" %% "play-json-joda" % playJsonVersion
   val specs2 = "org.specs2" %% "specs2-core" % specs2Version
@@ -35,7 +35,7 @@ object MembershipCommonDependencies {
   val dependencies = Seq(
     scalaUri,
     nscalaTime,
-    akkaActor,
+    pekkoActor,
     supportInternationalisation,
     playJson,
     playJsonJoda,

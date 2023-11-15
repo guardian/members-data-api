@@ -12,9 +12,9 @@ def commitId(): String =
 def buildInfoSettings = Seq(
   buildInfoKeys := Seq[BuildInfoKey](
     name,
-    BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
-    BuildInfoKey.constant("buildTime", System.currentTimeMillis),
-    BuildInfoKey.constant("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId())),
+    ("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
+    ("buildTime", System.currentTimeMillis),
+    ("gitCommitId", Option(System.getenv("BUILD_VCS_NUMBER")) getOrElse (commitId())),
   ),
   buildInfoPackage := "app",
   buildInfoOptions += BuildInfoOption.ToMap,
@@ -24,11 +24,6 @@ val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
   scalaVersion := "2.13.12",
-  resolvers ++= Seq(
-    "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
-    "Guardian Github Snapshots" at "https://guardian.github.io/maven/repo-snapshots",
-    Resolver.sonatypeRepo("releases"),
-  ),
   Compile / doc / sources := Seq.empty,
   Compile / packageDoc / publishArtifact := false,
   Global / parallelExecution := false,
@@ -60,7 +55,6 @@ val buildDebSettings = Seq(
 
 val `membership-common` =
   (project in file("membership-common"))
-    .enablePlugins(SbtPgp, Sonatype)
     .settings(
       Seq(
         name := "membership-common",
@@ -78,30 +72,9 @@ val `membership-common` =
         ),
         description := "Scala library for common Guardian Membership/Subscriptions functionality.",
         licenses := Seq("Apache V2" -> url("http://www.apache.org/licenses/LICENSE-2.0.html")),
-        resolvers ++= Seq(
-          "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
-          "turbolent" at "https://raw.githubusercontent.com/turbolent/mvn-repo/master/",
-        ) ++ Resolver.sonatypeOssRepos("releases"),
-        publishTo := {
-          val nexus = "https://oss.sonatype.org/"
-          if (isSnapshot.value)
-            Some("snapshots" at nexus + "content/repositories/snapshots")
-          else
-            Some("releases" at nexus + "service/local/staging/deploy/maven2")
-        },
         Compile / unmanagedResourceDirectories += baseDirectory.value / "conf",
         libraryDependencies ++= MembershipCommonDependencies.dependencies,
         dependencyOverrides += MembershipCommonDependencies.jacksonDatabind,
-        Global / useGpg := false,
-        pgpSecretRing := file("local.secring.gpg"),
-        pgpPublicRing := file("local.pubring.gpg"),
-        ThisBuild / version := {
-          // read from local.version (i.e. teamcity build.number), otherwise use SNAPSHOT
-          val version = Try(Source.fromFile("local.version", "UTF-8").mkString.trim).toOption.getOrElse("0.1-SNAPSHOT")
-          sLog.value.info(s"using version $version")
-          version
-        },
-        ThisBuild / settingKey[String]("no need") := "There is no need to run `sbt release`, teamcity will automatically have released version 0.<build.counter> when you merged to the default branch",
       ),
     )
 
