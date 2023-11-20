@@ -115,6 +115,7 @@ object AccountDetails {
             "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
             "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
             "billingPeriod" -> paidPlan.charges.billingPeriod.noun,
+            "features" -> paidPlan.features.map(_.code.get).mkString(",")
           )
         case _ => Json.obj()
       }) ++ (plan.charges match {
