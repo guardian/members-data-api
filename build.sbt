@@ -43,9 +43,11 @@ val buildDebSettings = Seq(
   riffRaffArtifactResources += (file("cloudformation/membership-attribute-service.yaml") -> "cloudformation/membership-attribute-service.yaml"),
   Universal / javaOptions ++= Seq(
     "-Dpidfile.path=/dev/null",
+    "-J-XX:MaxRAMPercentage=50",
+    "-J-XX:InitialRAMPercentage=50",
     "-J-XX:MaxMetaspaceSize=500m",
     "-J-XX:+PrintGCDetails",
-    s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log"
+    s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log",
   ),
 )
 
