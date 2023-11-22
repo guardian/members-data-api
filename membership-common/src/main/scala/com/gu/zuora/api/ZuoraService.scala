@@ -29,16 +29,23 @@ trait ZuoraService {
 
   def previewInvoicesTillEndOfTerm(subscriptionId: S.Id): Future[Seq[PreviewInvoiceItem]]
 
-  def createPaymentMethod(request:CreatePaymentMethod): Future[UpdateResult]
+  def createPaymentMethod(request: CreatePaymentMethod): Future[UpdateResult]
 
-  def createCreditCardPaymentMethod(accountId: S.AccountId, stripeCustomer: Stripe.Customer, paymentGateway: PaymentGateway, invoiceTemplateOverride: Option[InvoiceTemplate]): Future[UpdateResult]
+  def createCreditCardPaymentMethod(
+      accountId: S.AccountId,
+      stripeCustomer: Stripe.Customer,
+      paymentGateway: PaymentGateway,
+      invoiceTemplateOverride: Option[InvoiceTemplate],
+  ): Future[UpdateResult]
 
   def createPayPalPaymentMethod(accountId: S.AccountId, payPalBaid: String, email: String): Future[UpdateResult]
 
-  def downgradePlan(subscription: S.Id,
-                    currentRatePlanId: S.RatePlanId,
-                    futureRatePlanId: ProductRatePlanId,
-                    effectiveFrom: LocalDate): Future[AmendResult]
+  def downgradePlan(
+      subscription: S.Id,
+      currentRatePlanId: S.RatePlanId,
+      futureRatePlanId: ProductRatePlanId,
+      effectiveFrom: LocalDate,
+  ): Future[AmendResult]
 
   def upgradeSubscription(u: Amend): Future[AmendResult]
 
@@ -50,10 +57,7 @@ trait ZuoraService {
 
   def getUsages(subscriptionNumber: S.Name, unitOfMeasure: String, startDate: DateTime): Future[Seq[Usage]]
 
-  def createFreeEventUsage(accountId: S.AccountId,
-                           subscriptionNumber: S.Name,
-                           description: String,
-                           quantity: Int): Future[CreateResult]
+  def createFreeEventUsage(accountId: S.AccountId, subscriptionNumber: S.Name, description: String, quantity: Int): Future[CreateResult]
 
   def getFeatures: Future[Seq[SoapQueries.Feature]]
 

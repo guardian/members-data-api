@@ -71,8 +71,8 @@ sealed trait Renewal extends PromoContext
 sealed trait Both extends NewUsers with Upgrades with Renewal
 
 case class ValidPromotion[+C <: PromoContext](code: PromoCode, promotion: Promotion[PromotionType[C], Option, LandingPage]) {
-  val trackingCode:Option[PromoCode] = if (promotion.isTracking) Some(code) else None
-  val displayableCode:Option[PromoCode] = if (!promotion.isTracking) Some(code) else None
+  val trackingCode: Option[PromoCode] = if (promotion.isTracking) Some(code) else None
+  val displayableCode: Option[PromoCode] = if (!promotion.isTracking) Some(code) else None
 }
 
 sealed trait PromotionType[+C <: PromoContext] {
@@ -117,11 +117,11 @@ case object InvalidProductRatePlan extends PromoError {
 }
 
 case object NotApplicable extends PromoError {
-  override  val msg = "This promotion is not applicable"
+  override val msg = "This promotion is not applicable"
 }
 
 case object NoSuchCode extends PromoError {
-  override  val msg = "Unknown or expired promo code"
+  override val msg = "Unknown or expired promo code"
 }
 
 case object ExpiredPromotion extends PromoError {
@@ -146,48 +146,49 @@ case object Centre extends HeroImageAlignment
 case class HeroImage(image: ResponsiveImageGroup, alignment: HeroImageAlignment)
 
 case class MembershipLandingPage(
-  title: Option[String],
-  subtitle: Option[String],
-  description: Option[String],
-  roundelHtml: Option[String],
-  heroImage: Option[HeroImage],
-  image: Option[ResponsiveImageGroup]
+    title: Option[String],
+    subtitle: Option[String],
+    description: Option[String],
+    roundelHtml: Option[String],
+    heroImage: Option[HeroImage],
+    image: Option[ResponsiveImageGroup],
 ) extends LandingPage
 
 case class DigitalPackLandingPage(
-  title: Option[String],
-  description: Option[String],
-  roundelHtml: Option[String],
-  image: Option[ResponsiveImageGroup],
-  sectionColour: Option[SectionColour]
+    title: Option[String],
+    description: Option[String],
+    roundelHtml: Option[String],
+    image: Option[ResponsiveImageGroup],
+    sectionColour: Option[SectionColour],
 ) extends LandingPage
 
 case class NewspaperLandingPage(
-  title: Option[String],
-  description: Option[String],
-  defaultProduct: String = Voucher.name,
-  roundelHtml: Option[String],
+    title: Option[String],
+    description: Option[String],
+    defaultProduct: String = Voucher.name,
+    roundelHtml: Option[String],
 ) extends LandingPage
 
 case class WeeklyLandingPage(
-  title: Option[String],
-  description: Option[String],
-  roundelHtml: Option[String],
-  image: Option[ResponsiveImageGroup],
-  sectionColour: Option[SectionColour]
+    title: Option[String],
+    description: Option[String],
+    roundelHtml: Option[String],
+    image: Option[ResponsiveImageGroup],
+    sectionColour: Option[SectionColour],
 ) extends LandingPage
 
 case class Promotion[+T <: PromotionType[PromoContext], M[+_], +P <: LandingPage](
-                     uuid: UUID,
-                     name: String,
-                     description: String,
-                     appliesTo: AppliesTo,
-                     campaign: CampaignCode,
-                     channelCodes: Map[Channel, Set[PromoCode]],
-                     landingPage: M[P],
-                     starts: DateTime,
-                     expires: Option[DateTime],
-                     promotionType: T) {
+    uuid: UUID,
+    name: String,
+    description: String,
+    appliesTo: AppliesTo,
+    campaign: CampaignCode,
+    channelCodes: Map[Channel, Set[PromoCode]],
+    landingPage: M[P],
+    starts: DateTime,
+    expires: Option[DateTime],
+    promotionType: T,
+) {
 
   override def toString: String = {
     val allCodes = channelCodes.values.flatten
@@ -196,7 +197,7 @@ case class Promotion[+T <: PromotionType[PromoContext], M[+_], +P <: LandingPage
 
   val isTracking = promotionType == Tracking
 
-  def codes: Seq[PromoCode] = channelCodes.flatMap { case (_, codes) => codes}.toSeq
+  def codes: Seq[PromoCode] = channelCodes.flatMap { case (_, codes) => codes }.toSeq
 
   private def toLegacyResponse(errors: Seq[PromoError]) = errors match {
     case Nil => \/.r[PromoError](())
@@ -213,7 +214,7 @@ case class Promotion[+T <: PromotionType[PromoContext], M[+_], +P <: LandingPage
       prpId.find(pId => promotionType != Tracking && !appliesTo.productRatePlanIds.contains(pId)).map(_ => InvalidProductRatePlan),
       (!appliesTo.countries.contains(country)).option(InvalidCountry),
       starts.isAfter(now).option(PromotionNotActiveYet),
-      expires.find(e => e.isEqual(now) || e.isBefore(now)).map(_ => ExpiredPromotion)
+      expires.find(e => e.isEqual(now) || e.isBefore(now)).map(_ => ExpiredPromotion),
     ).flatten
 }
 
@@ -230,15 +231,16 @@ object Promotion {
   type PromoWithWeeklyLandingPage = Promotion[PromotionType[PromoContext], CovariantId, WeeklyLandingPage]
 
   def apply[T <: PromotionType[PromoContext]](
-     name: String,
-     description: String,
-     appliesTo: AppliesTo,
-     campaign: CampaignCode,
-     channelCodes: Map[Channel, Set[PromoCode]],
-     landingPage: Option[LandingPage],
-     starts: DateTime,
-     expires: Option[DateTime],
-     promotionType: T): Promotion[T, Option, LandingPage] = {
+      name: String,
+      description: String,
+      appliesTo: AppliesTo,
+      campaign: CampaignCode,
+      channelCodes: Map[Channel, Set[PromoCode]],
+      landingPage: Option[LandingPage],
+      starts: DateTime,
+      expires: Option[DateTime],
+      promotionType: T,
+  ): Promotion[T, Option, LandingPage] = {
 
     Promotion(
       uuid = UUID.randomUUID(),
@@ -250,7 +252,7 @@ object Promotion {
       landingPage = landingPage,
       starts = starts,
       expires = expires,
-      promotionType = promotionType
+      promotionType = promotionType,
     )
   }
 
@@ -264,17 +266,25 @@ object Promotion {
 
     def asDiscount: PromoOpt[PercentDiscount] = findType(in.promotionType, { case e: PercentDiscount => in.copy(promotionType = e) })
     def asFreeTrial: PromoOpt[FreeTrial] = findType(in.promotionType, { case e: FreeTrial => in.copy(promotionType = e) })
-    def asIncentive: PromoOpt[Incentive] = findType(in.promotionType,  { case e: Incentive => in.copy(promotionType = e) })
+    def asIncentive: PromoOpt[Incentive] = findType(in.promotionType, { case e: Incentive => in.copy(promotionType = e) })
     def asTracking: PromoOpt[Tracking.type] = findType(in.promotionType, { case Tracking => in.copy(promotionType = Tracking) })
     def asRetention: PromoOpt[Retention.type] = findType(in.promotionType, { case Retention => in.copy(promotionType = Retention) })
   }
 
   implicit class PromoLandingPageCasts[A <: PromotionType[PromoContext], M[+_]](in: Promotion[A, Option, LandingPage]) {
     type PromoOpt[L <: LandingPage] = Option[Promotion[A, CovariantId, L]]
-    def asDigitalPack: PromoOpt[DigitalPackLandingPage] = in.landingPage.collect { case f: DigitalPackLandingPage => in.copy[A, CovariantId, DigitalPackLandingPage](landingPage = (f)) }
-    def asNewspaper: PromoOpt[NewspaperLandingPage] = in.landingPage.collect { case f: NewspaperLandingPage => in.copy[A, CovariantId, NewspaperLandingPage](landingPage = (f)) }
-    def asWeekly: PromoOpt[WeeklyLandingPage] = in.landingPage.collect { case f: WeeklyLandingPage => in.copy[A, CovariantId, WeeklyLandingPage](landingPage = (f)) }
-    def asMembership: PromoOpt[MembershipLandingPage] = in.landingPage.collect { case f: MembershipLandingPage => in.copy[A, CovariantId, MembershipLandingPage](landingPage = (f)) }
+    def asDigitalPack: PromoOpt[DigitalPackLandingPage] = in.landingPage.collect { case f: DigitalPackLandingPage =>
+      in.copy[A, CovariantId, DigitalPackLandingPage](landingPage = (f))
+    }
+    def asNewspaper: PromoOpt[NewspaperLandingPage] = in.landingPage.collect { case f: NewspaperLandingPage =>
+      in.copy[A, CovariantId, NewspaperLandingPage](landingPage = (f))
+    }
+    def asWeekly: PromoOpt[WeeklyLandingPage] = in.landingPage.collect { case f: WeeklyLandingPage =>
+      in.copy[A, CovariantId, WeeklyLandingPage](landingPage = (f))
+    }
+    def asMembership: PromoOpt[MembershipLandingPage] = in.landingPage.collect { case f: MembershipLandingPage =>
+      in.copy[A, CovariantId, MembershipLandingPage](landingPage = (f))
+    }
   }
 
   def asAnyPromotion[T <: PromotionType[PromoContext]](in: Promotion[T, CovariantId, LandingPage]): AnyPromotion =
@@ -289,8 +299,8 @@ object PercentDiscount {
 
   implicit class PriceApplicator[M[+_]](in: PercentDiscount) {
     def applyDiscount(price: Price, bp: BillingPeriod): Price = {
-        val (discountPercent, _) = getDiscountScaledToPeriod(in, bp)
-        price.*(1f - (discountPercent.toFloat / 100f))
+      val (discountPercent, _) = getDiscountScaledToPeriod(in, bp)
+      price.*(1f - (discountPercent.toFloat / 100f))
     }
   }
 

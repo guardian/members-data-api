@@ -17,15 +17,17 @@ class RefundCalculatorTest extends Specification {
   "Days to products mapper" should {
 
     "Map calendar days to their products" in {
-      Result.foreach(Map(
-        (19 Jul 2016) -> TuesdayPaper,
-        (20 Jul 2016) -> WednesdayPaper,
-        (21 Jul 2016) -> ThursdayPaper,
-        (22 Jul 2016) -> FridayPaper,
-        (23 Jul 2016) -> SaturdayPaper,
-        (24 Jul 2016) -> SundayPaper,
-        (25 Jul 2016) -> MondayPaper
-      ).toSeq) { case(date, product) =>
+      Result.foreach(
+        Map(
+          (19 Jul 2016) -> TuesdayPaper,
+          (20 Jul 2016) -> WednesdayPaper,
+          (21 Jul 2016) -> ThursdayPaper,
+          (22 Jul 2016) -> FridayPaper,
+          (23 Jul 2016) -> SaturdayPaper,
+          (24 Jul 2016) -> SundayPaper,
+          (25 Jul 2016) -> MondayPaper,
+        ).toSeq,
+      ) { case (date, product) =>
         dayToProduct(date) mustEqual product
       }
     }
@@ -33,19 +35,19 @@ class RefundCalculatorTest extends Specification {
 
   "Daily to monthly price conversion" should {
     "Yield the same results as those advertised on Jellyfish" in {
-      monthlyPriceToWeekly(26.96f) mustEqual 6.22f   // voucher+
+      monthlyPriceToWeekly(26.96f) mustEqual 6.22f // voucher+
       monthlyPriceToWeekly(22.63f) mustEqual 5.22f
       monthlyPriceToWeekly(12.52f) mustEqual 2.89f
 
-      monthlyPriceToWeekly(50.23f) mustEqual 11.59f   // voucher
+      monthlyPriceToWeekly(50.23f) mustEqual 11.59f // voucher
       monthlyPriceToWeekly(45.03f) mustEqual 10.39f
       monthlyPriceToWeekly(27.01f) mustEqual 6.23f
 
-      monthlyPriceToWeekly(22.97f) mustEqual 5.30f    // delivery+
+      monthlyPriceToWeekly(22.97f) mustEqual 5.30f // delivery+
       monthlyPriceToWeekly(18.63f) mustEqual 4.30f
       monthlyPriceToWeekly(8.52f) mustEqual 1.97f
 
-      monthlyPriceToWeekly(46.77f) mustEqual 10.79f   // delivery
+      monthlyPriceToWeekly(46.77f) mustEqual 10.79f // delivery
       monthlyPriceToWeekly(39.83f) mustEqual 9.19f
       monthlyPriceToWeekly(20.07f) mustEqual 4.63f
     }
@@ -53,62 +55,110 @@ class RefundCalculatorTest extends Specification {
 
   "Refund calculation" should {
 
-    val discountedBillingSchedule = BillingSchedule(NonEmptyList(
-      Bill(1 Jul 2016, 1.month, NonEmptyList(
-        BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
-        BillItem("100% discount", None, -5.0f, 100.0f)
-      )))
+    val discountedBillingSchedule = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Jul 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Sunday Paper", Some(SundayPaper), 5.0f, 5.0f),
+            BillItem("100% discount", None, -5.0f, 100.0f),
+          ),
+        ),
+      ),
     )
 
-    val mondayBillingSchedule = BillingSchedule(NonEmptyList(
-      Bill(1 Jul 2016, 1.month, NonEmptyList(
-        BillItem("M Paper", Some(MondayPaper), 10.0f, 10.0f)
-      )))
+    val mondayBillingSchedule = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Jul 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("M Paper", Some(MondayPaper), 10.0f, 10.0f),
+          ),
+        ),
+      ),
     )
 
-    val monthlyTwoDayBillingSchedule = BillingSchedule(NonEmptyList(
-      Bill(1 Jul 2016, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f)
-      )),
-      Bill(1 Aug 2016, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f)
-      ))
-    ))
+    val monthlyTwoDayBillingSchedule = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Jul 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+          ),
+        ),
+        Bill(
+          1 Aug 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+          ),
+        ),
+      ),
+    )
 
-    val quarterlyTwoDayBillingSchedule = BillingSchedule(NonEmptyList(
-      Bill(1 Jul 2016, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 20.0f * 4, 20.0f * 4),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 4, 10.0f * 4)
-      )),
-      Bill(1 Oct 2016, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 20.0f * 12, 20.0f * 4),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 12, 10.0f * 4)
-      ))
-    ))
+    val quarterlyTwoDayBillingSchedule = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Jul 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 20.0f * 4, 20.0f * 4),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 4, 10.0f * 4),
+          ),
+        ),
+        Bill(
+          1 Oct 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 20.0f * 12, 20.0f * 4),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 12, 10.0f * 4),
+          ),
+        ),
+      ),
+    )
 
-    val annualTwoDayBillingSchedule = BillingSchedule(NonEmptyList(
-      Bill(1 Jul 2016, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 20.0f * 12, 20.0f * 12),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 12, 10.0f * 12)
-      )),
-      Bill(1 Jul 2017, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 20.0f * 12, 20.0f * 12),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 12, 10.0f * 12)
-      ))
-    ))
+    val annualTwoDayBillingSchedule = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Jul 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 20.0f * 12, 20.0f * 12),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 12, 10.0f * 12),
+          ),
+        ),
+        Bill(
+          1 Jul 2017,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 20.0f * 12, 20.0f * 12),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f * 12, 10.0f * 12),
+          ),
+        ),
+      ),
+    )
 
-    val proRatedMultiDayMigratedBillingSchedule = BillingSchedule(NonEmptyList(
-      Bill(1 Nov 2016, 1.month, NonEmptyList(
-        BillItem("Monday Paper", Some(MondayPaper), 0.0f, 0.0f),
-        BillItem("Tuesday Paper", Some(TuesdayPaper), 0.0f, 0.0f),
-        BillItem("Wednesday Paper", Some(WednesdayPaper), 0.0f, 0.0f),
-        BillItem("Thursday Paper", Some(ThursdayPaper), 0.0f, 0.0f),
-        BillItem("Friday Paper", Some(FridayPaper), 2.95f, 7.37f),
-        BillItem("Saturday Paper", Some(SaturdayPaper), 4.51f, 11.27f),
-        BillItem("Sunday Paper", Some(SundayPaper), 0.0f, 0.0f)
-      )))
+    val proRatedMultiDayMigratedBillingSchedule = BillingSchedule(
+      NonEmptyList(
+        Bill(
+          1 Nov 2016,
+          1.month,
+          NonEmptyList(
+            BillItem("Monday Paper", Some(MondayPaper), 0.0f, 0.0f),
+            BillItem("Tuesday Paper", Some(TuesdayPaper), 0.0f, 0.0f),
+            BillItem("Wednesday Paper", Some(WednesdayPaper), 0.0f, 0.0f),
+            BillItem("Thursday Paper", Some(ThursdayPaper), 0.0f, 0.0f),
+            BillItem("Friday Paper", Some(FridayPaper), 2.95f, 7.37f),
+            BillItem("Saturday Paper", Some(SaturdayPaper), 4.51f, 11.27f),
+            BillItem("Sunday Paper", Some(SundayPaper), 0.0f, 0.0f),
+          ),
+        ),
+      ),
     )
 
     "Give you nothing if you give no days" in {
@@ -152,15 +202,26 @@ class RefundCalculatorTest extends Specification {
 
     "Work correctly with step up discounts" in {
 
-      val stepUpBillingSchedule = BillingSchedule(NonEmptyList(Bill(1 Jul 2016, 1.month, NonEmptyList(
-          BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
-          BillItem("Discount 50%", None, -15.0f, 50.0f)
-        )),
-        Bill(1 Aug 2016, 1.month, NonEmptyList(
-          BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f)
-        )))
+      val stepUpBillingSchedule = BillingSchedule(
+        NonEmptyList(
+          Bill(
+            1 Jul 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+              BillItem("Discount 50%", None, -15.0f, 50.0f),
+            ),
+          ),
+          Bill(
+            1 Aug 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+            ),
+          ),
+        ),
       )
 
       calculateRefund(Seq(1 Aug 2016), stepUpBillingSchedule) mustEqual monthlyPriceToWeekly(20.0f).some
@@ -169,19 +230,29 @@ class RefundCalculatorTest extends Specification {
 
     "Ignore any invoicing adjustments, e.g. Holiday Credits, when calculating discount" in {
 
-      val stepUpBillingSchedule = BillingSchedule(NonEmptyList(
-        Bill(1 Jul 2016, 1.month, NonEmptyList(
-          BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 20.0f),
-          BillItem("Holiday Credit", Adjustment.some, -2.20f, -2.20f),
-          BillItem("Adjustment charge", None, -2.20f, -2.20f) // Echo-Legacy Percent Discount adjustment (has no Benefit)
-        )),
-        Bill(1 Aug 2016, 1.month, NonEmptyList(
-          BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
-          BillItem("Pro-rated earlier failed payment", Adjustment.some, 1.00f, 1.00f),
-          BillItem("Adjustment charge", None, 1.00f, 1.00f) // Echo-Legacy Percent Discount adjustment (has no Benefit)
-        )))
+      val stepUpBillingSchedule = BillingSchedule(
+        NonEmptyList(
+          Bill(
+            1 Jul 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 20.0f),
+              BillItem("Holiday Credit", Adjustment.some, -2.20f, -2.20f),
+              BillItem("Adjustment charge", None, -2.20f, -2.20f), // Echo-Legacy Percent Discount adjustment (has no Benefit)
+            ),
+          ),
+          Bill(
+            1 Aug 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Monday Paper", Some(MondayPaper), 20.0f, 20.0f),
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+              BillItem("Pro-rated earlier failed payment", Adjustment.some, 1.00f, 1.00f),
+              BillItem("Adjustment charge", None, 1.00f, 1.00f), // Echo-Legacy Percent Discount adjustment (has no Benefit)
+            ),
+          ),
+        ),
       )
 
       calculateRefund(Seq(1 Aug 2016), stepUpBillingSchedule) mustEqual monthlyPriceToWeekly(20.0f).some
@@ -190,18 +261,24 @@ class RefundCalculatorTest extends Specification {
 
     "Treat invoice items with a gross of zero to mean that you're not getting the paper" in {
 
-      //customers on the old pick-which-days-you-want scheme
-      val legacySchedule = BillingSchedule(NonEmptyList(
-        Bill(1 Jul 2016, 1.month, NonEmptyList(
-          BillItem("Monday Paper", Some(MondayPaper), 0.0f, 0.0f),
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
-          BillItem("Wednesday Paper", Some(WednesdayPaper), 0.0f, 0.0f),
-          BillItem("Thursday Paper", Some(ThursdayPaper), 10.0f, 10.0f),
-          BillItem("Friday Paper", Some(FridayPaper), 0.0f, 0.0f),
-          BillItem("Saturday Paper", Some(SaturdayPaper), 0.0f, 0.0f),
-          BillItem("Sunday Paper", Some(SundayPaper), 10.0f, 10.0f)
-        ))
-      ))
+      // customers on the old pick-which-days-you-want scheme
+      val legacySchedule = BillingSchedule(
+        NonEmptyList(
+          Bill(
+            1 Jul 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Monday Paper", Some(MondayPaper), 0.0f, 0.0f),
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+              BillItem("Wednesday Paper", Some(WednesdayPaper), 0.0f, 0.0f),
+              BillItem("Thursday Paper", Some(ThursdayPaper), 10.0f, 10.0f),
+              BillItem("Friday Paper", Some(FridayPaper), 0.0f, 0.0f),
+              BillItem("Saturday Paper", Some(SaturdayPaper), 0.0f, 0.0f),
+              BillItem("Sunday Paper", Some(SundayPaper), 10.0f, 10.0f),
+            ),
+          ),
+        ),
+      )
 
       calculateRefund(Seq(13 Jul 2016), legacySchedule) mustEqual None
       calculateRefund(Seq(12 Jul 2016), legacySchedule) mustEqual monthlyPriceToWeekly(10.0f).some
@@ -211,18 +288,24 @@ class RefundCalculatorTest extends Specification {
     "Ensure floating points are rounded appropriately when summing charges, and a 0 total is not None - Prod issue" in {
 
       // Migrated customer with a pro-ration charge in their first month
-      val legacySchedule = BillingSchedule(NonEmptyList(
-        Bill(1 Jul 2016, 1.month, NonEmptyList(
-          BillItem("Fixed Discount", None, -20.74f, -59.71f),
-          BillItem("Monday Paper - prorated", Some(MondayPaper), 2.7f, 7.37f),
-          BillItem("Tuesday Paper - prorated", Some(TuesdayPaper), 2.7f, 7.37f),
-          BillItem("Wednesday Paper - prorated", Some(WednesdayPaper), 2.7f, 7.37f),
-          BillItem("Thursday Paper - prorated", Some(ThursdayPaper), 2.7f, 7.37f),
-          BillItem("Friday Paper - prorated", Some(FridayPaper), 2.7f, 7.37f),
-          BillItem("Saturday Paper - prorated", Some(SaturdayPaper), 3.57f, 11.27f),
-          BillItem("Sunday Paper - prorated", Some(SundayPaper), 3.67f, 11.59f)
-        ))
-      ))
+      val legacySchedule = BillingSchedule(
+        NonEmptyList(
+          Bill(
+            1 Jul 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Fixed Discount", None, -20.74f, -59.71f),
+              BillItem("Monday Paper - prorated", Some(MondayPaper), 2.7f, 7.37f),
+              BillItem("Tuesday Paper - prorated", Some(TuesdayPaper), 2.7f, 7.37f),
+              BillItem("Wednesday Paper - prorated", Some(WednesdayPaper), 2.7f, 7.37f),
+              BillItem("Thursday Paper - prorated", Some(ThursdayPaper), 2.7f, 7.37f),
+              BillItem("Friday Paper - prorated", Some(FridayPaper), 2.7f, 7.37f),
+              BillItem("Saturday Paper - prorated", Some(SaturdayPaper), 3.57f, 11.27f),
+              BillItem("Sunday Paper - prorated", Some(SundayPaper), 3.67f, 11.59f),
+            ),
+          ),
+        ),
+      )
 
       calculateRefund(Seq(6 Jun 2016), legacySchedule) mustEqual 0.0f.some // next month lookup
       calculateRefund(Seq(4 Jul 2016), legacySchedule) mustEqual 0.0f.some
@@ -237,19 +320,33 @@ class RefundCalculatorTest extends Specification {
     "Tries using the subsequent month's invoice if it can't find a corresponding charge in the invoice covering the passed day" in {
       // This covers Echo-Legacy migrated subs who have adjustments in their first billing period after import.
 
-      val legacySchedule = BillingSchedule(NonEmptyList(
-        Bill(1 Jul 2016, 1.month, NonEmptyList(
-          BillItem("Adjustment charge", None, 2.00f, 2.00f),
-          BillItem("Monday Paper", Some(MondayPaper), 5.0f, 5.0f)
-        )),
-        Bill(1 Aug 2016, 1.month, NonEmptyList(
-          BillItem("Adjustment charge", None, 0.50f, 0.50f),
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f)
-        )),
-        Bill(1 Sep 2016, 1.month, NonEmptyList(
-          BillItem("Tuesday Paper", Some(TuesdayPaper), 20.0f, 20.0f)
-        ))
-      ))
+      val legacySchedule = BillingSchedule(
+        NonEmptyList(
+          Bill(
+            1 Jul 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Adjustment charge", None, 2.00f, 2.00f),
+              BillItem("Monday Paper", Some(MondayPaper), 5.0f, 5.0f),
+            ),
+          ),
+          Bill(
+            1 Aug 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Adjustment charge", None, 0.50f, 0.50f),
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 10.0f, 10.0f),
+            ),
+          ),
+          Bill(
+            1 Sep 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Tuesday Paper", Some(TuesdayPaper), 20.0f, 20.0f),
+            ),
+          ),
+        ),
+      )
 
       calculateRefund(Seq(12 Jul 2016), legacySchedule) mustEqual monthlyPriceToWeekly(10.0f).some
     }

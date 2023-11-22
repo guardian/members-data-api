@@ -6,11 +6,12 @@ import scala.util.Try
 
 object PriceParser {
   def parse(s: String): Option[Price] =
-    s.replace("/Each", "").splitAt(3) match { case (code, p) =>
-      for {
-        currency <- Currency.fromString(code)
-        price <- Try { p.toFloat }.toOption
-      } yield Price(price, currency)
+    s.replace("/Each", "").splitAt(3) match {
+      case (code, p) =>
+        for {
+          currency <- Currency.fromString(code)
+          price <- Try { p.toFloat }.toOption
+        } yield Price(price, currency)
     }
 
   def unsafeParse(s: String): Price =

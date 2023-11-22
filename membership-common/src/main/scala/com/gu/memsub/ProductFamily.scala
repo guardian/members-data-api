@@ -30,12 +30,10 @@ case object Contributions extends ProductFamily {
   override val id = "contributions"
 }
 
-/**
-  * This is an enumeration of the products we have in Zuora,
-  * where products contain multiple rate plans
+/** This is an enumeration of the products we have in Zuora, where products contain multiple rate plans
   *
-  * We need this in our model of a plan as paper delivery / paper voucher plans
-  * have exactly the same structure but are nested under different zuora products
+  * We need this in our model of a plan as paper delivery / paper voucher plans have exactly the same structure but are nested under different zuora
+  * products
   */
 sealed trait Product {
   val name: String
@@ -46,7 +44,6 @@ object Product {
 
   sealed trait Paper extends ContentSubscription
   sealed trait Weekly extends Paper
-
 
   case object Membership extends Product {
     val name = "membership"
@@ -62,6 +59,9 @@ object Product {
   }
   case object Delivery extends Paper {
     val name = "delivery"
+  }
+  case object NationalDelivery extends Paper {
+    val name = "nationalDelivery"
   }
   case object Voucher extends Paper {
     val name = "voucher"
@@ -88,13 +88,12 @@ object Product {
     val name = "contribution"
   }
 
-
-
   def fromId(id: String): Option[Product] = id match {
     case Digipack.name => Some(Digipack)
     case SupporterPlus.name => Some(SupporterPlus)
     case Membership.name => Some(Membership)
     case Delivery.name => Some(Delivery)
+    case NationalDelivery.name => Some(NationalDelivery)
     case Voucher.name => Some(Voucher)
     case DigitalVoucher.name => Some(DigitalVoucher)
     case WeeklyZoneA.name => Some(WeeklyZoneA)
@@ -110,6 +109,7 @@ object Product {
   type ZDigipack = Digipack.type
   type SupporterPlus = SupporterPlus.type
   type Delivery = Delivery.type
+  type NationalDelivery = NationalDelivery.type
   type Voucher = Voucher.type
   type DigitalVoucher = DigitalVoucher.type
   type WeeklyZoneA = WeeklyZoneA.type
@@ -130,14 +130,13 @@ object Benefit {
 
   def fromId(id: String): Option[Benefit] =
     PaperDay.fromId(id) orElse
-    FreeMemberTier.fromId(id) orElse
-    PaidMemberTier.fromId(id) orElse
-    (id == SupporterPlus.id).option(SupporterPlus) orElse
-    (id == Digipack.id).option(Digipack) orElse
-    (id == Adjustment.id).option(Adjustment) orElse
-    (id == Contributor.id).option(Contributor) orElse
-    (id == Weekly.id).option(Weekly)
-
+      FreeMemberTier.fromId(id) orElse
+      PaidMemberTier.fromId(id) orElse
+      (id == SupporterPlus.id).option(SupporterPlus) orElse
+      (id == Digipack.id).option(Digipack) orElse
+      (id == Adjustment.id).option(Adjustment) orElse
+      (id == Contributor.id).option(Contributor) orElse
+      (id == Weekly.id).option(Weekly)
 
   sealed trait MemberTier extends Benefit
   sealed trait FreeMemberTier extends MemberTier
@@ -178,7 +177,6 @@ object Benefit {
       case _ => None
     }
   }
-
 
   object Friend extends FreeMemberTier {
     override val id = "Friend"

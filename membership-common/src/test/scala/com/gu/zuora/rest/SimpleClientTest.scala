@@ -1,6 +1,6 @@
 package com.gu.zuora.rest
 import com.gu.zuora.ZuoraRestConfig
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3.{MediaType, Protocol, Request, Response => OkResponse, ResponseBody}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
@@ -33,14 +33,15 @@ class SimpleClientTest extends AnyFlatSpec {
    * so lets also write a request running function that returns a response with a string body
    */
   def constRunner(body: String): Request => W[OkResponse] = a => {
-    Writer(List(a),
+    Writer(
+      List(a),
       new OkResponse.Builder()
         .body(ResponseBody.create(body, MediaType.parse("application/json")))
         .protocol(Protocol.HTTP_2) // in my dreams :'(
         .request(a)
         .message("test")
         .code(200)
-        .build()
+        .build(),
     )
   }
 
@@ -54,8 +55,8 @@ class SimpleClientTest extends AnyFlatSpec {
     Seq(
       noResponseClient.get[String]("foo/bar"),
       noResponseClient.put[String, String]("foo/bar", "test"),
-      noResponseClient.post[String, String]("foo/bar", "test")
-    ).foreach{ r =>
+      noResponseClient.post[String, String]("foo/bar", "test"),
+    ).foreach { r =>
       val sentRequest = r.run.written.last
       sentRequest.url().toString() should be("https://example.com/foo/bar")
       sentRequest.header("apiSecretAccessKey") should be("pass")
@@ -86,7 +87,11 @@ class SimpleClientTest extends AnyFlatSpec {
   }
 
   it should "Return the body string parsed into a JSObject if it does contain valid JSON" in {
-    SimpleClient[W](config, constRunner("""{"in": "foo", "bar": 4}""")).post[String, TestClass]("foo/bar", "stuff").value should be(\/.right(TestClass("foo", 4)))
-    SimpleClient[W](config, constRunner("""{"in": "foo", "bar": 4}""")).put[String, TestClass]("foo/bar", "stuff").value should be(\/.right(TestClass("foo", 4)))
+    SimpleClient[W](config, constRunner("""{"in": "foo", "bar": 4}""")).post[String, TestClass]("foo/bar", "stuff").value should be(
+      \/.right(TestClass("foo", 4)),
+    )
+    SimpleClient[W](config, constRunner("""{"in": "foo", "bar": 4}""")).put[String, TestClass]("foo/bar", "stuff").value should be(
+      \/.right(TestClass("foo", 4)),
+    )
   }
 }

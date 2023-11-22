@@ -16,7 +16,7 @@ trait Action[T <: Result] { self =>
   def logInfo: Map[String, String] = Map("Action" -> self.getClass.getSimpleName)
   def additionalLogInfo: Map[String, String] = Map.empty
 
-  def prettyLogInfo = (logInfo ++ additionalLogInfo).map { case (k, v) => s"  - $k: $v" } .mkString("\n")
+  def prettyLogInfo = (logInfo ++ additionalLogInfo).map { case (k, v) => s"  - $k: $v" }.mkString("\n")
 
   def xml(authentication: Option[Authentication]) = {
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:api="http://api.zuora.com/"
@@ -25,12 +25,12 @@ trait Action[T <: Result] { self =>
       <soapenv:Header>
         {sessionHeader(authentication)}
         {
-        if (singleTransaction) {
-          <ns1:CallOptions>
+      if (singleTransaction) {
+        <ns1:CallOptions>
             <ns1:useSingleTransaction>true</ns1:useSingleTransaction>
           </ns1:CallOptions>
-        }
-        }
+      }
+    }
       </soapenv:Header>
       <soapenv:Body>{body}</soapenv:Body>
     </soapenv:Envelope>
@@ -38,7 +38,7 @@ trait Action[T <: Result] { self =>
 
   def sanitized = body.toString()
 
-  private def sessionHeader(authOpt: Option[Authentication]):NodeSeq =
+  private def sessionHeader(authOpt: Option[Authentication]): NodeSeq =
     authOpt.fold(NodeSeq.Empty) { auth =>
       <ns1:SessionHeader>
         <ns1:session>{auth.token}</ns1:session>

@@ -1,6 +1,6 @@
 package com.gu.zuora.soap
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
 import okhttp3.Request.Builder
 import okhttp3._
@@ -26,12 +26,12 @@ import scala.reflect._
 import scala.util.{Failure, Success}
 
 class Client(
-  apiConfig: ZuoraSoapConfig,
-  httpClient: FutureHttpClient,
-  extendedHttpClient:
-  FutureHttpClient,
-  metrics: ZuoraMetrics = NoOpZuoraMetrics
-)(implicit actorSystem: ActorSystem, ec: ExecutionContext) extends LazyLogging {
+    apiConfig: ZuoraSoapConfig,
+    httpClient: FutureHttpClient,
+    extendedHttpClient: FutureHttpClient,
+    metrics: ZuoraMetrics = NoOpZuoraMetrics,
+)(implicit actorSystem: ActorSystem, ec: ExecutionContext)
+    extends LazyLogging {
 
   import Client._
 
@@ -51,22 +51,29 @@ class Client(
           logger.error(s"Failed Zuora SOAP client authentication in ${apiConfig.envName}", ex)
       }
 
-  private def request[T <: models.Result](action: Action[T],
-                                          authentication: Option[Authentication],
-                                          reader: Reader[T],
-                                          client: FutureHttpClient = httpClient): Future[T] = {
+  private def request[T <: models.Result](
+      action: Action[T],
+      authentication: Option[Authentication],
+      reader: Reader[T],
+      client: FutureHttpClient = httpClient,
+  ): Future[T] = {
     metrics.countRequest()
-    val request = new Builder().url(apiConfig.url.toString())
+    val request = new Builder()
+      .url(apiConfig.url.toString())
       .post(RequestBody.create(clientMediaType, action.xml(authentication).toString()))
       .build()
     if (action.enableLogging)
-      SafeLogger.info(s"Zuora SOAP call in environment ${apiConfig.envName}. Request info:\n${action.prettyLogInfo}. Is authentication defined: ${authentication.isDefined}")
+      SafeLogger.info(
+        s"Zuora SOAP call in environment ${apiConfig.envName}. Request info:\n${action.prettyLogInfo}. Is authentication defined: ${authentication.isDefined}",
+      )
     client(request)
       .map { result =>
         val responseBody = result.body().string()
         reader.read(responseBody) match {
           case Left(error) =>
-            SafeLogger.error(scrub"Zuora action ${action.getClass.getSimpleName} resulted in error: CODE: ${result.code} RESPONSE BODY: $responseBody Is authentication defined: ${authentication.isDefined}")
+            SafeLogger.error(
+              scrub"Zuora action ${action.getClass.getSimpleName} resulted in error: CODE: ${result.code} RESPONSE BODY: $responseBody Is authentication defined: ${authentication.isDefined}",
+            )
             throw error
 
           case Right(obj) => obj
@@ -90,8 +97,10 @@ class Client(
     query(where.toFilterString)(reader)
 
   def queryOne[T <: Query](where: String)(implicit reader: readers.Query[T]): Future[T] =
-    query(where)(reader).map(_.headOption
-      .getOrElse(throw new ZuoraQueryException(s"Query '${reader.getClass.getSimpleName} $where' returned 0 results, expected one")))
+    query(where)(reader).map(
+      _.headOption
+        .getOrElse(throw new ZuoraQueryException(s"Query '${reader.getClass.getSimpleName} $where' returned 0 results, expected one")),
+    )
 
   def queryOne[T <: Query](where: ZuoraFilter)(implicit reader: readers.Query[T]): Future[T] =
     queryOne(where.toFilterString)(reader)
@@ -138,5 +147,5 @@ object Client {
     SimpleFilter("Id", foreignKey(child))
 
   def childFilter[C <: Query, P <: Query with Identifiable](parent: P): SimpleFilter =
-    SimpleFilter(parent.objectName +  "Id", parent.id)
+    SimpleFilter(parent.objectName + "Id", parent.id)
 }

@@ -17,8 +17,8 @@ class SFContactRecordTest extends Specification {
 
     "read an error response from Salesforce" in {
       val result = SFContactRecord.readResponse(Resource.getJson("salesforce/contact-upsert.response.error.json"))
-      result must beLike {
-        case JsError(t) => ok
+      result must beLike { case JsError(t) =>
+        ok
       }
     }
   }

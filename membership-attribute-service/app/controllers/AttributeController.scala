@@ -1,7 +1,7 @@
 package controllers
 
 import actions.{AuthenticatedUserAndBackendRequest, CommonActions}
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.gu.identity.auth.AccessScope
 import filters.AddGuIdentityHeaders
 import loghandling.LoggingField.{LogField, LogFieldString}

@@ -1,6 +1,6 @@
 package components
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics

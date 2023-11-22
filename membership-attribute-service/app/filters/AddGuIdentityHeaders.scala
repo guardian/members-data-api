@@ -1,6 +1,6 @@
 package filters
 
-import akka.stream.Materializer
+import org.apache.pekko.stream.Materializer
 import filters.AddGuIdentityHeaders.{identityHeaderNames, xGuIdentityIdHeaderName, xGuMembershipTestUserHeaderName}
 import models.UserFromToken
 import play.api.mvc._

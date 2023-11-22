@@ -10,21 +10,21 @@ trait ContactId {
 }
 
 case class Contact(
-  identityId: Option[String],
-  regNumber: Option[String],
-  title: Option[String],
-  firstName: Option[String],
-  lastName: String,
-  joinDate: DateTime,
-  salesforceContactId: String,
-  salesforceAccountId: String,
-  mailingStreet: Option[String], // used for fulfilment
-  mailingCity: Option[String],
-  mailingState: Option[String],
-  mailingPostcode: Option[String],
-  mailingCountry: Option[String],
-  deliveryInstructions: Option[String],
-  recordTypeId: Option[String]
+    identityId: Option[String],
+    regNumber: Option[String],
+    title: Option[String],
+    firstName: Option[String],
+    lastName: String,
+    joinDate: DateTime,
+    salesforceContactId: String,
+    salesforceAccountId: String,
+    mailingStreet: Option[String], // used for fulfilment
+    mailingCity: Option[String],
+    mailingState: Option[String],
+    mailingPostcode: Option[String],
+    mailingCountry: Option[String],
+    deliveryInstructions: Option[String],
+    recordTypeId: Option[String],
 ) extends ContactId {
   lazy val mailingCountryParsed: Option[Country] = mailingCountry.flatMap(CountryGroup.countryByName)
 }

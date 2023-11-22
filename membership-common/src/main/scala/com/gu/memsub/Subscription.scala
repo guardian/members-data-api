@@ -27,4 +27,3 @@ object Subscription {
       Feature(Id(f.id), Code(f.featureCode))
   }
 }
-

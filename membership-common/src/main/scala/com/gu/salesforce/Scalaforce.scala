@@ -1,6 +1,6 @@
 package com.gu.salesforce
 
-import akka.actor.{Cancellable, Scheduler}
+import org.apache.pekko.actor.{Cancellable, Scheduler}
 import java.util.concurrent.atomic.AtomicReference
 
 import com.gu.memsub.util.Timing
@@ -50,8 +50,7 @@ case class ScalaforceError(s: String) extends Throwable {
   override def getMessage: String = s
 }
 
-/**
-  * Uses the Salesforce Username-Password Flow to get access tokens.
+/** Uses the Salesforce Username-Password Flow to get access tokens.
   *
   * https://help.salesforce.com/apex/HTViewHelpDoc?id=remoteaccess_oauth_username_password_flow.htm
   * https://www.salesforce.com/us/developer/docs/api_rest/Content/intro_understanding_username_password_oauth_flow.htm
@@ -83,7 +82,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
       if (!response.isSuccessful && (response.code() != Status.NOT_FOUND)) {
         SafeLogger.warn(
           s"Unexpected response from Salesforce. We attempted to $requestLog." +
-            s" Received response code: ${response.code()}| response body: ${response.peekBody(Long.MaxValue).string()}"
+            s" Received response code: ${response.code()}| response body: ${response.peekBody(Long.MaxValue).string()}",
         )
       }
       response
@@ -93,8 +92,8 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
   private def urlAuth: Future[String => Request.Builder] = {
     val maybeAuth = periodicAuth.get
     val futureAuth = maybeAuth.map(Future.successful).getOrElse(authorize)
-    futureAuth.map { auth =>
-      (endpoint: String) => {
+    futureAuth.map { auth => (endpoint: String) =>
+      {
         new Request.Builder()
           .url(s"${auth.instance_url}/$endpoint")
           .addHeader("Authorization", s"Bearer ${auth.access_token}")
@@ -106,10 +105,9 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
     issueRequest(url(endpoint).get().build())
   }
 
-
   private def post(endpoint: String, updateData: JsValue): Future[Response] = {
     val mediaType = MediaType.parse("application/json; charset=utf-8")
-    val body = RequestBody.create(mediaType, Json.stringify(updateData))
+    val body = RequestBody.create(Json.stringify(updateData), mediaType)
     urlAuth.flatMap { url =>
       issueRequest(url(endpoint).post(body).build())
     }
@@ -117,7 +115,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
 
   private def patch(endpoint: String, updateData: JsValue): Future[Response] = {
     val mediaType = MediaType.parse("application/json; charset=utf-8")
-    val body = RequestBody.create(mediaType, Json.stringify(updateData))
+    val body = RequestBody.create(Json.stringify(updateData), mediaType)
     urlAuth.flatMap { url =>
       issueRequest(url(endpoint).patch(body).build())
     }
@@ -127,59 +125,68 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
 
   object Query {
     def execute(query: String): Future[\/[String, JsValue]] = {
-      val path = s"services/data/v29.0/query?q=$query"
-      Timing.record(metrics, "Execute query") {
-        get(path)
-      }.map { response =>
-        val bodyString = response.body().string() // out here to make sure connection is closed in all cases
-        response.code() match {
-          case Status.OK => \/-(jsonParse(bodyString))
-          case code => -\/(s"SF004: Salesforce returned code $code for query: $query")
+      val path = s"services/data/v57.0/query?q=$query"
+      Timing
+        .record(metrics, "Execute query") {
+          get(path)
         }
-      }
+        .map { response =>
+          val bodyString = response.body().string() // out here to make sure connection is closed in all cases
+          response.code() match {
+            case Status.OK => \/-(jsonParse(bodyString))
+            case code => -\/(s"SF004: Salesforce returned code $code for query: $query")
+          }
+        }
     }
   }
 
   object Contact {
     def read(key: String, id: String): Future[\/[String, Option[JsValue]]] = {
-      val path = s"services/data/v29.0/sobjects/Contact/$key/$id"
-      Timing.record(metrics, "Read Contact") {
-        get(path)
-      }.map { response =>
-        val bodyString = response.body().string() // out here to make sure connection is closed in all cases
-        response.code() match {
-          case Status.OK => \/-(Some(jsonParse(bodyString)))
-          case Status.NOT_FOUND => \/-(None)
-          case code => -\/(s"SF003: Salesforce returned code $code for Contact read $key $id")
+      val path = s"services/data/v57.0/sobjects/Contact/$key/$id"
+      Timing
+        .record(metrics, "Read Contact") {
+          get(path)
         }
-      }
+        .map { response =>
+          val bodyString = response.body().string() // out here to make sure connection is closed in all cases
+          response.code() match {
+            case Status.OK => \/-(Some(jsonParse(bodyString)))
+            case Status.NOT_FOUND => \/-(None)
+            case code => -\/(s"SF003: Salesforce returned code $code for Contact read $key $id")
+          }
+        }
     }
 
-    /**
-      * We use a custom endpoint to upsert contacts because Salesforce doesn't return enough data
-      * on its own. N.B: "newContact" is used both inserts and updates
+    /** We use a custom endpoint to upsert contacts because Salesforce doesn't return enough data on its own. N.B: "newContact" is used both inserts
+      * and updates
       */
     def upsert(upsertKey: Option[(String, String)], data: JsObject): Future[SFContactRecord] = {
-      val updateData = upsertKey.map { case (key, value) =>
-        data + (key -> JsString(value))
-      }.getOrElse(data)
+      val updateData = upsertKey
+        .map { case (key, value) =>
+          data + (key -> JsString(value))
+        }
+        .getOrElse(data)
 
-      Timing.record(metrics, "Upsert Contact") {
-        post("services/apexrest/RegisterCustomer/v1/", Json.obj("newContact" -> updateData))
-      }.map { response =>
-        val rawResponse = response.body().string()
-        val result = SFContactRecord.readResponse(jsonParse(rawResponse))
-        result.getOrElse(throw ScalaforceError(s"Bad upsert response $rawResponse"))
+      Timing
+        .record(metrics, "Upsert Contact") {
+          post("services/apexrest/RegisterCustomer/v1/", Json.obj("newContact" -> updateData))
+        }
+        .map { response =>
+          val rawResponse = response.body().string()
+          val result = SFContactRecord.readResponse(jsonParse(rawResponse))
+          result.getOrElse(throw ScalaforceError(s"Bad upsert response $rawResponse"))
+        }
+    }
+
+    private def update(id: SFContactId, json: JsValue): Future[Unit] = Timing
+      .record(metrics, "Update Contact") {
+        patch(s"services/data/v54.0/sobjects/Contact/${id.get}", json)
       }
-    }
-
-    private def update(id: SFContactId, json: JsValue): Future[Unit] = Timing.record(metrics, "Update Contact") {
-      patch(s"services/data/v54.0/sobjects/Contact/${id.get}", json)
-    }.flatMap { r =>
-      val output = r.body().string()
-      r.body().close()
-      Monad[Future].unlessM(r.code == 204)(Future.failed(new Exception(s"Bad code for update ${r.code}: $output")))
-    }
+      .flatMap { r =>
+        val output = r.body().string()
+        r.body().close()
+        Monad[Future].unlessM(r.code == 204)(Future.failed(new Exception(s"Bad code for update ${r.code}: $output")))
+      }
 
     def update(id: SFContactId, newKey: String, newValue: String): Future[Unit] =
       update(id, Json.obj(newKey -> newValue))
@@ -193,7 +200,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
   }
 
   // 15min -> 96 request/day. Failed auth will not override previous access_token.
-  def startAuth(): Cancellable = sfScheduler.schedule(0.seconds, 15.minutes)(fetchAndStoreAuth())
+  def startAuth(): Cancellable = sfScheduler.scheduleAtFixedRate(0.seconds, 15.minutes)(() => fetchAndStoreAuth())
 
   private def fetchAndStoreAuth() = authorize.onComplete {
     case Success(auth) =>
@@ -225,7 +232,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
             SafeLogger.info(s"Successful Salesforce $stage authentication.")
             result
           case _ =>
-            throw ScalaforceError(s"Failed Salesforce $stage authentication: CODE = ${response.code()}; Response = ${responseBody}")
+            throw ScalaforceError(s"Failed Salesforce $stage authentication: CODE = ${response.code()}; Response = $responseBody")
         }
       }
     }(ec, sfScheduler)

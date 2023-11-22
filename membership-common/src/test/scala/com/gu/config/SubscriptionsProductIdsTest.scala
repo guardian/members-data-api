@@ -15,15 +15,19 @@ class SubscriptionsProductIdsTest extends Specification {
      */
     "Load the right days into the right variables" in {
 
-      val config = ConfigFactory.empty()
-        .withValue("paper", ConfigValueFactory.fromMap(
-          Map(
-            "voucher" -> "voucherId",
-            "delivery" -> "deliveryId",
-            "digipack" -> "digipackId",
-            "supporterPlus" -> "supporterPlus"
-          ).asJava
-        ))
+      val config = ConfigFactory
+        .empty()
+        .withValue(
+          "paper",
+          ConfigValueFactory.fromMap(
+            Map(
+              "voucher" -> "voucherId",
+              "delivery" -> "deliveryId",
+              "digipack" -> "digipackId",
+              "supporterPlus" -> "supporterPlus",
+            ).asJava,
+          ),
+        )
 
       val productIds = SubscriptionsProductIds(config.getConfig("paper"))
       productIds.delivery mustEqual ProductId("deliveryId")

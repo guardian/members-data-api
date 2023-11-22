@@ -11,9 +11,7 @@ class ZuoraSoapServiceTest extends Specification {
   "latestInvoiceItems" should {
     def invoiceItem(subscriptionId: String, chargeNumber: String = "1") = {
       val start = LocalDate.today()
-      InvoiceItem("item-id", 1.2f, start,
-        start.withFieldAdded(DurationFieldType.months(), 1),
-        chargeNumber, "item", subscriptionId)
+      InvoiceItem("item-id", 1.2f, start, start.withFieldAdded(DurationFieldType.months(), 1), chargeNumber, "item", subscriptionId)
     }
 
     "return an empty list when given an empty list" in {

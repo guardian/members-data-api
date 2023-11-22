@@ -22,19 +22,18 @@ package object rest {
   case class ZuoraResponse(success: Boolean, error: Option[String] = None)
   implicit val zuoraResponseReads: Reads[ZuoraResponse] = (
     (JsPath \ "success").read[Boolean] and
-    (JsPath \\ "message").readNullable[String]
-    )(ZuoraResponse.apply _)
+      (JsPath \\ "message").readNullable[String]
+  )(ZuoraResponse.apply _)
 
-  case class ZuoraError(Code:String, Message:String)
+  case class ZuoraError(Code: String, Message: String)
 
   case class ZuoraCrudResponse(success: Boolean, errors: List[ZuoraError], createdId: Option[String] = None)
-
 
   implicit val ZuoraErrorReads = Json.reads[ZuoraError]
   implicit val ZuoraCreateResponseReads: Reads[ZuoraCrudResponse] = (
     (JsPath \ "Success").read[Boolean] and
-    (JsPath \\ "Errors").read[List[ZuoraError]].orElse(Reads.pure(List.empty)) and
-    (JsPath \ "Id").readNullable[String]
-    )(ZuoraCrudResponse.apply _)
+      (JsPath \\ "Errors").read[List[ZuoraError]].orElse(Reads.pure(List.empty)) and
+      (JsPath \ "Id").readNullable[String]
+  )(ZuoraCrudResponse.apply _)
 
 }

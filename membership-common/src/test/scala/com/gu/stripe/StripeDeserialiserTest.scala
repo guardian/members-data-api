@@ -27,7 +27,7 @@ class StripeDeserialiserTest extends Specification {
         message = Some("Your card was declined."),
         code = Some("card_declined"),
         decline_code = Some("do_not_honor"),
-        param = None
+        param = None,
       )
     }
     "deserialise a Stripe subscription (eg. guardian patrons) okay" in {

@@ -22,20 +22,24 @@ import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 import scalaz.{MonadTrans, OptionT, \/}
 
-class PaymentService(zuoraService: ZuoraService,
-                     planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext) extends api.PaymentService {
+class PaymentService(zuoraService: ZuoraService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
+    extends api.PaymentService {
 
   implicit val monadTrans = MonadTrans[OptionT] // it's the only one we use here, really
 
-  def paymentDetails(sub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid], defaultMandateIdIfApplicable: Option[String] = None): Future[PaymentDetails] =
+  def paymentDetails(
+      sub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
+      defaultMandateIdIfApplicable: Option[String] = None,
+  ): Future[PaymentDetails] =
     sub.fold(a => Future.successful(PaymentDetails(a)), paidPaymentDetails(defaultMandateIdIfApplicable))
 
   private def paidPaymentDetails(defaultMandateIdIfApplicable: Option[String])(sub: Subscription[SubscriptionPlan.Paid]): Future[PaymentDetails] = {
     val currency = sub.plan.charges.currencies.head
     // I am not convinced this function is very safe, hence the option
-    val lastPaymentDate = zuoraService.getPaymentSummary(sub.name, currency)
-                                      .map(_.current.serviceStartDate.some)
-                                      .recover { case _ => None}
+    val lastPaymentDate = zuoraService
+      .getPaymentSummary(sub.name, currency)
+      .map(_.current.serviceStartDate.some)
+      .recover { case _ => None }
     lastPaymentDate.onComplete {
       case Failure(exception) =>
         val message = scrub"Failed to get last payment date for sub $sub"
@@ -44,7 +48,10 @@ class PaymentService(zuoraService: ZuoraService,
     }
 
     val nextPaymentDate = sub.plan match {
-      case _: Contributor => sub.plan.chargedThrough.getOrElse(sub.plan.start)  // If the user has updated their contribution amount via MMA, there may be no charged through date
+      case _: Contributor =>
+        sub.plan.chargedThrough.getOrElse(
+          sub.plan.start,
+        ) // If the user has updated their contribution amount via MMA, there may be no charged through date
       case _ => sub.plan.chargedThrough.getOrElse(sub.acceptanceDate) // If the user hasn't paid us yet, there's no charged through date
     }
     val futureMaybePrice = sub.plan.product.name match {
@@ -77,7 +84,7 @@ class PaymentService(zuoraService: ZuoraService,
     for {
       mandateId <- m.mandateId.orElse(defaultMandateIdIfApplicable)
       accountName <- m.bankTransferAccountName
-      accountNumber <-  m.bankTransferAccountNumberMask
+      accountNumber <- m.bankTransferAccountNumberMask
       paymentMethod <-
         (m.bankTransferType, m.bankCode) match {
           case (Some("SEPA"), _) =>
@@ -89,13 +96,16 @@ class PaymentService(zuoraService: ZuoraService,
     } yield paymentMethod
   }
 
-  private def buildPaymentMethod(defaultMandateIdIfApplicable: Option[String] = None)(soapPaymentMethod: Queries.PaymentMethod): Option[PaymentMethod] =
+  private def buildPaymentMethod(
+      defaultMandateIdIfApplicable: Option[String] = None,
+  )(soapPaymentMethod: Queries.PaymentMethod): Option[PaymentMethod] =
     soapPaymentMethod.`type` match {
       case `CreditCard` | `CreditCardReferenceTransaction` =>
         val isReferenceTransaction = soapPaymentMethod.`type` == `CreditCardReferenceTransaction`
         def asInt(num: String) = Try(num.toInt).toOption
         val m = soapPaymentMethod
-        val details = (m.creditCardNumber |@| m.creditCardExpirationMonth.flatMap(asInt) |@| m.creditCardExpirationYear.flatMap(asInt))(PaymentCardDetails)
+        val details =
+          (m.creditCardNumber |@| m.creditCardExpirationMonth.flatMap(asInt) |@| m.creditCardExpirationYear.flatMap(asInt))(PaymentCardDetails)
         Some(PaymentCard(isReferenceTransaction, m.creditCardType, details, m.numConsecutiveFailures, m.paymentMethodStatus))
       case `BankTransfer` =>
         buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod)
@@ -137,28 +147,40 @@ class PaymentService(zuoraService: ZuoraService,
     getPaymentMethod(accountId).map(_.collect { case c: PaymentCard => c })
 
   @Deprecated
-  override def setPaymentCardWithStripeToken(accountId: AccountId, stripeToken: String, stripeService: StripeService): Future[Option[PaymentCardUpdateResult]] =
+  override def setPaymentCardWithStripeToken(
+      accountId: AccountId,
+      stripeToken: String,
+      stripeService: StripeService,
+  ): Future[Option[PaymentCardUpdateResult]] =
     setPaymentCard(stripeService.Customer.create)(accountId, stripeToken, stripeService)
 
-  override def setPaymentCardWithStripePaymentMethod(accountId: AccountId, stripePaymentMethodID: String, stripeService: StripeService): Future[Option[PaymentCardUpdateResult]] =
+  override def setPaymentCardWithStripePaymentMethod(
+      accountId: AccountId,
+      stripePaymentMethodID: String,
+      stripeService: StripeService,
+  ): Future[Option[PaymentCardUpdateResult]] =
     setPaymentCard(stripeService.Customer.createWithStripePaymentMethod)(accountId, stripePaymentMethodID, stripeService)
 
-  private def setPaymentCard(createCustomerFunction: String => Future[Customer])(accountId: AccountId, stripeCardIdentifier: String, stripeService: StripeService): Future[Option[PaymentCardUpdateResult]] =
+  private def setPaymentCard(
+      createCustomerFunction: String => Future[Customer],
+  )(accountId: AccountId, stripeCardIdentifier: String, stripeService: StripeService): Future[Option[PaymentCardUpdateResult]] =
     (for {
-    account <- zuoraService.getAccount(accountId).liftM
-    customer <- createCustomerFunction(stripeCardIdentifier).liftM
-    result <- zuoraService.createCreditCardPaymentMethod(accountId, customer, stripeService.paymentIntentsGateway, stripeService.invoiceTemplateOverride).liftM
-  } yield {
-    CardUpdateSuccess(
-      PaymentCard(
-        isReferenceTransaction = true,
-        cardType = Some(customer.card.`type`),
-        paymentCardDetails = Some(PaymentCardDetails(customer.card.last4, customer.card.exp_month, customer.card.exp_year))
+      account <- zuoraService.getAccount(accountId).liftM
+      customer <- createCustomerFunction(stripeCardIdentifier).liftM
+      result <- zuoraService
+        .createCreditCardPaymentMethod(accountId, customer, stripeService.paymentIntentsGateway, stripeService.invoiceTemplateOverride)
+        .liftM
+    } yield {
+      CardUpdateSuccess(
+        PaymentCard(
+          isReferenceTransaction = true,
+          cardType = Some(customer.card.`type`),
+          paymentCardDetails = Some(PaymentCardDetails(customer.card.last4, customer.card.exp_month, customer.card.exp_year)),
+        ),
       )
-    )
-  }).run.recover {
-    case error: Stripe.Error => Some(CardUpdateFailure(error.`type`, error.message.getOrElse(""), error.code.getOrElse("unknown")))
-  }
+    }).run.recover { case error: Stripe.Error =>
+      Some(CardUpdateFailure(error.`type`, error.message.getOrElse(""), error.code.getOrElse("unknown")))
+    }
 
   private def getPaymentMethodByAccountId(accountId: AccountId): Future[Option[Queries.PaymentMethod]] = {
     def getAccount = {

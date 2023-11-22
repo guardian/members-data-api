@@ -2,15 +2,17 @@ package com.gu.config
 
 import com.gu.memsub.Subscription.ProductRatePlanId
 
-case class MembershipRatePlanIds(friend: ProductRatePlanId,
-                                 staff: ProductRatePlanId,
-                                 supporterMonthly: ProductRatePlanId,
-                                 supporterYearly: ProductRatePlanId,
-                                 partnerMonthly: ProductRatePlanId,
-                                 partnerYearly: ProductRatePlanId,
-                                 patronMonthly: ProductRatePlanId,
-                                 patronYearly: ProductRatePlanId,
-                                 legacy: LegacyMembershipRatePlanIds) extends ProductFamilyRatePlanIds {
+case class MembershipRatePlanIds(
+    friend: ProductRatePlanId,
+    staff: ProductRatePlanId,
+    supporterMonthly: ProductRatePlanId,
+    supporterYearly: ProductRatePlanId,
+    partnerMonthly: ProductRatePlanId,
+    partnerYearly: ProductRatePlanId,
+    patronMonthly: ProductRatePlanId,
+    patronYearly: ProductRatePlanId,
+    legacy: LegacyMembershipRatePlanIds,
+) extends ProductFamilyRatePlanIds {
 
   val productRatePlanIds = Set(
     friend,
@@ -20,7 +22,7 @@ case class MembershipRatePlanIds(friend: ProductRatePlanId,
     partnerMonthly,
     partnerYearly,
     patronMonthly,
-    patronYearly
+    patronYearly,
   ) ++ legacy.productRatePlanIds
 }
 
@@ -36,7 +38,7 @@ object MembershipRatePlanIds {
       partnerYearly = prpId(config.getString("partner.yearly")),
       patronMonthly = prpId(config.getString("patron.monthly")),
       patronYearly = prpId(config.getString("patron.yearly")),
-      legacy = LegacyMembershipRatePlanIds.fromConfig(config.getConfig("legacy"))
+      legacy = LegacyMembershipRatePlanIds.fromConfig(config.getConfig("legacy")),
     )
   }
 }
