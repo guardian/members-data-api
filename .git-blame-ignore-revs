@@ -2,3 +2,6 @@
 94b4ac056a1531dddaefc27f3c6ac9377b786a1b
 # Include scalafmt checks as part of CI #902
 719ff459615e2b7d44026d91e4f7602c8efb592e
+
+# Scala Steward: Reformat with scalafmt 3.7.17
+cfaa0daede51a6d610bf26abc9531d7a062cd197
