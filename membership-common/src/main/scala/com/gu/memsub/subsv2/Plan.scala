@@ -391,9 +391,9 @@ sealed trait PaidChargeList extends ChargeList {
   def subRatePlanChargeId: SubscriptionRatePlanChargeId
 }
 
-/** Generic version of single free / paid charge This is to allow exhaustive matches on tier in membership
-  * i.e. the common ancestor type of Friend / Supporter will be Plan[ChargeList with SingleBenefit[MemberTier]] as opposed to just Plan[ChargeList]
-  * which isn't typed to only contain member tiers
+/** Generic version of single free / paid charge This is to allow exhaustive matches on tier in membership i.e. the common ancestor type of Friend /
+  * Supporter will be Plan[ChargeList with SingleBenefit[MemberTier]] as opposed to just Plan[ChargeList] which isn't typed to only contain member
+  * tiers
   */
 sealed trait SingleBenefit[+B <: Benefit] {
   def benefit: B
