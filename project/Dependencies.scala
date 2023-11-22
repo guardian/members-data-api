@@ -26,7 +26,7 @@ object Dependencies {
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.101.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.15.0" % Test
-  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
+  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.29" % Test
 
   val jacksonVersion = "2.14.3"
   val jacksonDatabindVersion = "2.14.3"
