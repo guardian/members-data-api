@@ -27,7 +27,7 @@ object MembershipCommonDependencies {
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val awsS3 = "com.amazonaws" % "aws-java-sdk-s3" % awsClientVersion
   val okHttp = "com.squareup.okhttp3" % "okhttp" % "4.10.0"
-  val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
+  val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
   val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.12"
   val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
