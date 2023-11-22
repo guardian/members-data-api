@@ -10,7 +10,7 @@ import com.gu.subscriptions.suspendresume.JsonFormatters._
 import com.gu.subscriptions.suspendresume.SuspensionService._
 import com.gu.zuora.ZuoraRestConfig
 import com.gu.zuora.rest.SimpleClient
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now

@@ -1,6 +1,6 @@
 package filters
 
-import akka.stream.Materializer
+import org.apache.pekko.stream.Materializer
 import controllers.Cached.suitableForCaching
 import play.api.mvc._
 

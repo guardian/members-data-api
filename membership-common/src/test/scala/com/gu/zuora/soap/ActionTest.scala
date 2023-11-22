@@ -5,7 +5,7 @@ import com.gu.zuora.soap.actions.Action
 import com.gu.zuora.soap.actions.Actions.Login
 import com.gu.zuora.soap.models.Results.Authentication
 import com.gu.zuora.soap.models.Result
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 import org.specs2.mutable.Specification
 
 class ActionTest extends Specification {

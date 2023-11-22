@@ -1,6 +1,6 @@
 package integration
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import components.TouchpointComponents
 import configuration.Stage

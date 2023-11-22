@@ -7,7 +7,7 @@ import com.gu.zuora.rest.SimpleClient
 import okhttp3._
 import org.specs2.mutable.Specification
 import com.gu.memsub.subsv2.Fixtures._
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 import com.typesafe.config.ConfigFactory
 import utils.Resource
 import scalaz.Id._

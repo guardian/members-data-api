@@ -76,7 +76,7 @@ drastic increase of load due to breaking news.**
 
 1. Get Janus credentials for membership.
 
-1. Create an ssh tunnel to the CODE one-off contributions database:
+1. (optional) Create an ssh tunnel to the CODE one-off contributions database:
     1. Clone https://github.com/guardian/contributions-platform
     1. From the contributions-platform project, Run `./contributions-store/contributions-store-bastion/scripts/open_ssh_tunnel.sh -s CODE` (requires [marauder](https://github.com/guardian/prism/tree/master/marauder))
     1. If you need to close your tunnel and didn't make a note of the process number you can run `ps aux | grep amazonaws.com` to find the process number. The output will look something like this `username      1693   0.0  0.0 34153208    952   ??  Ss    4:20pm   0:00.00 ssh -i /private/var/folders/yv/dbtm9psd5ddbjm_lvcjm9zf1vdng_j/T/security_ssm-scala_temporary-rsa-private-key.tmp -f machine.eu-west-1.compute.amazonaws.com -L 5432:contributions-store-code.address.rds.amazonaws.com:5432 -N -o IdentitiesOnly yes -o ExitOnForwardFailure yes` where `1693` is the process number. You can close the tunnel with `kill 1693`.
@@ -84,7 +84,13 @@ drastic increase of load due to breaking news.**
 1. Ensure an `nginx` service is running locally. You can run `dev-nginx restart-nginx` to do this.
 
 ### Identity frontend local sign in
-As the /me endpoints use the GU_U and SC_GU_U from the Cookie request header you will need to sign in to the identity frontend locally.
+The /me endpoints can either use the GU_U and SC_GU_U from the Cookie request header or Bearer authorisation header.
+To get either of these you will need to sign in to the identity frontend.
+
+To authenticate and get a bearer token from identity (recommended)
+1. Follow this identity thread to set up PostMan https://chat.google.com/room/AAAAFdv9gK8/kxmrtiVjtRs/
+
+To run identity locally for browser based access (not recommended)
 1. Start up a local Identity service by running script `make dev` in the [gateway](https://github.com/guardian/gateway) repo.
 1. Go to https://profile.thegulocal.com/signin.
 

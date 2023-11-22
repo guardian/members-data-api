@@ -1,5 +1,5 @@
 package actions
-import akka.stream.Materializer
+import org.apache.pekko.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
 import com.gu.identity.auth.AccessScope
 import components.{TouchpointBackends, TouchpointComponents}

@@ -1,10 +1,9 @@
 package components
 
-import akka.actor.ActorSystem
 import com.gu.aws.ProfileName
 import com.gu.config
 import com.gu.identity.IdapiService
-import com.gu.identity.auth.{DefaultIdentityClaims, IdapiAuthConfig, OktaTokenValidationConfig}
+import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.monitoring.ZuoraMetrics
@@ -17,6 +16,7 @@ import configuration.OptionalConfig._
 import configuration.Stage
 import models.{UserFromToken, UserFromTokenParser}
 import monitoring.{CreateMetrics, CreateNoopMetrics}
+import org.apache.pekko.actor.ActorSystem
 import org.http4s.Uri
 import scalaz.std.scalaFuture._
 import services._
@@ -164,8 +164,9 @@ class TouchpointComponents(
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
-    issuerUrl = conf.getString("okta.verifier.issuerUrl"),
-    audience = conf.getString("okta.verifier.audience"),
+    issuerUrl = OktaIssuerUrl(conf.getString("okta.verifier.issuerUrl")),
+    audience = Some(OktaAudience(conf.getString("okta.verifier.audience"))),
+    clientId = None,
   )
   lazy val identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims] = {
     val apiConfig = backendConfig.idapi
@@ -177,7 +178,7 @@ class TouchpointComponents(
       accessClaimsParser = UserFromTokenParser,
     )
   }
-  lazy val identityAuthService = new IdentityAuthService(identityPlayAuthService)
+  lazy val identityAuthService = new services.IdentityAuthService(identityPlayAuthService)
 
   lazy val guardianPatronService =
     new GuardianPatronService(

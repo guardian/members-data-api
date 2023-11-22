@@ -1,6 +1,6 @@
 package com.gu.salesforce
 
-import akka.actor.Scheduler
+import org.apache.pekko.actor.Scheduler
 import com.gu.okhttp.RequestRunners
 import okhttp3.{Request, Response}
 

@@ -1,6 +1,6 @@
 package com.gu.salesforce
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.gu.salesforce.job.Implicits._
 import com.gu.salesforce.job._
 import com.gu.memsub.util.Timing

@@ -1,7 +1,7 @@
 package wiring
 
 import actions.CommonActions
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
@@ -118,7 +118,7 @@ class MyComponents(context: Context)
     new ContactController(commonActions, controllerComponents, createMetrics),
   )
 
-  val postPaths: List[String] = router.documentation.collect { case ("POST", path, _) => path }
+  val postPaths: Seq[String] = router.documentation.collect { case ("POST", path, _) => path }
 
   lazy val corsConfig = new CorsConfig(configuration)
 

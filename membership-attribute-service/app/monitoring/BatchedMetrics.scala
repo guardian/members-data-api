@@ -1,6 +1,6 @@
 package monitoring
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
 import com.amazonaws.services.cloudwatch.model.StandardUnit
 import com.typesafe.scalalogging.{LazyLogging, StrictLogging}

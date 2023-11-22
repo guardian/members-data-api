@@ -5,7 +5,7 @@ import com.typesafe.config.ConfigFactory
 import play.api.ApplicationLoader.Context
 import play.api.inject.ApplicationLifecycle
 import play.api.{Application, Configuration, Environment, Mode}
-import play.core.server.{AkkaHttpServer, ServerConfig}
+import play.core.server.{PekkoHttpServer, ServerConfig}
 import wiring.{AppLoader, MyComponents}
 
 import java.io.File
@@ -20,7 +20,7 @@ trait HasPlayServer {
   protected def endpointUrl(path: String) = playServerAddress + path
 
   var application: Application = _
-  var server: AkkaHttpServer = _
+  var server: PekkoHttpServer = _
 
   def createMyComponents(context: Context) = new MyComponents(context)
 
@@ -51,7 +51,7 @@ trait HasPlayServer {
           None,
         ),
       )
-    server = AkkaHttpServer.fromApplication(application, ServerConfig(port = Some(playPort)))
+    server = PekkoHttpServer.fromApplication(application, ServerConfig(port = Some(playPort)))
   }
 
   def stopPlayServer() = {

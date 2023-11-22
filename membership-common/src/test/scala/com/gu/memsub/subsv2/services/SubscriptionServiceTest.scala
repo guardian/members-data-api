@@ -16,7 +16,7 @@ import com.gu.memsub.{Subscription => _, _}
 import com.gu.salesforce.ContactId
 import com.gu.zuora.ZuoraRestConfig
 import com.gu.zuora.rest.SimpleClient
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification

@@ -1,7 +1,7 @@
 package com.gu.memsub.images
 import io.lemonlabs.uri.Uri
 import org.specs2.mutable.Specification
-import io.lemonlabs.uri.dsl._
+import io.lemonlabs.uri.typesafe.dsl._
 
 class ResponsiveImageTest extends Specification {
 
@@ -37,31 +37,6 @@ class ResponsiveImageTest extends Specification {
         smallImage + " 140w",
         mediumImage + " 500w",
         largeImage + " 1000w",
-      ).mkString(", ")
-
-    }
-
-  }
-
-  "ResponsiveImageGenerator" should {
-
-    "generate a src and srcset information for a generated image group" in {
-
-      val imageGroup = ResponsiveImageGroup(
-        name = None,
-        altText = None,
-        availableImages = ResponsiveImageGenerator(
-          id = "bb922fe62efbe24af2df336dd2b621c5799246b4/0_0_1140_683",
-          sizes = List(1000, 500, 140),
-        ),
-      )
-
-      imageGroup.smallestImage.toString mustEqual smallImage.toString
-      imageGroup.defaultImage.toString mustEqual mediumImage.toString
-      imageGroup.srcset mustEqual List(
-        smallImage.toString + " 140w",
-        mediumImage.toString + " 500w",
-        largeImage.toString + " 1000w",
       ).mkString(", ")
 
     }

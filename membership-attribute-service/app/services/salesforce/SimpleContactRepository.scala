@@ -1,6 +1,6 @@
 package services.salesforce
 
-import akka.actor.Scheduler
+import org.apache.pekko.actor.Scheduler
 import com.gu.okhttp.RequestRunners
 import com.gu.salesforce.ContactDeserializer._
 import com.gu.salesforce.{Contact, ContactId, SFContactId, SalesforceConfig, Scalaforce}

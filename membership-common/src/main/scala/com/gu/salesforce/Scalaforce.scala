@@ -1,6 +1,6 @@
 package com.gu.salesforce
 
-import akka.actor.{Cancellable, Scheduler}
+import org.apache.pekko.actor.{Cancellable, Scheduler}
 import java.util.concurrent.atomic.AtomicReference
 
 import com.gu.memsub.util.Timing

@@ -2,7 +2,7 @@ package com.gu.zuora.soap
 
 import java.util.concurrent.atomic.AtomicReference
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.gu.memsub.Subscription.Feature.Code
 import com.gu.okhttp.RequestRunners._
 import com.gu.zuora.ZuoraSoapConfig

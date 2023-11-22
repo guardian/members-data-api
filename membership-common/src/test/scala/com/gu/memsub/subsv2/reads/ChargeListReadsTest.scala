@@ -9,7 +9,11 @@ import com.gu.memsub.Subscription.{ProductRatePlanChargeId, SubscriptionRatePlan
 import com.gu.memsub._
 import com.gu.memsub.subsv2.{PaidChargeList, _}
 import com.gu.memsub.subsv2.reads.ChargeListReads._
-import com.softwaremill.diffx.generic.auto.diffForCaseClass
+import com.softwaremill.diffx
+import com.softwaremill.diffx._
+import com.softwaremill.diffx.{Derived, Diff}
+import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import org.scalatest.flatspec.AnyFlatSpec
 import scalaz.{Failure, NonEmptyList, Success, ValidationNel}
 
@@ -96,56 +100,56 @@ class ChargeListReadsTest extends AnyFlatSpec {
 
     val expected: ValidationNel[String, Benefit] = Success(Supporter)
 
-    Diff.assertEquals(expected, result)
+    result shouldMatchTo expected
 
   }
 
   "product reads" should "read any supporter as a supporter successfully" in {
 
-    val result = implicitly[ChargeReads[Supporter.type]].read(planChargeMap, supporterCharge)
+    val result: ValidationNel[String, Benefit.Supporter.type] = implicitly[ChargeReads[Supporter.type]].read(planChargeMap, supporterCharge)
 
-    val expected = Success(Supporter)
+    val expected: ValidationNel[String, Benefit.Supporter.type] = Success(Supporter)
 
-    Diff.assertEquals(expected, result)
+    result shouldMatchTo expected
 
   }
 
   "product reads" should "not read any supporter as a weekly" in {
 
-    val result = implicitly[ChargeReads[Weekly.type]].read(planChargeMap, supporterCharge)
+    val result: ValidationNel[String, Benefit.Weekly.type] = implicitly[ChargeReads[Weekly.type]].read(planChargeMap, supporterCharge)
 
-    val expected = Failure(NonEmptyList("expected class com.gu.memsub.Benefit$Weekly$ but was Supporter (isPhysical? = true)"))
+    val expected: ValidationNel[String, Benefit.Weekly.type] = Failure(NonEmptyList("expected class com.gu.memsub.Benefit$Weekly$ but was Supporter (isPhysical? = true)"))
 
-    Diff.assertEquals(expected.leftMap(_.list), result.leftMap(_.list))
+    result.leftMap(_.list) shouldMatchTo(expected.leftMap(_.list))
 
   }
 
   "product reads" should "read any supporter as a member successfully" in {
 
-    val result = implicitly[ChargeReads[MemberTier]].read(planChargeMap, supporterCharge)
+    val result: ValidationNel[String, MemberTier] = implicitly[ChargeReads[MemberTier]].read(planChargeMap, supporterCharge)
 
-    val expected = Success(Supporter)
+    val expected: ValidationNel[String, Supporter.type] = Success(Supporter)
 
-    Diff.assertEquals(expected, result)
+    result.map(_.asInstanceOf[Supporter.type]) shouldMatchTo expected
 
   }
 
   "product reads" should "not read any supporter as a Free member" in {
 
-    val result = implicitly[ChargeReads[FreeMemberTier]].read(planChargeMap, supporterCharge)
+    val result: ValidationNel[String, Unit] = implicitly[ChargeReads[FreeMemberTier]].read(planChargeMap, supporterCharge).map(_ => ())
 
-    val expected = Failure(NonEmptyList("expected interface com.gu.memsub.Benefit$FreeMemberTier but was Supporter (isPhysical? = true)"))
+    val expected: ValidationNel[String, Unit] = Failure(NonEmptyList("expected interface com.gu.memsub.Benefit$FreeMemberTier but was Supporter (isPhysical? = true)"))
 
-    Diff.assertEquals(expected.leftMap(_.list), result.leftMap(_.list))
+    result shouldMatchTo(expected)
 
   }
 
   "ChargeList reads" should "read single-charge non-paper rate plans as generic PaidCharge type" in {
-    val result = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(weeklyCharge))
+    val result: ValidationNel[String, PaidChargeList] = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(weeklyCharge))
 
-    val expected = Success(PaidCharge(Weekly, Month, weeklyCharge.pricing, weeklyCharge.productRatePlanChargeId, weeklyCharge.id))
+    val expected: ValidationNel[String, PaidChargeList] = Success(PaidCharge(Weekly, Month, weeklyCharge.pricing, weeklyCharge.productRatePlanChargeId, weeklyCharge.id))
 
-    Diff.assertEquals(expected, result)
+    result shouldMatchTo expected
 
     // Instance type check for extra proof
     assert(!result.exists(_.isInstanceOf[PaperCharges]))
@@ -155,22 +159,22 @@ class ChargeListReadsTest extends AnyFlatSpec {
 
     val sundayPrices = Seq((SundayPaper, paperCharge.pricing)).toMap[PaperDay, PricingSummary]
 
-    val result = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(paperCharge))
+    val result: ValidationNel[String, PaidChargeList] = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(paperCharge))
 
-    val expected = Success(PaperCharges(dayPrices = sundayPrices, digipack = None))
+    val expected: ValidationNel[String, PaidChargeList] = Success(PaperCharges(dayPrices = sundayPrices, digipack = None))
 
-    Diff.assertEquals(expected, result)
+    result shouldMatchTo expected
 
     // Instance type check for extra proof
     assert(result.exists(_.isInstanceOf[PaperCharges]))
   }
 
   "ChargeList reads" should "not confuse digipack rate plan with paper+digital plan" in {
-    val result = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(digipackCharge))
+    val result: ValidationNel[String, PaidChargeList] = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(digipackCharge))
 
-    val expected = Success(PaidCharge(Digipack, Month, digipackCharge.pricing, digipackCharge.productRatePlanChargeId, digipackCharge.id))
+    val expected: ValidationNel[String, PaidChargeList] = Success(PaidCharge(Digipack, Month, digipackCharge.pricing, digipackCharge.productRatePlanChargeId, digipackCharge.id))
 
-    Diff.assertEquals(expected, result)
+    result shouldMatchTo expected
 
     // Instance type check for extra proof
     assert(!result.exists(_.isInstanceOf[PaperCharges]))
