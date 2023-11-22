@@ -20,21 +20,21 @@ case class CovariantNonEmptyList[+T](head: T, tail: List[T]) {
 }
 
 case class Subscription[+P <: SubscriptionPlan.AnyPlan](
-  id: memsub.Subscription.Id,
-  name: memsub.Subscription.Name,
-  accountId: memsub.Subscription.AccountId,
-  startDate: LocalDate,
-  acceptanceDate: LocalDate,
-  termStartDate: LocalDate,
-  termEndDate: LocalDate,
-  casActivationDate: Option[DateTime],
-  promoCode: Option[PromoCode],
-  isCancelled: Boolean,
-  hasPendingFreePlan: Boolean,
-  plans: CovariantNonEmptyList[P],
-  readerType: ReaderType,
-  gifteeIdentityId: Option[String],
-  autoRenew: Boolean
+    id: memsub.Subscription.Id,
+    name: memsub.Subscription.Name,
+    accountId: memsub.Subscription.AccountId,
+    startDate: LocalDate,
+    acceptanceDate: LocalDate,
+    termStartDate: LocalDate,
+    termEndDate: LocalDate,
+    casActivationDate: Option[DateTime],
+    promoCode: Option[PromoCode],
+    isCancelled: Boolean,
+    hasPendingFreePlan: Boolean,
+    plans: CovariantNonEmptyList[P],
+    readerType: ReaderType,
+    gifteeIdentityId: Option[String],
+    autoRenew: Boolean,
 ) {
 
   private def isPaid[P <: SubscriptionPlan.AnyPlan](plan: P) = plan.charges match {
@@ -52,7 +52,7 @@ case class Subscription[+P <: SubscriptionPlan.AnyPlan](
   }
 
   // can we make it optional to specify A and B?
-  def as[A <: Product, B <: ChargeList, SP <: SubscriptionPlan[A,B]](implicit a: ClassTag[A], b: ClassTag[B]): Option[Subscription[SP]] = {
+  def as[A <: Product, B <: ChargeList, SP <: SubscriptionPlan[A, B]](implicit a: ClassTag[A], b: ClassTag[B]): Option[Subscription[SP]] = {
     if (a.runtimeClass.isInstance(plans.head.product) && b.runtimeClass.isInstance(plans.head.charges))
       Some(asInstanceOf[Subscription[SP]])
     else
@@ -61,7 +61,8 @@ case class Subscription[+P <: SubscriptionPlan.AnyPlan](
 
   def asDelivery = as[Product.Delivery, PaperCharges, SubscriptionPlan.Delivery]
   def asVoucher = as[Product.Voucher, PaperCharges, SubscriptionPlan.Voucher]
-  def asWeekly = as[Product.Weekly, PaidCharge[Weekly.type, BillingPeriod]/* TODO should check the benefit and billing period*/, SubscriptionPlan.WeeklyPlan]
+  def asWeekly =
+    as[Product.Weekly, PaidCharge[Weekly.type, BillingPeriod] /* TODO should check the benefit and billing period*/, SubscriptionPlan.WeeklyPlan]
   def asDigipack = as[Product.ZDigipack, PaidChargeList, SubscriptionPlan.Digipack]
   def asContribution = as[Product.Contribution, PaidChargeList, SubscriptionPlan.Contributor]
   def asMembership = as[Product.Membership, ChargeList, SubscriptionPlan.Member]
@@ -78,8 +79,8 @@ with the newest plan for upgrade and cancel scenarios, so in this case the most 
 object GetCurrentPlans {
 
   /*- negative if x < y
- *  - positive if x > y
- *  - zero otherwise (if x == y)*/
+   *  - positive if x > y
+   *  - zero otherwise (if x == y)*/
   val planGoodnessOrder = new scala.Ordering[SubscriptionPlan.AnyPlan] {
     val lt = -1; val eq = 0; val gt = 1
     override def compare(x: AnyPlan, y: AnyPlan): Int = {
@@ -110,16 +111,15 @@ object GetCurrentPlans {
   def apply[P <: SubscriptionPlan.AnyPlan](sub: Subscription[P], date: LocalDate): String \/ NonEmptyList[P] = {
 
     val currentPlans = sub.plans.list.toList.sorted(planGoodnessOrder).reverse.map { plan =>
-
-      //If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
-      val dateToCheck = if(sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date
+      // If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
+      val dateToCheck = if (sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date
 
       val unvalidated = Validation.s[NonEmptyList[DiscardedPlan[P]]](plan)
       /*
       Note that a Contributor may have future sub.acceptanceDate and plan.startDate values if the user has
       updated their payment amount via MMA since starting the contribution. In this case the alreadyStarted assessment
       just checks that the sub.startDate is before, or the same as, the date received by this function.
-      */
+       */
       val ensureStarted = unvalidated.ensure(DiscardedPlan(plan, s"hasn't started as of $dateToCheck").wrapNel)(_)
       val alreadyStarted = plan match {
         case _: Contributor => ensureStarted(_ => sub.startDate <= date)
@@ -138,25 +138,29 @@ object GetCurrentPlans {
       }
     }
 
-    Sequence(currentPlans.map(_.leftMap(_.map(discard => s"Discarded ${discard.plan.id.get} because it ${discard.why}").list.toList.mkString("\n")).disjunction))
+    Sequence(
+      currentPlans.map(
+        _.leftMap(_.map(discard => s"Discarded ${discard.plan.id.get} because it ${discard.why}").list.toList.mkString("\n")).disjunction,
+      ),
+    )
   }
 }
 
 object Subscription {
   def partial[P <: SubscriptionPlan.AnyPlan](hasPendingFreePlan: Boolean)(
-    id: memsub.Subscription.Id,
-    name: memsub.Subscription.Name,
-    accountId: memsub.Subscription.AccountId,
-    startDate: LocalDate,
-    acceptanceDate: LocalDate,
-    termStartDate: LocalDate,
-    termEndDate: LocalDate,
-    casActivationDate: Option[DateTime],
-    promoCode: Option[PromoCode],
-    isCancelled: Boolean,
-    readerType: ReaderType,
-    gifteeIdentityId: Option[String],
-    autoRenew: Boolean
+      id: memsub.Subscription.Id,
+      name: memsub.Subscription.Name,
+      accountId: memsub.Subscription.AccountId,
+      startDate: LocalDate,
+      acceptanceDate: LocalDate,
+      termStartDate: LocalDate,
+      termEndDate: LocalDate,
+      casActivationDate: Option[DateTime],
+      promoCode: Option[PromoCode],
+      isCancelled: Boolean,
+      readerType: ReaderType,
+      gifteeIdentityId: Option[String],
+      autoRenew: Boolean,
   )(plans: NonEmptyList[P]): Subscription[P] =
     new Subscription(
       id = id,
@@ -173,7 +177,7 @@ object Subscription {
       plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
       readerType = readerType,
       gifteeIdentityId = gifteeIdentityId,
-      autoRenew = autoRenew
+      autoRenew = autoRenew,
     )
 }
 
@@ -192,7 +196,7 @@ object ReaderType {
     val value = "Student"
   }
   case object Complementary extends ReaderType {
-    val value = "Complementary" //Spelled this way to match value in Saleforce/Zuora
+    val value = "Complementary" // Spelled this way to match value in Saleforce/Zuora
     val alternateSpelling = "Complimentary"
   }
   case object Corporate extends ReaderType {
@@ -203,17 +207,19 @@ object ReaderType {
   }
 
   def apply(maybeString: Option[String]): ReaderType =
-    maybeString.map {
-      case Direct.value => Direct
-      case Gift.value => Gift
-      case Agent.value => Agent
-      case Student.value => Student
-      case Complementary.value => Complementary
-      case Complementary.alternateSpelling => Complementary
-      case Corporate.value => Corporate
-      case Patron.value => Patron
-      case unknown => throw new RuntimeException(s"Unknown reader type: $unknown")
-    }.getOrElse(Direct)
+    maybeString
+      .map {
+        case Direct.value => Direct
+        case Gift.value => Gift
+        case Agent.value => Agent
+        case Student.value => Student
+        case Complementary.value => Complementary
+        case Complementary.alternateSpelling => Complementary
+        case Corporate.value => Corporate
+        case Patron.value => Patron
+        case unknown => throw new RuntimeException(s"Unknown reader type: $unknown")
+      }
+      .getOrElse(Direct)
 
 }
 sealed trait ReaderType {

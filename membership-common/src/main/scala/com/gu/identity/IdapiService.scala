@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait IdapiResponseObject
 case class IdapiError(
-  status: String
+    status: String,
 ) extends Throwable
 
 sealed trait RedirectAdviceStatus
@@ -19,15 +19,15 @@ case object NotSignedIn extends RedirectAdviceStatus
 case object UnknownSignInStatus extends RedirectAdviceStatus
 @Deprecated case object OkRedirectStatus extends RedirectAdviceStatus
 
-case class RedirectAdviceObject (
-  url: String
+case class RedirectAdviceObject(
+    url: String,
 )
-case class RedirectAdviceResponse (
-  signInStatus: RedirectAdviceStatus,
-  userId: Option[String],
-  displayName: Option[String],
-  emailValidated: Option[Boolean],
-  redirect: Option[RedirectAdviceObject]
+case class RedirectAdviceResponse(
+    signInStatus: RedirectAdviceStatus,
+    userId: Option[String],
+    displayName: Option[String],
+    emailValidated: Option[Boolean],
+    redirect: Option[RedirectAdviceObject],
 ) extends IdapiResponseObject
 
 object IdapiService {
@@ -36,7 +36,7 @@ object IdapiService {
 }
 
 class IdapiService(apiConfig: IdapiConfig, client: FutureHttpClient)(implicit ec: ExecutionContext)
-  extends WebServiceHelper[IdapiResponseObject, IdapiError] {
+    extends WebServiceHelper[IdapiResponseObject, IdapiError] {
 
   val wsUrl = apiConfig.url
   val httpClient: FutureHttpClient = client
@@ -49,7 +49,7 @@ class IdapiService(apiConfig: IdapiConfig, client: FutureHttpClient)(implicit ec
 
   object RedirectAdvice {
 
-    private implicit val readsRedirectStatus: Reads[RedirectAdviceStatus] = __.read[String].map{
+    private implicit val readsRedirectStatus: Reads[RedirectAdviceStatus] = __.read[String].map {
       case "signedInRecently" => SignedInRecently
       case "signedInNotRecently" => SignedInNotRecently
       case "notSignedIn" => NotSignedIn
@@ -62,10 +62,15 @@ class IdapiService(apiConfig: IdapiConfig, client: FutureHttpClient)(implicit ec
     private implicit val readsRedirectResponse: Reads[RedirectAdviceResponse] = Json.reads[RedirectAdviceResponse]
 
     def getRedirectAdvice(cookieValue: String, scope: Option[String] = None): Future[RedirectAdviceResponse] =
-      get[RedirectAdviceResponse]("auth/redirect", Headers.of(
-        IdapiService.HeaderNameCookie, cookieValue,
-        IdapiService.HeaderNameIdapiForwardedScope, scope.getOrElse("")
-      ))
+      get[RedirectAdviceResponse](
+        "auth/redirect",
+        Headers.of(
+          IdapiService.HeaderNameCookie,
+          cookieValue,
+          IdapiService.HeaderNameIdapiForwardedScope,
+          scope.getOrElse(""),
+        ),
+      )
   }
 
 }

@@ -1,9 +1,7 @@
 package com.gu.lib
 import org.joda.time.LocalDate
 
-/**
-  * This is entirely optional!
-  * Its only really useful in unit tests
+/** This is entirely optional! Its only really useful in unit tests
   */
 object DateDSL {
   implicit class IntOps(in: Int) {

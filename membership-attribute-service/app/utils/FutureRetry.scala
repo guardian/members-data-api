@@ -3,8 +3,8 @@ package utils
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import akka.pattern.after
-import akka.actor.Scheduler
+import org.apache.pekko.pattern.after
+import org.apache.pekko.actor.Scheduler
 
 /** retry implementation from Scala Future contributor https://gist.github.com/viktorklang/9414163
   */

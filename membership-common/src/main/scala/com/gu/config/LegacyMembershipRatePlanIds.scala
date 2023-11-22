@@ -2,13 +2,15 @@ package com.gu.config
 
 import com.gu.memsub.Subscription.ProductRatePlanId
 
-case class LegacyMembershipRatePlanIds(friend: ProductRatePlanId,
-                                       supporterMonthly: ProductRatePlanId,
-                                       supporterYearly: ProductRatePlanId,
-                                       partnerMonthly: ProductRatePlanId,
-                                       partnerYearly: ProductRatePlanId,
-                                       patronMonthly: ProductRatePlanId,
-                                       patronYearly: ProductRatePlanId) {
+case class LegacyMembershipRatePlanIds(
+    friend: ProductRatePlanId,
+    supporterMonthly: ProductRatePlanId,
+    supporterYearly: ProductRatePlanId,
+    partnerMonthly: ProductRatePlanId,
+    partnerYearly: ProductRatePlanId,
+    patronMonthly: ProductRatePlanId,
+    patronYearly: ProductRatePlanId,
+) {
 
   val productRatePlanIds = Set(
     friend,
@@ -17,7 +19,7 @@ case class LegacyMembershipRatePlanIds(friend: ProductRatePlanId,
     partnerMonthly,
     partnerYearly,
     patronMonthly,
-    patronYearly
+    patronYearly,
   )
 }
 
@@ -32,7 +34,7 @@ object LegacyMembershipRatePlanIds {
       partnerMonthly = prpId(config.getString("partner.monthly")),
       partnerYearly = prpId(config.getString("partner.yearly")),
       patronMonthly = prpId(config.getString("patron.monthly")),
-      patronYearly = prpId(config.getString("patron.yearly"))
+      patronYearly = prpId(config.getString("patron.yearly")),
     )
   }
 }

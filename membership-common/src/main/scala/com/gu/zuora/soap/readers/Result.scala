@@ -24,6 +24,6 @@ object Result {
     protected def extract(result: Node) = extractFn(result)
   }
 
-  def apply[T <: models.Result](tag: String)(extractFn: Node => T) = create(tag, multi=false, extractFn)
-  def multi[T <: models.Result](tag: String)(extractFn: Node => T) = create(tag, multi=true, extractFn)
+  def apply[T <: models.Result](tag: String)(extractFn: Node => T) = create(tag, multi = false, extractFn)
+  def multi[T <: models.Result](tag: String)(extractFn: Node => T) = create(tag, multi = true, extractFn)
 }

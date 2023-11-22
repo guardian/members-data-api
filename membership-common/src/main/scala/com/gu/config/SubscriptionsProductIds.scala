@@ -8,6 +8,6 @@ object SubscriptionsProductIds {
     delivery = ProductId(config.getString("delivery")),
     voucher = ProductId(config.getString("voucher")),
     digipack = ProductId(config.getString("digipack")),
-    supporterPlus = ProductId(config.getString("supporterPlus"))
+    supporterPlus = ProductId(config.getString("supporterPlus")),
   )
 }

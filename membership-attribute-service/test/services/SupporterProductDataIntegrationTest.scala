@@ -1,6 +1,6 @@
 package services
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.gu.aws.ProfileName
 import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage

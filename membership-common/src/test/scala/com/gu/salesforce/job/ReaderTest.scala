@@ -20,16 +20,18 @@ class ReaderTest extends Specification {
 
     "deserialize CompletedBatchList" in {
       val batchInfoList = Resource.getXML("batch-info-list-completed.xml")
-      batchInfoListReader.extract(batchInfoList) mustEqual CompletedBatchList(Seq(
-        BatchInfo("75111000000gUOCAA2", "75011000000XgXSAA0", "Completed", ""),
-        BatchInfo("75111000000gUOCAA3", "75011000000XgXSAA1", "Completed", "")
-      ))
+      batchInfoListReader.extract(batchInfoList) mustEqual CompletedBatchList(
+        Seq(
+          BatchInfo("75111000000gUOCAA2", "75011000000XgXSAA0", "Completed", ""),
+          BatchInfo("75111000000gUOCAA3", "75011000000XgXSAA1", "Completed", ""),
+        ),
+      )
     }
 
     "deserialize FailedBatchList" in {
       val batchInfoList = Resource.getXML("batch-info-list-failed.xml")
       batchInfoListReader.extract(batchInfoList) mustEqual FailedBatchList(
-        BatchInfo("75111000000gUOCAA2", "75011000000XgXSAA0", "Failed", "Failed message")
+        BatchInfo("75111000000gUOCAA2", "75011000000XgXSAA0", "Failed", "Failed message"),
       )
     }
 

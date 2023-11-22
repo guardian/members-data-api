@@ -1,6 +1,6 @@
 package com.gu.salesforce
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.gu.salesforce.job.Implicits._
 import com.gu.salesforce.job._
 import com.gu.memsub.util.Timing
@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 
 // This is an implementation of the Salesforce Bulk API, its documentation can be found
 // here: https://www.salesforce.com/us/developer/docs/api_asynch/
-abstract class ScalaforceJob (implicit ec: ExecutionContext) extends Scalaforce {
+abstract class ScalaforceJob(implicit ec: ExecutionContext) extends Scalaforce {
 
   val system: ActorSystem
 
@@ -82,7 +82,7 @@ abstract class ScalaforceJob (implicit ec: ExecutionContext) extends Scalaforce 
         Timing.record(metrics, "Query Job") {
           for {
             job <- request(JobCreate("query", objType))
-            queries <- Future.sequence(queries.map { q => request(QueryCreate(job, q))})
+            queries <- Future.sequence(queries.map { q => request(QueryCreate(job, q)) })
             _ <- completeJob(job)
 
             results <- getQueryResults(queries)

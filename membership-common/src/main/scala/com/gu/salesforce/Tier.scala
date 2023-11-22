@@ -17,7 +17,7 @@ sealed trait PaidTier extends Tier {
 
 object PaidTier {
   def all = Seq[PaidTier](Tier.Supporter(), Tier.Partner(), Tier.Patron())
-  def slugMap = all.map(tier => tier.slug -> tier ).toMap
+  def slugMap = all.map(tier => tier.slug -> tier).toMap
 }
 
 object Tier {
@@ -26,7 +26,7 @@ object Tier {
     override def isPublic = false
   }
 
-  case class Friend() extends FreeTier{
+  case class Friend() extends FreeTier {
     override val name = "Friend"
     override def isPublic = true
   }
@@ -61,6 +61,5 @@ object Tier {
 
 object FreeTier {
   def all = Seq[FreeTier](Tier.Friend(), Tier.Staff())
-  def slugMap = all.map(tier => tier.slug -> tier ).toMap
+  def slugMap = all.map(tier => tier.slug -> tier).toMap
 }
-

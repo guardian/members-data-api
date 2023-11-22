@@ -201,6 +201,8 @@ class AccountDetailsFromZuora(
         requestedProductType == "DigitalVoucher" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
       case _: Product.Delivery =>
         requestedProductType == "HomeDelivery" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
+      case _: Product.NationalDelivery =>
+        requestedProductType == "HomeDelivery" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
       case _: Product.Contribution => requestedProductType == "Contribution"
       case _: Product.Membership => requestedProductType == "Membership"
       case _: Product.ZDigipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription

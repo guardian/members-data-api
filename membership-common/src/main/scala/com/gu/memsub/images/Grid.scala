@@ -35,4 +35,3 @@ object GridDeserializer {
   implicit val readsGrid = Json.format[GridResult]
   implicit val readsError = Json.format[Error]
 }
-

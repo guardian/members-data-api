@@ -7,32 +7,32 @@ sealed trait PaymentMethod {
   val paymentMethodStatus: Option[String]
 }
 case class PaymentCard(
-  isReferenceTransaction: Boolean,
-  cardType: Option[String],
-  paymentCardDetails: Option[PaymentCardDetails],
-  numConsecutiveFailures: Option[Int] = None,
-  paymentMethodStatus: Option[String] = None
+    isReferenceTransaction: Boolean,
+    cardType: Option[String],
+    paymentCardDetails: Option[PaymentCardDetails],
+    numConsecutiveFailures: Option[Int] = None,
+    paymentMethodStatus: Option[String] = None,
 ) extends PaymentMethod
 
 case class PayPalMethod(
-  email : String,
-  numConsecutiveFailures: Option[Int] = None,
-  paymentMethodStatus: Option[String] = None
+    email: String,
+    numConsecutiveFailures: Option[Int] = None,
+    paymentMethodStatus: Option[String] = None,
 ) extends PaymentMethod
 
 case class GoCardless(
-  mandateId: String,
-  accountName: String,
-  accountNumber: String,
-  sortCode: String,
-  numConsecutiveFailures: Option[Int] = None,
-  paymentMethodStatus: Option[String] = None
+    mandateId: String,
+    accountName: String,
+    accountNumber: String,
+    sortCode: String,
+    numConsecutiveFailures: Option[Int] = None,
+    paymentMethodStatus: Option[String] = None,
 ) extends PaymentMethod
 
 case class Sepa(
-  mandateId: String,
-  accountName: String,
-  accountNumber: String,
-  numConsecutiveFailures: Option[Int] = None,
-  paymentMethodStatus: Option[String] = None
+    mandateId: String,
+    accountName: String,
+    accountNumber: String,
+    numConsecutiveFailures: Option[Int] = None,
+    paymentMethodStatus: Option[String] = None,
 ) extends PaymentMethod

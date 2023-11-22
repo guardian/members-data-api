@@ -32,27 +32,28 @@ object CommonReads {
     }
   }
 
-  /**
-    * play provides its own applicative instance in play.api.libs.functional.syntax
-    * where you use "and" instead of |@| but that is FAR TOO READABLE TO BE TRUSTED.
-    * more seriously you need an applicative instance to convert a List[JsResult[A]] to a JsResult[List[A]]
-    * and so we might as well be consistent and use it over play's attempts
+  /** play provides its own applicative instance in play.api.libs.functional.syntax where you use "and" instead of |@| but that is FAR TOO READABLE TO
+    * BE TRUSTED. more seriously you need an applicative instance to convert a List[JsResult[A]] to a JsResult[List[A]] and so we might as well be
+    * consistent and use it over play's attempts
     */
   implicit object JsResultApplicative extends Applicative[JsResult] {
     override def point[A](a: => A): JsResult[A] = JsSuccess(a)
 
     override def ap[A, B](fa: => JsResult[A])(f: => JsResult[(A) => B]): JsResult[B] = (fa, f) match {
       case (JsSuccess(a, _), JsSuccess(func, _)) => JsSuccess(func(a))
-      case (err1@JsError(_), err2@JsError(_)) => err1 ++ err2
-      case (err@JsError(_), _) => err
-      case (_, err@JsError(_)) => err
+      case (err1 @ JsError(_), err2 @ JsError(_)) => err1 ++ err2
+      case (err @ JsError(_), _) => err
+      case (_, err @ JsError(_)) => err
     }
   }
 
   implicit class FailureAggregatingOrElse[X](validationNel: ValidationNel[String, X]) {
     def orElse2[A >: X, Y <: A](fallback: ValidationNel[String, Y]): ValidationNel[String, A] = {
       validationNel match {
-        case Failure(firstFailures) => fallback.leftMap(moreFailures => NonEmptyList.fromSeq[String](firstFailures.head, firstFailures.tail.toList ++ moreFailures.list.toList)).map(identity[A])
+        case Failure(firstFailures) =>
+          fallback
+            .leftMap(moreFailures => NonEmptyList.fromSeq[String](firstFailures.head, firstFailures.tail.toList ++ moreFailures.list.toList))
+            .map(identity[A])
         case Success(_) => validationNel.map(identity[A])
       }
     }
@@ -65,14 +66,13 @@ object CommonReads {
       val normalisedPricingList = json.validate[List[String]] orElse json.validate[String].map(List(_))
 
       val parsedPrices = normalisedPricingList.flatMap { priceStrings =>
-        priceStrings.map(PriceParser.parse)
+        priceStrings
+          .map(PriceParser.parse)
           .sequence[Option, Price]
           .toJsSuccess(s"Failed to parse $normalisedPricingList")
       }
 
-      parsedPrices.map(priceList =>
-        priceList.map(p => p.currency -> p).toMap
-      ).map(PricingSummary(_))
+      parsedPrices.map(priceList => priceList.map(p => p.currency -> p).toMap).map(PricingSummary(_))
     }
   }
 

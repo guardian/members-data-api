@@ -17,7 +17,12 @@ object PromotionValidator {
 
   implicit object RenewalPromoValidator$ extends PromotionValidator[Renewal] {
 
-    private def validateEffectivePromotionType(promotion: AnyPromotion, prpId: ProductRatePlanId, country: Country, promotionType: PromotionType[Renewal]): PromoError \/ PromotionType[Renewal] = {
+    private def validateEffectivePromotionType(
+        promotion: AnyPromotion,
+        prpId: ProductRatePlanId,
+        country: Country,
+        promotionType: PromotionType[Renewal],
+    ): PromoError \/ PromotionType[Renewal] = {
       val errors = promotion.validateAll(Some(prpId), country)
       if (errors.exists(_ != InvalidProductRatePlan))
         \/.l[PromotionType[Renewal]](errors.head)
@@ -29,7 +34,9 @@ object PromotionValidator {
     def validate(promotion: AnyPromotion, prpId: ProductRatePlanId, country: Country) = {
       for {
         promoTypeForContext <- validateForContext(promotion.promotionType).withLogging("upgrade/renewal for context")
-        promoTypeForProductRatePlan <- validateEffectivePromotionType(promotion, prpId, country, promoTypeForContext).withLogging("effective promotion type")
+        promoTypeForProductRatePlan <- validateEffectivePromotionType(promotion, prpId, country, promoTypeForContext).withLogging(
+          "effective promotion type",
+        )
       } yield promoTypeForProductRatePlan
 
     }

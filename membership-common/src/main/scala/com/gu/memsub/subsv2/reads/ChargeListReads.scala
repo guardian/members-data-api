@@ -15,14 +15,13 @@ import scalaz.syntax.std.boolean._
 import scalaz.syntax.std.option._
 import scalaz.Validation.FlatMap._
 
-/**
-  * Try to convert a single ZuoraCharge into some type A
+/** Try to convert a single ZuoraCharge into some type A
   */
 trait ChargeReads[A] {
   def read(cat: PlanChargeMap, charge: ZuoraCharge): ValidationNel[String, A]
 
   // only read if the result is the given type
-  def filter[B <: A : ClassTag]: ChargeReads[B] = {
+  def filter[B <: A: ClassTag]: ChargeReads[B] = {
     val requiredClass = implicitly[ClassTag[B]].runtimeClass
     new ChargeReads[B] {
       override def read(cat: PlanChargeMap, charge: ZuoraCharge): ValidationNel[String, B] =
@@ -34,13 +33,11 @@ trait ChargeReads[A] {
   }
 }
 
-/**
-  * Try to convert a list of Zuora charges into some type A
+/** Try to convert a list of Zuora charges into some type A
   */
 trait ChargeListReads[A] {
   def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, A]
 }
-
 
 object ChargeListReads {
 
@@ -52,22 +49,23 @@ object ChargeListReads {
   }
 
   case class ProductIds(
-    weeklyZoneA: ProductId,
-    weeklyZoneB: ProductId,
-    weeklyZoneC: ProductId,
-    weeklyDomestic: ProductId,
-    weeklyRestOfWorld: ProductId,
-    friend: ProductId,
-    supporter: ProductId,
-    partner: ProductId,
-    patron: ProductId,
-    staff: ProductId,
-    digipack: ProductId,
-    supporterPlus: ProductId,
-    voucher: ProductId,
-    digitalVoucher: ProductId,
-    delivery: ProductId,
-    contributor: ProductId
+      weeklyZoneA: ProductId,
+      weeklyZoneB: ProductId,
+      weeklyZoneC: ProductId,
+      weeklyDomestic: ProductId,
+      weeklyRestOfWorld: ProductId,
+      friend: ProductId,
+      supporter: ProductId,
+      partner: ProductId,
+      patron: ProductId,
+      staff: ProductId,
+      digipack: ProductId,
+      supporterPlus: ProductId,
+      voucher: ProductId,
+      digitalVoucher: ProductId,
+      delivery: ProductId,
+      nationalDelivery: ProductId,
+      contributor: ProductId,
   )
 
   // shorthand syntax for creating new ChargeListReads
@@ -75,24 +73,26 @@ object ChargeListReads {
     override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, A] = f(cat, charges)
   }
 
-  implicit def readAnyProduct[P <: Benefit : ClassTag]: ChargeReads[P] = new ChargeReads[Benefit] {
+  implicit def readAnyProduct[P <: Benefit: ClassTag]: ChargeReads[P] = new ChargeReads[Benefit] {
     def read(cat: PlanChargeMap, charge: ZuoraCharge): ValidationNel[String, Benefit] =
-      cat.get(charge.productRatePlanChargeId).toSuccess(NonEmptyList(s"Could not find product ${charge.name} ${charge.productRatePlanChargeId} in catalog"))
+      cat
+        .get(charge.productRatePlanChargeId)
+        .toSuccess(NonEmptyList(s"Could not find product ${charge.name} ${charge.productRatePlanChargeId} in catalog"))
   }.filter[P]
 
-  implicit def anyBpReads[B <: BillingPeriod : ClassTag]: ChargeReads[B] = new ChargeReads[BillingPeriod] {
+  implicit def anyBpReads[B <: BillingPeriod: ClassTag]: ChargeReads[B] = new ChargeReads[BillingPeriod] {
 
     def read(cat: PlanChargeMap, charge: ZuoraCharge): ValidationNel[String, BillingPeriod] = {
 
       ((charge.endDateCondition, charge.billingPeriod) match {
         case (FixedPeriod, Some(ZSpecificWeeks))
-          if charge.specificBillingPeriod.exists(numberOfWeeks => numberOfWeeks == 6 || numberOfWeeks == 7) &&
-            charge.upToPeriods.contains(1) &&
-            charge.upToPeriodsType.contains(BillingPeriods) =>
+            if charge.specificBillingPeriod.exists(numberOfWeeks => numberOfWeeks == 6 || numberOfWeeks == 7) &&
+              charge.upToPeriods.contains(1) &&
+              charge.upToPeriodsType.contains(BillingPeriods) =>
           Validation.success[String, BillingPeriod](SixWeeks)
         case (FixedPeriod, Some(zPeriod))
-          if charge.upToPeriods.contains(1) &&
-            charge.upToPeriodsType.contains(BillingPeriods) =>
+            if charge.upToPeriods.contains(1) &&
+              charge.upToPeriodsType.contains(BillingPeriods) =>
           zPeriod match {
             case ZYear => Validation.success[String, BillingPeriod](OneYear)
             case ZQuarter => Validation.success[String, BillingPeriod](ThreeMonths)
@@ -111,18 +111,23 @@ object ChargeListReads {
           }
         case (OneTime, None) => Validation.success[String, BillingPeriod](OneTimeChargeBillingPeriod) // This represents a one time rate plan charge
         case _ =>
-          Validation.f[BillingPeriod](s"period =${charge.billingPeriod} specificBillingPeriod=${charge.specificBillingPeriod} uptoPeriodsType=${charge.upToPeriodsType}, uptoPeriods=${charge.upToPeriods}")
+          Validation.f[BillingPeriod](
+            s"period =${charge.billingPeriod} specificBillingPeriod=${charge.specificBillingPeriod} uptoPeriodsType=${charge.upToPeriodsType}, uptoPeriods=${charge.upToPeriods}",
+          )
       }).toValidationNel.withTrace("anyBpReads")
-
 
     }
   }.filter[B]
 
-  implicit def readPaidCharge[P <: Benefit, BP <: BillingPeriod](implicit product: ChargeReads[P], bp: ChargeReads[BP]): ChargeListReads[PaidCharge[P, BP]] = new ChargeListReads[PaidCharge[P, BP]] {
+  implicit def readPaidCharge[P <: Benefit, BP <: BillingPeriod](implicit
+      product: ChargeReads[P],
+      bp: ChargeReads[BP],
+  ): ChargeListReads[PaidCharge[P, BP]] = new ChargeListReads[PaidCharge[P, BP]] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidCharge[P, BP]] = charges match {
-      case charge :: Nil => (product.read(cat, charge) |@| bp.read(cat, charge) |@|
-        charge.pricing.prices.exists(_.amount != 0).option(charge.pricing).toSuccess(NonEmptyList("Could not read paid charge: Charge is free")))
-        .apply({ case(p, b, pricing) => PaidCharge(p, b, pricing, charge.productRatePlanChargeId, charge.id) })
+      case charge :: Nil =>
+        (product.read(cat, charge) |@| bp.read(cat, charge) |@|
+          charge.pricing.prices.exists(_.amount != 0).option(charge.pricing).toSuccess(NonEmptyList("Could not read paid charge: Charge is free")))
+          .apply({ case (p, b, pricing) => PaidCharge(p, b, pricing, charge.productRatePlanChargeId, charge.id) })
       case charge :: others => Validation.failureNel(s"Too many charges! I got $charge and $others")
       case Nil => Validation.failureNel(s"No charges found!")
     }
@@ -130,8 +135,11 @@ object ChargeListReads {
 
   implicit def readFreeCharge[P <: Benefit](implicit product: ChargeReads[P]): ChargeListReads[FreeCharge[P]] = new ChargeListReads[FreeCharge[P]] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, FreeCharge[P]] = charges match {
-      case charge :: Nil => (product.read(cat, charge) |@| charge.pricing.prices.forall(_.amount == 0).option(charge.pricing)
-        .toSuccess(NonEmptyList("Could not read free charge: Charge is paid"))).apply({ case (p, _) => FreeCharge(p, charge.pricing.currencies) })
+      case charge :: Nil =>
+        (product.read(cat, charge) |@| charge.pricing.prices
+          .forall(_.amount == 0)
+          .option(charge.pricing)
+          .toSuccess(NonEmptyList("Could not read free charge: Charge is paid"))).apply({ case (p, _) => FreeCharge(p, charge.pricing.currencies) })
       case charge :: others => Validation.failureNel(s"Too many charges! I got $charge and $others")
       case Nil => Validation.failureNel(s"No charges found!")
     }
@@ -140,7 +148,8 @@ object ChargeListReads {
   implicit def readPaidChargeList: ChargeListReads[PaidChargeList] = new ChargeListReads[PaidChargeList] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidChargeList] = {
       readPaperChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
-       readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges)
+        readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges) orElse2
+        readSupporterPlusV2ChargeList.read(cat, charges)
     }.withTrace("readPaidChargeList")
   }
 
@@ -153,7 +162,7 @@ object ChargeListReads {
   implicit def readChargeList: ChargeListReads[ChargeList] = new ChargeListReads[ChargeList] {
     override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]) = {
       readPaidChargeList.read(cat, charges) orElse2
-      readFreeChargeList.read(cat, charges)
+        readFreeChargeList.read(cat, charges)
     }.withTrace("readChargeList")
   }
 
@@ -167,8 +176,9 @@ object ChargeListReads {
       }
 
     def getDays(chargeMap: List[(Benefit, PricingSummary)]): ValidationNel[String, Map[PaperDay, PricingSummary]] = {
-     val foundDays = chargeMap.collect({ case(d: PaperDay, p) => (d, p) })
-      Validation.success(foundDays.toMap)
+      val foundDays = chargeMap.collect({ case (d: PaperDay, p) => (d, p) })
+      Validation
+        .success(foundDays.toMap)
         .ensure("There are duplicate days".wrapNel)(_.size == foundDays.size)
         .ensure("No days found".wrapNel)(_.nonEmpty)
     }
@@ -179,11 +189,40 @@ object ChargeListReads {
     }
   }
 
-  implicit def readSingle[B <: Benefit : ChargeReads]: ChargeListReads[ChargeList with SingleBenefit[B]] =
-    new ChargeListReads[ChargeList with SingleBenefit[B]] {
-    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList with SingleBenefit[B]] = {
-      readPaidCharge[B, BillingPeriod].read(cat, charges).map(identity[ChargeList with SingleBenefit[B]]) orElse2
-      readFreeCharge[B].read(cat, charges)
-    }.withTrace("readSingle")
+  implicit def readSupporterPlusV2ChargeList: ChargeListReads[SupporterPlusCharges] = new ChargeListReads[SupporterPlusCharges] {
+
+    def validateBillingPeriod(zBillingPeriod: ZBillingPeriod): ValidationNel[String, BillingPeriod] = zBillingPeriod match {
+      case ZMonth => Validation.success[NonEmptyList[String], BillingPeriod](Month)
+      case ZYear => Validation.success[NonEmptyList[String], BillingPeriod](Year)
+      case _ => Validation.failureNel(s"Supporter plus V2 must have a Monthly or Annual billing period, not $zBillingPeriod")
+    }
+
+    def getBillingPeriod(charges: List[ZuoraCharge]): ValidationNel[String, BillingPeriod] = {
+      val billingPeriods = charges.flatMap(_.billingPeriod).distinct
+      billingPeriods match {
+        case Nil => Validation.failureNel("No billing period found")
+        case b :: Nil => validateBillingPeriod(b)
+        case _ => Validation.failureNel("Too many billing periods found")
+      }
+    }
+
+    def getPricingSummaries(charges: List[ZuoraCharge]): ValidationNel[String, List[PricingSummary]] = {
+      val pricingSummaries = charges.map(_.pricing)
+      Validation
+        .success[NonEmptyList[String], List[PricingSummary]](pricingSummaries)
+        .ensure("No pricing summaries found".wrapNel)(_.nonEmpty)
+    }
+
+    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SupporterPlusCharges] = {
+      (getBillingPeriod(charges) |@| getPricingSummaries(charges)).apply(SupporterPlusCharges)
+    }
   }
+
+  implicit def readSingle[B <: Benefit: ChargeReads]: ChargeListReads[ChargeList with SingleBenefit[B]] =
+    new ChargeListReads[ChargeList with SingleBenefit[B]] {
+      def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList with SingleBenefit[B]] = {
+        readPaidCharge[B, BillingPeriod].read(cat, charges).map(identity[ChargeList with SingleBenefit[B]]) orElse2
+          readFreeCharge[B].read(cat, charges)
+      }.withTrace("readSingle")
+    }
 }

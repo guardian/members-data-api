@@ -15,16 +15,13 @@ object Readers {
   }
 
   implicit val amendmentReader = readers.Query("Amendment", Seq("Id", "Type", "ContractEffectiveDate", "SubscriptionId")) { result =>
-    Amendment(
-      result("Id"),
-      result("Type"),
-      new LocalDate(result("ContractEffectiveDate")),
-      result("SubscriptionId"))
+    Amendment(result("Id"), result("Type"), new LocalDate(result("ContractEffectiveDate")), result("SubscriptionId"))
   }
 
-  implicit val invoiceItemReader = readers.Query("InvoiceItem",
-    Seq("Id", "ChargeAmount", "TaxAmount", "ServiceStartDate", "ServiceEndDate", "ChargeNumber", "ProductName", "SubscriptionId")) { result =>
-
+  implicit val invoiceItemReader = readers.Query(
+    "InvoiceItem",
+    Seq("Id", "ChargeAmount", "TaxAmount", "ServiceStartDate", "ServiceEndDate", "ChargeNumber", "ProductName", "SubscriptionId"),
+  ) { result =>
     InvoiceItem(
       result("Id"),
       result("ChargeAmount").toFloat + result("TaxAmount").toFloat,
@@ -32,13 +29,14 @@ object Readers {
       new LocalDate(result("ServiceEndDate")),
       result("ChargeNumber"),
       result("ProductName"),
-      result("SubscriptionId"))
+      result("SubscriptionId"),
+    )
   }
 
   implicit val authenticationReader = readers.Reader("loginResponse") { result =>
     Right(Authentication((result \ "Session").text, (result \ "ServerUrl").text))
   }
-  
+
   implicit val createResultReader = readers.Result("createResponse") { result =>
     CreateResult((result \ "Id").text)
   }
@@ -47,7 +45,7 @@ object Readers {
     SubscribeResult(
       subscriptionId = (result \ "SubscriptionId").text,
       subscriptionName = (result \ "SubscriptionNumber").text,
-      accountId = (result \ "AccountId").text
+      accountId = (result \ "AccountId").text,
     )
   }
 
@@ -60,7 +58,7 @@ object Readers {
         (node \ "ProductId").text,
         (node \ "ProductRatePlanChargeId").text,
         (node \ "ChargeName").text,
-        (node \ "UnitPrice").text.toFloat
+        (node \ "UnitPrice").text.toFloat,
       )
     }
     AmendResult((result \ "AmendmentIds").map(_.text), invoiceItems)
@@ -69,7 +67,7 @@ object Readers {
   implicit val queryResultReader = readers.Reader("queryResponse") { result =>
     if ((result \ "done").text == "true") {
       val records =
-      // Zuora still returns a records node even if there were no results
+        // Zuora still returns a records node even if there were no results
         if ((result \ "size").text.toInt == 0) {
           Nil
         } else {
@@ -89,24 +87,27 @@ object Readers {
     UpdateResult(id)
   }
 
-  implicit val paymentMethodReader = readers.Query("PaymentMethod", Seq(
-    "Id",
-    "Type",
-    "NumConsecutiveFailures",
-    "PaymentMethodStatus",
-    "MandateID",
-    "TokenId",
-    "SecondTokenId",
-    "PaypalEmail",
-    "BankTransferType",
-    "BankTransferAccountName",
-    "BankTransferAccountNumberMask",
-    "BankCode",
-    "CreditCardMaskNumber",
-    "CreditCardExpirationMonth",
-    "CreditCardExpirationYear",
-    "CreditCardType"
-  )) { result =>
+  implicit val paymentMethodReader = readers.Query(
+    "PaymentMethod",
+    Seq(
+      "Id",
+      "Type",
+      "NumConsecutiveFailures",
+      "PaymentMethodStatus",
+      "MandateID",
+      "TokenId",
+      "SecondTokenId",
+      "PaypalEmail",
+      "BankTransferType",
+      "BankTransferAccountName",
+      "BankTransferAccountNumberMask",
+      "BankCode",
+      "CreditCardMaskNumber",
+      "CreditCardExpirationMonth",
+      "CreditCardExpirationYear",
+      "CreditCardType",
+    ),
+  ) { result =>
     PaymentMethod(
       id = result("Id"),
       `type` = result("Type"),
@@ -123,50 +124,52 @@ object Readers {
       creditCardNumber = result.get("CreditCardMaskNumber").map(_ takeRight 4),
       creditCardExpirationMonth = result.get("CreditCardExpirationMonth"),
       creditCardExpirationYear = result.get("CreditCardExpirationYear"),
-      creditCardType = result.get("CreditCardType")
+      creditCardType = result.get("CreditCardType"),
     )
   }
 
   implicit val productReader = readers.Query("Product", Seq("Id", "Name")) { result =>
-    Product(
-      id = result("Id"),
-      name = result("Name"))
+    Product(id = result("Id"), name = result("Name"))
   }
 
   implicit val ratePlanReader = readers.Query("RatePlan", Seq("Id", "Name", "ProductRatePlanId")) { result =>
-    RatePlan(
-      id = result("Id"),
-      name = result("Name"),
-      productRatePlanId = result("ProductRatePlanId"))
+    RatePlan(id = result("Id"), name = result("Name"), productRatePlanId = result("ProductRatePlanId"))
   }
 
-  implicit val productRatePlanReader = readers.Query("ProductRatePlan",
-    Seq("Id", "Name", "ProductId", "EffectiveStartDate", "EffectiveEndDate")) { result =>
-    ProductRatePlan(
-      id = result("Id"),
-      name = result("Name"),
-      productId = result("ProductId"),
-      effectiveStartDate = new LocalDate(result("EffectiveStartDate")),
-      effectiveEndDate = new LocalDate(result("EffectiveEndDate")))
+  implicit val productRatePlanReader = readers.Query("ProductRatePlan", Seq("Id", "Name", "ProductId", "EffectiveStartDate", "EffectiveEndDate")) {
+    result =>
+      ProductRatePlan(
+        id = result("Id"),
+        name = result("Name"),
+        productId = result("ProductId"),
+        effectiveStartDate = new LocalDate(result("EffectiveStartDate")),
+        effectiveEndDate = new LocalDate(result("EffectiveEndDate")),
+      )
   }
 
-  implicit val productRatePlanChargeReader = readers.Query("ProductRatePlanCharge",
-    Seq("Id", "Name", "ProductRatePlanId", "BillingPeriod")) { result =>
-    ProductRatePlanCharge(
-      id = result("Id"),
-      name = result("Name"),
-      productRatePlanId = result("ProductRatePlanId"),
-      billingPeriod = result("BillingPeriod"))
+  implicit val productRatePlanChargeReader = readers.Query("ProductRatePlanCharge", Seq("Id", "Name", "ProductRatePlanId", "BillingPeriod")) {
+    result =>
+      ProductRatePlanCharge(
+        id = result("Id"),
+        name = result("Name"),
+        productRatePlanId = result("ProductRatePlanId"),
+        billingPeriod = result("BillingPeriod"),
+      )
   }
 
-  implicit val productRatePlanChargeTierReader = readers.Query("ProductRatePlanChargeTier", Seq("Currency", "Price", "ProductRatePlanChargeId")) { result =>
-    ProductRatePlanChargeTier(
-      currency = result("Currency"),
-      price = result("Price").toFloat,
-      productRatePlanChargeId = result("ProductRatePlanChargeId"))
+  implicit val productRatePlanChargeTierReader = readers.Query("ProductRatePlanChargeTier", Seq("Currency", "Price", "ProductRatePlanChargeId")) {
+    result =>
+      ProductRatePlanChargeTier(
+        currency = result("Currency"),
+        price = result("Price").toFloat,
+        productRatePlanChargeId = result("ProductRatePlanChargeId"),
+      )
   }
 
-  implicit val accountReader = readers.Query("Account", Seq("Id", "BillToId", "SoldToId", "BillCycleDay", "CreditBalance", "Currency", "DefaultPaymentMethodId", "sfContactId__c", "PaymentGateway")) { result =>
+  implicit val accountReader = readers.Query(
+    "Account",
+    Seq("Id", "BillToId", "SoldToId", "BillCycleDay", "CreditBalance", "Currency", "DefaultPaymentMethodId", "sfContactId__c", "PaymentGateway"),
+  ) { result =>
     Account(
       id = result("Id"),
       billToId = result("BillToId"),
@@ -176,7 +179,7 @@ object Readers {
       currency = Currency.fromString(result("Currency")),
       defaultPaymentMethodId = result.get("DefaultPaymentMethodId"),
       sfContactId = result.get("sfContactId__c"),
-      paymentGateway = result.get("PaymentGateway").flatMap(PaymentGateway.getByName)
+      paymentGateway = result.get("PaymentGateway").flatMap(PaymentGateway.getByName),
     )
   }
 
@@ -187,13 +190,22 @@ object Readers {
       lastName = result("LastName"),
       postalCode = result.get("PostalCode"),
       country = result.get("Country").flatMap(ZuoraLookup.country),
-      email = result.get("WorkEmail")
+      email = result.get("WorkEmail"),
     )
   }
 
-  implicit val ratePlanChargeReader = readers.Query("RatePlanCharge", Seq(
-    "Id", "ChargedThroughDate", "EffectiveStartDate", "BillingPeriod", "ChargeModel", "ChargeType", "Price"
-  )) { result =>
+  implicit val ratePlanChargeReader = readers.Query(
+    "RatePlanCharge",
+    Seq(
+      "Id",
+      "ChargedThroughDate",
+      "EffectiveStartDate",
+      "BillingPeriod",
+      "ChargeModel",
+      "ChargeType",
+      "Price",
+    ),
+  ) { result =>
     RatePlanCharge(
       id = result("Id"),
       chargedThroughDate = result.get("ChargedThroughDate").map(new LocalDate(_)),
@@ -201,11 +213,14 @@ object Readers {
       billingPeriod = result.get("BillingPeriod"),
       chargeModel = result.get("ChargeModel"),
       chargeType = result.get("ChargeType"),
-      price = result("Price").toFloat)
+      price = result("Price").toFloat,
+    )
   }
 
-  implicit val subscriptionReader = readers.Query("Subscription",
-    Seq("Id", "Name", "AccountId", "Version", "TermStartDate", "TermEndDate", "ContractAcceptanceDate", "ActivationDate__c")) { result =>
+  implicit val subscriptionReader = readers.Query(
+    "Subscription",
+    Seq("Id", "Name", "AccountId", "Version", "TermStartDate", "TermEndDate", "ContractAcceptanceDate", "ActivationDate__c"),
+  ) { result =>
     Subscription(
       id = result("Id"),
       name = result("Name"),
@@ -214,7 +229,7 @@ object Readers {
       termStartDate = new LocalDate(result("TermStartDate")),
       termEndDate = new LocalDate(result("TermEndDate")),
       contractAcceptanceDate = new LocalDate(result("ContractAcceptanceDate")),
-      activationDate = result.get("ActivationDate__c").map(d => new DateTime(d).toLocalDate)
+      activationDate = result.get("ActivationDate__c").map(d => new DateTime(d).toLocalDate),
     )
   }
 

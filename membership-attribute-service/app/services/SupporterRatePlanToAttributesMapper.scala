@@ -113,6 +113,10 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0fd560d13880156136b72e50f0c",
       "2c92a0ff56fe33f001572334561765c1",
       "2c92a0fd596d321a0159735a7b150e43",
+      // National Delivery
+      "8a12999f8a268c57018a27ebfd721883", // Sixday
+      "8a12999f8a268c57018a27ebe868150c", // Weekend
+      "8a12999f8a268c57018a27ebe31414a4", // Everyday
     ) -> paperTransformer,
     List(
       "2c92a00870ec598001710740ce702ff0",
@@ -230,6 +234,10 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f955c3cf0f0155c5d9df433bf7",
       "2c92c0f955c3cf0f0155c5d9ddf13bc5",
       "2c92c0f955c3cf0f0155c5d9e2493c43",
+      // National Delivery
+      "8ad096ca8992481d018992a363bd17ad", // Everyday
+      "8ad096ca8992481d018992a36256175e", // Weekend
+      "8ad096ca8992481d018992a35f60171b", // Sixday
     ) -> paperTransformer,
     List(
       "2c92c0f86fa49142016fa49eb1732a39",

@@ -1,7 +1,7 @@
 {
   "attributes":{
     "type":"Contact",
-    "url":"/services/data/v29.0/sobjects/Contact/00XXXURL"
+    "url":"/services/data/v57.0/sobjects/Contact/00XXXURL"
   },
   "Id":"00XXXId",
   "IsDeleted":false,

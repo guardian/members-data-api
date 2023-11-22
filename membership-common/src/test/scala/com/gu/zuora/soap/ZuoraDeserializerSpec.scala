@@ -8,7 +8,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 class ZuoraDeserializerSpec extends AnyFreeSpec with Matchers {
   "An Update can be deserialized" - {
-    "into a valid UpdateResult"in {
+    "into a valid UpdateResult" in {
       val validResponse =
         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
           <soapenv:Body>
@@ -25,7 +25,7 @@ class ZuoraDeserializerSpec extends AnyFreeSpec with Matchers {
     }
 
     "into a Failure" in {
-      val invalidResponse=
+      val invalidResponse =
         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
           <soapenv:Body>
             <ns1:updateResponse xmlns:ns1="http://api.zuora.com/">
@@ -40,10 +40,7 @@ class ZuoraDeserializerSpec extends AnyFreeSpec with Matchers {
           </soapenv:Body>
         </soapenv:Envelope>
 
-      val error = ZuoraPartialError(
-        "INVALID_VALUE",
-        "The length of field value is too big.",
-        InvalidValue)
+      val error = ZuoraPartialError("INVALID_VALUE", "The length of field value is too big.", InvalidValue)
 
       updateResultReader.read(invalidResponse.toString()) should be(Left(error))
     }

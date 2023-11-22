@@ -69,7 +69,8 @@ case class PaymentGatewayError(
     val msg: String,
     gatewayResponse: String,
     gatewayResponseCode: String,
-    errType: PaymentGatewayErrorType = UnknownPaymentError) extends ZuoraError {
+    errType: PaymentGatewayErrorType = UnknownPaymentError,
+) extends ZuoraError {
   override val code = errorCode
   override val message = msg
 }
@@ -89,7 +90,7 @@ object ErrorHandler {
     val code = (result \ "Errors" \ "Code").head.text
     val message = (result \ "Errors" \ "Message").head.text
 
-    val `type` =  message match {
+    val `type` = message match {
       case "Transaction declined.insufficient_funds - Your card has insufficient funds." => InsufficientFunds
       case "Transaction declined.fraudulent - Your card was declined." => Fraudulent
       case "Transaction declined.transaction_not_allo - Your card does not support this type of purchase." => TransactionNotAllowed
@@ -99,22 +100,17 @@ object ErrorHandler {
       case _ => UnknownPaymentError
     }
 
-    PaymentGatewayError(
-      code,
-      message,
-      (result \ "GatewayResponse").head.text,
-      (result \ "GatewayResponseCode").head.text,
-      `type`)
+    PaymentGatewayError(code, message, (result \ "GatewayResponse").head.text, (result \ "GatewayResponseCode").head.text, `type`)
   }
 
   private def handleZuoraFaults(result: Node) =
     ZuoraFault((result \ "faultcode").text, (result \ "faultstring").text)
 
-  private  def handleZuoraPartialErrors(result: Node) = {
+  private def handleZuoraPartialErrors(result: Node) = {
     val code = (result \ "Errors" \ "Code").head.text
     val message = (result \ "Errors" \ "Message").head.text
 
-    val `type` =  code match {
+    val `type` = code match {
       case "API_DISABLED" => ApiDisabled
       case "CANNOT_DELETE" => CannotDelete
       case "CREDIT_CARD_PROCESSING_FAILURE" => CreditCardProcessingFailure

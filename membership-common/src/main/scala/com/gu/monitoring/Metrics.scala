@@ -8,7 +8,6 @@ trait ApplicationMetrics extends CloudWatch {
   val stage: String
 }
 
-
 trait StatusMetrics extends CloudWatch {
   def putResponseCode(status: Int, responseMethod: String) {
     val statusClass = status / 100

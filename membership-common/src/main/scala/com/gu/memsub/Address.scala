@@ -3,8 +3,7 @@ package com.gu.memsub
 import com.gu.i18n.Country._
 import com.gu.i18n.CountryGroup
 
-case class Address(lineOne: String, lineTwo: String, town: String, countyOrState: String,
-                   postCode: String, countryName: String) {
+case class Address(lineOne: String, lineTwo: String, town: String, countyOrState: String, postCode: String, countryName: String) {
   // Salesforce only has one address line field, so merge our two together
   val line = Seq(lineOne, lineTwo).filter(_.nonEmpty).mkString(", ")
 
