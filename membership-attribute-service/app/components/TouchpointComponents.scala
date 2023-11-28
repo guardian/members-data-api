@@ -14,7 +14,6 @@ import com.gu.zuora.soap.ClientWithFeatureSupplier
 import com.typesafe.config.Config
 import configuration.OptionalConfig._
 import configuration.Stage
-import models.{UserFromToken, UserFromTokenParser}
 import monitoring.{CreateMetrics, CreateNoopMetrics}
 import org.apache.pekko.actor.ActorSystem
 import org.http4s.Uri
@@ -26,12 +25,7 @@ import services.subscription.{CancelSubscription, SubscriptionService, Subscript
 import services.zuora.payment.{SetPaymentCard, ZuoraPaymentService}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
-import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
-  EnvironmentVariableCredentialsProvider,
-  InstanceProfileCredentialsProvider,
-  ProfileCredentialsProvider,
-}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 import utils.SanitizedLogging
@@ -168,14 +162,13 @@ class TouchpointComponents(
     audience = Some(OktaAudience(conf.getString("okta.verifier.audience"))),
     clientId = None,
   )
-  lazy val identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims] = {
+  lazy val identityPlayAuthService: IdentityPlayAuthService = {
     val apiConfig = backendConfig.idapi
     val idApiUrl = Uri.unsafeFromString(apiConfig.url)
     val idapiConfig = IdapiAuthConfig(idApiUrl, apiConfig.token, Some("membership"))
     IdentityPlayAuthService.unsafeInit(
       idapiConfig,
       tokenVerifierConfig,
-      accessClaimsParser = UserFromTokenParser,
     )
   }
   lazy val identityAuthService = new services.IdentityAuthService(identityPlayAuthService)

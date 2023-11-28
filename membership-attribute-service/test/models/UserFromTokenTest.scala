@@ -32,7 +32,7 @@ class UserFromTokenTest extends Specification {
     "parse claims with emailvalidated" in {
       val unparsedClaims = UnparsedClaims(rawClaims)
 
-      val Right(actual) = UserFromTokenParser.fromUnparsed(unparsedClaims)
+      val Right(actual) = UserFromToken.accessClaimsParser.parse(unparsedClaims)
 
       actual shouldEqual parsedClaims
     }
@@ -40,7 +40,7 @@ class UserFromTokenTest extends Specification {
       val onlyRequiredRawClaims = rawClaims.removedAll(List("identity_username", "email_validated"))
       val onlyRequiredUnparsed = UnparsedClaims(onlyRequiredRawClaims)
 
-      val Right(actual) = UserFromTokenParser.fromUnparsed(onlyRequiredUnparsed)
+      val Right(actual) = UserFromToken.accessClaimsParser.parse(onlyRequiredUnparsed)
 
       val onlyRequiredAccessClaims = parsedClaims.copy(username = None, userEmailValidated = None)
       actual shouldEqual onlyRequiredAccessClaims
@@ -48,7 +48,7 @@ class UserFromTokenTest extends Specification {
 
     def assertErrorReturnedOnMissingRequiredClaim(requiredClaimName: String) = {
       val missingRequiredUnparsedClaims = UnparsedClaims(rawClaims.removed(requiredClaimName))
-      UserFromTokenParser.fromUnparsed(missingRequiredUnparsedClaims) shouldEqual Left(MissingRequiredClaim(requiredClaimName))
+      UserFromToken.accessClaimsParser.parse(missingRequiredUnparsedClaims) shouldEqual Left(MissingRequiredClaim(requiredClaimName))
     }
 
     "return error if missing identity id " in {
@@ -71,7 +71,7 @@ class UserFromTokenTest extends Specification {
         ),
       )
 
-      UserFromTokenParser.fromUser(testUser) shouldEqual parsedClaims.copy(authTime = None)
+      UserFromToken.userParser.parse(testUser) shouldEqual parsedClaims.copy(authTime = None)
 
     }
   }
