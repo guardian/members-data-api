@@ -7,12 +7,12 @@ import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.typesafe.scalalogging.StrictLogging
-import models.{ApiError, ApiErrors, UserFromToken, UserFromTokenParser}
+import models.{ApiError, ApiErrors, UserFromToken}
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService[UserFromToken, DefaultIdentityClaims])(implicit ec: ExecutionContext)
+class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(implicit ec: ExecutionContext)
     extends AuthenticationService
     with StrictLogging {
 
@@ -61,7 +61,7 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService[UserF
     */
   def userAndCredentials(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Either[ApiError, UserAndCredentials]] =
     identityPlayAuthService
-      .validateCredentialsFromRequest(requestHeader, requiredScopes, UserFromTokenParser)
+      .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
       .attempt
       .flatMap {
         // Request has Okta token but it's invalid
