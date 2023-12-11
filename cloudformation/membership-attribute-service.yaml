@@ -226,7 +226,7 @@ Resources:
       - Ref: SecurityGroupForPostgres
       InstanceType:
         Ref: InstanceType
-      AssociatePublicIpAddress: 'True'
+      AssociatePublicIpAddress: 'False'
       IamInstanceProfile:
         Ref: InstanceProfile
       UserData:
