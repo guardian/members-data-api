@@ -8,7 +8,6 @@ import models.{ApiError, UserFromToken}
 import play.api.mvc.{ActionRefiner, Request, Result, Results}
 import services.UserAndCredentials
 
-import java.time.{Clock, Duration, ZonedDateTime}
 import scala.concurrent.{ExecutionContext, Future}
 
 class AuthAndBackendViaIdapiAction(
@@ -16,13 +15,9 @@ class AuthAndBackendViaIdapiAction(
     howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
     isTestUser: IsTestUser,
     requiredScopes: List[AccessScope],
-    clock: Clock = Clock.systemUTC(),
 )(implicit
     ex: ExecutionContext,
 ) extends ActionRefiner[Request, AuthAndBackendRequest] {
-
-  // Maximum time that a user can be signed in to have access to requested action
-  private val signedInThreshold = Duration.ofMinutes(30)
 
   override protected val executionContext: ExecutionContext = ex
 
@@ -30,7 +25,7 @@ class AuthAndBackendViaIdapiAction(
     val userAndCredentials = touchpointBackends.normal.identityAuthService.userAndCredentials(request, requiredScopes)
     userAndCredentials flatMap {
       case Left(error) => Future.successful(Left(ApiError.apiErrorToResult(error)))
-      case Right(UserAndCredentials(user, _: OktaUserCredentials)) => oktaRefine(request, user)
+      case Right(UserAndCredentials(user, _: OktaUserCredentials)) => Future.successful(Right(oktaRefine(request, user)))
       case Right(UserAndCredentials(_, _: IdapiUserCredentials)) => idapiRefine(request)
     }
   }
@@ -42,30 +37,19 @@ class AuthAndBackendViaIdapiAction(
       touchpointBackends.normal
     }
 
-  private def oktaRefine[A](request: Request[A], user: UserFromToken): Future[Either[Result, AuthAndBackendRequest[A]]] = {
-    val signedInRecently = {
-      val now = ZonedDateTime.now(clock)
-      user.authTime.exists(_.isAfter(now.minus(signedInThreshold)))
-    }
-    Future.successful(if (signedInRecently || howToHandleRecencyOfSignedIn != Return401IfNotSignedInRecently) {
-      Right(
-        new AuthAndBackendRequest(
-          redirectAdvice = RedirectAdviceResponse(
-            signInStatus = SignedInRecently,
-            userId = Some(user.identityId),
-            displayName = user.username,
-            emailValidated = user.userEmailValidated,
-            // Okta reauthentication redirect will be managed by the API client
-            redirect = None,
-          ),
-          touchpoint = backend(user.username),
-          request,
-        ),
-      )
-    } else {
-      Left(Results.Unauthorized)
-    })
-  }
+  private def oktaRefine[A](request: Request[A], user: UserFromToken): AuthAndBackendRequest[A] =
+    new AuthAndBackendRequest(
+      redirectAdvice = RedirectAdviceResponse(
+        signInStatus = SignedInRecently,
+        userId = Some(user.identityId),
+        displayName = user.username,
+        emailValidated = user.userEmailValidated,
+        // Okta reauthentication redirect will be managed by the API client
+        redirect = None,
+      ),
+      touchpoint = backend(user.username),
+      request,
+    )
 
   private def idapiRefine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] =
     touchpointBackends.normal.idapiService.RedirectAdvice
