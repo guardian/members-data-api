@@ -36,9 +36,9 @@ class SelfServiceCancellationTest extends Specification {
       }.toList
     }
 
-    "disallow cancellation for all products except Membership, Contribution and Supporter PLus in the UK" in {
+    "disallow cancellation for all products except Membership, Contribution, Digipack and Supporter Plus in the UK" in {
       allProducts
-        .diff(Set(Membership, Contribution, SupporterPlus))
+        .diff(Set(Membership, Contribution, SupporterPlus, Digipack))
         .map { product =>
           SelfServiceCancellation(product, Some(UK)).isAllowed shouldEqual false
         }

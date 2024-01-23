@@ -23,7 +23,7 @@ object SelfServiceCancellation {
 
   def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = {
 
-    if (isOneOf(product, Membership, Contribution, SupporterPlus)) {
+    if (isOneOf(product, Membership, Contribution, SupporterPlus, Digipack)) {
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
