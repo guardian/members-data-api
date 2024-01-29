@@ -89,7 +89,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
       expectedAlertText.map { someText => shouldShowAlert.option(someText).flatten }
     }
   }
-  val alertableProducts = List(Product.Membership, Product.Contribution, Product.Digipack)
+  val alertableProducts = List(Product.Membership, Product.Digipack)
 
   def alertAvailableFor(
       account: AccountObject,
