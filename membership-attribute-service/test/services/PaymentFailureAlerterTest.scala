@@ -71,7 +71,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
         result must beSome(expectedActionText).await
       }
 
-      "return a message for a supporter plus recurring contributor who is in payment failure" in {
+      "return a message for a supporter plus who is in payment failure" in {
         val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, supporterPlus, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)

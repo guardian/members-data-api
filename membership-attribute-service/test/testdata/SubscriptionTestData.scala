@@ -193,5 +193,5 @@ trait SubscriptionTestData {
   val expiredMembership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate - 2.year, referenceDate - 1.year)))
   val friend = toSubscription(false)(NonEmptyList(friendPlan))
   val contributor = toSubscription(false)(NonEmptyList(contributorPlan(referenceDate, referenceDate + 1.month)))
-  val supporterPlus = toSubscription(isCancelled = false)(NonEmptyList(supporterPlusPlan(referenceDate, referenceDate + 1.month)))
+  val supporterPlus = toSubscription(false)(NonEmptyList(supporterPlusPlan(referenceDate, referenceDate + 1.month)))
 }
