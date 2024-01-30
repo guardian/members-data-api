@@ -72,11 +72,23 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
       }
 
       "return a message for a supporter plus who is in payment failure" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, supporterPlus, paymentMethodResponseRecentFailure)
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, supporterPlus, paymentMethodResponseRecentFailure)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
         val expectedActionText = s"Our attempt to take payment for your Supporter Plus failed on ${attemptDateTime.toString(formatter)}."
+
+        result must beSome(expectedActionText).await
+      }
+
+      "return a message for a Guardian weekly subscriber who is in payment failure" in {
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, guardianWeekly, paymentMethodResponseRecentFailure)
+
+        val attemptDateTime = DateTime.now().minusDays(1)
+        val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
+        val expectedActionText = s"Our attempt to take payment for your Guardian Weekly failed on ${attemptDateTime.toString(formatter)}."
 
         result must beSome(expectedActionText).await
       }
