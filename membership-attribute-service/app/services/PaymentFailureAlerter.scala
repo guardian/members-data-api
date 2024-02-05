@@ -89,15 +89,16 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
       expectedAlertText.map { someText => shouldShowAlert.option(someText).flatten }
     }
   }
-  val alertableProducts = List(Product.Membership, Product.Contribution, Product.Digipack)
+
+  val nonAlertableProducts: List[Product] = List()
 
   def alertAvailableFor(
       account: AccountObject,
       subscription: Subscription[AnyPlan],
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
   )(implicit ec: ExecutionContext): Future[Boolean] = {
+    def isAlertableProduct = !nonAlertableProducts.contains(subscription.plan.product)
 
-    def isAlertableProduct = alertableProducts.contains(subscription.plan.product)
     def creditCard(paymentMethodResponse: PaymentMethodResponse) =
       paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
 
