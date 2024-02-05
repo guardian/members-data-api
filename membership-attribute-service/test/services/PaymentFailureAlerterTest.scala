@@ -82,7 +82,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
         result must beSome(expectedActionText).await
       }
 
-      "return a message for a Guardian weekly subscriber who is in payment failure" in {
+      "return a message for a Guardian Weekly subscriber who is in payment failure" in {
         val result: Future[Option[String]] =
           PaymentFailureAlerter.alertText(accountSummaryWithBalance, guardianWeekly, paymentMethodResponseRecentFailure)
 
