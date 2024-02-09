@@ -92,7 +92,7 @@ case class Attributes(
       || isGuardianPatron
   )
 
-  lazy val feastSubscriptionGroup =
+  lazy val feastIosSubscriptionGroup =
     if (isSupporterPlus && RecurringContributonAcquisitionDate.exists(isBeforeFeastLaunch))
       "21445388" // extended trial subscription
     else
@@ -119,7 +119,7 @@ object Attributes {
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
-    .addField("feastSubscriptionGroup", _.feastSubscriptionGroup)
+    .addField("feastIosSubscriptionGroup", _.feastIosSubscriptionGroup)
     .addField("contentAccess", _.contentAccess)
 }
 
