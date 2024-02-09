@@ -75,7 +75,7 @@ case class Attributes(
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
     feast = isStaffTier || isPatronTier || isPartnerTier || isPatronTier || isGuardianPatron ||
-      (isSupporterPlus && SupporterPlusAcquisitionDate.exists(isBeforeFeastLaunch))
+      (isSupporterPlus && SupporterPlusAcquisitionDate.exists(isBeforeFeastLaunch)),
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
