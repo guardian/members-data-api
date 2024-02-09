@@ -17,6 +17,7 @@ case class ContentAccess(
     paidMember: Boolean,
     recurringContributor: Boolean,
     supporterPlus: Boolean,
+    feast: Boolean,
     digitalPack: Boolean,
     paperSubscriber: Boolean,
     guardianWeeklySubscriber: Boolean,
@@ -41,6 +42,8 @@ case class Attributes(
     LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
     GuardianPatronExpiryDate: Option[LocalDate] = None,
     AlertAvailableFor: Option[String] = None,
+    SupporterPlusAcquisitionDate: Option[LocalDate] = None,
+    RecurringContributonAcquisitionDate: Option[LocalDate] = None,
 ) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -60,6 +63,8 @@ case class Attributes(
   lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
 
+  private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(LocalDate.parse("2024-03-31"))
+
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
     paidMember = isPaidTier,
@@ -69,6 +74,8 @@ case class Attributes(
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
+    feast = isGuardianPatron || isPartnerTier || isPatronTier || isGuardianPatron ||
+      (isSupporterPlus && SupporterPlusAcquisitionDate.exists(isBeforeFeastLaunch))
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
@@ -85,6 +92,11 @@ case class Attributes(
       || isGuardianPatron
   )
 
+  lazy val feastSubscriptionGroup =
+    if (isSupporterPlus && RecurringContributonAcquisitionDate.exists(isBeforeFeastLaunch))
+      "21445388" // extended trial subscription
+    else
+      "21396030" // regular subscription
 }
 
 object Attributes {
@@ -101,10 +113,13 @@ object Attributes {
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
       (__ \ "liveAppSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianPatronExpiryDate").writeNullable[LocalDate] and
-      (__ \ "alertAvailableFor").writeNullable[String]
+      (__ \ "alertAvailableFor").writeNullable[String] and
+      (__ \ "supporterPlusAcquisitionDate").writeNullable[LocalDate] and
+      (__ \ "recurringContributonAcquisitionDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
+    .addField("feastSubscriptionGroup", _.feastSubscriptionGroup)
     .addField("contentAccess", _.contentAccess)
 }
 

@@ -48,12 +48,19 @@ object SupporterRatePlanToAttributesMapper {
   val supporterPlusTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
+      SupporterPlusAcquisitionDate = Some(supporterRatePlanItem.contractEffectiveDate)
     )
   val supporterPlusV2Transformer: AttributeTransformer = supporterPlusTransformer
-  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
+  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+      RecurringContributonAcquisitionDate = Some(item.contractEffectiveDate)
+    )
+  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Annual Contribution"),
+      RecurringContributonAcquisitionDate = Some(item.contractEffectiveDate)
+    )
   val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
