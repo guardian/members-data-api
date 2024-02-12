@@ -74,7 +74,7 @@ case class Attributes(
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
-    feast = isStaffTier || isPatronTier || isPartnerTier || isPatronTier || isGuardianPatron ||
+    feast = isStaffTier || isPartnerTier || isPatronTier || isGuardianPatron ||
       (isSupporterPlus && SupporterPlusAcquisitionDate.exists(isBeforeFeastLaunch)),
   )
 
