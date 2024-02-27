@@ -9,7 +9,6 @@ import monitoring.SentryLogging.SanitizedLogMessage
 import utils.SanitizedLogging
 import utils.Sanitizer.Sanitizer
 
-import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 object SentryLogging extends SanitizedLogging {
@@ -19,10 +18,12 @@ object SentryLogging extends SanitizedLogging {
       case Some(sentryDSN) =>
         logger.info(s"Initialising Sentry logging")
         Try {
-          val sentryClient = Sentry.init(sentryDSN)
+          Sentry.init(sentryDSN)
           val buildInfo: Map[String, String] = app.BuildInfo.toMap.view.mapValues(_.toString).toMap
           val tags = Map("stage" -> config.stage) ++ buildInfo
-          sentryClient.setTags(tags.asJava)
+          tags.foreach { case (key, value) =>
+            Sentry.setTag(key, value)
+          }
         } match {
           case Success(_) => logger.debug("Sentry logging configured.")
           case Failure(e) => logError(scrub"Something went wrong when setting up Sentry logging ${e.getStackTrace}")
