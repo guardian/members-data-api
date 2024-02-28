@@ -6,15 +6,15 @@ object Dependencies {
   val awsClientVersion = "1.12.666"
   val awsClientV2Version = "2.24.10"
 
-  val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.15"
-  val identityTestUsers = "com.gu" %% "identity-test-users" % "0.9"
+  val sentryLogback = "io.sentry" % "sentry-logback" % "7.4.0"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.21"
+  val identityTestUsers = "com.gu" %% "identity-test-users" % "0.10.1"
   val postgres = "org.postgresql" % "postgresql" % "42.7.2"
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
   val specs2 = PlayImport.specs2 % "test"
-  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
+  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M30"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
@@ -22,17 +22,17 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "2.1.3"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "7.4"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
-  val netty = "io.netty" % "netty-codec" % "4.1.87.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.87.Final"
+  val netty = "io.netty" % "netty-codec" % "4.1.107.Final"
+  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.107.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
-  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
-  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
-  val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.15.0" % Test
+  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.30" % Test
+  val logback = "ch.qos.logback" % "logback-classic" % "1.5.1"
 
-  val jacksonVersion = "2.14.2"
-  val jacksonDatabindVersion = "2.14.2"
+  val jacksonVersion = "2.14.3"
+  val jacksonDatabindVersion = "2.14.3"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
-  val oktaJwtVerifierVersion = "0.5.7"
+  val oktaJwtVerifierVersion = "0.5.8"
   val jackson = Seq(
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
@@ -71,7 +71,7 @@ object Dependencies {
     anorm,
     netty,
     nettyHttp,
-    "com.google.guava" % "guava" % "32.1.3-jre", // until https://github.com/playframework/playframework/pull/10874
+    "com.google.guava" % "guava" % "33.0.0-jre", // until https://github.com/playframework/playframework/pull/10874
     unirest,
     mockServer,
     mockitoScala,
