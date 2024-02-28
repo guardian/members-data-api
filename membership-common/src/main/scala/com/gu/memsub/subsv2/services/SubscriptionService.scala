@@ -452,25 +452,24 @@ object SubscriptionTransform {
       val validHighLevelPlans: String \/ NonEmptyList[P] =
         Sequence(
           lowLevelPlans
-            .map {
-              lowLevelPlan =>
-                // get the equivalent plan from the catalog so we can merge them into a standard high level object
-                catalog
-                  .get(lowLevelPlan.productRatePlanId)
-                  .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
-                  .flatMap { catalogPlan =>
-                    val maybePlans = implicitly[SubPlanReads[P]].read(pids, lowLevelPlan, catalogPlan)
-                    maybePlans.toDisjunction
-                      .leftMap(
-                        _.list.zipWithIndex
-                          .map { case (err, index) =>
-                            s"  ${index + 1}: $err"
-                          }
-                          .toList
-                          .mkString("\n", "\n", "\n"),
-                      )
-                      .withTrace(s"high-level-plan-read: ${lowLevelPlan.id}")
-                  }
+            .map { lowLevelPlan =>
+              // get the equivalent plan from the catalog so we can merge them into a standard high level object
+              catalog
+                .get(lowLevelPlan.productRatePlanId)
+                .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
+                .flatMap { catalogPlan =>
+                  val maybePlans = implicitly[SubPlanReads[P]].read(pids, lowLevelPlan, catalogPlan)
+                  maybePlans.toDisjunction
+                    .leftMap(
+                      _.list.zipWithIndex
+                        .map { case (err, index) =>
+                          s"  ${index + 1}: $err"
+                        }
+                        .toList
+                        .mkString("\n", "\n", "\n"),
+                    )
+                    .withTrace(s"high-level-plan-read: ${lowLevelPlan.id}")
+                }
             },
         )
 

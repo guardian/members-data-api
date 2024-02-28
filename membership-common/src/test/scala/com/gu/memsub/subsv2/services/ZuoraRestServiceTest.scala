@@ -144,7 +144,7 @@ class ZuoraRestServiceTest extends AnyFlatSpec {
           sfContactId = SalesforceContactId("sfContactId"),
         ),
       )
-    result shouldMatchTo(expected)
+    result shouldMatchTo (expected)
   }
 
   "getAccounts" should "parse valid json" in {
