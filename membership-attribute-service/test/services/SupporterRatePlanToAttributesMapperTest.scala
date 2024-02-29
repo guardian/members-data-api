@@ -355,17 +355,18 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           ),
         ) should beSome(
         Attributes(
-          identityId,
-          Some("Supporter"),
-          Some("Monthly Contribution"),
-          None,
-          None,
-          None,
-          Some(termEndDate),
-          Some(termEndDate),
-          Some(termEndDate),
-          None,
-          None,
+          UserId = identityId,
+          Tier = Some("Supporter"),
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          OneOffContributionDate = None,
+          MembershipJoinDate = None,
+          SupporterPlusExpiryDate = None,
+          DigitalSubscriptionExpiryDate = Some(termEndDate),
+          PaperSubscriptionExpiryDate = Some(termEndDate),
+          GuardianWeeklySubscriptionExpiryDate = Some(termEndDate),
+          LiveAppSubscriptionExpiryDate = None,
+          GuardianPatronExpiryDate = None,
+          RecurringContributionAcquisitionDate = Some(LocalDate.parse("2024-02-29"))
         ),
       )
     }
