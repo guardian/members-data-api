@@ -3,7 +3,6 @@ package controllers
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.ActorMaterializer
 import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
 import com.typesafe.config.ConfigFactory
@@ -265,7 +264,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                  """.stripMargin)
   }
 
-  private def verifySuccessfulOneOfContributionsResult(result: Future[Result]) = {
+  private def verifySuccessfulOneOffContributionsResult(result: Future[Result]) = {
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
@@ -407,7 +406,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.oneOffContributions(req)
 
-      verifySuccessfulOneOfContributionsResult(result)
+      verifySuccessfulOneOffContributionsResult(result)
       verifyIdentityHeadersSet(result, validUser.identityId)
     }
 
@@ -415,7 +414,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       val req = FakeRequest().withCookies(validUserCookie)
       val result: Future[Result] = controller.oneOffContributions(req)
 
-      verifySuccessfulOneOfContributionsResult(result)
+      verifySuccessfulOneOffContributionsResult(result)
       verifyIdentityHeadersSet(result, validUser.identityId)
     }
 
