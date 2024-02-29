@@ -1,16 +1,15 @@
 package models
 
 import com.github.nscala_time.time.OrderingImplicits._
+import json._
+import models.FeastApp.getFeastIosSubscriptionGroup
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.mvc.Result
-import play.api.mvc.Results.Ok
-import json.localDateWrites
-import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
-import json._
+
+import scala.language.implicitConversions
 
 case class ContentAccess(
     member: Boolean,
@@ -42,8 +41,7 @@ case class Attributes(
     LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
     GuardianPatronExpiryDate: Option[LocalDate] = None,
     AlertAvailableFor: Option[String] = None,
-    SupporterPlusAcquisitionDate: Option[LocalDate] = None,
-    RecurringContributonAcquisitionDate: Option[LocalDate] = None,
+    RecurringContributionAcquisitionDate: Option[LocalDate] = None,
 ) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -63,7 +61,6 @@ case class Attributes(
   lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
 
-  private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(LocalDate.parse("2024-03-31"))
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier || isFriendTier,
@@ -74,8 +71,7 @@ case class Attributes(
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
-    feast = isStaffTier || isPartnerTier || isPatronTier || isGuardianPatron ||
-      (isSupporterPlus && SupporterPlusAcquisitionDate.exists(isBeforeFeastLaunch)),
+    feast = FeastApp.shouldGetFeastAccess(this),
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
@@ -92,11 +88,6 @@ case class Attributes(
       || isGuardianPatron
   )
 
-  lazy val feastIosSubscriptionGroup =
-    if (isSupporterPlus && RecurringContributonAcquisitionDate.exists(isBeforeFeastLaunch))
-      "21445388" // extended trial subscription
-    else
-      "21396030" // regular subscription
 }
 
 object Attributes {
@@ -114,12 +105,11 @@ object Attributes {
       (__ \ "liveAppSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianPatronExpiryDate").writeNullable[LocalDate] and
       (__ \ "alertAvailableFor").writeNullable[String] and
-      (__ \ "supporterPlusAcquisitionDate").writeNullable[LocalDate] and
-      (__ \ "recurringContributonAcquisitionDate").writeNullable[LocalDate]
+      (__ \ "recurringContributionAcquisitionDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
-    .addField("feastIosSubscriptionGroup", _.feastIosSubscriptionGroup)
+    .addNullableField("feastIosSubscriptionGroup", getFeastIosSubscriptionGroup)
     .addField("contentAccess", _.contentAccess)
 }
 
