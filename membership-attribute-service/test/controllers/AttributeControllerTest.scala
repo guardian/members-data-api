@@ -2,6 +2,7 @@ package controllers
 
 import actions.{AuthAndBackendRequest, AuthenticatedUserAndBackendRequest, CommonActions, HowToHandleRecencyOfSignedIn}
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.ActorMaterializer
 import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
@@ -29,7 +30,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
   implicit val as: ActorSystem = ActorSystem("test")
 
-  private val dateBeforeFeastLaunch = FeastApp.FeastLaunchDate.minusWeeks(1)
+  private val dateBeforeFeastLaunch = FeastApp.FeastLaunchDate.minusDays(1)
   private val validUserId = "123"
   private val userWithoutAttributesUserId = "456"
   private val userWithRecurringContributionUserId = "101"
@@ -44,7 +45,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
     GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
     SupporterPlusExpiryDate = Some(new LocalDate(2024, 1, 1)),
-    RecurringContributionAcquisitionDate = Some(FeastApp.FeastLaunchDate.minusDays(1)),
+    RecurringContributionAcquisitionDate = Some(dateBeforeFeastLaunch),
   )
   private val recurringContributionOnlyAttributes = Attributes(
     UserId = userWithRecurringContributionUserId,
@@ -144,13 +145,15 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   }
 
   private val actorSystem = ActorSystem()
+  private val materializer = Materializer(actorSystem)
+
   private val touchpointBackends = new TouchpointBackends(actorSystem, ConfigFactory.load(), CreateNoopMetrics)
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val testUsers = CreateTestUsernames.from(config)
   private val isTestUser = new IsTestUser(testUsers)
   private val commonActions =
-    new CommonActions(touchpointBackends, stubParser, isTestUser)(scala.concurrent.ExecutionContext.global, ActorMaterializer()) {
+    new CommonActions(touchpointBackends, stubParser, isTestUser)(scala.concurrent.ExecutionContext.global, materializer) {
       override def AuthorizeForScopes(requiredScopes: List[AccessScope]) = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
       override def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, requiredScopes: List[AccessScope]) =
         NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
@@ -245,7 +248,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                    |   "digitalSubscriptionExpiryDate":"2100-01-01",
                    |   "paperSubscriptionExpiryDate":"2099-01-01",
                    |   "guardianWeeklyExpiryDate":"2099-01-01",
-                   |   "recurringContributionAcquisitionDate":"${FeastApp.FeastLaunchDate.minusDays(1)}",
+                   |   "recurringContributionAcquisitionDate":"$dateBeforeFeastLaunch",
                    |   "showSupportMessaging": false,
                    |   "contentAccess": {
                    |     "member": true,

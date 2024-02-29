@@ -366,7 +366,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           GuardianWeeklySubscriptionExpiryDate = Some(termEndDate),
           LiveAppSubscriptionExpiryDate = None,
           GuardianPatronExpiryDate = None,
-          RecurringContributionAcquisitionDate = Some(LocalDate.parse("2024-02-29"))
+          RecurringContributionAcquisitionDate = Some(LocalDate.parse("2024-02-29")),
         ),
       )
     }
