@@ -19,6 +19,7 @@ object FeastApp {
       attributes.isPartnerTier ||
       attributes.isPatronTier ||
       attributes.isGuardianPatron ||
+      attributes.digitalSubscriberHasActivePlan ||
       attributes.isSupporterPlus
 
   private def isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes: Attributes) =
