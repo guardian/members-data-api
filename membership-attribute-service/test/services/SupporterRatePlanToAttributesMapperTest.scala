@@ -343,12 +343,13 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     }
 
     "handle supporter with multiple products correctly" in {
+      val recurringContributionAcquisitionDate = LocalDate.parse("2024-02-29")
       mapper
         .attributesFromSupporterRatePlans(
           identityId,
           List(
             ratePlanItem("2c92a0f94c547592014c69f5b0ff4f7e"),
-            ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"),
+            ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97", termEndDate, recurringContributionAcquisitionDate),
             ratePlanItem("2c92a0fb4edd70c8014edeaa4eae220a"),
             ratePlanItem("2c92a00870ec598001710740d0d83017"),
             ratePlanItem("2c92a0fe6619b4b601661ab300222651"),
@@ -366,7 +367,7 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           GuardianWeeklySubscriptionExpiryDate = Some(termEndDate),
           LiveAppSubscriptionExpiryDate = None,
           GuardianPatronExpiryDate = None,
-          RecurringContributionAcquisitionDate = Some(LocalDate.parse("2024-02-29")),
+          RecurringContributionAcquisitionDate = Some(recurringContributionAcquisitionDate),
         ),
       )
     }
