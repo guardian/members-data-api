@@ -25,11 +25,15 @@ object FeastApp {
   private def isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes: Attributes) =
     attributes.isRecurringContributor && attributes.RecurringContributionAcquisitionDate.exists(isBeforeFeastLaunch)
 
+  private def shouldGetFreeTrial(attributes: Attributes) =
+    isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes) ||
+      attributes.isPremiumLiveAppSubscriber
+
   private def shouldShowSubscriptionOptions(attributes: Attributes) = !shouldGetFeastAccess(attributes)
 
   def getFeastIosSubscriptionGroup(attributes: Attributes) =
     shouldShowSubscriptionOptions(attributes).option(
-      if (isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes))
+      if (shouldGetFreeTrial(attributes))
         ExtendedTrial
       else
         RegularSubscription,

@@ -11,7 +11,8 @@ import configuration.{CreateTestUsernames, Stage}
 import filters.{AddGuIdentityHeaders, IsTestUser}
 import models.{Attributes, FeastApp, MobileSubscriptionStatus, UserFromToken}
 import monitoring.CreateNoopMetrics
-import org.joda.time.LocalDate
+import org.joda.time.{DateTime, LocalDate}
+import org.joda.time.LocalDate.now
 import org.mockito.IdiomaticMockito
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
@@ -29,10 +30,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
   implicit val as: ActorSystem = ActorSystem("test")
 
+  private val dateTimeInTheFuture = DateTime.now().plusDays(1)
   private val dateBeforeFeastLaunch = FeastApp.FeastIosLaunchDate.minusDays(1)
   private val validUserId = "123"
   private val userWithoutAttributesUserId = "456"
   private val userWithRecurringContributionUserId = "101"
+  private val userWithLiveAppUserId = "112"
   private val unvalidatedEmailUserId = "789"
 
   private val testAttributes = Attributes(
@@ -56,6 +59,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
   private val recurringContributorCookie = Cookie("recurringContributor", "true")
+  private val liveAppCookie = Cookie("liveApp", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@gu.com",
     identityId = validUserId,
@@ -76,6 +80,11 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithRecurringContribution = UserFromToken(
     primaryEmailAddress = "recurringContribution@gu.com",
     identityId = userWithRecurringContributionUserId,
+    authTime = None,
+  )
+  private val userWithLiveApp = UserFromToken(
+    primaryEmailAddress = "liveapp@gu.com",
+    identityId = userWithLiveAppUserId,
     authTime = None,
   )
 
@@ -110,6 +119,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == validUnvalidatedEmailCookie => Future.successful(Right(unvalidatedEmailUser))
         case Some(c) if c == userWithoutAttributesCookie => Future.successful(Right(userWithoutAttributes))
         case Some(c) if c == recurringContributorCookie => Future.successful(Right(userWithRecurringContribution))
+        case Some(c) if c == liveAppCookie => Future.successful(Right(userWithLiveApp))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -159,8 +169,13 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
-    override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] =
-      Future.successful(Right(None))
+    override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
+      if (identityId == userWithLiveAppUserId)
+        Future.successful(Right(Some(MobileSubscriptionStatus(valid = true, dateTimeInTheFuture))))
+      else
+        Future.successful(Right(None))
+    }
+
   }
 
   private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchpointBackends.normal.identityAuthService, isTestUser)
@@ -182,6 +197,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(testAttributes))
         else if (identityId == userWithRecurringContributionUserId) {
           ("Zuora", Some(recurringContributionOnlyAttributes))
+        } else if (identityId == userWithLiveAppUserId) {
+          ("Zuora", Some(Attributes(UserId = userWithLiveAppUserId)))
         } else
           ("Zuora", None)
       }
@@ -332,7 +349,6 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     "return the correct feast attributes for recurring contributors who signed up before feast launch" in {
       val req = FakeRequest().withCookies(recurringContributorCookie)
       val result = controller.attributes(req)
-
       status(result) shouldEqual OK
       val jsonBody = contentAsJson(result)
       jsonBody shouldEqual
@@ -356,6 +372,35 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithRecurringContributionUserId)
+
+    }
+
+    "return the correct feast attributes for live app subscribers" in {
+      val req = FakeRequest().withCookies(liveAppCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      jsonBody shouldEqual
+        Json.parse(s"""
+             |{
+             |  "userId": "112",
+             |  "liveAppSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "showSupportMessaging": false,
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
+             |  "contentAccess": {
+             |    "member": false,
+             |    "paidMember": false,
+             |    "recurringContributor": false,
+             |    "supporterPlus" : false,
+             |    "feast": false,
+             |    "digitalPack": false,
+             |    "paperSubscriber": false,
+             |    "guardianWeeklySubscriber": false,
+             |    "guardianPatron": false
+             |  }
+             |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithLiveAppUserId)
 
     }
 
