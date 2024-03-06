@@ -1,22 +1,22 @@
 package models
 
 import com.github.nscala_time.time.OrderingImplicits._
+import json._
+import models.FeastApp.getFeastIosSubscriptionGroup
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.mvc.Result
-import play.api.mvc.Results.Ok
-import json.localDateWrites
-import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
-import json._
+
+import scala.language.implicitConversions
 
 case class ContentAccess(
     member: Boolean,
     paidMember: Boolean,
     recurringContributor: Boolean,
     supporterPlus: Boolean,
+    feast: Boolean,
     digitalPack: Boolean,
     paperSubscriber: Boolean,
     guardianWeeklySubscriber: Boolean,
@@ -41,6 +41,7 @@ case class Attributes(
     LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
     GuardianPatronExpiryDate: Option[LocalDate] = None,
     AlertAvailableFor: Option[String] = None,
+    RecurringContributionAcquisitionDate: Option[LocalDate] = None,
 ) {
   lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
@@ -69,6 +70,7 @@ case class Attributes(
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
+    feast = FeastApp.shouldGetFeastAccess(this),
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
@@ -101,10 +103,12 @@ object Attributes {
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
       (__ \ "liveAppSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianPatronExpiryDate").writeNullable[LocalDate] and
-      (__ \ "alertAvailableFor").writeNullable[String]
+      (__ \ "alertAvailableFor").writeNullable[String] and
+      (__ \ "recurringContributionAcquisitionDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
+    .addNullableField("feastIosSubscriptionGroup", getFeastIosSubscriptionGroup)
     .addField("contentAccess", _.contentAccess)
 }
 

@@ -4,7 +4,7 @@ The members' data API is a Play app that manages and retrieves supporter attribu
 It runs on https://members-data-api.theguardian.com/.
 
 ### Dotcom
-theguardian.com website is the biggest single consumer of `members-data-api`, specifically the `/user-attributes/me` endpoint, which it uses to determine both ad-free (becuase user has digital subscription) and if we should hide 'support messaging/asks' (banner, epic, header/footer support buttons etc).
+theguardian.com website is the biggest single consumer of `members-data-api`, specifically the `/user-attributes/me` endpoint, which it uses to determine both ad-free (when user has a digital subscription or supporter plus or a newspaper product) and if we should hide 'support messaging/asks' (banner, epic, header/footer support buttons etc).
 
 It would be unnecessary to hit `members-data-api` on every single page view, so instead it uses cookies to regulate how often calls are made. **The `gu_user_features_expiry` contains a timestamp for the 'earliest' point it would be allowed to call `members-data-api` again, and is updated whenever it does call `members-data-api` to _'now + 24hours'_.**
 
@@ -18,9 +18,9 @@ Various things from the `/user-attributes/me` response are stored in cookies, to
 - `gu_one_off_contribution_date` = `oneOffContributionDate` in the response
 
 ##### Useful Links 
-- DCR [dotcom-rendering/src/web/lib/contributions.ts](https://github.com/guardian/dotcom-rendering/blob/main/dotcom-rendering/src/web/lib/contributions.ts)
+- DCR [dotcom-rendering/src/web/lib/contributions.ts](https://github.com/guardian/dotcom-rendering/blob/main/dotcom-rendering/src/lib/contributions.ts#L10)
 - Dotcom
-  - [frontend/static/src/javascripts/projects/common/modules/commercial/user-features.ts](https://github.com/guardian/frontend/blob/main/static/src/javascripts/projects/common/modules/commercial/user-features.ts)
+  - [frontend/static/src/javascripts/projects/common/modules/commercial/user-features.ts](https://github.com/guardian/frontend/blob/main/static/src/javascripts/projects/common/modules/commercial/user-features.ts#L17)
   - [frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js](https://github.com/guardian/frontend/blob/master/common/app/templates/inlineJS/blocking/applyRenderConditions.scala.js)
 
 ### User attributes data sources
@@ -29,25 +29,6 @@ User attributes (which products a user currently holds) are served from three so
 from Stripe (Guardian Patrons only) and Zuora (digital and print subscriptions & recurring contributions)
 2. The `contributions-store-[STAGE]` Postgres database (one off contributions only)
 3. The [mobile purchases api](https://github.com/guardian/mobile-purchases) (in-app purchases only)
-
-### Limiting concurrent requests
-
-There is a simple if-else logic applied per instance
-
-```
-if (current concurrent requests < calculate limit per instance)
-  hit zuora
-else
-  hit cache
-```
-
-Effect of different values for `ConcurrentZuoraCallThreshold`
-- 6 total across 6 instances (i.e. limit of 1 per instance) results in about 50/50 split between Zuora and cache
-- 12 total across 6 instances (i.e. limit of 2 per instance) results in about 80/20
-- 0 results in 100% cache
-
-**WARNING: Remember to reduce `ConcurrentZuoraCallThreshold` if instances need to scale, say in expectation of 
-drastic increase of load due to breaking news.** 
 
 ## Setting it up locally
 
