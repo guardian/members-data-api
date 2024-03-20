@@ -19,7 +19,6 @@ import com.gu.zuora.rest.SimpleClient
 import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
 import org.joda.time.LocalDate
-import org.scalatest.Inside
 import org.specs2.mutable.Specification
 import utils.Resource
 import scalaz.Id._
@@ -27,7 +26,7 @@ import scalaz.{-\/, NonEmptyList, \/, \/-}
 
 /** This test just tests plumbing really but at least it is /possible/ to test plumbing
   */
-class SubscriptionServiceTest extends Specification with Inside {
+class SubscriptionServiceTest extends Specification {
 
   // this is the UAT prpId of friend, which we need for the catalog
   val prpId = ProductRatePlanId("2c92c0f94cc6ea05014cdb4b1d1f037d")
