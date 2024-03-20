@@ -28,6 +28,7 @@ class SubReadsTest extends Specification {
           id = RatePlanId("2c92c0f957220b5d01573252b3bb7c71"),
           productRatePlanId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591"),
           productName = "Digital Pack",
+          lastChangeType = None,
           features = List.empty,
           chargedThroughDate = None,
           charges = NonEmptyList(
@@ -65,6 +66,7 @@ class SubReadsTest extends Specification {
         name = "",
         description = "",
         productName = "",
+        lastChangeType = None,
         productType = "",
         product = Product.Membership,
         features = List.empty,
@@ -98,6 +100,7 @@ class SubReadsTest extends Specification {
         name = "n",
         description = "d",
         productName = "pn",
+        lastChangeType = None,
         productType = "pt",
         product = WeeklyDomestic,
         features = Nil,

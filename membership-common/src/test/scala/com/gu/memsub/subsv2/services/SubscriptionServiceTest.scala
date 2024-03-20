@@ -145,13 +145,14 @@ class SubscriptionServiceTest extends Specification {
 
   "Current Plan" should {
 
-    def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Contributor =
+    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): SubscriptionPlan.Contributor =
       PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
         RatePlanId("idContributor"),
         ProductRatePlanId("prpi"),
         "Contributor",
         "desc",
         "Contributor",
+        lastChangeType,
         "Contribution",
         Product.Contribution,
         List.empty,
@@ -199,6 +200,7 @@ class SubscriptionServiceTest extends Specification {
         "Partner",
         "desc",
         "Partner",
+        None,
         "Membership",
         Product.Membership,
         List.empty,
@@ -220,6 +222,7 @@ class SubscriptionServiceTest extends Specification {
         "Supporter",
         "desc",
         "Supporter",
+        None,
         "Membership",
         Product.Membership,
         List.empty,
@@ -241,6 +244,7 @@ class SubscriptionServiceTest extends Specification {
         "Digipack",
         "desc",
         "Digital Pack",
+        None,
         "Digital Pack",
         Product.Digipack,
         List.empty,
@@ -254,6 +258,29 @@ class SubscriptionServiceTest extends Specification {
         None,
         startDate,
         endDate,
+      )
+
+    def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.SupporterPlus =
+      PaidSubscriptionPlan[Product.SupporterPlus, PaidCharge[Benefit.SupporterPlus.type, BillingPeriod]](
+        id = RatePlanId("idSupporterPlus"),
+        productRatePlanId = ProductRatePlanId("prpi"),
+        name = "SupporterPlus",
+        description = "desc",
+        productName = "Supporter Plus",
+        lastChangeType = Some("Add"),
+        productType = "Supporter Plus",
+        product = Product.SupporterPlus,
+        features = List.empty,
+        charges = PaidCharge(
+          SupporterPlus,
+          BillingPeriod.Year,
+          PricingSummary(Map(GBP -> Price(119.90f, GBP))),
+          ProductRatePlanChargeId("baz"),
+          SubscriptionRatePlanChargeId("naz"),
+        ),
+        chargedThrough = None,
+        start = startDate,
+        end = endDate,
       )
 
     def toSubscription[P <: SubscriptionPlan.AnyPlan](isCancelled: Boolean)(plans: NonEmptyList[P]): Subscription[P] = {
@@ -278,6 +305,20 @@ class SubscriptionServiceTest extends Specification {
     }
 
     val referenceDate = 26 Oct 2016
+
+    "tell you that you aren't a contributor immediately after you have switched to supporter plus" in {
+      val plans = NonEmptyList(
+        contributorPlan(referenceDate, referenceDate + 1.year, Some("Remove")),
+        switchedSupporterPlusPlan(referenceDate, referenceDate + 1.year),
+      )
+      val subs = toSubscription(isCancelled = false)(plans)
+      val result = GetCurrentPlans(subs, referenceDate)
+        .map(listOfPlans =>
+          listOfPlans.size == 1 &&
+            listOfPlans.head.productName == "Supporter Plus",
+        )
+      result mustEqual \/-(true)
+    }
 
     "tell you that you aren't a contributor immediately after your sub has been cancelled" in {
       val plans = NonEmptyList(contributorPlan(referenceDate, referenceDate + 1.year))
