@@ -126,12 +126,12 @@ object GetCurrentPlans {
         case _ => ensureStarted(_.start <= dateToCheck)
       }
       val freePlanCancelled = alreadyStarted.ensure(DiscardedPlan(plan, "has a free plan which has been cancelled").wrapNel)(_)
-      val contributorPlanCancelled = alreadyStarted.ensure(DiscardedPlan(plan, "has a contributor plan which has been cancelled").wrapNel)(_)
+      val contributorPlanCancelled = alreadyStarted.ensure(DiscardedPlan(plan, "has a contributor plan which has been cancelled or removed").wrapNel)(_)
       val paidPlanEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a paid plan which has ended").wrapNel)(_)
       val digipackGiftEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a digipack gift plan which has ended").wrapNel)(_)
       plan match {
         case _: FreeSubscriptionPlan[_, _] => freePlanCancelled(_ => !sub.isCancelled)
-        case plan: PaidSubscriptionPlan[_, _] if plan.product == Product.Contribution => contributorPlanCancelled(_ => !sub.isCancelled)
+        case plan: PaidSubscriptionPlan[_, _] if plan.product == Product.Contribution => contributorPlanCancelled(_ => !sub.isCancelled && !plan.lastChangeType.contains("Remove"))
         case plan: PaidSubscriptionPlan[_, _] if plan.product == Product.Digipack && plan.charges.billingPeriod == OneTimeChargeBillingPeriod =>
           digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
         case plan: PaidSubscriptionPlan[_, _] => paidPlanEnded(_ => plan.end >= dateToCheck)

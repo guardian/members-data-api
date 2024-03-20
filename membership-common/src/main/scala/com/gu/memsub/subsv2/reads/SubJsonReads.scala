@@ -69,6 +69,7 @@ object SubJsonReads {
         (json \ "id").validate[String].map(RatePlanId) |@|
           (json \ "productRatePlanId").validate[String].map(ProductRatePlanId) |@|
           (json \ "productName").validate[String] |@|
+          (json \ "lastChangeType").validateOpt[String] |@|
           (json \ "subscriptionProductFeatures").validate[List[RestFeature]] |@|
           dates.map(_.map(_._3).sorted.reduceOption(_ orElse _).flatten) |@|
           (json \ "ratePlanCharges").validate[NonEmptyList[ZuoraCharge]](nelReads(niceListReads(zuoraSubscriptionRatePlanChargeReads))) |@|
