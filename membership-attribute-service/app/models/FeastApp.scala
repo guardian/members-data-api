@@ -27,7 +27,8 @@ object FeastApp {
 
   private def shouldGetFreeTrial(attributes: Attributes) =
     isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes) ||
-      attributes.isPremiumLiveAppSubscriber
+      attributes.isPremiumLiveAppSubscriber ||
+      attributes.isPaperSubscriber
 
   private def shouldShowSubscriptionOptions(attributes: Attributes) = !shouldGetFeastAccess(attributes)
 

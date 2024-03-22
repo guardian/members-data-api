@@ -36,6 +36,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithoutAttributesUserId = "456"
   private val userWithRecurringContributionUserId = "101"
   private val userWithLiveAppUserId = "112"
+  private val userWithNewspaperUserId = "131"
   private val unvalidatedEmailUserId = "789"
 
   private val testAttributes = Attributes(
@@ -55,36 +56,47 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     RecurringContributionAcquisitionDate = Some(dateBeforeFeastLaunch),
   )
 
+  private val newspaperOnlyAttributes = Attributes(
+    UserId = userWithNewspaperUserId,
+    PaperSubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+  )
+
   private val validUserCookie = Cookie("validUser", "true")
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
   private val recurringContributorCookie = Cookie("recurringContributor", "true")
   private val liveAppCookie = Cookie("liveApp", "true")
+  private val newspaperCookie = Cookie("newspaper", "true")
   private val validUser = UserFromToken(
-    primaryEmailAddress = "test@gu.com",
+    primaryEmailAddress = "test@thegulocal.com",
     identityId = validUserId,
     userEmailValidated = Some(true),
     authTime = None,
   )
   private val unvalidatedEmailUser = UserFromToken(
-    primaryEmailAddress = "unvalidatedEmail@gu.com",
+    primaryEmailAddress = "unvalidatedEmail@thegulocal.com",
     identityId = unvalidatedEmailUserId,
     userEmailValidated = Some(false),
     authTime = None,
   )
   private val userWithoutAttributes = UserFromToken(
-    primaryEmailAddress = "notcached@gu.com",
+    primaryEmailAddress = "notcached@thegulocal.com",
     identityId = userWithoutAttributesUserId,
     authTime = None,
   )
   private val userWithRecurringContribution = UserFromToken(
-    primaryEmailAddress = "recurringContribution@gu.com",
+    primaryEmailAddress = "recurringContribution@thegulocal.com",
     identityId = userWithRecurringContributionUserId,
     authTime = None,
   )
   private val userWithLiveApp = UserFromToken(
-    primaryEmailAddress = "liveapp@gu.com",
+    primaryEmailAddress = "liveapp@thegulocal.com",
     identityId = userWithLiveAppUserId,
+    authTime = None,
+  )
+  private val userWithNewspaper = UserFromToken(
+    primaryEmailAddress = "newspaper@thegulocal.com",
+    identityId = userWithNewspaperUserId,
     authTime = None,
   )
 
@@ -120,6 +132,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == userWithoutAttributesCookie => Future.successful(Right(userWithoutAttributes))
         case Some(c) if c == recurringContributorCookie => Future.successful(Right(userWithRecurringContribution))
         case Some(c) if c == liveAppCookie => Future.successful(Right(userWithLiveApp))
+        case Some(c) if c == newspaperCookie => Future.successful(Right(userWithNewspaper))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -199,6 +212,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(recurringContributionOnlyAttributes))
         } else if (identityId == userWithLiveAppUserId) {
           ("Zuora", Some(Attributes(UserId = userWithLiveAppUserId)))
+        } else if (identityId == userWithNewspaperUserId) {
+          ("Zuora", Some(newspaperOnlyAttributes))
         } else
           ("Zuora", None)
       }
@@ -401,6 +416,36 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithLiveAppUserId)
+
+    }
+
+    "return the correct feast attributes for newspaper subscribers" in {
+      val req = FakeRequest().withCookies(newspaperCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      System.out.println(jsonBody)
+      jsonBody shouldEqual
+        Json.parse(s"""
+             |{
+             |  "userId": "131",
+             |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "showSupportMessaging": false,
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
+             |  "contentAccess": {
+             |    "member": false,
+             |    "paidMember": false,
+             |    "recurringContributor": false,
+             |    "supporterPlus" : false,
+             |    "feast": false,
+             |    "digitalPack": true,
+             |    "paperSubscriber": true,
+             |    "guardianWeeklySubscriber": false,
+             |    "guardianPatron": false
+             |  }
+             |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithNewspaperUserId)
 
     }
 
