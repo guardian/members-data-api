@@ -32,11 +32,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
   private val dateTimeInTheFuture = DateTime.now().plusDays(1)
   private val dateBeforeFeastLaunch = FeastApp.FeastIosLaunchDate.minusDays(1)
-  private val validUserId = "123"
-  private val userWithoutAttributesUserId = "456"
-  private val userWithRecurringContributionUserId = "101"
-  private val userWithLiveAppUserId = "112"
-  private val userWithNewspaperUserId = "131"
+  private val validUserId = "1"
+  private val userWithoutAttributesUserId = "2"
+  private val userWithRecurringContributionUserId = "3"
+  private val userWithLiveAppUserId = "4"
+  private val userWithNewspaperUserId = "5"
+  private val userWithGuardianWeeklyUserId = "6"
   private val unvalidatedEmailUserId = "789"
 
   private val testAttributes = Attributes(
@@ -60,6 +61,10 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     UserId = userWithNewspaperUserId,
     PaperSubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
+  private val guardianWeeklyOnlyAttributes = Attributes(
+    UserId = userWithGuardianWeeklyUserId,
+    GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+  )
 
   private val validUserCookie = Cookie("validUser", "true")
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
@@ -67,6 +72,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val recurringContributorCookie = Cookie("recurringContributor", "true")
   private val liveAppCookie = Cookie("liveApp", "true")
   private val newspaperCookie = Cookie("newspaper", "true")
+  private val guardianWeeklyCookie = Cookie("guardianWeekly", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@thegulocal.com",
     identityId = validUserId,
@@ -97,6 +103,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithNewspaper = UserFromToken(
     primaryEmailAddress = "newspaper@thegulocal.com",
     identityId = userWithNewspaperUserId,
+    authTime = None,
+  )
+
+  private val userWithGuardianWeekly = UserFromToken(
+    primaryEmailAddress = "GuardianWeekly@thegulocal.com",
+    identityId = userWithGuardianWeeklyUserId,
     authTime = None,
   )
 
@@ -133,6 +145,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == recurringContributorCookie => Future.successful(Right(userWithRecurringContribution))
         case Some(c) if c == liveAppCookie => Future.successful(Right(userWithLiveApp))
         case Some(c) if c == newspaperCookie => Future.successful(Right(userWithNewspaper))
+        case Some(c) if c == guardianWeeklyCookie => Future.successful(Right(userWithGuardianWeekly))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -214,6 +227,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(Attributes(UserId = userWithLiveAppUserId)))
         } else if (identityId == userWithNewspaperUserId) {
           ("Zuora", Some(newspaperOnlyAttributes))
+        } else if (identityId == userWithGuardianWeeklyUserId) {
+          ("Zuora", Some(guardianWeeklyOnlyAttributes))
         } else
           ("Zuora", None)
       }
@@ -234,9 +249,9 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
-      Json.parse("""
+      Json.parse(s"""
                    | {
-                   |   "userId": "123",
+                   |   "userId": "$validUserId",
                    |   "adblockMessage": false,
                    |   "membershipJoinDate": "2017-05-13"
                    | }
@@ -247,10 +262,10 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     status(result) shouldEqual OK
     val jsonBody = contentAsJson(result)
     jsonBody shouldEqual
-      Json.parse("""
+      Json.parse(s"""
         | {
         |   "tier": "patron",
-        |   "userId": "123",
+        |   "userId": "$validUserId",
         |   "contentAccess": {
         |     "member": true,
         |     "paidMember": true
@@ -273,7 +288,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       Json.parse(s"""
                    | {
                    |   "tier": "patron",
-                   |   "userId": "123",
+                   |   "userId": "$validUserId",
                    |   "membershipJoinDate": "2017-05-13",
                    |   "recurringContributionPaymentPlan":"Monthly Contribution",
                    |   "digitalSubscriptionExpiryDate":"2100-01-01",
@@ -342,7 +357,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       jsonBody shouldEqual
         Json.parse(s"""
                      |{
-                     |  "userId": "456",
+                     |  "userId": "$userWithoutAttributesUserId",
                      |  "showSupportMessaging": true,
                      |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.RegularSubscription}",
                      |  "contentAccess": {
@@ -369,7 +384,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       jsonBody shouldEqual
         Json.parse(s"""
              |{
-             |  "userId": "101",
+             |  "userId": "$userWithRecurringContributionUserId",
              |  "showSupportMessaging": false,
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
              |  "recurringContributionPaymentPlan":"Monthly Contribution",
@@ -399,7 +414,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       jsonBody shouldEqual
         Json.parse(s"""
              |{
-             |  "userId": "112",
+             |  "userId": "$userWithLiveAppUserId",
              |  "liveAppSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
@@ -429,8 +444,36 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       jsonBody shouldEqual
         Json.parse(s"""
              |{
-             |  "userId": "131",
+             |  "userId": "$userWithNewspaperUserId",
              |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "showSupportMessaging": false,
+             |  "contentAccess": {
+             |    "member": false,
+             |    "paidMember": false,
+             |    "recurringContributor": false,
+             |    "supporterPlus" : false,
+             |    "feast": true,
+             |    "digitalPack": true,
+             |    "paperSubscriber": true,
+             |    "guardianWeeklySubscriber": false,
+             |    "guardianPatron": false
+             |  }
+             |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithNewspaperUserId)
+
+    }
+    "return the correct feast attributes for Guardian Weekly subscribers" in {
+      val req = FakeRequest().withCookies(guardianWeeklyCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      System.out.println(jsonBody)
+      jsonBody shouldEqual
+        Json.parse(s"""
+             |{
+             |  "userId": "$userWithGuardianWeeklyUserId",
+             |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
              |  "contentAccess": {
@@ -439,13 +482,13 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "recurringContributor": false,
              |    "supporterPlus" : false,
              |    "feast": false,
-             |    "digitalPack": true,
-             |    "paperSubscriber": true,
-             |    "guardianWeeklySubscriber": false,
+             |    "digitalPack": false,
+             |    "paperSubscriber": false,
+             |    "guardianWeeklySubscriber": true,
              |    "guardianPatron": false
              |  }
              |}""".stripMargin)
-      verifyIdentityHeadersSet(result, userWithNewspaperUserId)
+      verifyIdentityHeadersSet(result, userWithGuardianWeeklyUserId)
 
     }
 
