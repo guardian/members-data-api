@@ -20,6 +20,7 @@ object FeastApp {
       attributes.isPatronTier ||
       attributes.isGuardianPatron ||
       attributes.digitalSubscriberHasActivePlan ||
+      attributes.isPaperSubscriber ||
       attributes.isSupporterPlus
 
   private def isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes: Attributes) =
@@ -27,7 +28,8 @@ object FeastApp {
 
   private def shouldGetFreeTrial(attributes: Attributes) =
     isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes) ||
-      attributes.isPremiumLiveAppSubscriber
+      attributes.isPremiumLiveAppSubscriber ||
+      attributes.isGuardianWeeklySubscriber
 
   private def shouldShowSubscriptionOptions(attributes: Attributes) = !shouldGetFeastAccess(attributes)
 
