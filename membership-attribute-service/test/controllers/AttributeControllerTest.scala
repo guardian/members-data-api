@@ -38,7 +38,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithLiveAppUserId = "4"
   private val userWithNewspaperUserId = "5"
   private val userWithGuardianWeeklyUserId = "6"
-  private val unvalidatedEmailUserId = "789"
+  private val unvalidatedEmailUserId = "7"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
