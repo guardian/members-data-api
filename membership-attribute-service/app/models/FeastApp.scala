@@ -16,7 +16,6 @@ object FeastApp {
 
   def shouldGetFeastAccess(attributes: Attributes) =
     attributes.isStaffTier ||
-      attributes.isSupporterTier ||
       attributes.isPartnerTier ||
       attributes.isPatronTier ||
       attributes.isGuardianPatron ||
@@ -30,7 +29,8 @@ object FeastApp {
   private def shouldGetFreeTrial(attributes: Attributes) =
     isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes) ||
       attributes.isPremiumLiveAppSubscriber ||
-      attributes.isGuardianWeeklySubscriber
+      attributes.isGuardianWeeklySubscriber ||
+      attributes.isSupporterTier
 
   private def shouldShowSubscriptionOptions(attributes: Attributes) = !shouldGetFeastAccess(attributes)
 
