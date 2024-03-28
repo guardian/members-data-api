@@ -16,6 +16,7 @@ object FeastApp {
 
   def shouldGetFeastAccess(attributes: Attributes) =
     attributes.isStaffTier ||
+      attributes.isSupporterTier ||
       attributes.isPartnerTier ||
       attributes.isPatronTier ||
       attributes.isGuardianPatron ||
