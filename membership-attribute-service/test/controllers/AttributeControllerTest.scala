@@ -37,8 +37,9 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithRecurringContributionUserId = "3"
   private val userWithLiveAppUserId = "4"
   private val userWithNewspaperUserId = "5"
-  private val userWithGuardianWeeklyUserId = "6"
-  private val unvalidatedEmailUserId = "7"
+  private val userWithNewspaperPlusUserId = "6"
+  private val userWithGuardianWeeklyUserId = "7"
+  private val unvalidatedEmailUserId = "8"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
@@ -61,6 +62,11 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     UserId = userWithNewspaperUserId,
     PaperSubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
+  private val newspaperPlusAttributes = Attributes(
+    UserId = userWithNewspaperPlusUserId,
+    PaperSubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+    DigitalSubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+  )
   private val guardianWeeklyOnlyAttributes = Attributes(
     UserId = userWithGuardianWeeklyUserId,
     GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
@@ -72,6 +78,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val recurringContributorCookie = Cookie("recurringContributor", "true")
   private val liveAppCookie = Cookie("liveApp", "true")
   private val newspaperCookie = Cookie("newspaper", "true")
+  private val newspaperPlusCookie = Cookie("newspaperPlus", "true")
   private val guardianWeeklyCookie = Cookie("guardianWeekly", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@thegulocal.com",
@@ -103,6 +110,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithNewspaper = UserFromToken(
     primaryEmailAddress = "newspaper@thegulocal.com",
     identityId = userWithNewspaperUserId,
+    authTime = None,
+  )
+
+  private val userWithNewspaperPlus = UserFromToken(
+    primaryEmailAddress = "newspaperPlus@thegulocal.com",
+    identityId = userWithNewspaperPlusUserId,
     authTime = None,
   )
 
@@ -145,6 +158,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == recurringContributorCookie => Future.successful(Right(userWithRecurringContribution))
         case Some(c) if c == liveAppCookie => Future.successful(Right(userWithLiveApp))
         case Some(c) if c == newspaperCookie => Future.successful(Right(userWithNewspaper))
+        case Some(c) if c == newspaperPlusCookie => Future.successful(Right(userWithNewspaperPlus))
         case Some(c) if c == guardianWeeklyCookie => Future.successful(Right(userWithGuardianWeekly))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
@@ -227,6 +241,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(Attributes(UserId = userWithLiveAppUserId)))
         } else if (identityId == userWithNewspaperUserId) {
           ("Zuora", Some(newspaperOnlyAttributes))
+        } else if (identityId == userWithNewspaperPlusUserId) {
+          ("Zuora", Some(newspaperPlusAttributes))
         } else if (identityId == userWithGuardianWeeklyUserId) {
           ("Zuora", Some(guardianWeeklyOnlyAttributes))
         } else
@@ -440,19 +456,20 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
       status(result) shouldEqual OK
       val jsonBody = contentAsJson(result)
-      System.out.println(jsonBody)
+      println(Json.prettyPrint(jsonBody))
       jsonBody shouldEqual
         Json.parse(s"""
              |{
              |  "userId": "$userWithNewspaperUserId",
              |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "feastIosSubscriptionGroup":"21445388",
              |  "showSupportMessaging": false,
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,
              |    "recurringContributor": false,
              |    "supporterPlus" : false,
-             |    "feast": true,
+             |    "feast": false,
              |    "digitalPack": true,
              |    "paperSubscriber": true,
              |    "guardianWeeklySubscriber": false,
@@ -462,13 +479,44 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       verifyIdentityHeadersSet(result, userWithNewspaperUserId)
 
     }
+
+    "return the correct feast attributes for newspaper plus subscribers" in {
+      val req = FakeRequest().withCookies(newspaperPlusCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      println(Json.prettyPrint(jsonBody))
+      jsonBody shouldEqual
+        Json.parse(s"""
+                      |{
+                      |  "userId": "$userWithNewspaperPlusUserId",
+                      |  "digitalSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+                      |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+                      |  "showSupportMessaging": false,
+                      |  "contentAccess": {
+                      |    "member": false,
+                      |    "paidMember": false,
+                      |    "recurringContributor": false,
+                      |    "supporterPlus" : false,
+                      |    "feast": true,
+                      |    "digitalPack": true,
+                      |    "paperSubscriber": true,
+                      |    "guardianWeeklySubscriber": false,
+                      |    "guardianPatron": false
+                      |  }
+                      |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithNewspaperPlusUserId)
+
+    }
+
     "return the correct feast attributes for Guardian Weekly subscribers" in {
       val req = FakeRequest().withCookies(guardianWeeklyCookie)
       val result = controller.attributes(req)
 
       status(result) shouldEqual OK
       val jsonBody = contentAsJson(result)
-      System.out.println(jsonBody)
+      println(Json.prettyPrint(jsonBody))
       jsonBody shouldEqual
         Json.parse(s"""
              |{
