@@ -12,7 +12,7 @@ jobs:
     uses: guardian/.github/.github/workflows/sbt-node-snyk.yml@main
     with:
       DEBUG: true
-      ORG: the-guardian-cuu
+      ORG: guardian-portfolio-and-platform
       SKIP_NODE: true
       PROJECT_FILE: build.sbt
     secrets:
