@@ -1,11 +1,11 @@
 package com.gu.salesforce
 
-import org.apache.pekko.actor.ActorSystem
+import com.gu.memsub.util.Timing
 import com.gu.salesforce.job.Implicits._
 import com.gu.salesforce.job._
-import com.gu.memsub.util.Timing
-import com.gu.monitoring.SafeLogger
 import okhttp3.{MediaType, Request, RequestBody}
+import org.apache.pekko.actor.ActorSystem
+
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
@@ -33,8 +33,8 @@ abstract class ScalaforceJob(implicit ec: ExecutionContext) extends Scalaforce {
         issueRequest(request).map { response =>
           reader.read(response) match {
             case Left(error) =>
-              SafeLogger.warn(s"Salesforce action ${action.name} failed with response code ${response.code()}")
-              SafeLogger.debug(response.body().string())
+              logger.warn(s"Salesforce action ${action.name} failed with response code ${response.code()}")
+              logger.debug(response.body().string())
               throw error
 
             case Right(obj) => obj

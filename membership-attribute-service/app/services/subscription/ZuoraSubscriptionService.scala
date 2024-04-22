@@ -11,8 +11,8 @@ import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
 import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
 import com.gu.memsub.subsv2.services.Trace.Traceable
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
-import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.{Reads => JsReads, _}
 import scalaz._
@@ -27,7 +27,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     t: Monad[Future],
     ec: ExecutionContext,
 ) extends SubscriptionService
-    with StrictLogging {
+    with SafeLogging {
   private implicit val idReads = new JsReads[JsValue] {
     override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
   }

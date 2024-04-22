@@ -1,9 +1,23 @@
 package com.gu.monitoring
 
-import com.typesafe.scalalogging.StrictLogging
-import org.slf4j.{Marker, MarkerFactory}
+import com.gu.monitoring.SafeLogger.LogMessage
+import com.typesafe.scalalogging.Logger
+import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 
-object SafeLogger extends StrictLogging {
+trait SafeLogging {
+
+  protected val logger: SafeLoggerImpl =
+    new SafeLoggerImpl(Logger(LoggerFactory.getLogger(getClass.getName)))
+
+  implicit class Sanitizer(val sc: StringContext) {
+    def scrub(args: Any*): LogMessage = {
+      LogMessage(sc.s(args: _*), sc.s(args.map(_ => "*****"): _*))
+    }
+  }
+
+}
+
+object SafeLogger extends SafeLogging {
 
   val sanitizedLogMessage: Marker = MarkerFactory.getMarker("SENTRY")
 
@@ -11,11 +25,9 @@ object SafeLogger extends StrictLogging {
     override val toString = withoutPersonalData
   }
 
-  implicit class Sanitizer(val sc: StringContext) extends AnyVal {
-    def scrub(args: Any*): LogMessage = {
-      LogMessage(sc.s(args: _*), sc.s(args.map(_ => "*****"): _*))
-    }
-  }
+}
+
+class SafeLoggerImpl(logger: Logger) {
 
   def debug(logMessage: String): Unit = {
     logger.debug(logMessage)

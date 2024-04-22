@@ -1,7 +1,7 @@
 package controllers
 
 import actions.{AuthAndBackendRequest, CommonActions, Return401IfNotSignedInRecently}
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.monitoring.SafeLogging
 import models.AccessScope.updateSelf
 import models.DeliveryAddress
 import monitoring.CreateMetrics
@@ -16,7 +16,7 @@ class ContactController(
     override val controllerComponents: ControllerComponents,
     createMetrics: CreateMetrics,
 ) extends BaseController
-    with LazyLogging {
+    with SafeLogging {
 
   import commonActions._
 

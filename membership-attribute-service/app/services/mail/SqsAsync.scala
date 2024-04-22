@@ -1,6 +1,6 @@
 package services.mail
 
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.monitoring.SafeLogging
 import services.mail.SqsAsync.CredentialsProvider
 import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.regions.Region.EU_WEST_1
@@ -14,7 +14,7 @@ import scala.util.{Failure, Success}
 
 /** Manages asynchronous access to SQS queues.
   */
-class SqsAsync extends LazyLogging {
+class SqsAsync extends SafeLogging {
 
   val client = SqsAsyncClient.builder
     .region(EU_WEST_1)
@@ -29,7 +29,7 @@ class SqsAsync extends LazyLogging {
           logger.info(s"Successfully sent message to $queueUrl: $result")
           Success(())
         case Failure(throwable) =>
-          logger.error(s"Failed to sendToUrl message to $queueUrl due to:", throwable)
+          logger.error(scrub"Failed to sendToUrl message to $queueUrl due to:", throwable)
           Failure(throwable)
       }
     } yield ()

@@ -1,20 +1,18 @@
 package com.gu.zuora.soap
 
-import java.util.concurrent.atomic.AtomicReference
-
-import org.apache.pekko.actor.ActorSystem
 import com.gu.memsub.Subscription.Feature.Code
+import com.gu.memsub.util.FutureRetry._
+import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners._
 import com.gu.zuora.ZuoraSoapConfig
 import com.gu.zuora.soap.Readers._
 import com.gu.zuora.soap.models.Queries.Feature
-import com.gu.monitoring.{NoOpZuoraMetrics, SafeLogger, ZuoraMetrics}
-import com.gu.monitoring.SafeLogger._
+import org.apache.pekko.actor.ActorSystem
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Failure
-import com.gu.memsub.util.FutureRetry._
 
 class ClientWithFeatureSupplier(
     featureCodes: Set[Code],
@@ -34,7 +32,7 @@ class ClientWithFeatureSupplier(
     query[Feature](SimpleFilter("Status", "Active")).map { features =>
       val diff = featureCodes &~ features.map(_.code).toSet
       if (diff.nonEmpty) {
-        SafeLogger.error(
+        logger.error(
           scrub"Zuora ${apiConfig.envName} is missing the following product features: ${diff.mkString(", ")}. Please update configuration ASAP!",
         )
       }
@@ -42,5 +40,5 @@ class ClientWithFeatureSupplier(
       logger.info("Successfully refreshed features")
       features
     }
-  } andThen { case Failure(e) => logger.error("Failed to refresh features", e) }
+  } andThen { case Failure(e) => logger.error(scrub"Failed to refresh features", e) }
 }

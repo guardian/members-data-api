@@ -1,18 +1,16 @@
 package com.gu.salesforce
 
-import org.apache.pekko.actor.{Cancellable, Scheduler}
-import java.util.concurrent.atomic.AtomicReference
-
-import com.gu.memsub.util.Timing
 import com.gu.memsub.util.FutureRetry._
-import com.gu.monitoring.{SafeLogger, SalesforceMetrics}
+import com.gu.memsub.util.Timing
+import com.gu.monitoring.{SafeLogging, SalesforceMetrics}
 import com.gu.okhttp.RequestRunners.FutureHttpClient
-import com.typesafe.scalalogging.LazyLogging
 import okhttp3._
+import org.apache.pekko.actor.{Cancellable, Scheduler}
 import play.api.libs.json._
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, Monad, \/, \/-}
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -23,7 +21,7 @@ case class SFContactRecord(Id: String, AccountId: String, IdentityID__c: Option[
 
 case class SFContactId(get: String)
 
-object SFContactRecord {
+object SFContactRecord extends SafeLogging {
   implicit val readsSFResponse = Json.reads[SFResponse]
   implicit val readsSFContactRecord = Json.reads[SFContactRecord]
 
@@ -36,7 +34,7 @@ object SFContactRecord {
     } yield goodContactRecord
 
     contactRecordJsResult match {
-      case e: JsError => SafeLogger.warn(s"Error on SF response: $e - response was $someKindOfSFResponse")
+      case e: JsError => logger.warn(s"Error on SF response: $e - response was $someKindOfSFResponse")
       case _ => // We just want to log when stuff goes bad
     }
 
@@ -56,7 +54,7 @@ case class ScalaforceError(s: String) extends Throwable {
   * https://www.salesforce.com/us/developer/docs/api_rest/Content/intro_understanding_username_password_oauth_flow.htm
   */
 
-abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
+abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
   val stage: String
   val application: String
   val sfConfig: SalesforceConfig
@@ -80,7 +78,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
     httpClient(req).map { response =>
       metrics.recordResponse(response.code(), req.method())
       if (!response.isSuccessful && (response.code() != Status.NOT_FOUND)) {
-        SafeLogger.warn(
+        logger.warn(
           s"Unexpected response from Salesforce. We attempted to $requestLog." +
             s" Received response code: ${response.code()}| response body: ${response.peekBody(Long.MaxValue).string()}",
         )
@@ -206,13 +204,13 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
     case Success(auth) =>
       periodicAuth.set(Some(auth))
     case Failure(ex) =>
-      logger.error(s"Failed Salesforce authentication $stage", ex)
+      logger.error(scrub"Failed Salesforce authentication $stage", ex)
       metrics.recordAuthenticationError()
   }
 
   protected def authorize: Future[Authentication] = {
     retry {
-      SafeLogger.info(s"Trying to authenticate with Salesforce $stage...")
+      logger.info(s"Trying to authenticate with Salesforce $stage...")
 
       val formBody = new FormBody.Builder()
         .add("client_id", sfConfig.key)
@@ -229,7 +227,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends LazyLogging {
         val responseBody = jsonParse(response.body().string())
         responseBody.validate[Authentication] match {
           case JsSuccess(result, _) =>
-            SafeLogger.info(s"Successful Salesforce $stage authentication.")
+            logger.info(s"Successful Salesforce $stage authentication.")
             result
           case _ =>
             throw ScalaforceError(s"Failed Salesforce $stage authentication: CODE = ${response.code()}; Response = $responseBody")

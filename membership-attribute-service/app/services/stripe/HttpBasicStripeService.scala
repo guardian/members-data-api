@@ -2,11 +2,11 @@ package services.stripe
 
 import com.gu.i18n.Currency
 import com.gu.memsub.util.WebServiceHelper
+import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._
 import com.gu.stripe.Stripe._
 import com.gu.stripe.{BasicStripeServiceConfig, Stripe, StripeServiceConfig}
-import com.typesafe.scalalogging.StrictLogging
 import okhttp3.Request
 import scalaz.syntax.std.option._
 
@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: FutureHttpClient)(implicit ec: ExecutionContext)
     extends WebServiceHelper[StripeObject, Stripe.Error]
     with BasicStripeService
-    with StrictLogging {
+    with SafeLogging {
   override val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
 
   override def wsPreExecute(req: Request.Builder): Request.Builder = {

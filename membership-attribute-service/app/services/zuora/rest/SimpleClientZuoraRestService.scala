@@ -1,9 +1,9 @@
 package services.zuora.rest
 
 import com.gu.memsub.Subscription._
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.zuora.rest.{ZuoraCrudResponse, ZuoraResponse}
-import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.LocalDate
 import play.api.libs.json.{JsObject, JsValue, Json}
 import scalaz.std.list._
@@ -11,11 +11,10 @@ import scalaz.{-\/, EitherT, Monad, \/, \/-}
 import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.higherKinds
 
 class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implicit val m: Monad[Future], ec: ExecutionContext)
     extends ZuoraRestService
-    with StrictLogging {
+    with SafeLogging {
 
   def getAccount(accountId: AccountId): Future[String \/ AccountSummary] = {
     simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") // TODO error handling

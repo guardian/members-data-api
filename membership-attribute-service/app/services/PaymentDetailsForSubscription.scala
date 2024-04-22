@@ -2,9 +2,9 @@ package services
 
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingPeriod, Price}
+import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
-import com.typesafe.scalalogging.LazyLogging
 import models.ContactAndSubscription
 import scalaz.\/
 import services.DifferentiateSubscription.differentiateSubscription
@@ -13,7 +13,7 @@ import services.zuora.payment.PaymentService
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class PaymentDetailsForSubscription(paymentService: PaymentService) extends LazyLogging {
+class PaymentDetailsForSubscription(paymentService: PaymentService) extends SafeLogging {
   def apply(contactAndSubscription: ContactAndSubscription)(implicit ec: ExecutionContext): Future[PaymentDetails] = {
     val isGiftRedemption = contactAndSubscription.isGiftRedemption
     val differentiated = differentiateSubscription(contactAndSubscription)
@@ -23,7 +23,7 @@ class PaymentDetailsForSubscription(paymentService: PaymentService) extends Lazy
       case Right(paidSub) =>
         val paymentDetails = paymentService.paymentDetails(\/.fromEither(differentiated), defaultMandateIdIfApplicable = Some(""))
         paymentDetails.onComplete {
-          case Failure(exception) => logger.error(s"Failed to get payment details for $paidSub: $exception")
+          case Failure(exception) => logger.error(scrub"Failed to get payment details for $paidSub: $exception")
           case Success(_) => logger.info(s"Successfully got payment details for $paidSub")
         }
         paymentDetails

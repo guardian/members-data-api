@@ -1,7 +1,7 @@
 package services
 
 import com.gu.i18n.Currency
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.monitoring.SafeLogging
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.CreateMetrics
 import org.joda.time.{DateTimeZone, LocalDate}
@@ -30,7 +30,7 @@ class DynamoSupporterProductDataService(
 )(implicit
     executionContext: ExecutionContext,
 ) extends SupporterProductDataService
-    with LazyLogging {
+    with SafeLogging {
   val metrics = createMetrics.forService(classOf[SupporterProductDataService]) // referenced in CloudFormation
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
@@ -73,7 +73,7 @@ class DynamoSupporterProductDataService(
 
   private def alertOnDynamoReadErrors(identityId: String, errors: List[DynamoReadError]) =
     if (errors.nonEmpty) {
-      logger.error(errorMessage(identityId, errors))
+      logger.error(scrub"${errorMessage(identityId, errors)}")
       metrics.incrementCount("SupporterProductDataDynamoError") // referenced in CloudFormation
     }
 }

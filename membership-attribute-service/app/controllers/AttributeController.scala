@@ -1,17 +1,17 @@
 package controllers
 
 import actions.{AuthenticatedUserAndBackendRequest, CommonActions}
-import org.apache.pekko.actor.ActorSystem
 import com.gu.identity.auth.AccessScope
+import com.gu.monitoring.SafeLogging
 import filters.AddGuIdentityHeaders
-import loghandling.LoggingField.{LogField, LogFieldString}
-import loghandling.{DeprecatedRequestLogger, LoggingWithLogstashFields}
+import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
 import monitoring.CreateMetrics
+import org.apache.pekko.actor.ActorSystem
 import org.joda.time.LocalDate
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -31,7 +31,7 @@ class AttributeController(
     createMetrics: CreateMetrics,
 )(implicit system: ActorSystem)
     extends BaseController
-    with LoggingWithLogstashFields {
+    with SafeLogging {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   lazy val metrics = createMetrics.forService(classOf[AttributeController])
@@ -45,7 +45,7 @@ class AttributeController(
       contributionsStoreDatabaseService.getLatestContribution(identityId) map {
         case Left(databaseError) =>
           // Failed to get one-off data, but this should not block the zuora request
-          log.error(databaseError)
+          logger.error(scrub"DBERROR getting date: $databaseError")
           None
         case Right(maybeOneOff) =>
           maybeOneOff.map(oneOff => new LocalDate(oneOff.created.toInstant.toEpochMilli))
@@ -59,11 +59,11 @@ class AttributeController(
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(error) =>
         metrics.incrementCount(s"mobile-subscription-fetch-exception")
-        log.warn("Exception while fetching mobile subscription, assuming none", error)
+        logger.warn("Exception while fetching mobile subscription, assuming none", error)
         Success(None)
       case Success(Left(error)) =>
         metrics.incrementCount(s"mobile-subscription-fetch-error-non-http-200")
-        log.warn(s"Unable to fetch mobile subscription, assuming none: $error")
+        logger.warn(s"Unable to fetch mobile subscription, assuming none: $error")
         Success(None)
       case Success(Right(status)) => Success(status)
     }
@@ -82,7 +82,7 @@ class AttributeController(
   }
 
   protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
-    log.info(s"Fetching attributes from supporter-product-data table for user $identityId")
+    logger.info(s"Fetching attributes from supporter-product-data table for user $identityId")
     request.touchpoint.supporterProductDataService
       .getNonCancelledAttributes(identityId)
       .map(maybeAttributes => ("supporter-product-data", maybeAttributes.getOrElse(None)))
@@ -126,17 +126,10 @@ class AttributeController(
           )
         } yield {
 
-          def customFields(supporterType: String): List[LogField] = List(
-            LogFieldString("lookup-endpoint-description", endpointDescription),
-            LogFieldString("supporter-type", supporterType),
-            LogFieldString("data-source", fromWhere),
-          )
-
           val result = allProductAttributes match {
             case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _, _, _, _, _, _)) =>
-              logInfoWithCustomFields(
+              logger.info(
                 s"${user.identityId} is a $tier member - $endpointDescription - $attrs found via $fromWhere",
-                customFields("member"),
               )
               onSuccessMember(attrs).withHeaders(
                 "X-Gu-Membership-Tier" -> tier,
@@ -144,28 +137,27 @@ class AttributeController(
               )
             case Some(attrs) =>
               attrs.DigitalSubscriptionExpiryDate.foreach { date =>
-                logInfoWithCustomFields(s"${user.identityId} is a digital subscriber expiring $date", customFields("digital-subscriber"))
+                logger.info(s"${user.identityId} is a digital subscriber expiring $date")
               }
               attrs.PaperSubscriptionExpiryDate.foreach { date =>
-                logInfoWithCustomFields(s"${user.identityId} is a paper subscriber expiring $date", customFields("paper-subscriber"))
+                logger.info(s"${user.identityId} is a paper subscriber expiring $date")
               }
               attrs.GuardianWeeklySubscriptionExpiryDate.foreach { date =>
-                logInfoWithCustomFields(
+                logger.info(
                   s"${user.identityId} is a Guardian Weekly subscriber expiring $date",
-                  customFields("guardian-weekly-subscriber"),
                 )
               }
               attrs.GuardianPatronExpiryDate.foreach { date =>
-                logInfoWithCustomFields(s"${user.identityId} is a Guardian Patron expiring $date", customFields("guardian-patron"))
+                logger.info(s"${user.identityId} is a Guardian Patron expiring $date")
               }
               attrs.RecurringContributionPaymentPlan.foreach { paymentPlan =>
-                logInfoWithCustomFields(s"${user.identityId} is a regular $paymentPlan contributor", customFields("contributor"))
+                logger.info(s"${user.identityId} is a regular $paymentPlan contributor")
               }
-              logInfoWithCustomFields(s"${user.identityId} supports the guardian - $attrs - found via $fromWhere", customFields("supporter"))
+              logger.info(s"${user.identityId} supports the guardian - $attrs - found via $fromWhere")
               onSuccessSupporter(attrs)
             case None if sendAttributesIfNotFound =>
               val attr = addOneOffAndMobile(Attributes(user.identityId), latestOneOffDate, latestMobileSubscription)
-              log.logger.info(s"${user.identityId} does not have zuora attributes - $attr - found via $fromWhere")
+              logger.info(s"${user.identityId} does not have zuora attributes - $attr - found via $fromWhere")
               Ok(Json.toJson(attr))
             case _ =>
               onNotFound
@@ -175,10 +167,10 @@ class AttributeController(
         }).recover { case e =>
           // This branch indicates a serious error to be investigated ASAP, because it likely means we could not
           // serve from either Zuora or DynamoDB cache. Likely multi-system outage in progress or logic error.
-          val errMsg = s"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
+          val errMsg = scrub"Failed to serve entitlements either from cache or directly. Urgently notify Retention team: $e"
           metrics.incrementCount(s"$endpointDescription-failed-to-serve-entitlements")
-          log.error(errMsg, e)
-          InternalServerError(errMsg)
+          logger.error(errMsg, e)
+          InternalServerError("failed to serve entitlements")
         }
       }
       if (useBatchedMetrics) {

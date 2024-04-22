@@ -4,8 +4,7 @@ import com.gu.i18n.{CountryGroup, Currency}
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.PromoCode
 import com.gu.memsub.{Subscription => S}
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PayPal, PaymentGateway}
@@ -21,6 +20,7 @@ import com.gu.zuora.soap.models.errors._
 import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
 import com.gu.zuora.soap.writers.Command._
 import org.joda.time.{DateTime, LocalDate, ReadableDuration}
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 import scala.util.{Failure, Success}
@@ -37,7 +37,7 @@ object ZuoraSoapService {
   }
 }
 
-class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends api.ZuoraService {
+class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends api.ZuoraService with SafeLogging {
 
   import ZuoraSoapService._
   implicit private val sc = soapClient
@@ -168,8 +168,8 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     promoCode.foreach { code =>
       amendResult.map { _ => // wait for the amend to complete
         updatePromoCode(code, renew.subscriptionId, amendResult).onComplete {
-          case Success(_) => SafeLogger.info("updated promo code")
-          case Failure(e) => SafeLogger.error(scrub"ZU002: failed to update promo code", e)
+          case Success(_) => logger.info("updated promo code")
+          case Failure(e) => logger.error(scrub"ZU002: failed to update promo code", e)
         }
       }
     }
@@ -185,8 +185,8 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     promoCode.foreach { code =>
       amendResult.map { _ => // wait for the amend to complete
         updatePromoCode(code, upgrade.subscriptionId, amendResult).onComplete {
-          case Success(_) => SafeLogger.info("updated promo code")
-          case Failure(e) => SafeLogger.error(scrub"ZU001: failed to update promo code", e)
+          case Success(_) => logger.info("updated promo code")
+          case Failure(e) => logger.error(scrub"ZU001: failed to update promo code", e)
         }
       }
     }
@@ -263,8 +263,8 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     soapClient.authenticatedRequest[UpdateResult](
       Update(subscriptionId.get, "Subscription", Seq("ActivationDate__c" -> DateTime.now().toString)),
     ) map (_ => ()) andThen {
-      case Success(_) => SafeLogger.debug(s"Updated activation date for subscription ${subscriptionId.get}")
-      case Failure(e) => SafeLogger.error(scrub"Error while trying to update activation date for subscription: ${subscriptionId.get}", e)
+      case Success(_) => logger.debug(s"Updated activation date for subscription ${subscriptionId.get}")
+      case Failure(e) => logger.error(scrub"Error while trying to update activation date for subscription: ${subscriptionId.get}", e)
     }
 
   override def createContribution(con: Contribute): Future[SubscribeResult] =

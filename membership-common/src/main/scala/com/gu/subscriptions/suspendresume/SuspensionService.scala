@@ -1,29 +1,29 @@
 package com.gu.subscriptions.suspendresume
 
-import java.lang.Math.min
 import com.github.nscala_time.time.Imports.LocalDateOrdering
 import com.gu.config.HolidayRatePlanIds
 import com.gu.memsub.Benefit.PaperDay
 import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.{BillingSchedule, Subscription}
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
+import com.gu.monitoring.SafeLogging
 import com.gu.subscriptions.suspendresume.JsonFormatters._
 import com.gu.subscriptions.suspendresume.RefundCalculator._
 import com.gu.zuora.rest.SimpleClient
 import org.joda.time.LocalDate.now
 import org.joda.time.{Days, Interval, LocalDate}
-import scala.language.higherKinds
-import scala.util.{Failure, Success, Try}
 import scalaz.syntax.monad._
 import scalaz.syntax.nel._
 import scalaz.syntax.std.option._
-import scalaz.{EitherT, Monad, NonEmptyList, Semigroup, Validation, ValidationNel, \/}
+import scalaz._
+
+import java.lang.Math.min
+import scala.language.higherKinds
+import scala.util.{Failure, Success, Try}
 
 /** This service handles the wiring / HTTP side of suspending and resuming zuora subscriptions namely it validates incoming holiday requests and if
   * valid constructs JSON to send to Zuora or returns errors
   */
-object SuspensionService {
+object SuspensionService extends SafeLogging {
 
   implicit class BetterLocalDate(in: LocalDate) {
     def withDayOfMonthOrLastDay(dayToSet: Int): LocalDate = {
@@ -107,7 +107,7 @@ object SuspensionService {
         case Success(true) => false // if overlaps, then is not ok
         case Success(false) => true // if doesn't overlap, then it's ok
         case Failure(ex) =>
-          SafeLogger.error(scrub"broken holiday ended before it started! Sub: ${holiday.subscription.get}", ex)
+          logger.error(scrub"broken holiday ended before it started! Sub: ${holiday.subscription.get}", ex)
           true // if we couldn't read the holiday period, it's ok, but log an error for someone to sort it out
       },
     )
@@ -134,7 +134,7 @@ object SuspensionService {
 
 }
 
-class SuspensionService[M[_]: Monad](plans: HolidayRatePlanIds, simpleRest: SimpleClient[M]) {
+class SuspensionService[M[_]: Monad](plans: HolidayRatePlanIds, simpleRest: SimpleClient[M]) extends SafeLogging {
 
   import SuspensionService._
 
@@ -165,7 +165,7 @@ class SuspensionService[M[_]: Monad](plans: HolidayRatePlanIds, simpleRest: Simp
         response.map(_.flatMap { response =>
           if (response.results.forall(_.Success)) \/.r[String](())
           else {
-            SafeLogger.warn("we tried to renew, but it didn't work")
+            logger.warn("we tried to renew, but it didn't work")
             \/.l[Unit]("Renewal call failed.")
           }
         })

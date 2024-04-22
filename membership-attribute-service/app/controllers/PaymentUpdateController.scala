@@ -4,6 +4,7 @@ import actions.{CommonActions, Return401IfNotSignedInRecently}
 import com.gu.memsub
 import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import com.gu.zuora.api.GoCardlessZuoraInstance
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
@@ -13,14 +14,13 @@ import monitoring.CreateMetrics
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, Result}
+import play.api.mvc._
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
 import services.mail.Emails.paymentMethodChangedEmail
-import services.mail.{Card, DirectDebit, EmailData, PaymentType, SendEmail}
-import utils.Sanitizer.Sanitizer
+import services.mail.{Card, DirectDebit, PaymentType, SendEmail}
+import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
-import utils.{SanitizedLogging, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,7 +30,7 @@ class PaymentUpdateController(
     sendEmail: SendEmail,
     createMetrics: CreateMetrics,
 ) extends BaseController
-    with SanitizedLogging {
+    with SafeLogging {
   import AccountHelpers._
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
@@ -70,7 +70,7 @@ class PaymentUpdateController(
             Ok(Json.toJson(success))
           }
           case failure: CardUpdateFailure => {
-            logError(scrub"Failed to update card for identity user: $user due to $failure")
+            logger.error(scrub"Failed to update card for identity user: $user due to $failure")
             Forbidden(Json.toJson(failure))
           }
         }).run.map(_.toEither).map {
@@ -110,10 +110,10 @@ class PaymentUpdateController(
         ),
       )
     case Some(_) =>
-      logError(scrub"New payment method for user $userId, does not match the posted Direct Debit details")
+      logger.error(scrub"New payment method for user $userId, does not match the posted Direct Debit details")
       InternalServerError("")
     case None =>
-      logError(
+      logger.error(
         scrub"default-payment-method-lost: Default payment method for user $userId, was set to nothing, when attempting to update Direct Debit details",
       )
       InternalServerError("")
@@ -179,7 +179,7 @@ class PaymentUpdateController(
           .map(_.toEither)
           .map {
             case Left(message) =>
-              logger.error(s"Failed to update direct debit for user $userId, due to $message")
+              logger.error(scrub"Failed to update direct debit for user $userId, due to $message")
               InternalServerError("")
             case Right(result) => result
           }

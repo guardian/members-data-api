@@ -1,9 +1,9 @@
 package controllers
 
-import play.api.libs.json.Json
-import play.api.mvc.{BaseController, ControllerComponents, Results}
+import com.gu.monitoring.SafeLogging
 import components.TouchpointBackends
-import com.typesafe.scalalogging.StrictLogging
+import play.api.libs.json.Json
+import play.api.mvc.{BaseController, ControllerComponents}
 
 trait Test {
   def ok: Boolean
@@ -17,7 +17,7 @@ class BoolTest(name: String, exec: () => Boolean) extends Test {
 
 class HealthCheckController(touchPointBackends: TouchpointBackends, override val controllerComponents: ControllerComponents)
     extends BaseController
-    with StrictLogging {
+    with SafeLogging {
 
   val touchpointComponents = touchPointBackends.normal
   // behaviourService, Stripe and all Zuora services are not critical

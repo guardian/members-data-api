@@ -1,9 +1,8 @@
 package com.gu.memsub.subsv2.services
 
-import com.github.nscala_time.time.Imports._
 import com.gu.memsub
 import com.gu.memsub.Subscription.{AccountId, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.SubscriptionPlan.{AnyPlan, _}
+import com.gu.memsub.subsv2.SubscriptionPlan._
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
 import com.gu.memsub.subsv2.reads.CommonReads._
@@ -11,17 +10,18 @@ import com.gu.memsub.subsv2.reads.SubJsonReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
 import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.zuora.rest.SimpleClient
-import com.gu.monitoring.SafeLogger
 import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.{Reads => JsReads, _}
-import scala.language.higherKinds
-import scala.util.Try
 import scalaz._
 import scalaz.syntax.all._
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
+
+import scala.language.higherKinds
+import scala.util.Try
 
 object SubscriptionService {
   type SoapClient[M[_]] = ContactId => M[List[memsub.Subscription.AccountId]]
@@ -66,7 +66,7 @@ object Trace {
 
 import com.gu.memsub.subsv2.services.Trace.Traceable
 
-class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap], rest: SimpleClient[M], soap: SoapClient[M])(implicit t: Monad[M]) {
+class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap], rest: SimpleClient[M], soap: SoapClient[M])(implicit t: Monad[M]) extends SafeLogging {
   type EitherTM[A] = EitherT[String, M, A]
 
   private implicit val idReads = new JsReads[JsValue] {
@@ -116,7 +116,7 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
           SubscriptionTransform.getSubscription[P](catalog, pids)(jsValue).withTrace("getAllValidSubscriptionsFromJson")
         }
         warnOnMissingChargedThroughDate(allSubscriptionsForSubscriberName)
-        allSubscriptionsForSubscriberName.leftMap(error => SafeLogger.warn(s"Error from sub service for $name: $error")).toOption
+        allSubscriptionsForSubscriberName.leftMap(error => logger.warn(s"Error from sub service for $name: $error")).toOption
 
       }
     }
@@ -139,7 +139,7 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
       subscription.foreach { sub =>
         sub.plan match {
           case p: PaidSubscriptionPlan[_, _] if p.chargedThrough.isEmpty =>
-            SafeLogger.warn(s"chargedThroughDate (end of last invoice date) does not exist for ${sub.name}")
+            logger.warn(s"chargedThroughDate (end of last invoice date) does not exist for ${sub.name}")
           case _ => // do nothing
         }
       }
@@ -156,12 +156,12 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
       futureCatalog.map { catalog =>
         val highLevelSubscriptions = subJsonsEither.map { subJsons =>
           transform(catalog, pids)(subJsons)
-            .leftMap(e => SafeLogger.warn(s"Error from sub service for contact $contact: $e"))
+            .leftMap(e => logger.warn(s"Error from sub service for contact $contact: $e"))
             .toList
             .flatMap(_.list.toList) // returns an empty list if there's an error
         }
         highLevelSubscriptions
-          .leftMap(e => SafeLogger.warn(s"Error from sub service for contact $contact: $e"))
+          .leftMap(e => logger.warn(s"Error from sub service for contact $contact: $e"))
           .toList
           .flatten // returns an empty list if there's an error
       }
@@ -195,11 +195,11 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
         val highLevelSubscriptions = subJsonsEither.map { subJsons =>
           SubscriptionTransform
             .getCurrentSubscriptions[P](catalog, pids)(subJsons)
-            .leftMap(e => SafeLogger.warn(s"${errorMsg}: $e"))
+            .leftMap(e => logger.warn(s"${errorMsg}: $e"))
             .toList
             .flatMap(_.list.toList) // returns an empty list if there's an error
         }
-        highLevelSubscriptions.leftMap(e => SafeLogger.warn(s"${errorMsg}: $e")).toList.flatten // returns an empty list if there's an error
+        highLevelSubscriptions.leftMap(e => logger.warn(s"${errorMsg}: $e")).toList.flatten // returns an empty list if there's an error
       }
     }
 
@@ -236,7 +236,7 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
         subJsonsEither.leftMap(e => s"Error from sub service for sf contact $contact: $e").map { subJson =>
           SubscriptionTransform
             .tryTwoReadersForSubscriptionJson[PREFERRED, FALLBACK](catalog, pids)(subJson)
-            .leftMap(e => SafeLogger.debug(s"Error from tryTwoReadersForSubscriptionJson for sf contact $contact: $e"))
+            .leftMap(e => logger.debug(s"Error from tryTwoReadersForSubscriptionJson for sf contact $contact: $e"))
             .fold(_ => None, Some.apply)
         }
       }
@@ -338,7 +338,7 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
 
 // this is (all?) the testable stuff without mocking needed
 // we should make the subscription service just getting the json, and then we can have testable pure functions here
-object SubscriptionTransform {
+object SubscriptionTransform extends SafeLogging {
 
   val subIdsReads: JsReads[SubIds] = new JsReads[SubIds] {
     override def reads(json: JsValue): JsResult[SubIds] = {
@@ -355,7 +355,7 @@ object SubscriptionTransform {
     // didn't actually check if they're current
 
     ids.leftMap { error =>
-      SafeLogger.warn(s"Error from sub service for json: $error")
+      logger.warn(s"Error from sub service for json: $error")
     }
 
     ids

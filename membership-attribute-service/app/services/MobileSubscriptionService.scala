@@ -1,8 +1,8 @@
 package services
 
 import com.github.nscala_time.time.OrderingImplicits._
+import com.gu.monitoring.SafeLogging
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.StrictLogging
 import models.MobileSubscriptionStatus
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.libs.ws.WSClient
@@ -17,7 +17,7 @@ trait MobileSubscriptionService {
 
 class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit ec: ExecutionContext)
     extends MobileSubscriptionService
-    with StrictLogging {
+    with SafeLogging {
   val mobileSubscriptionApiKey = config.getString("mobile.subscription.apiKey")
 
   private val subscriptionURL = config.getString("stage") match {
