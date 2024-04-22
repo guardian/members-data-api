@@ -35,6 +35,8 @@ class AppLoader extends ApplicationLoader {
       _.configure(context.environment)
     }
     val loggerPackageName = classOf[SafeLoggerImpl].getPackageName
+    // at the moment we get SafeLogger.scala:49 type things in the logs
+    // adding to the FrameworkPackages makes logback skip over and find the real line of code
     LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext].getFrameworkPackages.add(loggerPackageName)
 
     val config = context.initialConfiguration.underlying
