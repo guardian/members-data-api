@@ -4,10 +4,9 @@ import actions.CommonActions
 import ch.qos.logback.classic.LoggerContext
 import com.gu.monitoring.SafeLoggerImpl
 import components.TouchpointBackends
-import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
+import configuration.{CreateTestUsernames, SentryConfig, Stage}
 import controllers._
 import filters._
-import loghandling.Logstash
 import monitoring.{CreateRealMetrics, ErrorHandler, SentryLogging}
 import org.apache.pekko.actor.ActorSystem
 import org.slf4j.LoggerFactory
@@ -41,7 +40,6 @@ class AppLoader extends ApplicationLoader {
 
     val config = context.initialConfiguration.underlying
     SentryLogging.init(new SentryConfig(config))
-    Logstash.init(new LogstashConfig(config))
     createMyComponents(context).application
   }
 

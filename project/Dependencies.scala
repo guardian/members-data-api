@@ -19,8 +19,6 @@ object Dependencies {
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
-  val kinesis = "com.gu" % "kinesis-logback-appender" % "2.1.3"
-  val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "7.4"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
   val netty = "io.netty" % "netty-codec" % "4.1.87.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.87.Final"
@@ -65,8 +63,6 @@ object Dependencies {
     awsCloudWatch,
     scalaz,
     specs2.exclude("org.specs2", "specs2-mock_2.13"),
-    kinesis,
-    logstash,
     logback,
     anorm,
     netty,
