@@ -1,9 +1,9 @@
 package loghandling
 
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import play.api.mvc.{AnyContent, WrappedRequest}
 
-object DeprecatedRequestLogger extends StrictLogging {
+object DeprecatedRequestLogger extends SafeLogging {
 
   val deprecatedSearchPhrase = "DeprecatedEndpointCalled"
 

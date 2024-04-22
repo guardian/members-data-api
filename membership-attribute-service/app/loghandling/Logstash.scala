@@ -2,7 +2,7 @@ package loghandling
 
 import com.amazonaws.util.EC2MetadataUtils
 import com.gu.aws.ProfileName
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import configuration.LogstashConfig
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProvider,
@@ -19,7 +19,7 @@ case class LogStashConf(
     customFields: Map[String, String],
 )
 
-object Logstash extends StrictLogging {
+object Logstash extends SafeLogging {
 
   private val CredentialsProvider = AwsCredentialsProviderChain.builder
     .addCredentialsProvider(ProfileCredentialsProvider.builder.profileName(ProfileName).build)

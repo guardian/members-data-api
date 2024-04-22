@@ -6,7 +6,7 @@ import cats.implicits._
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import models.{ApiError, ApiErrors, UserFromToken}
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
 
@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(implicit ec: ExecutionContext)
     extends AuthenticationService
-    with StrictLogging {
+    with SafeLogging {
 
   def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Either[AuthenticationFailure, UserFromToken]] = {
     getUser(requestHeader, requiredScopes).attempt

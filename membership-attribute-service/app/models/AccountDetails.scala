@@ -1,18 +1,19 @@
 package models
+import com.gu.i18n.Country
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2._
+import com.gu.memsub.{Subscription, _}
+import com.gu.monitoring.SafeLogging
+import com.gu.services.model.PaymentDetails
+import json.localDateWrites
+import org.joda.time.LocalDate
+import org.joda.time.LocalDate.now
+import play.api.libs.json._
+
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
 import scala.annotation.tailrec
-import com.gu.i18n.Country
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{GetCurrentPlans, PaidSubscriptionPlan, PaperCharges, Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, Product, Sepa}
-import com.gu.services.model.PaymentDetails
-import com.typesafe.scalalogging.LazyLogging
-import json.localDateWrites
-import org.joda.time.LocalDate
-import play.api.libs.json.{Json, _}
-import org.joda.time.LocalDate.now
 
 case class AccountDetails(
     contactId: String,
@@ -33,7 +34,7 @@ case class AccountDetails(
 
 object AccountDetails {
 
-  implicit class ResultLike(accountDetails: AccountDetails) extends LazyLogging {
+  implicit class ResultLike(accountDetails: AccountDetails) extends SafeLogging {
 
     import accountDetails._
 

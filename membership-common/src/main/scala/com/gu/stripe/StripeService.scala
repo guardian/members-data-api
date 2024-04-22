@@ -2,17 +2,16 @@ package com.gu.stripe
 
 import com.gu.i18n.{Country, Currency}
 import com.gu.memsub.util.WebServiceHelper
-import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._
-import com.gu.stripe.Stripe.{Customer, _}
+import com.gu.stripe.Stripe._
 import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway, RegionalStripeGateways}
 import com.typesafe.config.Config
 import okhttp3.Request
+import scalaz.syntax.std.boolean._
+import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.syntax.std.option._
-import scalaz.syntax.std.boolean._
 
 case class StripeCredentials(secretKey: String, publicKey: String)
 
@@ -64,7 +63,7 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
 
     config.version match {
       case Some(version) => {
-        SafeLogger.info(s"Making a stripe call with version: $version")
+        logger.info(s"Making a stripe call with version: $version")
         req.addHeader("Stripe-Version", version)
       }
       case None => req
@@ -149,7 +148,7 @@ class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(im
 
     apiConfig.version match {
       case Some(version) => {
-        SafeLogger.info(s"Making a stripe call with version: $version env: ${apiConfig.envName} country: ${apiConfig.stripeAccountCountry}")
+        logger.info(s"Making a stripe call with version: $version env: ${apiConfig.envName} country: ${apiConfig.stripeAccountCountry}")
         req.addHeader("Stripe-Version", version)
       }
       case None => req

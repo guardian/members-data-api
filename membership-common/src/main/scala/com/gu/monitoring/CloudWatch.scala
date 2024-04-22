@@ -1,6 +1,5 @@
 package com.gu.monitoring
 
-import java.util.concurrent.Future
 import com.amazonaws.handlers.AsyncHandler
 import com.amazonaws.regions.Regions.EU_WEST_1
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient
@@ -8,7 +7,9 @@ import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetri
 import com.gu.aws.CredentialsProvider
 import com.gu.monitoring.CloudWatch.cloudwatch
 
-trait CloudWatch {
+import java.util.concurrent.Future
+
+trait CloudWatch extends SafeLogging {
   val stage: String
   val application: String
   val service: String
@@ -18,10 +19,10 @@ trait CloudWatch {
 
   trait LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] {
     def onError(exception: Exception) {
-      SafeLogger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
+      logger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
     }
     def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult) {
-      SafeLogger.debug("CloudWatch PutMetricDataRequest - success")
+      logger.debug("CloudWatch PutMetricDataRequest - success")
       CloudWatchHealth.hasPushedMetricSuccessfully = true
     }
   }

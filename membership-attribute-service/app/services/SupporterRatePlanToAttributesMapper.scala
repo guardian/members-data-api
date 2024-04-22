@@ -1,13 +1,13 @@
 package services
 
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import services.MembershipTier._
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
-class SupporterRatePlanToAttributesMapper(stage: Stage) extends StrictLogging {
+class SupporterRatePlanToAttributesMapper(stage: Stage) extends SafeLogging {
   val productRatePlanIdMappings = productRatePlanMappings(stage.value)
 
   def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]): Option[Attributes] = {
@@ -30,7 +30,7 @@ class SupporterRatePlanToAttributesMapper(stage: Stage) extends StrictLogging {
       .map(transformer => transformer.transform(_, ratePlanItem))
 
   private def logUnsupportedRatePlanId(ratePlanItem: DynamoSupporterRatePlanItem): Option[Nothing] = {
-    logger.error("Unsupported product rate plan id: " + ratePlanItem.productRatePlanId)
+    logger.error(scrub"Unsupported product rate plan id: ${ratePlanItem.productRatePlanId}")
     None
   }
 

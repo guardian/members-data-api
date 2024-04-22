@@ -1,13 +1,14 @@
 package com.gu.lib
 
+import com.gu.monitoring.SafeLogging
+import okhttp3._
+
 import java.io.IOException
-import okhttp3.{Callback, OkHttpClient, Request, Response, Call}
-import com.gu.monitoring.SafeLogger
 import scala.concurrent.{Future, Promise}
 
 package object okhttpscala {
 
-  implicit class RickOkHttpClient(client: OkHttpClient) {
+  implicit class RickOkHttpClient(client: OkHttpClient) extends SafeLogging {
 
     def execute(request: Request): Future[Response] = {
       val p = Promise[Response]()
@@ -17,7 +18,7 @@ package object okhttpscala {
         .enqueue(new Callback {
           override def onFailure(call: Call, e: IOException): Unit = {
             val sanitizedUrl = s"${request.url().uri().getHost}${request.url().uri().getPath}" // don't log query string
-            SafeLogger.warn(s"okhttp request failure: ${request.method()} $sanitizedUrl", e)
+            logger.warn(s"okhttp request failure: ${request.method()} $sanitizedUrl", e)
             p.failure(e)
           }
 

@@ -1,11 +1,11 @@
 package models
 
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub._
 import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
-import com.typesafe.scalalogging.LazyLogging
-import play.api.libs.json.Json
+import com.gu.memsub._
+import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.monitoring.SafeLogging
 import org.joda.time.LocalDate.now
+import play.api.libs.json.Json
 
 case class ExistingPaymentOption(
     freshlySignedIn: Boolean,
@@ -16,7 +16,7 @@ case class ExistingPaymentOption(
 
 object ExistingPaymentOption {
 
-  implicit class ResultLike(existingPaymentOption: ExistingPaymentOption) extends LazyLogging {
+  implicit class ResultLike(existingPaymentOption: ExistingPaymentOption) extends SafeLogging {
 
     import existingPaymentOption._
 

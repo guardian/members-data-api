@@ -4,36 +4,30 @@ import actions._
 import com.gu.i18n.Currency
 import com.gu.memsub
 import com.gu.memsub.BillingPeriod.RecurringPeriod
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import components.TouchpointComponents
 import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
-import models.AccountDetails._
 import models.ApiErrors._
 import models._
 import monitoring.CreateMetrics
 import org.joda.time.LocalDate
-import play.api.data.{Form, FormBinding}
+import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.{Format, Json}
 import play.api.mvc._
 import scalaz._
 import scalaz.std.scalaFuture._
-import services.PaymentFailureAlerter._
 import services._
 import services.mail.Emails.{subscriptionCancelledEmail, updateAmountEmail}
 import services.mail.SendEmail
-import services.subscription.SubscriptionService
-import services.zuora.rest.ZuoraRestService
-import services.zuora.rest.ZuoraRestService.PaymentMethodId
-import utils.Sanitizer.Sanitizer
+import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
-import utils.{OptionTEither, SanitizedLogging, SimpleEitherT}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -72,7 +66,7 @@ class AccountController(
     sendEmail: SendEmail,
     createMetrics: CreateMetrics,
 ) extends BaseController
-    with SanitizedLogging {
+    with SafeLogging {
 
   import AccountHelpers._
   import commonActions._
@@ -135,7 +129,7 @@ class AccountController(
           )
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
-            logError(scrub"Failed to cancel subscription for user $identityId because $apiError")
+            logger.error(scrub"Failed to cancel subscription for user $identityId because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
             logger.info(s"Successfully cancelled subscription $subscriptionName owned by $identityId")
@@ -157,7 +151,7 @@ class AccountController(
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
-            logError(scrub"Failed to determine effectiveCancellationDate for $userId and $subscriptionName because $apiError")
+            logger.error(scrub"Failed to determine effectiveCancellationDate for $userId and $subscriptionName because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
             logger.info(
@@ -175,7 +169,7 @@ class AccountController(
           case Some(userId) =>
             contributionsStoreDatabaseService.getSupportReminders(userId).map {
               case Left(databaseError) =>
-                log.error(databaseError)
+                logger.error(scrub"DBERROR in reminders: $databaseError")
                 InternalServerError
               case Right(supportReminders) =>
                 Ok(Json.toJson(supportReminders))
@@ -276,7 +270,7 @@ class AccountController(
           _ <- sendUpdateAmountEmail(newPrice, email, contact, currency, billingPeriod, applyFromDate)
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
-            logError(scrub"Failed to update payment amount for user $userId, due to: $message")
+            logger.error(scrub"Failed to update payment amount for user $userId, due to: $message")
             InternalServerError(message)
           case Right(()) =>
             logger.info(s"Contribution amount updated for user $userId")
@@ -330,7 +324,7 @@ class AccountController(
           case Right(cancellationReason) =>
             services.zuoraRestService.updateCancellationReason(subName, cancellationReason).map {
               case -\/(error) =>
-                logError(scrub"Failed to update cancellation reason for user $identityId because $error")
+                logger.error(scrub"Failed to update cancellation reason for user $identityId because $error")
                 InternalServerError(s"Failed to update cancellation reason with error: $error")
               case \/-(_) =>
                 logger.info(s"Successfully updated cancellation reason for subscription $subscriptionName owned by $identityId")

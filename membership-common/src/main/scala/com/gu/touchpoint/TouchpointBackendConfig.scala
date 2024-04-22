@@ -2,11 +2,11 @@ package com.gu.touchpoint
 
 import com.gu.i18n.Country
 import com.gu.identity.IdapiConfig
+import com.gu.monitoring.SafeLogging
 import com.gu.paypal.PayPalConfig
 import com.gu.salesforce.SalesforceConfig
 import com.gu.stripe.{BasicStripeServiceConfig, StripeServiceConfig}
 import com.gu.zuora.{ZuoraApiConfig, ZuoraRestConfig, ZuoraSoapConfig}
-import com.gu.monitoring.SafeLogger
 
 case class TouchpointBackendConfig(
     environmentName: String,
@@ -22,7 +22,7 @@ case class TouchpointBackendConfig(
     idapi: IdapiConfig,
 )
 
-object TouchpointBackendConfig {
+object TouchpointBackendConfig extends SafeLogging {
 
   sealed abstract class BackendType(val name: String)
   object BackendType {
@@ -36,7 +36,7 @@ object TouchpointBackendConfig {
 
     val touchpointBackendConfig = byEnv(environmentName, backendsConfig)
 
-    SafeLogger.info(s"TouchPoint config - $typ: config=${touchpointBackendConfig.hashCode}")
+    logger.info(s"TouchPoint config - $typ: config=${touchpointBackendConfig.hashCode}")
 
     touchpointBackendConfig
   }

@@ -1,9 +1,10 @@
 package com.gu.memsub.util
 
+import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners.FutureHttpClient
 import okhttp3._
-import com.gu.monitoring.SafeLogger
 import play.api.libs.json._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.{ClassTag, classTag}
 
@@ -19,7 +20,7 @@ case class WebServiceHelperError[T: ClassTag](responseCode: Int, responseBody: S
   *   The type that will attempt to be extracted if extracting the expected object fails. This is useful when a web service has a standard error
   *   format
   */
-abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionContext) {
+abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionContext) extends SafeLogging {
 
   val wsUrl: String
   val httpClient: FutureHttpClient
@@ -50,7 +51,7 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
     */
   private def request[A <: T](rb: Request.Builder)(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A]): Future[A] = {
     val req = wsPreExecute(rb).build()
-    SafeLogger.debug(s"Issuing request ${req.method} ${req.url}")
+    logger.debug(s"Issuing request ${req.method} ${req.url}")
     // The string provided here sets the Custom Metric Name for the http request in CloudWatch
     for (response <- httpClient(req)) yield {
       val responseBody = response.body.string()

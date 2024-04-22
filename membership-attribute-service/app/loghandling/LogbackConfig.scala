@@ -2,14 +2,14 @@ package loghandling
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{LoggerContext, Logger => LogbackLogger}
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import com.gu.logback.appender.kinesis.KinesisAppender
 import net.logstash.logback.layout.LogstashLayout
-import org.slf4j.{Logger => SLFLogger, LoggerFactory}
+import org.slf4j.{LoggerFactory, Logger => SLFLogger}
 import play.api.{Logger => PlayLogger}
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 
 object LogbackConfig {
-
+//TODO delete all this code and config as we switched off kibana years ago
   private lazy val logger = PlayLogger(getClass)
   lazy val loggingContext = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
 

@@ -1,26 +1,23 @@
 package com.gu.zuora.soap
 
-import org.apache.pekko.actor.ActorSystem
 import com.github.nscala_time.time.JodaImplicits._
-import okhttp3.Request.Builder
-import okhttp3._
-import java.util.concurrent.atomic.AtomicReference
-import com.gu.memsub.util.ScheduledTask
 import com.gu.memsub.util.FutureRetry._
+import com.gu.memsub.util.ScheduledTask
+import com.gu.monitoring.{NoOpZuoraMetrics, SafeLogging, ZuoraMetrics}
+import com.gu.okhttp.RequestRunners._
 import com.gu.zuora.ZuoraSoapConfig
 import com.gu.zuora.soap.Readers._
 import com.gu.zuora.soap.actions.{Action, Actions}
-import com.gu.zuora.soap.models.{Identifiable, Query, Result}
 import com.gu.zuora.soap.models.Results.{Authentication, QueryResult}
+import com.gu.zuora.soap.models.{Identifiable, Query, Result}
 import com.gu.zuora.soap.readers.Reader
-import com.gu.okhttp.RequestRunners._
-import com.gu.monitoring.{NoOpZuoraMetrics, SafeLogger, ZuoraMetrics}
-import com.gu.monitoring.SafeLogger._
-import com.typesafe.scalalogging.LazyLogging
+import okhttp3.Request.Builder
+import okhttp3._
+import org.apache.pekko.actor.ActorSystem
 import org.joda.time.{DateTime, ReadableDuration}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect._
 import scala.util.{Failure, Success}
@@ -31,7 +28,7 @@ class Client(
     extendedHttpClient: FutureHttpClient,
     metrics: ZuoraMetrics = NoOpZuoraMetrics,
 )(implicit actorSystem: ActorSystem, ec: ExecutionContext)
-    extends LazyLogging {
+    extends SafeLogging {
 
   import Client._
 
@@ -48,7 +45,7 @@ class Client(
           logger.info(s"Successfully authenticated Zuora SOAP client in ${apiConfig.envName}")
 
         case Failure(ex) =>
-          logger.error(s"Failed Zuora SOAP client authentication in ${apiConfig.envName}", ex)
+          logger.error(scrub"Failed Zuora SOAP client authentication in ${apiConfig.envName}", ex)
       }
 
   private def request[T <: models.Result](
@@ -63,7 +60,7 @@ class Client(
       .post(RequestBody.create(clientMediaType, action.xml(authentication).toString()))
       .build()
     if (action.enableLogging)
-      SafeLogger.info(
+      logger.info(
         s"Zuora SOAP call in environment ${apiConfig.envName}. Request info:\n${action.prettyLogInfo}. Is authentication defined: ${authentication.isDefined}",
       )
     client(request)
@@ -71,7 +68,7 @@ class Client(
         val responseBody = result.body().string()
         reader.read(responseBody) match {
           case Left(error) =>
-            SafeLogger.error(
+            logger.error(
               scrub"Zuora action ${action.getClass.getSimpleName} resulted in error: CODE: ${result.code} RESPONSE BODY: $responseBody Is authentication defined: ${authentication.isDefined}",
             )
             throw error
@@ -118,8 +115,8 @@ class Client(
     ScheduledTask[Option[DateTime]]("ZuoraPing", None, 0.seconds, 30.seconds) {
       val result = authenticatedRequest(Actions.Query("SELECT Id FROM Product", enableLog = false))
       result.onComplete {
-        case Success(r) => SafeLogger.debug(s"${apiConfig.envName} ZuoraPing successfully executed query. There are ${r.results.size} products.")
-        case Failure(e) => SafeLogger.error(scrub"Scheduled Task: ${apiConfig.envName} ZuoraPing failed to execute query: ${e.getMessage}")
+        case Success(r) => logger.debug(s"${apiConfig.envName} ZuoraPing successfully executed query. There are ${r.results.size} products.")
+        case Failure(e) => logger.error(scrub"Scheduled Task: ${apiConfig.envName} ZuoraPing failed to execute query: ${e.getMessage}")
       }
       result.map { _ => Some(new DateTime) }
     }

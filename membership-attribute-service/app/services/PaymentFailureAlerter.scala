@@ -4,10 +4,8 @@ import com.gu.memsub.Product
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.monitoring.SafeLogging
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.typesafe.scalalogging.StrictLogging
-import loghandling.LoggingField.LogFieldString
-import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import scalaz.syntax.std.boolean._
@@ -16,7 +14,7 @@ import services.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invo
 import java.util.Locale
 import scala.concurrent.{ExecutionContext, Future}
 
-object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLogging {
+object PaymentFailureAlerter extends SafeLogging {
 
   private def accountObject(accountSummary: AccountSummary) =
     AccountObject(
@@ -62,22 +60,12 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
         subscription.plan.productName
       }
 
-      def customFields(identityId: Option[String], paymentFailedDate: String, productName: String): List[LogFieldString] = {
-        val logFields = List(LogFieldString("payment_failed_date", paymentFailedDate), LogFieldString("product_name", productName))
-        identityId match {
-          case Some(id) => LogFieldString("identity_id", id) :: logFields
-          case None => logFields
-        }
-      }
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
         maybeDate map { latestDate: DateTime =>
           val productDescription = getProductDescription(subscription)
-          val productName = subscription.plan.productName
 
-          val fields = customFields(accountSummary.identityId, latestDate.toString(formatter), productName)
-          logInfoWithCustomFields(
+          logger.info(
             s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}",
-            fields,
           )
 
           s"Our attempt to take payment for your $productDescription failed on ${latestDate.toString(formatter)}."

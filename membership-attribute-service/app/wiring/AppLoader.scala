@@ -1,13 +1,16 @@
 package wiring
 
 import actions.CommonActions
-import org.apache.pekko.actor.ActorSystem
+import ch.qos.logback.classic.LoggerContext
+import com.gu.monitoring.SafeLoggerImpl
 import components.TouchpointBackends
 import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
 import controllers._
 import filters._
 import loghandling.Logstash
 import monitoring.{CreateRealMetrics, ErrorHandler, SentryLogging}
+import org.apache.pekko.actor.ActorSystem
+import org.slf4j.LoggerFactory
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -16,28 +19,24 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.mail.{EmailData, QueueName, SendEmail, SendEmailToSQS}
+import services.mail.{QueueName, SendEmail, SendEmailToSQS}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe}
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.soap.ZuoraSoapService
-import services.{
-  CatalogService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  MobileSubscriptionServiceImpl,
-  PostgresDatabaseService,
-  SupporterProductDataService,
-}
+import services._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class AppLoader extends ApplicationLoader {
   def load(context: Context): Application = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
+    val loggerPackageName = classOf[SafeLoggerImpl].getPackageName
+    LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext].getFrameworkPackages.add(loggerPackageName)
+
     val config = context.initialConfiguration.underlying
     SentryLogging.init(new SentryConfig(config))
     Logstash.init(new LogstashConfig(config))

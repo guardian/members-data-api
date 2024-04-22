@@ -1,10 +1,9 @@
 package services
 
-import org.apache.pekko.actor.ActorSystem
 import com.gu.aws.ProfileName
-import com.typesafe.scalalogging.LazyLogging
 import configuration.Stage
 import monitoring.CreateNoopMetrics
+import org.apache.pekko.actor.ActorSystem
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import software.amazon.awssdk.auth.credentials.{
@@ -16,7 +15,7 @@ import software.amazon.awssdk.auth.credentials.{
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
-class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification with LazyLogging {
+class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Specification {
 
   val stage = "CODE" // Whichever stage is specified here, you will need config for it in /etc/gu/members-data-api.private.conf
   lazy val CredentialsProvider = AwsCredentialsProviderChain.builder
@@ -43,7 +42,7 @@ class SupporterProductDataIntegrationTest(implicit ee: ExecutionEnv) extends Spe
     "get attributes by identity id" in {
       supporterProductDataService.getNonCancelledAttributes("3355555").map {
         case Right(attributes) =>
-          logger.info(attributes.toString)
+          println(attributes.toString)
           ok
         case Left(err) => ko(err)
       }

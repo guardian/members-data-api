@@ -7,8 +7,8 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub.{GoCardless, PayPalMethod, PaymentCard, PaymentCardDetails, PaymentMethod}
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.memsub._
+import com.gu.monitoring.SafeLogging
 import components.TouchpointComponents
 import models.AccessScope.completeReadSelf
 import models.ExistingPaymentOption
@@ -20,20 +20,20 @@ import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.-\/
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
-import services.salesforce.ContactRepository
-import services.subscription.SubscriptionService
-import services.zuora.rest.ZuoraRestService.ObjectAccount
+import _root_.services.salesforce.ContactRepository
+import _root_.services.subscription.SubscriptionService
+import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
 import utils.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class ExistingPaymentOptionsController(
     commonActions: CommonActions,
     override val controllerComponents: ControllerComponents,
     createMetrics: CreateMetrics,
 ) extends BaseController
-    with LazyLogging {
+    with SafeLogging {
   import commonActions._
   implicit val executionContext: ExecutionContext = controllerComponents.executionContext
   val metrics = createMetrics.forService(classOf[ExistingPaymentOptionsController])

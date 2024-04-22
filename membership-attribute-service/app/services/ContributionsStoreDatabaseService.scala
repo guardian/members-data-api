@@ -1,7 +1,7 @@
 package services
 
 import anorm._
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import models.RecurringReminderStatus._
 import models.{ContributionData, SupportReminderDb, SupportReminders}
 import play.api.db.Database
@@ -22,9 +22,7 @@ object ContributionsStoreDatabaseService {
   type DatabaseGetResult[R] = Future[Either[String, R]]
 }
 
-class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext)
-    extends ContributionsStoreDatabaseService
-    with StrictLogging {
+class PostgresDatabaseService private (database: Database)(implicit ec: ExecutionContext) extends ContributionsStoreDatabaseService with SafeLogging {
 
   private def executeQuery[R](statement: SimpleSql[Row], parser: ResultSetParser[R]): DatabaseGetResult[R] =
     Future(database.withConnection { implicit conn =>
