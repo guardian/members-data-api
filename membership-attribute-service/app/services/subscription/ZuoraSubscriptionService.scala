@@ -20,10 +20,11 @@ import scalaz.syntax.all._
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.higherKinds
 import scala.util.Try
+import _root_.services.zuora.soap.ZuoraSoapService
+import com.gu.monitoring.SafeLogger.LogPrefix
 
-class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[CatalogMap], rest: SimpleClient, soap: SoapClient[Future])(implicit
+class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[CatalogMap], rest: SimpleClient, soap: ZuoraSoapService)(implicit
     t: Monad[Future],
     ec: ExecutionContext,
 ) extends SubscriptionService
@@ -108,7 +109,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     */
   private def subscriptionsForContact[P <: AnyPlan: SubPlanReads](
       transform: SubscriptionTransform.TimeRelativeSubTransformer[P],
-  )(contact: ContactId): Future[List[Subscription[P]]] = {
+  )(contact: ContactId)(implicit logPrefix: LogPrefix): Future[List[Subscription[P]]] = {
     val subJsonsFuture = jsonSubscriptionsFromContact(contact)
 
     subJsonsFuture.flatMap { subJsonsEither =>
@@ -127,17 +128,17 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     }
   }
 
-  def current[P <: AnyPlan: SubPlanReads](contact: ContactId): Future[List[Subscription[P]]] =
+  def current[P <: AnyPlan: SubPlanReads](contact: ContactId)(implicit logPrefix: LogPrefix): Future[List[Subscription[P]]] =
     subscriptionsForContact(SubscriptionTransform.getCurrentSubscriptions[P])(contact)
 
-  def since[P <: AnyPlan: SubPlanReads](onOrAfter: LocalDate)(contact: ContactId): Future[List[Subscription[P]]] =
+  def since[P <: AnyPlan: SubPlanReads](onOrAfter: LocalDate)(contact: ContactId)(implicit logPrefix: LogPrefix): Future[List[Subscription[P]]] =
     subscriptionsForContact(SubscriptionTransform.getSubscriptionsActiveOnOrAfter[P](onOrAfter))(contact)
 
   def recentlyCancelled(
       contact: ContactId,
       today: LocalDate = LocalDate.now(),
       lastNMonths: Int = 3, // cancelled in the last N months
-  )(implicit ev: SubPlanReads[AnyPlan]): Future[String \/ List[Subscription[AnyPlan]]] = {
+  )(implicit ev: SubPlanReads[AnyPlan], logPrefix: LogPrefix): Future[String \/ List[Subscription[AnyPlan]]] = {
     (for {
       catalog <- EitherT(futureCatalog.map(\/.right[String, CatalogMap]))
       jsonSubs <- EitherT(jsonSubscriptionsFromContact(contact))
@@ -174,10 +175,10 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     }
   }
 
-  def jsonSubscriptionsFromContact(contact: ContactId): Future[Disjunction[String, List[JsValue]]] = {
+  def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[JsValue]]] = {
     (for {
       account <- ListT[SimpleEitherT, AccountId](
-        EitherT[String, Future, IList[AccountId]](soap.apply(contact).map(l => \/.r[String](IList.fromSeq(l)))),
+        EitherT[String, Future, IList[AccountId]](soap.getAccountIds(contact).map(l => \/.r[String](IList.fromSeq(l)))),
       )
       subJson <- ListT[SimpleEitherT, JsValue](EitherT(jsonSubscriptionsFromAccount(account)).map(IList.fromSeq))
     } yield subJson).toList.run
@@ -190,7 +191,11 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     */
   def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
       contact: ContactId,
-  )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[\/[String, Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]]] = {
+  )(implicit
+      a: SubPlanReads[FALLBACK],
+      b: SubPlanReads[PREFERRED],
+      logPrefix: LogPrefix,
+  ): Future[\/[String, Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]]] = {
     val futureSubJson = jsonSubscriptionsFromContact(contact)
     futureSubJson.flatMap { subJsonsEither =>
       futureCatalog.map { catalog =>
@@ -204,7 +209,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     }
   }
 
-  def getSubscription(contact: ContactId)(implicit a: SubPlanReads[Contributor]): Future[Option[Subscription[Contributor]]] = {
+  def getSubscription(contact: ContactId)(implicit a: SubPlanReads[Contributor], logPrefix: LogPrefix): Future[Option[Subscription[Contributor]]] = {
     val futureSubJson = jsonSubscriptionsFromContact(contact)
     val onError = s"Error from sub service for sf contact $contact"
 

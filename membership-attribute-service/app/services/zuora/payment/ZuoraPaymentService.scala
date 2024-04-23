@@ -5,6 +5,7 @@ import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.SubscriptionPlan.Contributor
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingSchedule, Subscription => _, _}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.Payment
@@ -20,17 +21,18 @@ import scalaz.syntax.std.option._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
-    extends PaymentService
-    with SafeLogging {
+class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
+    extends SafeLogging {
 
-  override def paymentDetails(
+  def paymentDetails(
       sub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
       defaultMandateIdIfApplicable: Option[String] = None,
-  ): Future[PaymentDetails] =
+  )(implicit logPrefix: LogPrefix): Future[PaymentDetails] =
     sub.fold(a => Future.successful(PaymentDetails(a)), paidPaymentDetails(defaultMandateIdIfApplicable))
 
-  private def paidPaymentDetails(defaultMandateIdIfApplicable: Option[String])(sub: Subscription[SubscriptionPlan.Paid]): Future[PaymentDetails] = {
+  private def paidPaymentDetails(
+      defaultMandateIdIfApplicable: Option[String],
+  )(sub: Subscription[SubscriptionPlan.Paid])(implicit logPrefix: LogPrefix): Future[PaymentDetails] = {
     val currency = sub.plan.charges.currencies.head
     // I am not convinced this function is very safe, hence the option
     val lastPaymentDate = zuoraService
@@ -111,7 +113,9 @@ class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRa
       case _ => None
     }
 
-  private def billingSchedule(subId: Id, accountFuture: Future[Account], numberOfBills: Int): Future[Option[BillingSchedule]] = {
+  private def billingSchedule(subId: Id, accountFuture: Future[Account], numberOfBills: Int)(implicit
+      logPrefix: LogPrefix,
+  ): Future[Option[BillingSchedule]] = {
     val finder: ProductRatePlanChargeId => Option[Benefit] = planMap.get
     val adapter: Seq[Queries.PreviewInvoiceItem] => Option[BillingSchedule] = BillingSchedule.fromPreviewInvoiceItems(finder)
     val scheduleFuture = zuoraService.previewInvoices(subId, numberOfBills).map(adapter)
@@ -123,13 +127,15 @@ class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRa
     }
   }
 
-  override def billingSchedule(subId: Id, accountId: AccountId, numberOfBills: Int): Future[Option[BillingSchedule]] =
+  def billingSchedule(subId: Id, accountId: AccountId, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[Option[BillingSchedule]] =
     billingSchedule(subId, zuoraService.getAccount(accountId), numberOfBills)
 
-  override def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None): Future[Option[PaymentMethod]] =
+  def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None)(implicit
+      logPrefix: LogPrefix,
+  ): Future[Option[PaymentMethod]] =
     getPaymentMethodByAccountId(accountId).map(_.flatMap(buildPaymentMethod(defaultMandateIdIfApplicable)))
 
-  private def getPaymentMethodByAccountId(accountId: AccountId): Future[Option[Queries.PaymentMethod]] = {
+  private def getPaymentMethodByAccountId(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] = {
     val accountFuture = {
       val account = zuoraService.getAccount(accountId)
       account.onComplete {
@@ -156,7 +162,7 @@ class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRa
     } yield paymentMethod
   }
 
-  private def getPaymentMethodByAccount(account: Account): Future[Option[Queries.PaymentMethod]] = {
+  private def getPaymentMethodByAccount(account: Account)(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] = {
     val maybeEventualPaymentMethod = account.defaultPaymentMethodId.map(zuoraService.getPaymentMethod)
     maybeEventualPaymentMethod match {
       case Some(eventualPaymentMethod) => eventualPaymentMethod.map(Some.apply)

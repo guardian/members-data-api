@@ -9,6 +9,7 @@ import com.gu.memsub.Subscription._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.ReaderType.Direct
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
@@ -28,7 +29,7 @@ class GuardianPatronService(
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[GuardianPatronService])
 
-  def getGuardianPatronAccountDetails(userId: String): SimpleEitherT[List[AccountDetails]] = {
+  def getGuardianPatronAccountDetails(userId: String)(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
     metrics.measureDurationEither("getGuardianPatronAccountDetails") {
       for {
         supporterRatePlanItems <- supporterProductDataService.getSupporterRatePlanItems(userId)

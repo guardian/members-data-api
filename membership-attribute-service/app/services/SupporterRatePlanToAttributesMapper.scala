@@ -1,5 +1,6 @@
 package services
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
@@ -10,7 +11,9 @@ import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 class SupporterRatePlanToAttributesMapper(stage: Stage) extends SafeLogging {
   val productRatePlanIdMappings = productRatePlanMappings(stage.value)
 
-  def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]): Option[Attributes] = {
+  def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem])(implicit
+      logPrefix: LogPrefix,
+  ): Option[Attributes] = {
     val transformations: List[Attributes => Attributes] = supporterRatePlanItems
       .filter(_.termEndDate.isAfter(LocalDate.now.minusDays(1)))
       .sortWith((first, second) => first.termEndDate.isBefore(second.termEndDate))
@@ -23,13 +26,13 @@ class SupporterRatePlanToAttributesMapper(stage: Stage) extends SafeLogging {
     }
   }
 
-  private def transformationFor(ratePlanItem: DynamoSupporterRatePlanItem): Option[Attributes => Attributes] =
+  private def transformationFor(ratePlanItem: DynamoSupporterRatePlanItem)(implicit logPrefix: LogPrefix): Option[Attributes => Attributes] =
     productRatePlanIdMappings
       .get(ratePlanItem.productRatePlanId)
       .orElse(logUnsupportedRatePlanId(ratePlanItem))
       .map(transformer => transformer.transform(_, ratePlanItem))
 
-  private def logUnsupportedRatePlanId(ratePlanItem: DynamoSupporterRatePlanItem): Option[Nothing] = {
+  private def logUnsupportedRatePlanId(ratePlanItem: DynamoSupporterRatePlanItem)(implicit logPrefix: LogPrefix): Option[Nothing] = {
     logger.error(scrub"Unsupported product rate plan id: ${ratePlanItem.productRatePlanId}")
     None
   }

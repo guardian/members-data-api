@@ -2,6 +2,7 @@ package controllers
 
 import actions.{AuthenticatedUserAndBackendRequest, CommonActions}
 import com.gu.identity.auth.AccessScope
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import filters.AddGuIdentityHeaders
 import loghandling.DeprecatedRequestLogger
@@ -39,6 +40,7 @@ class AttributeController(
 
   private def getLatestOneOffContributionDate(identityId: String, user: UserFromToken)(implicit
       executionContext: ExecutionContext,
+      logPrefix: LogPrefix,
   ): Future[Option[LocalDate]] = {
     // Only use one-off data if the user is email-verified
     if (user.userEmailValidated.contains(true)) {
@@ -82,6 +84,7 @@ class AttributeController(
   }
 
   protected def getSupporterProductDataAttributes(identityId: String)(implicit request: AuthenticatedUserAndBackendRequest[AnyContent]) = {
+    import request.logPrefix
     logger.info(s"Fetching attributes from supporter-product-data table for user $identityId")
     request.touchpoint.supporterProductDataService
       .getNonCancelledAttributes(identityId)
@@ -99,6 +102,7 @@ class AttributeController(
       useBatchedMetrics: Boolean = false,
   ): Action[AnyContent] = {
     AuthorizeForScopes(requiredScopes).async { implicit request =>
+      import request.logPrefix
       val future = {
         if (endpointDescription == "membership" || endpointDescription == "features") {
           DeprecatedRequestLogger.logDeprecatedRequest(request)

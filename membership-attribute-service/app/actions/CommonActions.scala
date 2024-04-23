@@ -2,6 +2,7 @@ package actions
 import org.apache.pekko.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
 import com.gu.identity.auth.AccessScope
+import com.gu.monitoring.SafeLogger.LogPrefix
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
 import filters.IsTestUser
@@ -52,10 +53,18 @@ class AuthenticatedUserAndBackendRequest[A](
     val user: UserFromToken,
     val touchpoint: TouchpointComponents,
     val request: Request[A],
-) extends WrappedRequest[A](request)
+) extends WrappedRequest[A](request) {
+  implicit val logPrefix: LogPrefix = new LogPrefix {
+    override def message: String = user.identityId
+  }
+}
 
 class AuthAndBackendRequest[A](
     val redirectAdvice: RedirectAdviceResponse,
     val touchpoint: TouchpointComponents,
     request: Request[A],
-) extends WrappedRequest[A](request)
+) extends WrappedRequest[A](request) {
+  implicit val logPrefix: LogPrefix = new LogPrefix {
+    override def message: String = redirectAdvice.userId.getOrElse("no-identity-id")
+  }
+}

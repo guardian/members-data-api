@@ -7,6 +7,7 @@ import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 import services.SupporterRatePlanToAttributesMapperTest.allActiveProductRatePlans
+import testdata.TestLogPrefix.testLogPrefix
 
 class SupporterRatePlanToAttributesMapperTest extends Specification {
   val mapper = new SupporterRatePlanToAttributesMapper(Stage("PROD"))

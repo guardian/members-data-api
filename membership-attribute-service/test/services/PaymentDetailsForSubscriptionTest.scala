@@ -14,10 +14,11 @@ import org.mockito.IdiomaticMockito
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import scalaz.\/
-import services.zuora.payment.ZuoraPaymentService
+import services.zuora.payment.PaymentService
 import testdata.SubscriptionTestData
 
 import scala.concurrent.Future
+import testdata.TestLogPrefix.testLogPrefix
 
 class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with IdiomaticMockito {
 
@@ -26,9 +27,10 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
   "PaymentDetailMapper" should {
     "recognise a giftee's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[ZuoraPaymentService])
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[PaymentService])
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipackGift, true))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, digipackGift, true))
         .map(details =>
           details mustEqual PaymentDetails(
             pendingCancellation = false,
@@ -54,7 +56,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
 
     "recognise a gifter's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[ZuoraPaymentService]
+      val paymentService = mock[PaymentService]
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
       val expectedPaymentDetails = PaymentDetails(digipackGift, None, None, None)
 
@@ -63,13 +65,14 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
         any[Option[String]],
       ) returns Future.successful(expectedPaymentDetails)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipack, false))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, digipack, false))
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
     "recognise a regular digital subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[ZuoraPaymentService]
+      val paymentService = mock[PaymentService]
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
       val expectedPaymentDetails = PaymentDetails(digipack, None, None, None)
 
@@ -78,17 +81,19 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
         any[Option[String]](),
       ) returns Future.successful(expectedPaymentDetails)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipack, false))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, digipack, false))
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
     "recognise a free subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[ZuoraPaymentService]
+      val paymentService = mock[PaymentService]
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
       val expectedPaymentDetails = PaymentDetails(friend)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, friend, false))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, friend, false))
         .map(details => details mustEqual expectedPaymentDetails)
     }
   }

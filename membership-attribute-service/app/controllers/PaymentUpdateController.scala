@@ -4,6 +4,7 @@ import actions.{CommonActions, Return401IfNotSignedInRecently}
 import com.gu.memsub
 import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import com.gu.zuora.api.GoCardlessZuoraInstance
@@ -38,6 +39,7 @@ class PaymentUpdateController(
 
   def updateCard(subscriptionName: String) =
     AuthorizeForRecentLoginAndScopes(Return401IfNotSignedInRecently, requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/update-card/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
         val legacyForm = Form {
@@ -62,7 +64,9 @@ class PaymentUpdateController(
               .map(subs => subscriptionSelector(Some(memsub.Subscription.Name(subscriptionName)), s"the sfUser $contact")(subs)),
           )
           (stripeCardIdentifier, stripePublicKey) = stripeDetails
-          updateResult <- services.setPaymentCard(stripePublicKey)(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
+          updateResult <- services
+            .setPaymentCard(stripePublicKey)
+            .setPaymentCard(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
           _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card, subscription.plan)
         } yield updateResult match {
           case success: CardUpdateSuccess => {
@@ -96,7 +100,7 @@ class PaymentUpdateController(
       bankAccountName: String,
       bankAccountNumber: String,
       bankSortCode: String,
-  ): Result = freshDefaultPaymentMethodOption match {
+  )(implicit logPrefix: LogPrefix): Result = freshDefaultPaymentMethodOption match {
     case Some(dd: GoCardless)
         if bankAccountName == dd.accountName &&
           dd.accountNumber.length > 3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
@@ -121,6 +125,7 @@ class PaymentUpdateController(
 
   def updateDirectDebit(subscriptionName: String): Action[AnyContent] =
     AuthorizeForRecentLoginAndScopes(Return401IfNotSignedInRecently, requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/update-direct-debit/:subscriptionName") {
         // TODO - refactor to use the Zuora-only based lookup, like in AttributeController.pickAttributes - https://trello.com/c/RlESb8jG
 

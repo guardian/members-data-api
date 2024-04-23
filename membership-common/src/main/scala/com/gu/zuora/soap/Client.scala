@@ -1,8 +1,7 @@
 package com.gu.zuora.soap
 
-import com.github.nscala_time.time.JodaImplicits._
 import com.gu.memsub.util.FutureRetry._
-import com.gu.memsub.util.ScheduledTask
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{NoOpZuoraMetrics, SafeLogging, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners._
 import com.gu.zuora.ZuoraSoapConfig
@@ -14,12 +13,10 @@ import com.gu.zuora.soap.readers.Reader
 import okhttp3.Request.Builder
 import okhttp3._
 import org.apache.pekko.actor.ActorSystem
-import org.joda.time.{DateTime, ReadableDuration}
 
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.reflect._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 class Client(
@@ -38,7 +35,7 @@ class Client(
   actorSystem.scheduler.schedule(0.seconds, 15.minutes)(authentication())
 
   private def authentication(): Unit =
-    retry(request(Actions.Login(apiConfig), None, authenticationReader))(ec, actorSystem.scheduler)
+    retry(request(Actions.Login(apiConfig), None, authenticationReader)(noLogPrefix))(ec, actorSystem.scheduler)
       .onComplete {
         case Success(auth) =>
           periodicAuth.set(auth)
@@ -53,7 +50,7 @@ class Client(
       authentication: Option[Authentication],
       reader: Reader[T],
       client: FutureHttpClient = httpClient,
-  ): Future[T] = {
+  )(implicit logPrefix: LogPrefix): Future[T] = {
     metrics.countRequest()
     val request = new Builder()
       .url(apiConfig.url.toString())
@@ -81,49 +78,39 @@ class Client(
 
   def isReady: Boolean = Option(periodicAuth.get()).isDefined
 
-  def authenticatedRequest[T <: Result](action: => Action[T])(implicit reader: Reader[T]): Future[T] =
+  def authenticatedRequest[T <: Result](action: => Action[T])(implicit reader: Reader[T], logPrefix: LogPrefix): Future[T] =
     Future.unit.flatMap(_ => request(action, Option(periodicAuth.get), reader))
 
-  def extendedAuthenticatedRequest[T <: Result](action: => Action[T])(implicit reader: Reader[T]): Future[T] =
+  def extendedAuthenticatedRequest[T <: Result](action: => Action[T])(implicit reader: Reader[T], logPrefix: LogPrefix): Future[T] =
     Future.unit.flatMap(_ => request(action, Option(periodicAuth.get), reader, extendedHttpClient))
 
-  def query[T <: Query](where: String)(implicit reader: readers.Query[T]): Future[Seq[T]] =
+  def query[T <: Query](where: String)(implicit reader: readers.Query[T], logPrefix: LogPrefix): Future[Seq[T]] =
     authenticatedRequest(Actions.Query(reader.format(where))).map { case QueryResult(results) => reader.read(results) }
 
-  def query[T <: Query](where: ZuoraFilter)(implicit reader: readers.Query[T]): Future[Seq[T]] =
-    query(where.toFilterString)(reader)
+  def query[T <: Query](where: ZuoraFilter)(implicit reader: readers.Query[T], logPrefix: LogPrefix): Future[Seq[T]] =
+    query(where.toFilterString)(reader, logPrefix)
 
-  def queryOne[T <: Query](where: String)(implicit reader: readers.Query[T]): Future[T] =
-    query(where)(reader).map(
+  def queryOne[T <: Query](where: String)(implicit reader: readers.Query[T], logPrefix: LogPrefix): Future[T] =
+    query(where)(reader, logPrefix).map(
       _.headOption
         .getOrElse(throw new ZuoraQueryException(s"Query '${reader.getClass.getSimpleName} $where' returned 0 results, expected one")),
     )
 
-  def queryOne[T <: Query](where: ZuoraFilter)(implicit reader: readers.Query[T]): Future[T] =
-    queryOne(where.toFilterString)(reader)
-
-  def parent[P <: Query, C <: Query](child: C, foreignKey: C => String)(implicit reader: readers.Query[P]): Future[P] =
-    queryOne[P](parentFilter(child, foreignKey))(reader)
-
-  def child[P <: Query with Identifiable, C <: Query](parent: P)(implicit reader: readers.Query[C]): Future[C] =
-    queryOne[C](childFilter(parent))(reader)
+  def queryOne[T <: Query](where: ZuoraFilter)(implicit reader: readers.Query[T], logPrefix: LogPrefix): Future[T] =
+    queryOne(where.toFilterString)(reader, logPrefix)
 
 }
 
 object Client {
-  implicit class ChildOps[C <: Query](child: C) {
-    def parent[P <: Query](foreignKey: C => String)(implicit client: Client, reader: readers.Query[P]) =
-      client.parent(child, foreignKey)(reader)
-  }
-
-  implicit class ParentOps(parent: Query with Identifiable) {
-    def child[C <: Query](implicit client: Client, reader: readers.Query[C], ct: ClassTag[C]) =
-      client.child(parent)(reader)
-  }
 
   def parentFilter[C <: Query, P <: Query](child: C, foreignKey: (C) => String): SimpleFilter =
     SimpleFilter("Id", foreignKey(child))
 
   def childFilter[C <: Query, P <: Query with Identifiable](parent: P): SimpleFilter =
     SimpleFilter(parent.objectName + "Id", parent.id)
+
+  val noLogPrefix: LogPrefix = new LogPrefix {
+    override def message: String = "no-id"
+  }
+
 }

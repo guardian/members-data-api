@@ -3,6 +3,8 @@ package acceptance
 import acceptance.data.IdentityResponse
 import kong.unirest.Unirest
 import models.{Attributes, ContributionData}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchersSugar.eqTo
 import org.mockito.Mockito.when
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
@@ -67,7 +69,7 @@ class AttributeControllerAcceptanceTest extends AcceptanceTest {
         ),
       )
 
-      when(supporterProductDataService.getNonCancelledAttributes("200067388")) thenReturn Future(
+      when(supporterProductDataService.getNonCancelledAttributes(eqTo("200067388"))(any)) thenReturn Future(
         Right(
           Some(
             Attributes("200067388"),

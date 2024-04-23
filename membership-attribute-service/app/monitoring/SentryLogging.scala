@@ -24,7 +24,7 @@ object SentryLogging extends SafeLogging {
           }
         } match {
           case Success(_) => logger.debug("Sentry logging configured.")
-          case Failure(e) => logger.error(scrub"Something went wrong when setting up Sentry logging ${e.getStackTrace}")
+          case Failure(e) => logger.errorNoPrefix(scrub"Something went wrong when setting up Sentry logging ${e.getStackTrace}")
         }
     }
 
