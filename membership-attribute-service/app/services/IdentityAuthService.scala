@@ -22,7 +22,6 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
         case Left(UserCredentialsMissingError(_)) =>
           // IdentityPlayAuthService throws an error if there is no SC_GU_U cookie or crypto auth token
           // frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
-          logger.info(s"unable to authorize user - no token or cookie provided")
           Left(Unauthorised)
 
         case Left(OktaValidationException(validationError: ValidationError)) =>
@@ -83,7 +82,6 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
       .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
       .map {
         case (_: OktaUserCredentials, claims) =>
-          logger.warn("Authorised by Okta token")
           Some(claims)
         case (_: IdapiUserCredentials, claims) =>
           logger.warn("Authorised by Idapi token")
