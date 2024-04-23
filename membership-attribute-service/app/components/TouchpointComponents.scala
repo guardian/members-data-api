@@ -113,7 +113,6 @@ class TouchpointComponents(
   lazy val zuoraSoapService = {
     lazy val zuoraSoapClient =
       new ClientWithFeatureSupplier(
-        featureCodes = Set.empty,
         apiConfig = backendConfig.zuoraSoap,
         httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
         extendedHttpClient = RequestRunners.futureRunner,
