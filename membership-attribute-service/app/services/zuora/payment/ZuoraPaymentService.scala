@@ -11,11 +11,11 @@ import com.gu.services.model.PaymentDetails.Payment
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Queries.Account
 import com.gu.zuora.soap.models.Queries.PaymentMethod._
+import scalaz.\/
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
-import scalaz.{MonadTrans, OptionT, \/}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -24,9 +24,7 @@ class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRa
     extends PaymentService
     with SafeLogging {
 
-  implicit val monadTrans = MonadTrans[OptionT] // it's the only one we use here, really
-
-  def paymentDetails(
+  override def paymentDetails(
       sub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
       defaultMandateIdIfApplicable: Option[String] = None,
   ): Future[PaymentDetails] =
@@ -125,25 +123,11 @@ class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRa
     }
   }
 
-  override def billingSchedule(subId: Id, numberOfBills: Int = 2): Future[Option[BillingSchedule]] = {
-    for {
-      sub <- zuoraService.getSubscription(subId)
-      accountFuture = zuoraService.getAccount(AccountId(sub.accountId))
-      schedule <- billingSchedule(subId, accountFuture, numberOfBills)
-    } yield schedule
-  }
-
   override def billingSchedule(subId: Id, accountId: AccountId, numberOfBills: Int): Future[Option[BillingSchedule]] =
     billingSchedule(subId, zuoraService.getAccount(accountId), numberOfBills)
 
-  override def billingSchedule(subId: Id, account: Account, numberOfBills: Int): Future[Option[BillingSchedule]] =
-    billingSchedule(subId, Future.successful(account), numberOfBills)
-
   override def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None): Future[Option[PaymentMethod]] =
     getPaymentMethodByAccountId(accountId).map(_.flatMap(buildPaymentMethod(defaultMandateIdIfApplicable)))
-
-  override def getPaymentCard(accountId: AccountId): Future[Option[PaymentCard]] =
-    getPaymentMethod(accountId).map(_.collect { case c: PaymentCard => c })
 
   private def getPaymentMethodByAccountId(accountId: AccountId): Future[Option[Queries.PaymentMethod]] = {
     val accountFuture = {
@@ -172,9 +156,12 @@ class ZuoraPaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRa
     } yield paymentMethod
   }
 
-  private def getPaymentMethodByAccount(account: Account): Future[Option[Queries.PaymentMethod]] =
-    (for {
-      paymentId <- OptionT(Future.successful(account.defaultPaymentMethodId))
-      paymentMethod <- zuoraService.getPaymentMethod(paymentId).liftM
-    } yield paymentMethod).run
+  private def getPaymentMethodByAccount(account: Account): Future[Option[Queries.PaymentMethod]] = {
+    val maybeEventualPaymentMethod = account.defaultPaymentMethodId.map(zuoraService.getPaymentMethod)
+    maybeEventualPaymentMethod match {
+      case Some(eventualPaymentMethod) => eventualPaymentMethod.map(Some.apply)
+      case None => Future.successful(None)
+    }
+  }
+
 }

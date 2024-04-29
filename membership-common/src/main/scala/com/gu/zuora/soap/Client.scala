@@ -105,25 +105,9 @@ class Client(
   def parent[P <: Query, C <: Query](child: C, foreignKey: C => String)(implicit reader: readers.Query[P]): Future[P] =
     queryOne[P](parentFilter(child, foreignKey))(reader)
 
-  def children[P <: Query with Identifiable, C <: Query](parent: P)(implicit reader: readers.Query[C]): Future[Seq[C]] =
-    query[C](childFilter(parent))(reader)
-
   def child[P <: Query with Identifiable, C <: Query](parent: P)(implicit reader: readers.Query[C]): Future[C] =
     queryOne[C](childFilter(parent))(reader)
 
-  private val lastPingTimeTask =
-    ScheduledTask[Option[DateTime]]("ZuoraPing", None, 0.seconds, 30.seconds) {
-      val result = authenticatedRequest(Actions.Query("SELECT Id FROM Product", enableLog = false))
-      result.onComplete {
-        case Success(r) => logger.debug(s"${apiConfig.envName} ZuoraPing successfully executed query. There are ${r.results.size} products.")
-        case Failure(e) => logger.error(scrub"Scheduled Task: ${apiConfig.envName} ZuoraPing failed to execute query: ${e.getMessage}")
-      }
-      result.map { _ => Some(new DateTime) }
-    }
-  lastPingTimeTask.start()
-
-  def lastPingTimeWithin(duration: ReadableDuration): Boolean =
-    lastPingTimeTask.get().exists { t => t > (DateTime.now - duration) }
 }
 
 object Client {
@@ -133,9 +117,6 @@ object Client {
   }
 
   implicit class ParentOps(parent: Query with Identifiable) {
-    def children[C <: Query](implicit client: Client, reader: readers.Query[C]) =
-      client.children(parent)(reader)
-
     def child[C <: Query](implicit client: Client, reader: readers.Query[C], ct: ClassTag[C]) =
       client.child(parent)(reader)
   }
