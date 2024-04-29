@@ -30,7 +30,7 @@ trait ScheduledTask[T] extends SafeLogging {
     system.scheduler.schedule(initialDelay, interval) {
       task.onComplete {
         case Success(t) => atomicReference.set(t)
-        case Failure(e) => logger.error(scrub"Scheduled task $name failed due to: $e. This task will retry in: $interval")
+        case Failure(e) => logger.errorNoPrefix(scrub"Scheduled task $name failed due to: $e. This task will retry in: $interval")
       }
     }
   }

@@ -1,6 +1,6 @@
 package com.gu.monitoring
 
-import com.gu.monitoring.SafeLogger.LogMessage
+import com.gu.monitoring.SafeLogger.{LogMessage, LogPrefix}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 
@@ -25,6 +25,10 @@ object SafeLogger extends SafeLogging {
     override val toString = withoutPersonalData
   }
 
+  trait LogPrefix {
+    def message: String
+  }
+
 }
 
 class SafeLoggerImpl(logger: Logger) {
@@ -45,8 +49,13 @@ class SafeLoggerImpl(logger: Logger) {
     logger.warn(logMessage, throwable)
   }
 
-  def error(logMessage: LogMessage): Unit = {
+  def errorNoPrefix(logMessage: LogMessage): Unit = {
     logger.error(logMessage.withPersonalData)
+    logger.error(SafeLogger.sanitizedLogMessage, logMessage.withoutPersonalData)
+  }
+
+  def error(logMessage: LogMessage)(implicit logPrefix: LogPrefix): Unit = {
+    logger.error(logPrefix.message + ": " + logMessage.withPersonalData)
     logger.error(SafeLogger.sanitizedLogMessage, logMessage.withoutPersonalData)
   }
 

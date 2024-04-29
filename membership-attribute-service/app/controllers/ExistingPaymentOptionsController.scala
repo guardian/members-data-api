@@ -23,6 +23,7 @@ import scalaz.syntax.monadPlus._
 import _root_.services.salesforce.ContactRepository
 import _root_.services.subscription.SubscriptionService
 import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
+import com.gu.monitoring.SafeLogger.LogPrefix
 import utils.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 
@@ -43,7 +44,7 @@ class ExistingPaymentOptionsController(
       maybeUserId: Option[String],
       contactRepository: ContactRepository,
       subscriptionService: SubscriptionService,
-  ): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
     (for {
       user <- ListTEither.fromOption(maybeUserId)
       contact <- ListTEither.fromFutureOption(contactRepository.get(user))
@@ -78,6 +79,7 @@ class ExistingPaymentOptionsController(
 
   def existingPaymentOptions(currencyFilter: Option[String]): Action[AnyContent] =
     AuthorizeForRecentLogin(ContinueRegardlessOfSignInRecency, requiredScopes = List(completeReadSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/existing-payment-options") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val maybeUserId = request.redirectAdvice.userId

@@ -3,6 +3,7 @@ package com.gu.zuora
 import com.gu.i18n.{CountryGroup, Currency}
 import com.gu.memsub.Subscription._
 import com.gu.memsub.{Subscription => S}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
@@ -30,17 +31,19 @@ object ZuoraSoapService {
   }
 }
 
-class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends api.ZuoraService with SafeLogging {
+class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends SafeLogging {
 
   import ZuoraSoapService._
 
-  override def getAccount(accountId: AccountId): Future[SoapQueries.Account] =
+  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[SoapQueries.Account] =
     soapClient.queryOne[SoapQueries.Account](SimpleFilter("id", accountId.get))
 
-  override def getSubscription(id: S.Id): Future[SoapQueries.Subscription] =
+  def getSubscription(id: S.Id)(implicit logPrefix: LogPrefix): Future[SoapQueries.Subscription] =
     soapClient.queryOne[SoapQueries.Subscription](SimpleFilter("id", id.get))
 
-  private def previewInvoices(subscriptionId: String, paymentDate: LocalDate, action: (String, LocalDate) => Action[AmendResult]) = {
+  private def previewInvoices(subscriptionId: String, paymentDate: LocalDate, action: (String, LocalDate) => Action[AmendResult])(implicit
+      logPrefix: LogPrefix,
+  ) = {
     val invoices = soapClient.authenticatedRequest(action(subscriptionId, paymentDate)).map(_.invoiceItems)
     invoices recover {
       case e: Error => Nil
@@ -48,7 +51,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     }
   }
 
-  override def previewInvoices(subscriptionId: S.Id, number: Int = 2): Future[Seq[PreviewInvoiceItem]] = {
+  def previewInvoices(subscriptionId: S.Id, number: Int = 2)(implicit logPrefix: LogPrefix): Future[Seq[PreviewInvoiceItem]] = {
     for {
       sub <- getSubscription(subscriptionId)
       previewInvoiceItems <- previewInvoices(sub.id, sub.contractAcceptanceDate, PreviewInvoicesViaAmend(number) _)
@@ -60,7 +63,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
       paymentMethodId: String,
       paymentGateway: PaymentGateway,
       invoiceTemplateOverride: Option[InvoiceTemplate],
-  ) = {
+  )(implicit logPrefix: LogPrefix) = {
     soapClient.authenticatedRequest(
       action = UpdateAccountPayment(
         accountId = accountId.get,
@@ -73,7 +76,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
   }
 
   // When setting the payment gateway in the account we have to clear the default payment method to avoid conflicts
-  private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway) = {
+  private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway)(implicit logPrefix: LogPrefix) = {
     soapClient.authenticatedRequest(
       action = UpdateAccountPayment(
         accountId = accountId.get,
@@ -85,12 +88,12 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     )
   }
 
-  override def createCreditCardPaymentMethod(
+  def createCreditCardPaymentMethod(
       accountId: AccountId,
       stripeCustomer: Stripe.Customer,
       paymentGateway: PaymentGateway,
       invoiceTemplateOverride: Option[InvoiceTemplate],
-  ): Future[UpdateResult] = {
+  )(implicit logPrefix: LogPrefix): Future[UpdateResult] = {
     val card = stripeCustomer.card
     for {
       r <- setGatewayAndClearDefaultMethod(
@@ -113,7 +116,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
     } yield result
   }
 
-  override def getPaymentSummary(subscriptionNumber: S.Name, accountCurrency: Currency): Future[PaymentSummary] =
+  def getPaymentSummary(subscriptionNumber: S.Name, accountCurrency: Currency)(implicit logPrefix: LogPrefix): Future[PaymentSummary] =
     for {
       invoiceItems <- soapClient.query[SoapQueries.InvoiceItem](SimpleFilter("SubscriptionNumber", subscriptionNumber.get))
     } yield {
@@ -121,7 +124,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
       PaymentSummary(filteredInvoices, accountCurrency)
     }
 
-  override def getPaymentMethod(id: String): Future[SoapQueries.PaymentMethod] =
+  def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.PaymentMethod] =
     soapClient.queryOne[SoapQueries.PaymentMethod](SimpleFilter("Id", id))
 
 }

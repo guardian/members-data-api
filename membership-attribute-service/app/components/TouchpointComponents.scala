@@ -22,7 +22,7 @@ import services._
 import services.salesforce.{ContactRepository, ContactRepositoryWithMetrics, CreateScalaforce, SimpleContactRepository}
 import services.stripe.{BasicStripeService, BasicStripeServiceWithMetrics, ChooseStripe, HttpBasicStripeService}
 import services.subscription.{CancelSubscription, SubscriptionService, SubscriptionServiceWithMetrics, ZuoraSubscriptionService}
-import services.zuora.payment.{SetPaymentCard, ZuoraPaymentService}
+import services.zuora.payment.{PaymentService, SetPaymentCard}
 import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService, ZuoraRestServiceWithMetrics}
 import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService, ZuoraSoapServiceWithMetrics}
 import software.amazon.awssdk.auth.credentials.{
@@ -103,7 +103,7 @@ class TouchpointComponents(
 
   private lazy val mapper = new SupporterRatePlanToAttributesMapper(stage)
   private lazy val dynamoSupporterProductDataService =
-    new DynamoSupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, createMetrics)
+    new SupporterProductDataService(dynamoClientBuilder.build(), supporterProductDataTable, mapper, createMetrics)
 
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
@@ -143,20 +143,20 @@ class TouchpointComponents(
   )
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
-    .map(_.fold[CatalogMap](error => { println(s"error: ${error.list.toList.mkString}"); Map() }, _.map))
+    .map(_.fold[CatalogMap](error => { logger.errorNoPrefix(scrub"error: ${error.list.toList.mkString}"); Map() }, _.map))
     .recover { case error =>
-      logger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
+      logger.errorNoPrefix(scrub"Failed to load the product catalog from Zuora due to: $error")
       throw error
     }
 
   lazy val subscriptionService: SubscriptionService = {
-    lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService.getAccountIds)
+    lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService)
 
     subscriptionServiceOverride.getOrElse(
       new SubscriptionServiceWithMetrics(zuoraSubscriptionService, createFineMetrics),
     )
   }
-  lazy val paymentService: ZuoraPaymentService = new ZuoraPaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
@@ -201,7 +201,7 @@ class TouchpointComponents(
 
   def setPaymentCard(stripePublicKey: String): SetPaymentCard = {
     val stripeService = chooseStripe.serviceForPublicKey(stripePublicKey).toRight(s"No Stripe service for public key: $stripePublicKey")
-    new SetPaymentCard(paymentService, zuoraSoapService, stripeService)
+    new SetPaymentCard(zuoraSoapService, stripeService)
   }
 
   lazy val cancelSubscription = new CancelSubscription(subscriptionService, zuoraRestService)

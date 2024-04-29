@@ -11,6 +11,7 @@ import org.specs2.mutable.Specification
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import testdata.TestLogPrefix.testLogPrefix
 
 class AccountDetailsFromZuoraIntegrationTest extends Specification {
 

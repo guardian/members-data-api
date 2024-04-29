@@ -8,6 +8,7 @@ import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import components.TouchpointComponents
@@ -91,6 +92,7 @@ class AccountController(
 
   def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
         val services = request.touchpoint
         val cancelForm = Form {
@@ -140,6 +142,7 @@ class AccountController(
 
   private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
         val services = request.touchpoint
         val userId = request.user.identityId
@@ -164,6 +167,7 @@ class AccountController(
 
   def reminders: Action[AnyContent] =
     AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/reminders") {
         request.redirectAdvice.userId match {
           case Some(userId) =>
@@ -181,6 +185,7 @@ class AccountController(
 
   def anyPaymentDetails(filter: OptionalSubscriptionsFilter, metricName: String): Action[AnyContent] =
     AuthorizeForRecentLoginAndScopes(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { request =>
+      import request.logPrefix
       metrics.measureDuration(metricName) {
         val user = request.user
         val userId = user.identityId
@@ -204,7 +209,7 @@ class AccountController(
       userId: String,
       filter: OptionalSubscriptionsFilter,
       touchpointComponents: TouchpointComponents,
-  ): SimpleEitherT[List[AccountDetails]] = {
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
     for {
       fromZuora <- touchpointComponents.accountDetailsFromZuora.fetch(userId, filter)
       fromStripe <- touchpointComponents.guardianPatronService.getGuardianPatronAccountDetails(userId)
@@ -213,6 +218,7 @@ class AccountController(
 
   def fetchCancelledSubscriptions(): Action[AnyContent] =
     AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancelled-subscriptions") {
         implicit val tp: TouchpointComponents = request.touchpoint
         val emptyResponse = Ok("[]")
@@ -232,6 +238,7 @@ class AccountController(
 
   private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/contribution-update-amount/:subscriptionName") {
         if (subscriptionNameOption.isEmpty) {
           DeprecatedRequestLogger.logDeprecatedRequest(request)
@@ -311,6 +318,7 @@ class AccountController(
 
   def updateCancellationReason(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
+      import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/update-cancellation-reason/:subscriptionName") {
         val subName = memsub.Subscription.Name(subscriptionName)
         val services = request.touchpoint

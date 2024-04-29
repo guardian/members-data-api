@@ -5,6 +5,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.SubscriptionPlan.{AnyPlan, Contributor}
 import com.gu.memsub.subsv2.reads.SubPlanReads
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.ContactId
 import monitoring.CreateMetrics
 import org.joda.time.{LocalDate, LocalTime}
@@ -12,7 +13,6 @@ import play.api.libs.json.JsValue
 import scalaz.{Disjunction, DisjunctionT, \/}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.higherKinds
 
 class SubscriptionServiceWithMetrics(wrapped: SubscriptionService, createMetrics: CreateMetrics)(implicit val ec: ExecutionContext)
     extends SubscriptionService {
@@ -21,21 +21,24 @@ class SubscriptionServiceWithMetrics(wrapped: SubscriptionService, createMetrics
   override def get[P <: AnyPlan: SubPlanReads](name: memsub.Subscription.Name, isActiveToday: Boolean): Future[Option[Subscription[P]]] =
     metrics.measureDuration("get")(wrapped.get(name, isActiveToday))
 
-  override def current[P <: AnyPlan: SubPlanReads](contact: ContactId): Future[List[Subscription[P]]] =
+  override def current[P <: AnyPlan: SubPlanReads](contact: ContactId)(implicit logPrefix: LogPrefix): Future[List[Subscription[P]]] =
     metrics.measureDuration("current")(wrapped.current(contact))
 
-  override def since[P <: AnyPlan: SubPlanReads](onOrAfter: LocalDate)(contact: ContactId): Future[List[Subscription[P]]] =
+  override def since[P <: AnyPlan: SubPlanReads](onOrAfter: LocalDate)(contact: ContactId)(implicit
+      logPrefix: LogPrefix,
+  ): Future[List[Subscription[P]]] =
     metrics.measureDuration("since")(wrapped.since(onOrAfter)(contact))
 
   override def recentlyCancelled(contact: ContactId, today: LocalDate, lastNMonths: Int)(implicit
       ev: SubPlanReads[AnyPlan],
+      logPrefix: LogPrefix,
   ): Future[String \/ List[Subscription[AnyPlan]]] =
     metrics.measureDuration("recentlyCancelled")(wrapped.recentlyCancelled(contact, today, lastNMonths))
 
   override def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](accountId: AccountId): Future[Disjunction[String, List[Subscription[P]]]] =
     metrics.measureDuration("subscriptionsForAccountId")(wrapped.subscriptionsForAccountId(accountId))
 
-  override def jsonSubscriptionsFromContact(contact: ContactId): Future[Disjunction[String, List[JsValue]]] =
+  override def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[JsValue]]] =
     metrics.measureDuration("jsonSubscriptionsFromContact")(wrapped.jsonSubscriptionsFromContact(contact))
 
   override def jsonSubscriptionsFromAccount(accountId: AccountId): Future[Disjunction[String, List[JsValue]]] =
@@ -45,10 +48,16 @@ class SubscriptionServiceWithMetrics(wrapped: SubscriptionService, createMetrics
     */
   override def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
       contact: ContactId,
-  )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[String \/ Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]] =
+  )(implicit
+      a: SubPlanReads[FALLBACK],
+      b: SubPlanReads[PREFERRED],
+      logPrefix: LogPrefix,
+  ): Future[String \/ Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]] =
     metrics.measureDuration("eitherByContact")(wrapped.either(contact))
 
-  override def getSubscription(contact: ContactId)(implicit a: SubPlanReads[Contributor]): Future[Option[Subscription[Contributor]]] =
+  override def getSubscription(
+      contact: ContactId,
+  )(implicit a: SubPlanReads[Contributor], logPrefix: LogPrefix): Future[Option[Subscription[Contributor]]] =
     metrics.measureDuration("getSubscription")(wrapped.getSubscription(contact))
 
   /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead

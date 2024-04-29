@@ -2,6 +2,7 @@ package services
 
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingPeriod, Price}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
@@ -14,7 +15,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 class PaymentDetailsForSubscription(paymentService: PaymentService) extends SafeLogging {
-  def apply(contactAndSubscription: ContactAndSubscription)(implicit ec: ExecutionContext): Future[PaymentDetails] = {
+  def getPaymentDetails(
+      contactAndSubscription: ContactAndSubscription,
+  )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[PaymentDetails] = {
     val isGiftRedemption = contactAndSubscription.isGiftRedemption
     val differentiated = differentiateSubscription(contactAndSubscription)
     differentiated match {

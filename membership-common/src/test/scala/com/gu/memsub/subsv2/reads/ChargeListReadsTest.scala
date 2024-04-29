@@ -118,9 +118,10 @@ class ChargeListReadsTest extends AnyFlatSpec {
 
     val result: ValidationNel[String, Benefit.Weekly.type] = implicitly[ChargeReads[Weekly.type]].read(planChargeMap, supporterCharge)
 
-    val expected: ValidationNel[String, Benefit.Weekly.type] = Failure(NonEmptyList("expected class com.gu.memsub.Benefit$Weekly$ but was Supporter (isPhysical? = true)"))
+    val expected: ValidationNel[String, Benefit.Weekly.type] =
+      Failure(NonEmptyList("expected class com.gu.memsub.Benefit$Weekly$ but was Supporter (isPhysical? = true)"))
 
-    result.leftMap(_.list) shouldMatchTo(expected.leftMap(_.list))
+    result.leftMap(_.list) shouldMatchTo (expected.leftMap(_.list))
 
   }
 
@@ -138,16 +139,18 @@ class ChargeListReadsTest extends AnyFlatSpec {
 
     val result: ValidationNel[String, Unit] = implicitly[ChargeReads[FreeMemberTier]].read(planChargeMap, supporterCharge).map(_ => ())
 
-    val expected: ValidationNel[String, Unit] = Failure(NonEmptyList("expected interface com.gu.memsub.Benefit$FreeMemberTier but was Supporter (isPhysical? = true)"))
+    val expected: ValidationNel[String, Unit] =
+      Failure(NonEmptyList("expected interface com.gu.memsub.Benefit$FreeMemberTier but was Supporter (isPhysical? = true)"))
 
-    result shouldMatchTo(expected)
+    result shouldMatchTo (expected)
 
   }
 
   "ChargeList reads" should "read single-charge non-paper rate plans as generic PaidCharge type" in {
     val result: ValidationNel[String, PaidChargeList] = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(weeklyCharge))
 
-    val expected: ValidationNel[String, PaidChargeList] = Success(PaidCharge(Weekly, Month, weeklyCharge.pricing, weeklyCharge.productRatePlanChargeId, weeklyCharge.id))
+    val expected: ValidationNel[String, PaidChargeList] =
+      Success(PaidCharge(Weekly, Month, weeklyCharge.pricing, weeklyCharge.productRatePlanChargeId, weeklyCharge.id))
 
     result shouldMatchTo expected
 
@@ -172,7 +175,8 @@ class ChargeListReadsTest extends AnyFlatSpec {
   "ChargeList reads" should "not confuse digipack rate plan with paper+digital plan" in {
     val result: ValidationNel[String, PaidChargeList] = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(digipackCharge))
 
-    val expected: ValidationNel[String, PaidChargeList] = Success(PaidCharge(Digipack, Month, digipackCharge.pricing, digipackCharge.productRatePlanChargeId, digipackCharge.id))
+    val expected: ValidationNel[String, PaidChargeList] =
+      Success(PaidCharge(Digipack, Month, digipackCharge.pricing, digipackCharge.productRatePlanChargeId, digipackCharge.id))
 
     result shouldMatchTo expected
 

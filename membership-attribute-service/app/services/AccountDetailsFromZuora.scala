@@ -4,6 +4,7 @@ import com.gu.memsub.Product
 import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.Contact
 import com.gu.services.model.PaymentDetails
 import controllers.AccountController
@@ -35,13 +36,15 @@ class AccountDetailsFromZuora(
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
-  def fetch(userId: String, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[AccountDetails]] = {
+  def fetch(userId: String, filter: OptionalSubscriptionsFilter)(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
     metrics.measureDurationEither("accountDetailsFromZuora") {
       SimpleEitherT.fromListT(accountDetailsFromZuoraFor(userId, filter))
     }
   }
 
-  private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter): ListT[SimpleEitherT, AccountDetails] = {
+  private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter)(implicit
+      logPrefix: LogPrefix,
+  ): ListT[SimpleEitherT, AccountDetails] = {
     for {
       contactAndSubscription <- allCurrentSubscriptions(userId, filter)
       isPaidSubscription = differentiateSubscription(contactAndSubscription).isRight
@@ -75,7 +78,7 @@ class AccountDetailsFromZuora(
   private def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
     zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
-  private def nonGiftContactAndSubscriptionsFor(contact: Contact): Future[List[ContactAndSubscription]] = {
+  private def nonGiftContactAndSubscriptionsFor(contact: Contact)(implicit logPrefix: LogPrefix): Future[List[ContactAndSubscription]] = {
     subscriptionService
       .current[SubscriptionPlan.AnyPlan](contact)
       .map(_.map(ContactAndSubscription(contact, _, isGiftRedemption = false)))
@@ -100,7 +103,9 @@ class AccountDetailsFromZuora(
     }
   }
 
-  private def subscriptionsFor(userId: String, contact: Contact, filter: OptionalSubscriptionsFilter): SimpleEitherT[List[ContactAndSubscription]] = {
+  private def subscriptionsFor(userId: String, contact: Contact, filter: OptionalSubscriptionsFilter)(implicit
+      logPrefix: LogPrefix,
+  ): SimpleEitherT[List[ContactAndSubscription]] = {
     for {
       nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
@@ -111,7 +116,7 @@ class AccountDetailsFromZuora(
   private def allCurrentSubscriptions(
       userId: String,
       filter: OptionalSubscriptionsFilter,
-  ): ListTEither[ContactAndSubscription] = {
+  )(implicit logPrefix: LogPrefix): ListTEither[ContactAndSubscription] = {
     for {
       contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
       subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
@@ -120,11 +125,12 @@ class AccountDetailsFromZuora(
 
   private def getAccountDetailsParallel(
       contactAndSubscription: ContactAndSubscription,
-  ): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[(PaymentDetails, ZuoraRestService.AccountSummary, Option[String])] = {
     metrics.measureDurationEither("getAccountDetailsParallel") {
       // Run all these api calls in parallel to improve response times
       val paymentDetailsFuture =
-        paymentDetailsForSubscription(contactAndSubscription)
+        paymentDetailsForSubscription
+          .getPaymentDetails(contactAndSubscription)
           .map(Right(_))
           .recover { case x =>
             Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")

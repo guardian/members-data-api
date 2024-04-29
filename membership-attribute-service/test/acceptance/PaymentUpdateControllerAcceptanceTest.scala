@@ -185,15 +185,15 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Newspaper - Home Delivery"), Nil),
       )
 
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) returns Future(List(subscription))
 
       val account = TestQueriesAccount()
       val paymentMethodId = randomId("paymentMethod")
       val accountWithUpdatedPaymentMethodId = account.copy(defaultPaymentMethodId = Some(paymentMethodId))
-      zuoraSoapServiceMock.getAccount(subscription.accountId) returns Future(account) andThen Future(accountWithUpdatedPaymentMethodId)
+      zuoraSoapServiceMock.getAccount(subscription.accountId)(any) returns Future(account) andThen Future(accountWithUpdatedPaymentMethodId)
 
       val queriesContact = TestQueriesContact()
-      zuoraSoapServiceMock.getContact(account.billToId) returns Future(queriesContact)
+      zuoraSoapServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
 
       val bankTransferPaymentMethod = BankTransfer(
         accountHolderName = "Frank Poole",
@@ -211,7 +211,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         invoiceTemplateOverride = None,
       )
 
-      zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod) returns Future(UpdateResult(randomId()))
+      zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod)(any) returns Future(UpdateResult(randomId()))
 
       val paymentMethod = TestQueriesPaymentMethod(
         id = paymentMethodId,
@@ -222,7 +222,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         paymentType = Queries.PaymentMethod.BankTransfer,
       )
 
-      zuoraSoapServiceMock.getPaymentMethod(paymentMethodId) returns Future(paymentMethod)
+      zuoraSoapServiceMock.getPaymentMethod(paymentMethodId)(any) returns Future(paymentMethod)
 
       sendEmailMock(emailData) returns Future.successful(())
 
@@ -241,13 +241,13 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       httpResponse.getStatus shouldEqual 200
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) was called
+      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
       contactRepositoryMock.get("200067388") was called
       catalogServiceMock.unsafeCatalog was called
-      zuoraSoapServiceMock.getAccount(subscription.accountId) wasCalled twice
-      zuoraSoapServiceMock.getContact(account.billToId) was called
-      zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod) was called
-      zuoraSoapServiceMock.getPaymentMethod(paymentMethodId) was called
+      zuoraSoapServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
+      zuoraSoapServiceMock.getContact(account.billToId)(any) was called
+      zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod)(any) was called
+      zuoraSoapServiceMock.getPaymentMethod(paymentMethodId)(any) was called
       sendEmailMock(emailData) was called
 
       supporterProductDataServiceMock wasNever called
@@ -339,8 +339,6 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         ),
       )
 
-      catalogServiceMock.unsafeCatalog returns TestCatalog()
-
       contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
@@ -348,7 +346,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Digital Pack"), Nil),
       )
 
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) returns Future(List(subscription))
 
       val customer = TestStripeCustomer(card =
         TestStripeCard(
@@ -364,18 +362,18 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       ukStripeServiceMock.paymentIntentsGateway returns paymentGateway
       ukStripeServiceMock.invoiceTemplateOverride returns None
 
-      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None) returns
+      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None)(any) returns
         Future.successful(UpdateResult(randomId("updateId")))
 
       val account = TestQueriesAccount()
       val paymentMethodId = randomId("paymentMethod")
       val accountWithUpdatedPaymentMethodId = account.copy(defaultPaymentMethodId = Some(paymentMethodId))
-      zuoraSoapServiceMock.getAccount(subscription.accountId) returns
+      zuoraSoapServiceMock.getAccount(subscription.accountId)(any) returns
         Future(account) andThen
         Future(accountWithUpdatedPaymentMethodId)
 
       val queriesContact = TestQueriesContact()
-      zuoraSoapServiceMock.getContact(account.billToId) returns Future(queriesContact)
+      zuoraSoapServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
 
       sendEmailMock(emailData) returns Future.successful(())
 
@@ -393,13 +391,12 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       httpResponse.getStatus shouldEqual 200
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) was called
-      catalogServiceMock.unsafeCatalog was called
+      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
       contactRepositoryMock.get("200067388") was called
       ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId") was called
       ukStripeServiceMock.paymentIntentsGateway was called
       ukStripeServiceMock.invoiceTemplateOverride was called
-      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None) was called
+      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None)(any) was called
       sendEmailMock(emailData) was called
 
       supporterProductDataServiceMock wasNever called

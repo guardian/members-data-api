@@ -10,7 +10,7 @@ import scalaz.{Validation, \/}
 object Diff {
 
   def assertEquals[T: Diffx](expected: T, actual: T): Assertion =
-    actual shouldMatchTo(expected)
+    actual shouldMatchTo (expected)
 
   implicit def eitherDiff[L: Diffx, R: Diffx]: Diffx[L \/ R] = Diffx.derived[L \/ R]
   implicit def validationDiff[E: Diffx, A: Diffx]: Diffx[Validation[E, A]] = Diffx.derived[Validation[E, A]]

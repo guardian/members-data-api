@@ -2,6 +2,7 @@ package services.zuora.payment
 
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, PaymentCard, PaymentCardDetails, PaymentCardUpdateResult}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.stripe.Stripe
 import scalaz.Monad
 import services.stripe.StripeService
@@ -11,11 +12,13 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SetPaymentCard(paymentService: ZuoraPaymentService, zuoraService: ZuoraSoapService, stripeServiceEither: Either[String, StripeService])(implicit
+class SetPaymentCard(zuoraService: ZuoraSoapService, stripeServiceEither: Either[String, StripeService])(implicit
     ec: ExecutionContext,
     m: Monad[Future],
 ) {
-  def apply(useStripePaymentMethod: Boolean, accountId: AccountId, stripeCardIdentifier: String): SimpleEitherT[PaymentCardUpdateResult] = {
+  def setPaymentCard(useStripePaymentMethod: Boolean, accountId: AccountId, stripeCardIdentifier: String)(implicit
+      logPrefix: LogPrefix,
+  ): SimpleEitherT[PaymentCardUpdateResult] = {
     for {
       stripeService <- SimpleEitherT.fromEither(stripeServiceEither)
       result <- SimpleEitherT.rightT(setPaymentCard(useStripePaymentMethod, stripeService)(accountId, stripeCardIdentifier))
@@ -25,7 +28,7 @@ class SetPaymentCard(paymentService: ZuoraPaymentService, zuoraService: ZuoraSoa
   private def setPaymentCard(
       useStripePaymentMethod: Boolean,
       stripeService: StripeService,
-  )(accountId: AccountId, stripeCardIdentifier: String): Future[PaymentCardUpdateResult] = {
+  )(accountId: AccountId, stripeCardIdentifier: String)(implicit logPrefix: LogPrefix): Future[PaymentCardUpdateResult] = {
     val createCustomerFunction =
       if (useStripePaymentMethod)
         stripeService.createCustomerWithStripePaymentMethod(_)

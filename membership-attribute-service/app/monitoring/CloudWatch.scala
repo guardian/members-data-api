@@ -27,7 +27,7 @@ class CloudWatch(stage: String, application: String, service: String, cloudwatch
 
 object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with SafeLogging {
   def onError(exception: Exception): Unit = {
-    logger.error(scrub"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
+    logger.errorNoPrefix(scrub"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
   }
 
   def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult): Unit = {
