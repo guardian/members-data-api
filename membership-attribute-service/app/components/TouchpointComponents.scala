@@ -57,16 +57,9 @@ class TouchpointComponents(
   lazy val touchpointConfig = conf.getConfig("touchpoint.backend")
   lazy val environmentConfig = touchpointConfig.getConfig(s"environments." + stage.value)
 
-  lazy val digitalPackConf = environmentConfig.getConfig(s"zuora.ratePlanIds.digitalpack")
-  lazy val paperCatalogConf = environmentConfig.getConfig(s"zuora.productIds.subscriptions")
-  lazy val membershipConf = environmentConfig.getConfig(s"zuora.ratePlanIds.membership")
   lazy val supporterProductDataTable = environmentConfig.getString("supporter-product-data.table")
-  lazy val invoiceTemplatesConf = environmentConfig.getConfig(s"zuora.invoiceTemplateIds")
 
-  lazy val digitalPackPlans = config.DigitalPackRatePlanIds.fromConfig(digitalPackConf)
   lazy val productIds = config.SubsV2ProductIds(environmentConfig.getConfig("zuora.productIds"))
-  lazy val membershipPlans = config.MembershipRatePlanIds.fromConfig(membershipConf)
-  lazy val subsProducts = config.SubscriptionsProductIds(paperCatalogConf)
 
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
 

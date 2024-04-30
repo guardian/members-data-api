@@ -21,19 +21,6 @@ import scalaz.{Disjunction, \/, \/-}
 
 class SubscriptionTransformTest extends AnyFlatSpec {
 
-  "subscription transform" should "turn a supporter with discount into a list with both rateplans" in {
-    val json: JsValue = Resource.getJson("rest/SupporterDiscountUat.json")
-    val result: String \/ List[SubIds] = SubscriptionTransform.backdoorRatePlanIdsFromJson(json).map(_.sortBy(_.ratePlanId.get))
-    val expected: String \/ List[SubIds] = \/-(
-      List(
-        SubIds(RatePlanId("2c92c0f857db5bf20157dd3418114c3f"), ProductRatePlanId("2c92c0f953078a5601531299dae54a4d")),
-        SubIds(RatePlanId("2c92c0f857db5bf20157dd34182b4c44"), ProductRatePlanId("2c92c0f84c5100b6014c569b83b33ebd")),
-      ),
-    )
-
-    Diff.assertEquals(expected, result)
-  }
-
   val cat = {
     val sixMonths = ProductRatePlanId("2c92c0f85a4b3a23015a5be3fc2271ad")
     val sixMonthly = ProductRatePlanId("2c92c0f95a4b48b8015a5be1205d042b")
