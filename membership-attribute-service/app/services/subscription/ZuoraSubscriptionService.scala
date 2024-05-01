@@ -1,6 +1,7 @@
 package services.subscription
 
 import _root_.services.zuora.rest.SimpleClient
+import _root_.services.zuora.soap.ZuoraSoapService
 import com.gu.memsub
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan._
@@ -8,9 +9,10 @@ import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
 import com.gu.memsub.subsv2.reads.SubJsonReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.memsub.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
+import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
 import com.gu.memsub.subsv2.services.Trace.Traceable
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import org.joda.time.{LocalDate, LocalTime}
@@ -21,8 +23,6 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-import _root_.services.zuora.soap.ZuoraSoapService
-import com.gu.monitoring.SafeLogger.LogPrefix
 
 class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[CatalogMap], rest: SimpleClient, soap: ZuoraSoapService)(implicit
     t: Monad[Future],

@@ -76,11 +76,6 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
     def create(card: String): Future[Customer] =
       post[Customer]("customers", Map("card" -> Seq(card)))
 
-    def createWithStripePaymentMethod(stripePaymentMethodID: String): Future[Customer] = for {
-      createCustomerResponse <- post[CreateCustomerResponse]("customers", Map("payment_method" -> Seq(stripePaymentMethodID)))
-      synthesisedCustomerWithCardDetail <- read(createCustomerResponse.id)
-    } yield synthesisedCustomerWithCardDetail
-
     def read(customerId: String): Future[Customer] = for {
       customersPaymentMethods <- PaymentMethod.read(customerId)
       customer <- customersPaymentMethods.cardStripeList.data match {
@@ -124,9 +119,6 @@ class BasicStripeService(config: BasicStripeServiceConfig, client: FutureHttpCli
   object Event {
     def find(id: String): Future[Stripe.Event[StripeObject]] =
       get[Stripe.Event[StripeObject]](s"events/$id")
-
-    def findCharge(id: String): Future[Option[Stripe.Event[Charge]]] =
-      find(id).map(_.some.collect { case e @ Stripe.Event(_, c: Stripe.Charge, _) => e.copy[Charge](`object` = c) })
   }
 
   object Subscription {
@@ -141,7 +133,6 @@ class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(im
   val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
   val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
   val invoiceTemplateOverride: Option[InvoiceTemplate] = apiConfig.invoiceTemplateOverride
-  val accountCountry: Country = apiConfig.stripeAccountCountry
 
   override def wsPreExecute(req: Request.Builder): Request.Builder = {
     req.addHeader("Authorization", s"Bearer ${apiConfig.credentials.secretKey}")
