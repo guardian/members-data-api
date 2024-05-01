@@ -48,9 +48,6 @@ class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: F
   def fetchPaymentMethod(customerId: String): Future[CustomersPaymentMethods] =
     get[CustomersPaymentMethods](s"payment_methods", "customer" -> customerId, "type" -> "card")
 
-  def fetchEvent(id: String): Future[Stripe.Event[StripeObject]] =
-    get[Stripe.Event[StripeObject]](s"events/$id")
-
   def fetchSubscription(id: String): Future[Stripe.Subscription] =
     get[Stripe.Subscription](s"subscriptions/$id", params = ("expand[]", "customer"))
 }

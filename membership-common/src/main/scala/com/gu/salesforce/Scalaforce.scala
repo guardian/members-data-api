@@ -15,32 +15,9 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-case class SFResponse(Success: Boolean, ErrorString: Option[String])
-
 case class SFContactRecord(Id: String, AccountId: String, IdentityID__c: Option[String])
 
 case class SFContactId(get: String)
-
-object SFContactRecord extends SafeLogging {
-  implicit val readsSFResponse = Json.reads[SFResponse]
-  implicit val readsSFContactRecord = Json.reads[SFContactRecord]
-
-  def readResponse(response: JsValue): JsResult[SFContactRecord] = {
-    val someKindOfSFResponse = response.validate[SFResponse]
-
-    val contactRecordJsResult: JsResult[SFContactRecord] = for {
-      goodSFResponse <- someKindOfSFResponse.filter(JsError("Salesforce response: fails - Success was false"))(_.Success)
-      goodContactRecord <- (response \ "ContactRecord").validate[SFContactRecord]
-    } yield goodContactRecord
-
-    contactRecordJsResult match {
-      case e: JsError => logger.warn(s"Error on SF response: $e - response was $someKindOfSFResponse")
-      case _ => // We just want to log when stuff goes bad
-    }
-
-    contactRecordJsResult
-  }
-}
 
 case class Authentication(access_token: String, instance_url: String)
 
@@ -75,7 +52,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
   protected def issueRequest(req: Request): Future[Response] = {
     val requestLog = s"${req.method()} to ${req.url()}"
     metrics.recordRequest()
-    httpClient(req).map { response =>
+    httpClient.execute(req).map { response =>
       metrics.recordResponse(response.code(), req.method())
       if (!response.isSuccessful && (response.code() != Status.NOT_FOUND)) {
         logger.warn(
@@ -121,23 +98,6 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
 
   private def jsonParse(response: String): JsValue = Json.parse(response)
 
-  object Query {
-    def execute(query: String): Future[\/[String, JsValue]] = {
-      val path = s"services/data/v57.0/query?q=$query"
-      Timing
-        .record(metrics, "Execute query") {
-          get(path)
-        }
-        .map { response =>
-          val bodyString = response.body().string() // out here to make sure connection is closed in all cases
-          response.code() match {
-            case Status.OK => \/-(jsonParse(bodyString))
-            case code => -\/(s"SF004: Salesforce returned code $code for query: $query")
-          }
-        }
-    }
-  }
-
   object Contact {
     def read(key: String, id: String): Future[\/[String, Option[JsValue]]] = {
       val path = s"services/data/v57.0/sobjects/Contact/$key/$id"
@@ -155,27 +115,6 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
         }
     }
 
-    /** We use a custom endpoint to upsert contacts because Salesforce doesn't return enough data on its own. N.B: "newContact" is used both inserts
-      * and updates
-      */
-    def upsert(upsertKey: Option[(String, String)], data: JsObject): Future[SFContactRecord] = {
-      val updateData = upsertKey
-        .map { case (key, value) =>
-          data + (key -> JsString(value))
-        }
-        .getOrElse(data)
-
-      Timing
-        .record(metrics, "Upsert Contact") {
-          post("services/apexrest/RegisterCustomer/v1/", Json.obj("newContact" -> updateData))
-        }
-        .map { response =>
-          val rawResponse = response.body().string()
-          val result = SFContactRecord.readResponse(jsonParse(rawResponse))
-          result.getOrElse(throw ScalaforceError(s"Bad upsert response $rawResponse"))
-        }
-    }
-
     private def update(id: SFContactId, json: JsValue): Future[Unit] = Timing
       .record(metrics, "Update Contact") {
         patch(s"services/data/v54.0/sobjects/Contact/${id.get}", json)
@@ -185,9 +124,6 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
         r.body().close()
         Monad[Future].unlessM(r.code == 204)(Future.failed(new Exception(s"Bad code for update ${r.code}: $output")))
       }
-
-    def update(id: SFContactId, newKey: String, newValue: String): Future[Unit] =
-      update(id, Json.obj(newKey -> newValue))
 
     def update(id: SFContactId, newFields: Map[String, String]): Future[Unit] = {
       val fields = newFields map { case (name, value) =>

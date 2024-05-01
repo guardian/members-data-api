@@ -146,23 +146,6 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     } yield subs).run
   }
 
-  private def jsToSubscription[P <: AnyPlan: SubPlanReads](
-      subJsonsFuture: Future[Disjunction[String, List[JsValue]]],
-      errorMsg: String,
-  ): Future[List[Subscription[P]]] =
-    subJsonsFuture.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        val highLevelSubscriptions = subJsonsEither.map { subJsons =>
-          SubscriptionTransform
-            .getCurrentSubscriptions[P](catalog, pids)(subJsons)
-            .leftMap(e => logger.warn(s"${errorMsg}: $e"))
-            .toList
-            .flatMap(_.list.toList) // returns an empty list if there's an error
-        }
-        highLevelSubscriptions.leftMap(e => logger.warn(s"${errorMsg}: $e")).toList.flatten // returns an empty list if there's an error
-      }
-    }
-
   def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](accountId: AccountId): Future[Disjunction[String, List[Subscription[P]]]] = {
     val subsAsJson = jsonSubscriptionsFromAccount(accountId)
 

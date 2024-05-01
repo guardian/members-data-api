@@ -1,6 +1,7 @@
 package services.zuora.rest
 
 import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
+import com.gu.okhttp.RequestRunners.FutureHttpClient
 import com.gu.zuora.ZuoraRestConfig
 import okhttp3.{Response => OKHttpResponse, _}
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
@@ -17,7 +18,7 @@ import scala.util.{Success, Try}
   */
 case class SimpleClient(
     config: ZuoraRestConfig,
-    run: Request => Future[OKHttpResponse],
+    client: FutureHttpClient,
     metrics: ZuoraMetrics = NoOpZuoraMetrics,
 )(implicit functor: Functor[Future], ec: ExecutionContext) {
   def authenticated(url: String): Request.Builder = {
@@ -60,20 +61,12 @@ case class SimpleClient(
   def jsonBody(in: JsValue): RequestBody = RequestBody.create(MediaType.parse("application/json"), in.toString())
 
   def get[B](url: String)(implicit r: Reads[B]): Future[String \/ B] =
-    run(authenticated(url).get.build).map(parseResponse(_)(r))
-
-  def getJson(url: String): Future[String \/ JsValue] =
-    run(authenticated(url).get.build).map(parseJson(_))
+    client.execute(authenticated(url).get.build).map(parseResponse(_)(r))
 
   def put[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A]): Future[String \/ B] =
-    run(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
-
-  def putJson[B](url: String, in: JsValue)(implicit r: Reads[B]): Future[String \/ B] =
-    run(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
+    client.execute(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
 
   def post[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A]): Future[String \/ B] =
-    run(authenticated(url).post(body(in)).build).map(parseResponse(_)(r))
+    client.execute(authenticated(url).post(body(in)).build).map(parseResponse(_)(r))
 
-  def postJson[B](url: String, in: JsValue)(implicit r: Reads[B]): Future[String \/ B] =
-    run(authenticated(url).post(body(in)).build).map(parseResponse(_)(r))
 }

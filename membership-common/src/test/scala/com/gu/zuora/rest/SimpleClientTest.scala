@@ -1,12 +1,12 @@
 package com.gu.zuora.rest
+import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.zuora.ZuoraRestConfig
 import io.lemonlabs.uri.typesafe.dsl._
-import okhttp3.{MediaType, Protocol, Request, Response => OkResponse, ResponseBody}
+import okhttp3.{MediaType, Protocol, Request, ResponseBody, Response => OkResponse}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.exceptions.TestFailedException
 import play.api.libs.json.{Json, Reads}
-
 import scalaz.{-\/, OptionT, Writer, \/}
 
 class SimpleClientTest extends AnyFlatSpec {
@@ -26,13 +26,13 @@ class SimpleClientTest extends AnyFlatSpec {
   /* Hence the function that fulfills HTTP requests returns a response in an option (always None)
    * Nested within a writer which contains a List[Request], so we can see the request and skip providing a response
    */
-  val noResponseRunner: Request => M[OkResponse] = a => OptionT[W, OkResponse](Writer(List(a), None))
+  val noResponseRunner: HttpClient[M] = a => OptionT[W, OkResponse](Writer(List(a), None))
 
   /*
    * After all that I've realised we do actually also want to test how responses get parsed
    * so lets also write a request running function that returns a response with a string body
    */
-  def constRunner(body: String): Request => W[OkResponse] = a => {
+  def constRunner(body: String): HttpClient[W] = a => {
     Writer(
       List(a),
       new OkResponse.Builder()

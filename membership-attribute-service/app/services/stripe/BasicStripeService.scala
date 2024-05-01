@@ -15,7 +15,5 @@ trait BasicStripeService {
 
   def fetchPaymentMethod(customerId: String): Future[CustomersPaymentMethods]
 
-  def fetchEvent(id: String): Future[Stripe.Event[StripeObject]]
-
   def fetchSubscription(id: String): Future[Stripe.Subscription]
 }
