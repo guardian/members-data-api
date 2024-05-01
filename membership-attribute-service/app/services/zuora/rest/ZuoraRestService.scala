@@ -402,25 +402,9 @@ trait ZuoraRestService {
 
   def getObjectAccount(accountId: AccountId): Future[String \/ ObjectAccount]
 
-  def getAccounts(identityId: String): Future[String \/ GetAccountsQueryResponse]
-
-  def getAccountByCrmId(crmId: String): Future[String \/ AccountsByCrmIdResponse]
-
   def getGiftSubscriptionRecordsFromIdentityId(identityId: String): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]]
 
   def getPaymentMethod(paymentMethodId: String): Future[String \/ PaymentMethodResponse]
-
-  def addEmail(accountId: AccountId, email: String): Future[String \/ Unit]
-
-  def updateAccountContacts(record: AccountsByCrmIdResponseRecord, soldTo: Option[ContactData], billTo: Option[ContactData])(implicit
-      ex: ExecutionContext,
-  ): Future[\/[String, ZuoraResponse]]
-
-  def updateAccountIdentityId(accountId: AccountId, identityId: String)(implicit ex: ExecutionContext): Future[\/[String, ZuoraResponse]]
-
-  def cloneContact(id: String): Future[\/[String, String]]
-
-  def updateZuoraBySfContact(contactId: ContactId, soldTo: Option[ContactData], billTo: Option[ContactData]): Future[String \/ Unit]
 
   def cancelSubscription(
       subscriptionName: Name,

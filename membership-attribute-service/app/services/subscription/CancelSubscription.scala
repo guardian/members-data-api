@@ -14,7 +14,7 @@ import utils.SimpleEitherT.SimpleEitherT
 import scala.concurrent.{ExecutionContext, Future}
 
 class CancelSubscription(subscriptionService: SubscriptionService, zuoraRestService: ZuoraRestService)(implicit m: Monad[Future]) {
-  def apply[P <: SubscriptionPlan.AnyPlan](
+  def cancel[P <: SubscriptionPlan.AnyPlan](
       subscriptionName: Name,
       cancellationEffectiveDate: Option[LocalDate],
       reason: String,

@@ -58,7 +58,7 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
       val json = Json.parse(responseBody)
       json.validate[A] match {
         case JsSuccess(result, _) => result
-        case resultParsingError: JsError =>
+        case _: JsError =>
           throw json.validate[Error].getOrElse(WebServiceHelperError[A](response.code(), responseBody))
       }
     }

@@ -10,14 +10,14 @@ import scala.concurrent.ExecutionContext
 case class StripePublicKey(key: String)
 
 object ChooseStripe {
-  def createFor(ukStripeConfig: StripeServiceConfig, auServiceConfig: StripeServiceConfig, createMetrics: CreateMetrics)(implicit
+  def createFor(ukStripeConfig: StripeServiceConfig, auServiceConfig: StripeServiceConfig)(implicit
       ec: ExecutionContext,
   ): ChooseStripe = {
     val ukStripePublicKey: StripePublicKey = StripePublicKey(ukStripeConfig.credentials.publicKey)
     val auStripePublicKey: StripePublicKey = StripePublicKey(auServiceConfig.credentials.publicKey)
 
-    val ukStripeService: StripeService = createStripeServiceFor(ukStripeConfig, createMetrics)
-    val auStripeService: StripeService = createStripeServiceFor(auServiceConfig, createMetrics)
+    val ukStripeService: StripeService = createStripeServiceFor(ukStripeConfig)
+    val auStripeService: StripeService = createStripeServiceFor(auServiceConfig)
 
     val stripePublicKeyByCountry: Map[Country, StripePublicKey] = Map(
       Country.UK -> ukStripePublicKey,
@@ -30,9 +30,8 @@ object ChooseStripe {
     new ChooseStripe(stripePublicKeyByCountry, ukStripePublicKey, stripeServicesByPublicKey)
   }
 
-  private def createStripeServiceFor(stripeConfig: StripeServiceConfig, createMetrics: CreateMetrics)(implicit ec: ExecutionContext) = {
-    val basicUkStripeService =
-      new BasicStripeServiceWithMetrics(HttpBasicStripeService.from(stripeConfig, RequestRunners.futureRunner), createMetrics)
+  private def createStripeServiceFor(stripeConfig: StripeServiceConfig)(implicit ec: ExecutionContext) = {
+    val basicUkStripeService = HttpBasicStripeService.from(stripeConfig, RequestRunners.futureRunner)
     new StripeService(stripeConfig, basicUkStripeService)
   }
 }

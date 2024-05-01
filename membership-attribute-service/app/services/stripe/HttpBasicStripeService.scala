@@ -1,6 +1,5 @@
 package services.stripe
 
-import com.gu.i18n.Currency
 import com.gu.memsub.util.WebServiceHelper
 import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners._
@@ -8,7 +7,6 @@ import com.gu.stripe.Stripe.Deserializer._
 import com.gu.stripe.Stripe._
 import com.gu.stripe.{BasicStripeServiceConfig, Stripe, StripeServiceConfig}
 import okhttp3.Request
-import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -50,33 +48,8 @@ class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: F
   def fetchPaymentMethod(customerId: String): Future[CustomersPaymentMethods] =
     get[CustomersPaymentMethods](s"payment_methods", "customer" -> customerId, "type" -> "card")
 
-  def createCharge(
-      amount: Int,
-      currency: Currency,
-      email: String,
-      description: String,
-      cardToken: String,
-      meta: Map[String, String],
-  ): Future[Charge] =
-    post[Charge](
-      "charges",
-      Map(
-        "currency" -> Seq(currency.toString),
-        "description" -> Seq(description),
-        "amount" -> Seq(amount.toString),
-        "receipt_email" -> Seq(email),
-        "source" -> Seq(cardToken),
-      ) ++ meta.map { case (k, v) => s"metadata[$k]" -> Seq(v) },
-    )
-
-  def fetchBalanceTransaction(id: String): Future[Stripe.BalanceTransaction] =
-    get[BalanceTransaction](id)
-
   def fetchEvent(id: String): Future[Stripe.Event[StripeObject]] =
     get[Stripe.Event[StripeObject]](s"events/$id")
-
-  def fetchCharge(id: String): Future[Option[Stripe.Event[Charge]]] =
-    fetchEvent(id).map(_.some.collect { case e @ Stripe.Event(_, c: Stripe.Charge, _) => e.copy[Charge](`object` = c) })
 
   def fetchSubscription(id: String): Future[Stripe.Subscription] =
     get[Stripe.Subscription](s"subscriptions/$id", params = ("expand[]", "customer"))
