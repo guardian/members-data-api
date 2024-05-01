@@ -7,6 +7,7 @@ import com.gu.zuora.rest.SimpleClient
 import okhttp3._
 import org.specs2.mutable.Specification
 import com.gu.memsub.subsv2.Fixtures._
+import com.gu.okhttp.RequestRunners.HttpClient
 import io.lemonlabs.uri.typesafe.dsl._
 import com.typesafe.config.ConfigFactory
 import utils.Resource
@@ -33,7 +34,7 @@ class CatalogServiceTest extends Specification {
 object CatalogServiceTest {
 
   def client(path: String) = {
-    val runner = (r: Request) =>
+    val runner: HttpClient[Id] = (r: Request) =>
       new Response.Builder()
         .request(r)
         .message("test")

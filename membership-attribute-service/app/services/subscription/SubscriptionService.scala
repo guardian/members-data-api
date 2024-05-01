@@ -39,8 +39,6 @@ trait SubscriptionService {
 
   def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[JsValue]]]
 
-  def jsonSubscriptionsFromAccount(accountId: AccountId): Future[Disjunction[String, List[JsValue]]]
-
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
     *
     * There are multiple scenarios

@@ -1,13 +1,12 @@
 package services.salesforce
 
-import org.apache.pekko.actor.Scheduler
 import com.gu.okhttp.RequestRunners
+import com.gu.okhttp.RequestRunners.FutureHttpClient
 import com.gu.salesforce.ContactDeserializer._
-import com.gu.salesforce.{Contact, ContactId, SFContactId, SalesforceConfig, Scalaforce}
-import okhttp3.{Request, Response}
+import com.gu.salesforce.{Contact, SFContactId, SalesforceConfig, Scalaforce}
+import org.apache.pekko.actor.Scheduler
 import play.api.libs.json._
-import scalaz.std.scalaFuture.futureInstance
-import scalaz.{-\/, EitherT, \/, \/-}
+import scalaz.\/
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -50,7 +49,7 @@ object CreateScalaforce {
       val application: String = appName
       val stage: String = salesforceConfig.envName
       val sfConfig: SalesforceConfig = salesforceConfig
-      val httpClient: (Request) => Future[Response] = RequestRunners.futureRunner
+      val httpClient: FutureHttpClient = RequestRunners.futureRunner
       val sfScheduler = scheduler
     }
     salesforce.startAuth()

@@ -53,7 +53,7 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
     val req = wsPreExecute(rb).build()
     logger.debug(s"Issuing request ${req.method} ${req.url}")
     // The string provided here sets the Custom Metric Name for the http request in CloudWatch
-    for (response <- httpClient(req)) yield {
+    for (response <- httpClient.execute(req)) yield {
       val responseBody = response.body.string()
       val json = Json.parse(responseBody)
       json.validate[A] match {
