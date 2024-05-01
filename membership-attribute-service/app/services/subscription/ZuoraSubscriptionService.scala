@@ -35,7 +35,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
 
   /** Time by which Bill Run should have run and completed. Usually starts around 5AM and takes 1 hour.
     */
-  final val BillRunCompletedByTime = LocalTime.parse("12:00")
+  private final val BillRunCompletedByTime = LocalTime.parse("12:00")
 
   /** Fetch a subscription by its subscription name
     *
@@ -186,62 +186,6 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
 
   def jsonSubscriptionsFromAccount(accountId: AccountId): Future[Disjunction[String, List[JsValue]]] =
     rest.get[List[JsValue]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads)
-
-  /** find the best current subscription for the salesforce contact TODO get rid of this and use pattern matching instead
-    */
-  def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      contact: ContactId,
-  )(implicit
-      a: SubPlanReads[FALLBACK],
-      b: SubPlanReads[PREFERRED],
-      logPrefix: LogPrefix,
-  ): Future[\/[String, Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]]] = {
-    val futureSubJson = jsonSubscriptionsFromContact(contact)
-    futureSubJson.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        subJsonsEither.leftMap(e => s"Error from sub service for sf contact $contact: $e").map { subJson =>
-          SubscriptionTransform
-            .tryTwoReadersForSubscriptionJson[PREFERRED, FALLBACK](catalog, pids)(subJson)
-            .leftMap(e => logger.debug(s"Error from tryTwoReadersForSubscriptionJson for sf contact $contact: $e"))
-            .fold(_ => None, Some.apply)
-        }
-      }
-    }
-  }
-
-  def getSubscription(contact: ContactId)(implicit a: SubPlanReads[Contributor], logPrefix: LogPrefix): Future[Option[Subscription[Contributor]]] = {
-    val futureSubJson = jsonSubscriptionsFromContact(contact)
-    val onError = s"Error from sub service for sf contact $contact"
-
-    jsToSubscription(futureSubJson, onError).map(_.headOption)
-  }
-
-  /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead
-    */
-  def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      name: memsub.Subscription.Name,
-  )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[\/[String, Subscription[FALLBACK] \/ Subscription[PREFERRED]]] = {
-    val futureSubJson = rest.get[JsValue](s"subscriptions/${name.get}")(idReads)
-
-    futureSubJson.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        subJsonsEither.leftMap(e => s"Error from sub service for subname $name: $e").flatMap { subJson =>
-          SubscriptionTransform.tryTwoReadersForSubscriptionJson[PREFERRED, FALLBACK](catalog, pids)(List(subJson))
-        }
-      }
-    }
-  }
-
-  // this is a back door to find the subscription discount ids so we can delete when people upgrade
-  // just need the id and prp id
-  def backdoorRatePlanIds(name: com.gu.memsub.Subscription.Name): Future[String \/ List[SubIds]] = {
-    val futureSubJson = rest.get[JsValue](s"subscriptions/${name.get}")(idReads)
-
-    futureSubJson.map(_.flatMap { subJson =>
-      SubscriptionTransform.backdoorRatePlanIdsFromJson(subJson)
-    })
-
-  }
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
     *

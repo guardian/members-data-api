@@ -16,7 +16,6 @@ import scala.concurrent.Future
 case class SubIds(ratePlanId: RatePlanId, productRatePlanId: ProductRatePlanId)
 
 object SubscriptionService {
-  type SoapClient = ContactId => Future[List[memsub.Subscription.AccountId]]
   type CatalogMap = Map[ProductRatePlanId, CatalogZuoraPlan]
 }
 
@@ -41,28 +40,6 @@ trait SubscriptionService {
   def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[JsValue]]]
 
   def jsonSubscriptionsFromAccount(accountId: AccountId): Future[Disjunction[String, List[JsValue]]]
-
-  /** find the best current subscription for the salesforce contact TODO get rid of this and use pattern matching instead
-    */
-  def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      contact: ContactId,
-  )(implicit
-      a: SubPlanReads[FALLBACK],
-      b: SubPlanReads[PREFERRED],
-      logPrefix: LogPrefix,
-  ): Future[\/[String, Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]]]
-
-  def getSubscription(contact: ContactId)(implicit a: SubPlanReads[Contributor], logPrefix: LogPrefix): Future[Option[Subscription[Contributor]]]
-
-  /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead
-    */
-  def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      name: memsub.Subscription.Name,
-  )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): Future[\/[String, Subscription[FALLBACK] \/ Subscription[PREFERRED]]]
-
-  // this is a back door to find the subscription discount ids so we can delete when people upgrade
-  // just need the id and prp id
-  def backdoorRatePlanIds(name: com.gu.memsub.Subscription.Name): Future[String \/ List[SubIds]]
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
     *

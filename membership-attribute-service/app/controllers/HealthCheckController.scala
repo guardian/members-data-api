@@ -4,6 +4,7 @@ import com.gu.monitoring.SafeLogging
 import components.TouchpointBackends
 import play.api.libs.json.Json
 import play.api.mvc.{BaseController, ControllerComponents}
+import services.HealthCheckableService
 
 trait Test {
   def ok: Boolean
@@ -21,7 +22,7 @@ class HealthCheckController(touchPointBackends: TouchpointBackends, override val
 
   val touchpointComponents = touchPointBackends.normal
   // behaviourService, Stripe and all Zuora services are not critical
-  private lazy val services = Set(
+  private lazy val services: Set[HealthCheckableService] = Set(
     touchpointComponents.salesforceService,
     touchpointComponents.zuoraSoapService,
   )

@@ -121,7 +121,13 @@ class AccountController(
                SimpleEitherT.left(s"$subscriptionName does not belong to $identityId"))
               .leftMap(CancelError(_, 503))
           cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
-          _ <- services.cancelSubscription(subscriptionName, cancellationEffectiveDate, cancellationReason, accountId, subscription.termEndDate)
+          _ <- services.cancelSubscription.cancel(
+            subscriptionName,
+            cancellationEffectiveDate,
+            cancellationReason,
+            accountId,
+            subscription.termEndDate,
+          )
           result = cancellationEffectiveDate.getOrElse("now").toString
           _ <- sendSubscriptionCancelledEmail(
             request.user.primaryEmailAddress,
