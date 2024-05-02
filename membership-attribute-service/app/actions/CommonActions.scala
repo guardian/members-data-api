@@ -62,7 +62,5 @@ class AuthAndBackendRequest[A](
     val touchpoint: TouchpointComponents,
     request: Request[A],
 ) extends WrappedRequest[A](request) {
-  implicit val logPrefix: LogPrefix = new LogPrefix {
-    override def message: String = redirectAdvice.userId.getOrElse("no-identity-id")
-  }
+  implicit val logPrefix: LogPrefix = LogPrefix(redirectAdvice.userId.getOrElse("no-identity-id"))
 }

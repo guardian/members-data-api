@@ -28,9 +28,7 @@ case class UserFromToken(
     userEmailValidated: Option[Boolean] = None,
     authTime: Option[ZonedDateTime], // optional because not available from Idapi
 ) extends AccessClaims {
-  implicit val logPrefix: LogPrefix = new LogPrefix {
-    override def message: String = identityId
-  }
+  implicit val logPrefix: LogPrefix = LogPrefix(identityId)
 }
 
 object UserFromToken {

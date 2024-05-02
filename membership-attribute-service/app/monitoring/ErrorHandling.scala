@@ -46,9 +46,7 @@ class ErrorHandler(
     result.foreach { result: Result =>
       val aaa = result.header.headers.get(xGuIdentityIdHeaderName)
       val prefix = aaa.getOrElse("no-identity-id")
-      implicit val logPrefix: LogPrefix = new LogPrefix {
-        override def message: String = prefix
-      }
+      implicit val logPrefix: LogPrefix = LogPrefix(prefix)
       // now log with the identity id so it appears in searches
       logger.error(scrub"Error handling request request: $request", ex)
     }

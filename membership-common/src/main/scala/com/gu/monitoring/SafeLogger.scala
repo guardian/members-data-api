@@ -25,13 +25,10 @@ object SafeLogger extends SafeLogging {
     override val toString = withoutPersonalData
   }
 
-  trait LogPrefix {
-    def message: String
-  }
+  case class LogPrefix(message: String)
+
   object LogPrefix {
-    val noLogPrefix: LogPrefix = new LogPrefix {
-      override def message: String = "no-id"
-    }
+    val noLogPrefix: LogPrefix = LogPrefix("no-id")
   }
 
 }
