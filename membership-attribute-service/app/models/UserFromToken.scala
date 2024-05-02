@@ -2,6 +2,7 @@ package models
 
 import com.gu.identity.auth._
 import com.gu.identity.model.User
+import com.gu.monitoring.SafeLogger.LogPrefix
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
 
@@ -26,7 +27,11 @@ case class UserFromToken(
     username: Option[String] = None,
     userEmailValidated: Option[Boolean] = None,
     authTime: Option[ZonedDateTime], // optional because not available from Idapi
-) extends AccessClaims
+) extends AccessClaims {
+  implicit val logPrefix: LogPrefix = new LogPrefix {
+    override def message: String = identityId
+  }
+}
 
 object UserFromToken {
 

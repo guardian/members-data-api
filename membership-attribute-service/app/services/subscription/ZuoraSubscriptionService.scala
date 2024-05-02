@@ -59,7 +59,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
   def get[P <: AnyPlan: SubPlanReads](
       name: memsub.Subscription.Name,
       isActiveToday: Boolean = false,
-  ): Future[Option[Subscription[P]]] = {
+  )(implicit logPrefix: LogPrefix): Future[Option[Subscription[P]]] = {
 
     val url =
       if (isActiveToday)
@@ -67,7 +67,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       else
         s"subscriptions/${name.get}" // FIXME: equivalent to ?charge-detail=last-segment which returns even removed historical charges. We should not have this as default.
 
-    val futureSubJson = rest.get[JsValue](url)(idReads)
+    val futureSubJson = rest.get[JsValue](url)(idReads, logPrefix)
 
     futureSubJson.flatMap { subJson =>
       futureCatalog.map { catalog =>
@@ -94,7 +94,9 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     *
     * This logging side-effect should make more visible in which scenarios we are missing chargedThroughDate.
     */
-  private def warnOnMissingChargedThroughDate[P <: AnyPlan: SubPlanReads](subscription: String \/ Subscription[P]): Unit =
+  private def warnOnMissingChargedThroughDate[P <: AnyPlan: SubPlanReads](
+      subscription: String \/ Subscription[P],
+  )(implicit logPrefix: LogPrefix): Unit =
     Try { // just to make sure it is not interfering with main business logic
       subscription.foreach { sub =>
         sub.plan match {
@@ -146,7 +148,9 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     } yield subs).run
   }
 
-  def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](accountId: AccountId): Future[Disjunction[String, List[Subscription[P]]]] = {
+  def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](
+      accountId: AccountId,
+  )(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[Subscription[P]]]] = {
     val subsAsJson = jsonSubscriptionsFromAccount(accountId)
 
     subsAsJson.flatMap { subJsonsEither =>
@@ -167,8 +171,8 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
     } yield subJson).toList.run
   }
 
-  def jsonSubscriptionsFromAccount(accountId: AccountId): Future[Disjunction[String, List[JsValue]]] =
-    rest.get[List[JsValue]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads)
+  def jsonSubscriptionsFromAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[JsValue]]] =
+    rest.get[List[JsValue]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads, implicitly)
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
     *
@@ -191,7 +195,7 @@ class ZuoraSubscriptionService(pids: ProductIds, futureCatalog: => Future[Catalo
       subscriptionName: memsub.Subscription.Name,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
-  ): SimpleEitherT[Option[LocalDate]] = {
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[Option[LocalDate]] = {
     EitherT(
       OptionT(get[P](subscriptionName, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {

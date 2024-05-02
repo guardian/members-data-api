@@ -26,7 +26,7 @@ trait ScheduledTask[T] extends SafeLogging {
   def task(): Future[T]
 
   def start(): Unit = {
-    logger.info(s"Starting $name scheduled task with an initial delay of: $initialDelay. This task will refresh every: $interval")
+    logger.infoNoPrefix(s"Starting $name scheduled task with an initial delay of: $initialDelay. This task will refresh every: $interval")
     system.scheduler.schedule(initialDelay, interval) {
       task.onComplete {
         case Success(t) => atomicReference.set(t)

@@ -54,9 +54,7 @@ class AuthenticatedUserAndBackendRequest[A](
     val touchpoint: TouchpointComponents,
     val request: Request[A],
 ) extends WrappedRequest[A](request) {
-  implicit val logPrefix: LogPrefix = new LogPrefix {
-    override def message: String = user.identityId
-  }
+  implicit val logPrefix: LogPrefix = user.logPrefix
 }
 
 class AuthAndBackendRequest[A](

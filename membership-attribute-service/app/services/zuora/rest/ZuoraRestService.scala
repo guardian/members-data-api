@@ -3,6 +3,7 @@ package services.zuora.rest
 import com.gu.i18n.{Country, Currency, Title}
 import com.gu.memsub.Subscription.{AccountId, AccountNumber, Name, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.memsub.subsv2.reads.CommonReads._
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.ContactId
 import com.gu.zuora.ZuoraLookup
 import com.gu.zuora.api.PaymentGateway
@@ -398,13 +399,15 @@ object ZuoraRestService {
 }
 
 trait ZuoraRestService {
-  def getAccount(accountId: AccountId): Future[String \/ AccountSummary]
+  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ AccountSummary]
 
-  def getObjectAccount(accountId: AccountId): Future[String \/ ObjectAccount]
+  def getObjectAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ ObjectAccount]
 
-  def getGiftSubscriptionRecordsFromIdentityId(identityId: String): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]]
+  def getGiftSubscriptionRecordsFromIdentityId(identityId: String)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]]
 
-  def getPaymentMethod(paymentMethodId: String): Future[String \/ PaymentMethodResponse]
+  def getPaymentMethod(paymentMethodId: String)(implicit logPrefix: LogPrefix): Future[String \/ PaymentMethodResponse]
 
   def cancelSubscription(
       subscriptionName: Name,
@@ -412,11 +415,11 @@ trait ZuoraRestService {
       maybeChargedThroughDate: Option[
         LocalDate,
       ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
-  )(implicit ex: ExecutionContext): Future[String \/ Unit]
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ Unit]
 
-  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String): Future[String \/ Unit]
+  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String)(implicit logPrefix: LogPrefix): Future[String \/ Unit]
 
-  def disableAutoPay(accountId: AccountId): Future[String \/ Unit]
+  def disableAutoPay(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ Unit]
 
   def updateChargeAmount(
       subscriptionName: Name,
@@ -425,7 +428,7 @@ trait ZuoraRestService {
       amount: Double,
       reason: String,
       applyFromDate: LocalDate,
-  )(implicit ex: ExecutionContext): Future[\/[String, Unit]]
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[\/[String, Unit]]
 
-  def getCancellationEffectiveDate(name: Name): Future[String \/ Option[String]]
+  def getCancellationEffectiveDate(name: Name)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]]
 }

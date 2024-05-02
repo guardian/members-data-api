@@ -4,6 +4,7 @@ import com.gu.memsub.Product
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
 import org.joda.time.DateTime
@@ -39,7 +40,7 @@ object PaymentFailureAlerter extends SafeLogging {
       accountSummary: AccountSummary,
       subscription: Subscription[AnyPlan],
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
-  )(implicit ec: ExecutionContext): Future[Option[String]] = {
+  )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
       val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -128,7 +129,9 @@ object PaymentFailureAlerter extends SafeLogging {
     nonZeroInvoicesOlderThanOneMonth.sortBy(_.invoiceDate).take(2)
   }
 
-  def accountHasMissedPayments(accountId: AccountId, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
+  def accountHasMissedPayments(accountId: AccountId, recentInvoices: List[Invoice], recentPayments: List[Payment])(implicit
+      logPrefix: LogPrefix,
+  ): Boolean = {
     val paidInvoiceNumbers = recentPayments.filter(_.status == "Processed").flatMap(_.paidInvoices).map(_.invoiceNumber)
     val unpaidPayableInvoiceOlderThanOneMonth = mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices) match {
       case Nil => false
@@ -138,7 +141,7 @@ object PaymentFailureAlerter extends SafeLogging {
     unpaidPayableInvoiceOlderThanOneMonth
   }
 
-  def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice]): Boolean = {
+  def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice])(implicit logPrefix: LogPrefix): Boolean = {
     val result = !recentInvoices.exists(invoice => invoice.balance > 0 && invoice.invoiceDate.isBefore(DateTime.now.minusMonths(1)))
     logger.info(s"${accountId.get} | safeToAllowPaymentUpdate: ${result}")
     result

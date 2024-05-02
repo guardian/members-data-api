@@ -57,7 +57,7 @@ class AttributeController(
 
   private def getLatestMobileSubscription(
       identityId: String,
-  )(implicit executionContext: ExecutionContext): Future[Option[MobileSubscriptionStatus]] = {
+  )(implicit executionContext: ExecutionContext, logPrefix: LogPrefix): Future[Option[MobileSubscriptionStatus]] = {
     mobileSubscriptionService.getSubscriptionStatusForUser(identityId).transform {
       case Failure(error) =>
         metrics.incrementCount(s"mobile-subscription-fetch-exception")

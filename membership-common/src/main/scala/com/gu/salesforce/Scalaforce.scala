@@ -2,6 +2,7 @@ package com.gu.salesforce
 
 import com.gu.memsub.util.FutureRetry._
 import com.gu.memsub.util.Timing
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{SafeLogging, SalesforceMetrics}
 import com.gu.okhttp.RequestRunners.FutureHttpClient
 import okhttp3._
@@ -49,7 +50,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
 
   lazy val metrics = new SalesforceMetrics(stage, application)
 
-  protected def issueRequest(req: Request): Future[Response] = {
+  protected def issueRequest(req: Request)(implicit logPrefix: LogPrefix): Future[Response] = {
     val requestLog = s"${req.method()} to ${req.url()}"
     metrics.recordRequest()
     httpClient.execute(req).map { response =>
@@ -76,11 +77,11 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
     }
   }
 
-  private def get(endpoint: String): Future[Response] = urlAuth.flatMap { url =>
+  private def get(endpoint: String)(implicit logPrefix: LogPrefix): Future[Response] = urlAuth.flatMap { url =>
     issueRequest(url(endpoint).get().build())
   }
 
-  private def post(endpoint: String, updateData: JsValue): Future[Response] = {
+  private def post(endpoint: String, updateData: JsValue)(implicit logPrefix: LogPrefix): Future[Response] = {
     val mediaType = MediaType.parse("application/json; charset=utf-8")
     val body = RequestBody.create(Json.stringify(updateData), mediaType)
     urlAuth.flatMap { url =>
@@ -88,7 +89,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
     }
   }
 
-  private def patch(endpoint: String, updateData: JsValue): Future[Response] = {
+  private def patch(endpoint: String, updateData: JsValue)(implicit logPrefix: LogPrefix): Future[Response] = {
     val mediaType = MediaType.parse("application/json; charset=utf-8")
     val body = RequestBody.create(Json.stringify(updateData), mediaType)
     urlAuth.flatMap { url =>
@@ -99,7 +100,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
   private def jsonParse(response: String): JsValue = Json.parse(response)
 
   object Contact {
-    def read(key: String, id: String): Future[\/[String, Option[JsValue]]] = {
+    def read(key: String, id: String)(implicit logPrefix: LogPrefix): Future[\/[String, Option[JsValue]]] = {
       val path = s"services/data/v57.0/sobjects/Contact/$key/$id"
       Timing
         .record(metrics, "Read Contact") {
@@ -115,7 +116,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
         }
     }
 
-    private def update(id: SFContactId, json: JsValue): Future[Unit] = Timing
+    private def update(id: SFContactId, json: JsValue)(implicit logPrefix: LogPrefix): Future[Unit] = Timing
       .record(metrics, "Update Contact") {
         patch(s"services/data/v54.0/sobjects/Contact/${id.get}", json)
       }
@@ -125,7 +126,7 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
         Monad[Future].unlessM(r.code == 204)(Future.failed(new Exception(s"Bad code for update ${r.code}: $output")))
       }
 
-    def update(id: SFContactId, newFields: Map[String, String]): Future[Unit] = {
+    def update(id: SFContactId, newFields: Map[String, String])(implicit logPrefix: LogPrefix): Future[Unit] = {
       val fields = newFields map { case (name, value) =>
         name -> Json.toJsFieldJsValueWrapper(value)
       }
@@ -140,13 +141,13 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
     case Success(auth) =>
       periodicAuth.set(Some(auth))
     case Failure(ex) =>
-      logger.error(scrub"Failed Salesforce authentication $stage", ex)
+      logger.errorNoPrefix(scrub"Failed Salesforce authentication $stage", ex)
       metrics.recordAuthenticationError()
   }
 
   protected def authorize: Future[Authentication] = {
     retry {
-      logger.info(s"Trying to authenticate with Salesforce $stage...")
+      logger.infoNoPrefix(s"Trying to authenticate with Salesforce $stage...")
 
       val formBody = new FormBody.Builder()
         .add("client_id", sfConfig.key)
@@ -158,12 +159,12 @@ abstract class Scalaforce(implicit ec: ExecutionContext) extends SafeLogging {
 
       val request = new Request.Builder().url(s"${sfConfig.url}/services/oauth2/token").post(formBody).build()
 
-      issueRequest(request).map { response =>
+      issueRequest(request)(LogPrefix.noLogPrefix).map { response =>
         implicit val reads = Json.reads[Authentication]
         val responseBody = jsonParse(response.body().string())
         responseBody.validate[Authentication] match {
           case JsSuccess(result, _) =>
-            logger.info(s"Successful Salesforce $stage authentication.")
+            logger.infoNoPrefix(s"Successful Salesforce $stage authentication.")
             result
           case _ =>
             throw ScalaforceError(s"Failed Salesforce $stage authentication: CODE = ${response.code()}; Response = $responseBody")

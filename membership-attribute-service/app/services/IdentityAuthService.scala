@@ -27,21 +27,21 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
         case Left(OktaValidationException(validationError: ValidationError)) =>
           validationError match {
             case MissingRequiredScope(_) =>
-              logger.warn(s"could not validate okta token - $validationError")
+              logger.warnNoPrefix(s"could not validate okta token - $validationError")
               Left(Forbidden)
             case OktaValidationError(originalException) =>
-              logger.warn(
+              logger.warnNoPrefix(
                 s"could not validate okta token - $validationError. Path: ${requestHeader.path}. User-Agent: ${requestHeader.headers.get("User-Agent")}",
                 originalException,
               )
               Left(Unauthorised)
             case _ =>
-              logger.warn(s"could not validate okta token - $validationError")
+              logger.warnNoPrefix(s"could not validate okta token - $validationError")
               Left(Unauthorised)
           }
 
         case Left(err) =>
-          logger.warn(s"valid request but expired token or cookie so user must log in again - $err")
+          logger.warnNoPrefix(s"valid request but expired token or cookie so user must log in again - $err")
           Left(Unauthorised)
 
         case Right(Some(user)) => Right(user)
@@ -84,6 +84,7 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
         case (_: OktaUserCredentials, claims) =>
           Some(claims)
         case (_: IdapiUserCredentials, claims) =>
+          import claims.logPrefix
           logger.warn("Authorised by Idapi token")
           Some(claims)
       }

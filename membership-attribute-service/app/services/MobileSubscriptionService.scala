@@ -1,6 +1,7 @@
 package services
 
 import com.github.nscala_time.time.OrderingImplicits._
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.typesafe.config.Config
 import models.MobileSubscriptionStatus
@@ -11,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait MobileSubscriptionService {
 
-  def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]]
+  def getSubscriptionStatusForUser(identityId: String)(implicit logPrefix: LogPrefix): Future[Either[String, Option[MobileSubscriptionStatus]]]
 
 }
 
@@ -25,7 +26,9 @@ class MobileSubscriptionServiceImpl(wsClient: WSClient, config: Config)(implicit
     case _ => "https://mobile-purchases.mobile-aws.code.dev-guardianapis.com"
   }
 
-  override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
+  override def getSubscriptionStatusForUser(
+      identityId: String,
+  )(implicit logPrefix: LogPrefix): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
     val response = wsClient
       .url(s"$subscriptionURL/user/subscriptions/$identityId")
       .withHttpHeaders("Authorization" -> s"Bearer $mobileSubscriptionApiKey")

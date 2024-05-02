@@ -1,5 +1,6 @@
 package com.gu.memsub.util
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners.FutureHttpClient
 import okhttp3._
@@ -35,7 +36,7 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
     * @return
     *   The modified request
     */
-  def wsPreExecute(req: Request.Builder): Request.Builder = req
+  def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = req
 
   /** Send a request to the web service and attempt to convert the response to an A
     *
@@ -49,7 +50,7 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
     *   The type of the object that is expected to be returned from the request
     * @return
     */
-  private def request[A <: T](rb: Request.Builder)(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A]): Future[A] = {
+  private def request[A <: T](rb: Request.Builder)(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A], logPrefix: LogPrefix): Future[A] = {
     val req = wsPreExecute(rb).build()
     logger.debug(s"Issuing request ${req.method} ${req.url}")
     // The string provided here sets the Custom Metric Name for the http request in CloudWatch
@@ -64,13 +65,14 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
     }
   }
 
-  def get[A <: T](endpoint: String, params: (String, String)*)(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A]): Future[A] =
+  def get[A <: T](endpoint: String, params: (String, String)*)(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A], logPrefix: LogPrefix): Future[A] =
     request(new Request.Builder().url(endpointUrl(endpoint, params)))
 
   def get[A <: T](endpoint: String, headers: Headers, params: (String, String)*)(implicit
       reads: Reads[A],
       error: Reads[Error],
       ctag: ClassTag[A],
+      logPrefix: LogPrefix,
   ): Future[A] =
     request(new Request.Builder().headers(headers).url(endpointUrl(endpoint, params)))
 
@@ -78,12 +80,13 @@ abstract class WebServiceHelper[T, Error <: Throwable](implicit ec: ExecutionCon
       reads: Reads[A],
       error: Reads[Error],
       ctag: ClassTag[A],
+      logPrefix: LogPrefix,
   ): Future[A] = {
     val body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), Json.stringify(data))
     request(new Request.Builder().url(endpointUrl(endpoint, params)).post(body))
   }
 
-  def post[A <: T](endpoint: String, data: Map[String, Seq[String]])(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A]): Future[A] = {
+  def post[A <: T](endpoint: String, data: Map[String, Seq[String]])(implicit reads: Reads[A], error: Reads[Error], ctag: ClassTag[A], logPrefix: LogPrefix): Future[A] = {
     val postParams = data
       .foldLeft(new FormBody.Builder()) { case (params, (name, values)) =>
         val paramName = if (values.size > 1) s"$name[]" else name

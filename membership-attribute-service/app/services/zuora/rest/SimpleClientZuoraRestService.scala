@@ -1,6 +1,7 @@
 package services.zuora.rest
 
 import com.gu.memsub.Subscription._
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.rest.ZuoraResponse
 import org.joda.time.LocalDate
@@ -13,15 +14,17 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     extends ZuoraRestService
     with SafeLogging {
 
-  def getAccount(accountId: AccountId): Future[String \/ AccountSummary] = {
+  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ AccountSummary] = {
     simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") // TODO error handling
   }
 
-  def getObjectAccount(accountId: AccountId): Future[String \/ ObjectAccount] = {
+  def getObjectAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ ObjectAccount] = {
     simpleRest.get[ObjectAccount](s"object/account/${accountId.get}")
   }
 
-  def getGiftSubscriptionRecordsFromIdentityId(identityId: String): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]] = {
+  def getGiftSubscriptionRecordsFromIdentityId(
+      identityId: String,
+  )(implicit logPrefix: LogPrefix): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]] = {
     val today = LocalDate.now().toString("yyyy-MM-dd")
     val queryString =
       s"select name, id, termEndDate from subscription where GifteeIdentityId__c = '${identityId}' and status = 'Active' and termEndDate >= '$today'"
@@ -29,7 +32,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     EitherT(response).map(_.records).run
   }
 
-  def getPaymentMethod(paymentMethodId: String): Future[String \/ PaymentMethodResponse] =
+  def getPaymentMethod(paymentMethodId: String)(implicit logPrefix: LogPrefix): Future[String \/ PaymentMethodResponse] =
     simpleRest.get[PaymentMethodResponse](s"object/payment-method/$paymentMethodId")
 
   private def unsuccessfulResponseToLeft(restResponse: EitherT[String, Future, ZuoraResponse]): EitherT[String, Future, ZuoraResponse] = {
@@ -51,7 +54,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
       maybeChargedThroughDate: Option[
         LocalDate,
       ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
-  )(implicit ex: ExecutionContext): Future[String \/ Unit] = {
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ Unit] = {
 
     // FIXME: Not always safe assumption. There are multiple scenarios to consider
     //   1. Free trial should be explicitly handled: val cancellationEffectiveDate = if(sub.startDate <= today && sub.acceptanceDate > today) LocalDate.now
@@ -79,7 +82,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
   }
 
-  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String): Future[String \/ Unit] = {
+  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String)(implicit logPrefix: LogPrefix): Future[String \/ Unit] = {
     val future = implicitly[Monad[Future]]
     val restResponse = for {
       restResponse <- EitherT(
@@ -93,7 +96,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
   }
 
-  def disableAutoPay(accountId: AccountId): Future[String \/ Unit] = {
+  def disableAutoPay(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ Unit] = {
     val future = implicitly[Monad[Future]]
 
     val restResponse = for {
@@ -110,7 +113,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
       amount: Double,
       reason: String,
       applyFromDate: LocalDate,
-  )(implicit ex: ExecutionContext): Future[\/[String, Unit]] = {
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[\/[String, Unit]] = {
     val updateCommand =
       UpdateChargeCommand(price = amount, ratePlanChargeId = ratePlanChargeId, ratePlanId = ratePlanId, applyFromDate = applyFromDate, note = reason)
     val restResponse = for {
@@ -120,7 +123,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implici
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
   }
 
-  def getCancellationEffectiveDate(name: Name): Future[String \/ Option[String]] = {
+  def getCancellationEffectiveDate(name: Name)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {
     (for {
       amendment <- EitherT(simpleRest.get[Amendment](s"amendments/subscriptions/${name.get}"))
       cancelledSub <- EitherT(simpleRest.get[CancelledSubscription](s"subscriptions/${name.get}"))

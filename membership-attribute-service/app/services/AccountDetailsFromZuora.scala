@@ -75,7 +75,7 @@ class AccountDetailsFromZuora(
     }
   }
 
-  private def getPaymentMethod(id: PaymentMethodId): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
+  private def getPaymentMethod(id: PaymentMethodId)(implicit logPrefix: LogPrefix): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
     zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
   private def nonGiftContactAndSubscriptionsFor(contact: Contact)(implicit logPrefix: LogPrefix): Future[List[ContactAndSubscription]] = {
@@ -170,7 +170,7 @@ class AccountDetailsFromZuora(
       userId: String,
       nonGiftSubscription: List[ContactAndSubscription],
       contact: Contact,
-  ): SimpleEitherT[List[ContactAndSubscription]] = {
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[List[ContactAndSubscription]] = {
     metrics.measureDurationEither("checkForGiftSubscription") {
       for {
         records <- SimpleEitherT(zuoraRestService.getGiftSubscriptionRecordsFromIdentityId(userId))
@@ -183,7 +183,7 @@ class AccountDetailsFromZuora(
   private def reuseAlreadyFetchedSubscriptionIfAvailable(
       giftRecords: List[ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord],
       nonGiftSubs: List[ContactAndSubscription],
-  ): SimpleEitherT[List[Subscription[AnyPlan]]] = {
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[List[Subscription[AnyPlan]]] = {
     val all = giftRecords.map { giftRecord =>
       val subscriptionName = Name(giftRecord.Name)
       // If the current user is both the gifter and the giftee we will have already retrieved their

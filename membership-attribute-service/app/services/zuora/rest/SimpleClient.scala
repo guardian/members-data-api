@@ -1,5 +1,6 @@
 package services.zuora.rest
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{NoOpZuoraMetrics, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners.FutureHttpClient
 import com.gu.zuora.ZuoraRestConfig
@@ -21,7 +22,7 @@ case class SimpleClient(
     client: FutureHttpClient,
     metrics: ZuoraMetrics = NoOpZuoraMetrics,
 )(implicit functor: Functor[Future], ec: ExecutionContext) {
-  def authenticated(url: String): Request.Builder = {
+  def authenticated(url: String)(implicit logPrefix: LogPrefix): Request.Builder = {
     metrics.countRequest() // to count total number of request hitting Zuora
 
     new Request.Builder()
@@ -60,13 +61,13 @@ case class SimpleClient(
 
   def jsonBody(in: JsValue): RequestBody = RequestBody.create(MediaType.parse("application/json"), in.toString())
 
-  def get[B](url: String)(implicit r: Reads[B]): Future[String \/ B] =
+  def get[B](url: String)(implicit r: Reads[B], logPrefix: LogPrefix): Future[String \/ B] =
     client.execute(authenticated(url).get.build).map(parseResponse(_)(r))
 
-  def put[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A]): Future[String \/ B] =
+  def put[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A], logPrefix: LogPrefix): Future[String \/ B] =
     client.execute(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
 
-  def post[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A]): Future[String \/ B] =
+  def post[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A], logPrefix: LogPrefix): Future[String \/ B] =
     client.execute(authenticated(url).post(body(in)).build).map(parseResponse(_)(r))
 
 }

@@ -13,6 +13,7 @@ import com.gu.memsub.subsv2.reads.CatJsonReads._
 import com.gu.memsub.subsv2.reads.CatPlanReads
 import com.gu.memsub.subsv2.reads.CatPlanReads._
 import com.gu.memsub.subsv2.reads.ChargeListReads.{ProductIds, _}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.zuora.rest.SimpleClient
 import play.api.libs.json.{Reads => JsReads, _}
 import scalaz.Validation.FlatMap._
@@ -24,14 +25,14 @@ import scalaz.syntax.apply.ToApplyOps
 
 object FetchCatalog {
 
-  def fromZuoraApi[M[_]: Monad](httpClient: SimpleClient[M]): M[String \/ JsValue] =
+  def fromZuoraApi[M[_]: Monad](httpClient: SimpleClient[M])(implicit logPrefix: LogPrefix): M[String \/ JsValue] =
     httpClient.get[JsValue]("catalog/products?pageSize=40")(new JsReads[JsValue] {
       override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
-    })
+    }, logPrefix)
 
   def fromS3[M[_]: Monad](zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client): M[String \/ JsValue] = {
     val catalogRequest = new GetObjectRequest(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}", "catalog.json")
-    AwsS3.fetchJson(s3Client, catalogRequest).point[M]
+    AwsS3.fetchJson(s3Client, catalogRequest)(LogPrefix.noLogPrefix).point[M]
   }
 
 }

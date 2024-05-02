@@ -2,6 +2,7 @@ package actions
 
 import com.gu.identity.auth.{AccessScope, IdapiUserCredentials, OktaUserCredentials}
 import com.gu.identity.{IdapiService, RedirectAdviceResponse, SignedInRecently}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import components.{TouchpointBackends, TouchpointComponents}
 import filters.IsTestUser
 import models.{ApiError, UserFromToken}
@@ -26,7 +27,9 @@ class AuthAndBackendViaIdapiAction(
     userAndCredentials flatMap {
       case Left(error) => Future.successful(Left(ApiError.apiErrorToResult(error)))
       case Right(UserAndCredentials(user, _: OktaUserCredentials)) => Future.successful(Right(oktaRefine(request, user)))
-      case Right(UserAndCredentials(_, _: IdapiUserCredentials)) => idapiRefine(request)
+      case Right(UserAndCredentials(user, _: IdapiUserCredentials)) =>
+        implicit val logPrefix: LogPrefix = user.logPrefix
+        idapiRefine(request)
     }
   }
 
@@ -51,7 +54,7 @@ class AuthAndBackendViaIdapiAction(
       request,
     )
 
-  private def idapiRefine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] =
+  private def idapiRefine[A](request: Request[A])(implicit logPrefix: LogPrefix): Future[Either[Result, AuthAndBackendRequest[A]]] =
     touchpointBackends.normal.idapiService.RedirectAdvice
       .getRedirectAdvice(
         request.headers.get(IdapiService.HeaderNameCookie).getOrElse(""),

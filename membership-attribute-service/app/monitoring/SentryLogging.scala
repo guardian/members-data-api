@@ -12,9 +12,9 @@ import scala.util.{Failure, Success, Try}
 object SentryLogging extends SafeLogging {
   def init(config: SentryConfig): Unit = {
     config.sentryDsn match {
-      case None => logger.warn("No Sentry logging configured (OK for dev)")
+      case None => logger.warnNoPrefix("No Sentry logging configured (OK for dev)")
       case Some(sentryDSN) =>
-        logger.info(s"Initialising Sentry logging")
+        logger.infoNoPrefix(s"Initialising Sentry logging")
         Try {
           Sentry.init(sentryDSN)
           val buildInfo: Map[String, String] = app.BuildInfo.toMap.view.mapValues(_.toString).toMap

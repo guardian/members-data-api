@@ -28,6 +28,11 @@ object SafeLogger extends SafeLogging {
   trait LogPrefix {
     def message: String
   }
+  object LogPrefix {
+    val noLogPrefix: LogPrefix = new LogPrefix {
+      override def message: String = "no-id"
+    }
+  }
 
 }
 
@@ -37,16 +42,28 @@ class SafeLoggerImpl(logger: Logger) {
     logger.debug(logMessage)
   }
 
-  def info(logMessage: String): Unit = {
+  def infoNoPrefix(logMessage: String): Unit = {
     logger.info(logMessage)
   }
 
-  def warn(logMessage: String): Unit = {
+  def info(logMessage: String)(implicit logPrefix: LogPrefix): Unit = {
+    logger.info(logPrefix.message + ": " + logMessage)
+  }
+
+  def warnNoPrefix(logMessage: String): Unit = {
     logger.warn(logMessage)
   }
 
-  def warn(logMessage: String, throwable: Throwable): Unit = {
+  def warn(logMessage: String)(implicit logPrefix: LogPrefix): Unit = {
+    logger.warn(logPrefix.message + ": " + logMessage)
+  }
+
+  def warnNoPrefix(logMessage: String, throwable: Throwable): Unit = {
     logger.warn(logMessage, throwable)
+  }
+
+  def warn(logMessage: String, throwable: Throwable)(implicit logPrefix: LogPrefix): Unit = {
+    logger.warn(logPrefix.message + ": " + logMessage, throwable)
   }
 
   def errorNoPrefix(logMessage: LogMessage): Unit = {
@@ -59,8 +76,13 @@ class SafeLoggerImpl(logger: Logger) {
     logger.error(SafeLogger.sanitizedLogMessage, logMessage.withoutPersonalData)
   }
 
-  def error(logMessage: LogMessage, throwable: Throwable): Unit = {
+  def errorNoPrefix(logMessage: LogMessage, throwable: Throwable): Unit = {
     logger.error(logMessage.withPersonalData, throwable)
+    logger.error(SafeLogger.sanitizedLogMessage, s"${logMessage.withoutPersonalData} due to ${throwable.getCause}")
+  }
+
+  def error(logMessage: LogMessage, throwable: Throwable)(implicit logPrefix: LogPrefix): Unit = {
+    logger.error(logPrefix.message + ": " + logMessage.withPersonalData, throwable)
     logger.error(SafeLogger.sanitizedLogMessage, s"${logMessage.withoutPersonalData} due to ${throwable.getCause}")
   }
 

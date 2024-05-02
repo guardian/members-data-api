@@ -7,12 +7,14 @@ import com.gu.zuora.rest.SimpleClient
 import okhttp3._
 import org.specs2.mutable.Specification
 import com.gu.memsub.subsv2.Fixtures._
+import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import io.lemonlabs.uri.typesafe.dsl._
 import com.typesafe.config.ConfigFactory
 import utils.Resource
 import scalaz.Id._
 import scalaz.\/
+import utils.TestLogPrefix.testLogPrefix
 
 class CatalogServiceTest extends Specification {
 
@@ -34,14 +36,16 @@ class CatalogServiceTest extends Specification {
 object CatalogServiceTest {
 
   def client(path: String) = {
-    val runner: HttpClient[Id] = (r: Request) =>
-      new Response.Builder()
-        .request(r)
-        .message("test")
-        .code(200)
-        .body(ResponseBody.create(MediaType.parse("application/json"), Resource.getJson(path).toString))
-        .protocol(Protocol.HTTP_1_1)
-        .build()
+    val runner: HttpClient[Id] = new HttpClient[Id] {
+      override def execute(request: Request)(implicit logPrefix: SafeLogger.LogPrefix): scalaz.Id.Id[Response] =
+        new Response.Builder()
+          .request(request)
+          .message("test")
+          .code(200)
+          .body(ResponseBody.create(MediaType.parse("application/json"), Resource.getJson(path).toString))
+          .protocol(Protocol.HTTP_1_1)
+          .build()
+    }
 
     val restConfig = ZuoraRestConfig("foo", "http://localhost", "joe", "public")
     new SimpleClient[Id](restConfig, runner)

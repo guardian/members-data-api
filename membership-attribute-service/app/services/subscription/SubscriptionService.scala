@@ -20,10 +20,11 @@ object SubscriptionService {
 }
 
 trait SubscriptionService {
+
   def get[P <: AnyPlan: SubPlanReads](
       name: memsub.Subscription.Name,
       isActiveToday: Boolean = false,
-  ): Future[Option[Subscription[P]]]
+  )(implicit logPrefix: LogPrefix): Future[Option[Subscription[P]]]
 
   def current[P <: AnyPlan: SubPlanReads](contact: ContactId)(implicit logPrefix: LogPrefix): Future[List[Subscription[P]]]
 
@@ -35,7 +36,9 @@ trait SubscriptionService {
       lastNMonths: Int = 3, // cancelled in the last N months
   )(implicit ev: SubPlanReads[AnyPlan], logPrefix: LogPrefix): Future[String \/ List[Subscription[AnyPlan]]]
 
-  def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](accountId: AccountId): Future[Disjunction[String, List[Subscription[P]]]]
+  def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](accountId: AccountId)(implicit
+      logPrefix: LogPrefix,
+  ): Future[Disjunction[String, List[Subscription[P]]]]
 
   def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): Future[Disjunction[String, List[JsValue]]]
 
@@ -60,5 +63,5 @@ trait SubscriptionService {
       subscriptionName: memsub.Subscription.Name,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
-  ): EitherT[String, Future, Option[LocalDate]]
+  )(implicit logPrefix: LogPrefix): EitherT[String, Future, Option[LocalDate]]
 }

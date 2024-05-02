@@ -35,14 +35,14 @@ class Client(
   actorSystem.scheduler.schedule(0.seconds, 15.minutes)(authentication())
 
   private def authentication(): Unit =
-    retry(request(Actions.Login(apiConfig), None, authenticationReader)(noLogPrefix))(ec, actorSystem.scheduler)
+    retry(request(Actions.Login(apiConfig), None, authenticationReader)(LogPrefix.noLogPrefix))(ec, actorSystem.scheduler)
       .onComplete {
         case Success(auth) =>
           periodicAuth.set(auth)
-          logger.info(s"Successfully authenticated Zuora SOAP client in ${apiConfig.envName}")
+          logger.infoNoPrefix(s"Successfully authenticated Zuora SOAP client in ${apiConfig.envName}")
 
         case Failure(ex) =>
-          logger.error(scrub"Failed Zuora SOAP client authentication in ${apiConfig.envName}", ex)
+          logger.errorNoPrefix(scrub"Failed Zuora SOAP client authentication in ${apiConfig.envName}", ex)
       }
 
   private def request[T <: models.Result](
@@ -108,9 +108,5 @@ object Client {
 
   def childFilter[C <: Query, P <: Query with Identifiable](parent: P): SimpleFilter =
     SimpleFilter(parent.objectName + "Id", parent.id)
-
-  val noLogPrefix: LogPrefix = new LogPrefix {
-    override def message: String = "no-id"
-  }
 
 }

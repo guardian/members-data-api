@@ -1,5 +1,6 @@
 package services.salesforce
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.okhttp.RequestRunners
 import com.gu.okhttp.RequestRunners.FutureHttpClient
 import com.gu.salesforce.ContactDeserializer._
@@ -22,7 +23,7 @@ class SimpleContactRepository(private val salesforce: Scalaforce)(implicit execu
     \/.right,
   )
 
-  private def get(key: String, value: String): Future[String \/ Option[Contact]] = {
+  private def get(key: String, value: String)(implicit logPrefix: LogPrefix): Future[String \/ Option[Contact]] = {
     salesforce.Contact.read(key, value).map { failableJsonContact =>
       (for {
         resultOpt <- failableJsonContact
@@ -36,10 +37,12 @@ class SimpleContactRepository(private val salesforce: Scalaforce)(implicit execu
     }
   }
 
-  def get(identityId: String): Future[String \/ Option[Contact]] = // this returns right of None if the person isn't a member
+  def get(
+      identityId: String,
+  )(implicit logPrefix: LogPrefix): Future[String \/ Option[Contact]] = // this returns right of None if the person isn't a member
     get(Keys.IDENTITY_ID, identityId)
 
-  override def update(contactId: String, contactFields: Map[String, String]): Future[Unit] =
+  override def update(contactId: String, contactFields: Map[String, String])(implicit logPrefix: LogPrefix): Future[Unit] =
     salesforce.Contact.update(SFContactId(contactId), contactFields)
 }
 

@@ -1,5 +1,6 @@
 package com.gu.okhttp
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import okhttp3.{Call, Callback, OkHttpClient, Request, Response}
 
@@ -15,12 +16,12 @@ object RequestRunners {
   lazy val client = new OkHttpClient()
 
   trait HttpClient[M[_]] {
-    def execute(request: Request): M[Response]
+    def execute(request: Request)(implicit logPrefix: LogPrefix): M[Response]
   }
 
   class FutureHttpClient(client: OkHttpClient) extends HttpClient[Future] with SafeLogging {
 
-    def execute(request: Request): Future[Response] = {
+    def execute(request: Request)(implicit logPrefix: LogPrefix): Future[Response] = {
       val p = Promise[Response]()
 
       client

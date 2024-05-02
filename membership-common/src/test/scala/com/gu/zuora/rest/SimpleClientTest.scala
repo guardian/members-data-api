@@ -1,4 +1,5 @@
 package com.gu.zuora.rest
+import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.zuora.ZuoraRestConfig
 import io.lemonlabs.uri.typesafe.dsl._
@@ -8,6 +9,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.exceptions.TestFailedException
 import play.api.libs.json.{Json, Reads}
 import scalaz.{-\/, OptionT, Writer, \/}
+import utils.TestLogPrefix.testLogPrefix
 
 class SimpleClientTest extends AnyFlatSpec {
 
@@ -26,23 +28,27 @@ class SimpleClientTest extends AnyFlatSpec {
   /* Hence the function that fulfills HTTP requests returns a response in an option (always None)
    * Nested within a writer which contains a List[Request], so we can see the request and skip providing a response
    */
-  val noResponseRunner: HttpClient[M] = a => OptionT[W, OkResponse](Writer(List(a), None))
+  val noResponseRunner: HttpClient[M] = new HttpClient[M] {
+    override def execute(request: Request)(implicit logPrefix: SafeLogger.LogPrefix): M[OkResponse] =
+      OptionT[W, OkResponse](Writer(List(request), None))
+  }
 
   /*
    * After all that I've realised we do actually also want to test how responses get parsed
    * so lets also write a request running function that returns a response with a string body
    */
-  def constRunner(body: String): HttpClient[W] = a => {
-    Writer(
-      List(a),
-      new OkResponse.Builder()
-        .body(ResponseBody.create(body, MediaType.parse("application/json")))
-        .protocol(Protocol.HTTP_2) // in my dreams :'(
-        .request(a)
-        .message("test")
-        .code(200)
-        .build(),
-    )
+  def constRunner(body: String): HttpClient[W] = new HttpClient[W] {
+    override def execute(request: Request)(implicit logPrefix: SafeLogger.LogPrefix): W[OkResponse] =
+      Writer(
+        List(request),
+        new OkResponse.Builder()
+          .body(ResponseBody.create(body, MediaType.parse("application/json")))
+          .protocol(Protocol.HTTP_2) // in my dreams :'(
+          .request(request)
+          .message("test")
+          .code(200)
+          .build(),
+      )
   }
 
   val config = ZuoraRestConfig("DEV", "https://example.com", "user", "pass")

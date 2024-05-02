@@ -91,8 +91,8 @@ class PaymentUpdateController(
       contact: Contact,
       paymentMethod: PaymentType,
       plan: SubscriptionPlan.AnyPlan,
-  ): SimpleEitherT[Unit] =
-    SimpleEitherT.rightT(sendEmail(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, plan)))
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[Unit] =
+    SimpleEitherT.rightT(sendEmail.send(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, plan)))
 
   private def checkDirectDebitUpdateResult(
       userId: String,
