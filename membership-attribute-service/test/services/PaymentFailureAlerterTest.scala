@@ -8,6 +8,7 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import testdata.AccountObjectTestData._
 import testdata.AccountSummaryTestData.{accountSummaryWithBalance, accountSummaryWithZeroBalance}
+import testdata.TestLogPrefix.testLogPrefix
 import testdata.{InvoiceAndPaymentTestData, SubscriptionTestData}
 
 import java.util.Locale

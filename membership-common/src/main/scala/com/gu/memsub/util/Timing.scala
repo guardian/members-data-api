@@ -1,12 +1,13 @@
 package com.gu.memsub.util
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{CloudWatch, SafeLogging}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object Timing extends SafeLogging {
 
-  def record[T](cloudWatch: CloudWatch, metricName: String)(block: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+  def record[T](cloudWatch: CloudWatch, metricName: String)(block: => Future[T])(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[T] = {
     logger.debug(s"$metricName started...")
     cloudWatch.put(metricName, 1)
     val startTime = System.currentTimeMillis()

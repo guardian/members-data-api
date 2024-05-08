@@ -5,6 +5,7 @@ import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import com.gu.identity.auth.AccessScope
 import com.gu.identity.{RedirectAdviceResponse, SignedInRecently}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.typesafe.config.ConfigFactory
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.{CreateTestUsernames, Stage}
@@ -209,7 +210,9 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     }
 
   object FakeMobileSubscriptionService extends MobileSubscriptionService {
-    override def getSubscriptionStatusForUser(identityId: String): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
+    override def getSubscriptionStatusForUser(
+        identityId: String,
+    )(implicit logPrefix: LogPrefix): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
       if (identityId == userWithLiveAppUserId)
         Future.successful(Right(Some(MobileSubscriptionStatus(valid = true, dateTimeInTheFuture))))
       else

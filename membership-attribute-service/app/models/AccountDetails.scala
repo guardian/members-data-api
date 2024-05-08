@@ -3,6 +3,7 @@ import com.gu.i18n.Country
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2._
 import com.gu.memsub.{Subscription, _}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import json.localDateWrites
@@ -38,7 +39,7 @@ object AccountDetails {
 
     import accountDetails._
 
-    def toJson: JsObject = {
+    def toJson(implicit logPrefix: LogPrefix): JsObject = {
 
       val product = accountDetails.subscription.plan.product
 

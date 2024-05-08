@@ -6,6 +6,7 @@ import com.gu.identity.IdapiService
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{SafeLogging, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
@@ -122,7 +123,12 @@ class TouchpointComponents(
 
   lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
   lazy val catalogService = catalogServiceOverride.getOrElse(
-    new CatalogService(productIds, FetchCatalog.fromZuoraApi(catalogRestClient), Await.result(_, 60.seconds), stage.value),
+    new CatalogService(
+      productIds,
+      FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix),
+      Await.result(_, 60.seconds),
+      stage.value,
+    ),
   )
 
   lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog

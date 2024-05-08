@@ -8,6 +8,7 @@ import com.gu.memsub.subsv2.reads.CommonReads._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import org.joda.time.LocalDate
 import play.api.libs.json.{Reads => JsReads, _}
@@ -33,7 +34,7 @@ object SubscriptionTransform extends SafeLogging {
     }
   }
 
-  def backdoorRatePlanIdsFromJson(subJson: JsValue): Disjunction[String, List[SubIds]] = {
+  def backdoorRatePlanIdsFromJson(subJson: JsValue)(implicit logPrefix: LogPrefix): Disjunction[String, List[SubIds]] = {
     val ids = (subJson \ "ratePlans").validate[List[SubIds]](niceListReads(subIdsReads)).asEither.toDisjunction.leftMap(_.toString)
     // didn't actually check if they're current
 

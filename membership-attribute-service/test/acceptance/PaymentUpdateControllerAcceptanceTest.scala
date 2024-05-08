@@ -1,58 +1,31 @@
 package acceptance
 
 import acceptance.data.Randoms.randomId
-import acceptance.data.stripe.{
-  TestCustomersPaymentMethods,
-  TestDynamoSupporterRatePlanItem,
-  TestStripeCard,
-  TestStripeCustomer,
-  TestStripeSubscription,
-}
-import acceptance.data.{
-  IdentityResponse,
-  TestAccountSummary,
-  TestCatalog,
-  TestContact,
-  TestPaidCharge,
-  TestPaidSubscriptionPlan,
-  TestPaymentSummary,
-  TestQueriesAccount,
-  TestQueriesContact,
-  TestQueriesPaymentMethod,
-  TestSubscription,
-}
-import com.gu.i18n.{Country, Currency}
-import com.gu.memsub.Product.Contribution
+import acceptance.data.stripe.{TestStripeCard, TestStripeCustomer}
+import acceptance.data._
+import com.gu.i18n.Country
+import com.gu.memsub.Subscription
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
-import com.gu.memsub.{Product, Subscription}
-import com.gu.zuora.api.{GoCardlessZuoraInstance, PaymentGateway, RegionalStripeGateways}
+import com.gu.zuora.api.{GoCardlessZuoraInstance, PaymentGateway}
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Results.UpdateResult
 import kong.unirest.Unirest
-import org.joda.time.LocalDate
 import org.mockito.ArgumentMatchers.any
 import org.mockserver.model.Cookie
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
-import play.api.libs.json.{JsArray, Json}
+import play.api.libs.json.Json
 import scalaz.\/
 import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe, StripePublicKey, StripeService}
 import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
-import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import services.zuora.soap.ZuoraSoapService
-import services.{
-  CatalogService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  SupporterProductDataService,
-  SupporterRatePlanToAttributesMapper,
-}
-import utils.SimpleEitherT
+import services.{CatalogService, ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
+import testdata.TestLogPrefix.testLogPrefix
 import wiring.MyComponents
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -178,7 +151,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       catalogServiceMock.unsafeCatalog returns TestCatalog()
 
-      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+      contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
@@ -224,7 +197,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraSoapServiceMock.getPaymentMethod(paymentMethodId)(any) returns Future(paymentMethod)
 
-      sendEmailMock(emailData) returns Future.successful(())
+      sendEmailMock.send(emailData)(any) returns Future.successful(())
 
       val httpResponse = Unirest
         .post(endpointUrl(s"/user-attributes/me/update-direct-debit/$subscriptionId"))
@@ -242,13 +215,13 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       identityMockClientAndServer.verify(identityRequest)
       subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
-      contactRepositoryMock.get("200067388") was called
+      contactRepositoryMock.get("200067388")(any) was called
       catalogServiceMock.unsafeCatalog was called
       zuoraSoapServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
       zuoraSoapServiceMock.getContact(account.billToId)(any) was called
       zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod)(any) was called
       zuoraSoapServiceMock.getPaymentMethod(paymentMethodId)(any) was called
-      sendEmailMock(emailData) was called
+      sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain
@@ -339,7 +312,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         ),
       )
 
-      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+      contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
@@ -356,7 +329,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
           exp_year = 2027,
         ),
       )
-      ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId") returns
+      ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId")(any) returns
         Future.successful(customer)
       val paymentGateway = mock[PaymentGateway]
       ukStripeServiceMock.paymentIntentsGateway returns paymentGateway
@@ -375,7 +348,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       val queriesContact = TestQueriesContact()
       zuoraSoapServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
 
-      sendEmailMock(emailData) returns Future.successful(())
+      sendEmailMock.send(emailData)(any) returns Future.successful(())
 
       val httpResponse = Unirest
         .post(endpointUrl(s"/user-attributes/me/update-card/$subscriptionId"))
@@ -392,12 +365,12 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       identityMockClientAndServer.verify(identityRequest)
       subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
-      contactRepositoryMock.get("200067388") was called
-      ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId") was called
+      contactRepositoryMock.get("200067388")(any) was called
+      ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId")(any) was called
       ukStripeServiceMock.paymentIntentsGateway was called
       ukStripeServiceMock.invoiceTemplateOverride was called
       zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None)(any) was called
-      sendEmailMock(emailData) was called
+      sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain

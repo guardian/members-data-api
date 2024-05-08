@@ -38,7 +38,7 @@ class GuardianPatronService(
     }
   }
 
-  private def getListDetailsFromStripe(items: List[DynamoSupporterRatePlanItem]): Future[List[AccountDetails]] = {
+  private def getListDetailsFromStripe(items: List[DynamoSupporterRatePlanItem])(implicit logPrefix: LogPrefix): Future[List[AccountDetails]] = {
     Future.sequence(
       items
         .filter(isGuardianPatronProduct)
@@ -50,7 +50,7 @@ class GuardianPatronService(
   private def isGuardianPatronProduct(item: DynamoSupporterRatePlanItem) =
     item.productRatePlanId == guardianPatronProductRatePlanId
 
-  private def fetchAccountDetailsFromStripe(subscriptionId: String): Future[AccountDetails] =
+  private def fetchAccountDetailsFromStripe(subscriptionId: String)(implicit logPrefix: LogPrefix): Future[AccountDetails] =
     metrics.measureDuration("fetchAccountDetailsFromStripe") {
       for {
         subscription <- patronsStripeService.fetchSubscription(subscriptionId)

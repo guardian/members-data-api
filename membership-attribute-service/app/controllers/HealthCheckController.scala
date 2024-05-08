@@ -36,7 +36,7 @@ class HealthCheckController(touchPointBackends: TouchpointBackends, override val
       if (failures.isEmpty) {
         Ok(Json.obj("status" -> "ok", "gitCommitId" -> app.BuildInfo.gitCommitId))
       } else {
-        failures.flatMap(_.messages).foreach(msg => logger.warn(msg))
+        failures.flatMap(_.messages).foreach(msg => logger.warnNoPrefix(msg))
         ServiceUnavailable("Service Unavailable")
       }
     }

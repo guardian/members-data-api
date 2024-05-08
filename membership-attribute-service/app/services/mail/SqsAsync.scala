@@ -1,5 +1,6 @@
 package services.mail
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import services.mail.SqsAsync.CredentialsProvider
 import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
@@ -21,7 +22,7 @@ class SqsAsync extends SafeLogging {
     .credentialsProvider(CredentialsProvider)
     .build()
 
-  def send(queueName: QueueName, payload: String): Future[Unit] = {
+  def send(queueName: QueueName, payload: String)(implicit logPrefix: LogPrefix): Future[Unit] = {
     for {
       queueUrl <- queueUrlFor(queueName)
       _ <- sendToUrl(queueUrl, payload).transform {
@@ -43,7 +44,7 @@ class SqsAsync extends SafeLogging {
       .asScala
       .map(_.queueUrl)
 
-  private def sendToUrl(queueUrl: String, payload: String): Future[SendMessageResponse] = {
+  private def sendToUrl(queueUrl: String, payload: String)(implicit logPrefix: LogPrefix): Future[SendMessageResponse] = {
     val request = SendMessageRequest.builder.queueUrl(queueUrl).messageBody(payload).build()
     logger.info(s"Sending message to SQS queue $queueUrl:\n$payload")
     client.sendMessage(request).asScala

@@ -78,7 +78,7 @@ class AccountController(
 
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
-  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_]): Either[ApiError, String] =
+  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_], logPrefix: LogPrefix): Either[ApiError, String] =
     cancelForm
       .bindFromRequest()
       .value
@@ -299,16 +299,17 @@ class AccountController(
       currency: Currency,
       billingPeriod: RecurringPeriod,
       nextPaymentDate: LocalDate,
-  ) = SimpleEitherT.right(sendEmail(updateAmountEmail(email, contact, newPrice, currency, billingPeriod, nextPaymentDate)))
+  )(implicit logPrefix: LogPrefix) =
+    SimpleEitherT.right(sendEmail.send(updateAmountEmail(email, contact, newPrice, currency, billingPeriod, nextPaymentDate)))
 
   private def sendSubscriptionCancelledEmail(
       email: String,
       contact: Contact,
       plan: SubscriptionPlan.AnyPlan,
       cancellationEffectiveDate: Option[LocalDate],
-  ) =
+  )(implicit logPrefix: LogPrefix) =
     SimpleEitherT
-      .right(sendEmail(subscriptionCancelledEmail(email, contact, plan, cancellationEffectiveDate)))
+      .right(sendEmail.send(subscriptionCancelledEmail(email, contact, plan, cancellationEffectiveDate)))
       .leftMap(ApiError(_, "Email could not be put on the queue", 500))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {

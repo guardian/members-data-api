@@ -2,6 +2,7 @@ package com.gu.stripe
 
 import com.gu.i18n.{Country, Currency}
 import com.gu.memsub.util.WebServiceHelper
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._
 import com.gu.stripe.Stripe._
@@ -62,7 +63,7 @@ class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(im
   val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
   val invoiceTemplateOverride: Option[InvoiceTemplate] = apiConfig.invoiceTemplateOverride
 
-  override def wsPreExecute(req: Request.Builder): Request.Builder = {
+  override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {
     req.addHeader("Authorization", s"Bearer ${apiConfig.credentials.secretKey}")
 
     apiConfig.version match {

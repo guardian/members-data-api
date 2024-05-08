@@ -1,6 +1,7 @@
 package services.stripe
 
 import com.gu.memsub.util.WebServiceHelper
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._
@@ -16,7 +17,7 @@ class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: F
     with SafeLogging {
   override val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
 
-  override def wsPreExecute(req: Request.Builder): Request.Builder = {
+  override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {
     req.addHeader("Authorization", s"Bearer ${config.stripeCredentials.secretKey}")
 
     config.version match {
@@ -28,7 +29,7 @@ class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: F
     }
   }
 
-  def fetchCustomer(customerId: String): Future[Customer] = for {
+  def fetchCustomer(customerId: String)(implicit logPrefix: LogPrefix): Future[Customer] = for {
     customersPaymentMethods <- fetchPaymentMethod(customerId)
     customer <- customersPaymentMethods.cardStripeList.data match {
       case Nil => get[Customer](s"customers/$customerId") // fallback for older card tokens
@@ -37,18 +38,18 @@ class HttpBasicStripeService(config: BasicStripeServiceConfig, val httpClient: F
   } yield customer
 
   @Deprecated
-  def createCustomer(card: String): Future[Customer] =
+  def createCustomer(card: String)(implicit logPrefix: LogPrefix): Future[Customer] =
     post[Customer]("customers", Map("card" -> Seq(card)))
 
-  def createCustomerWithStripePaymentMethod(stripePaymentMethodID: String): Future[Customer] = for {
+  def createCustomerWithStripePaymentMethod(stripePaymentMethodID: String)(implicit logPrefix: LogPrefix): Future[Customer] = for {
     createCustomerResponse <- post[CreateCustomerResponse]("customers", Map("payment_method" -> Seq(stripePaymentMethodID)))
     synthesisedCustomerWithCardDetail <- fetchCustomer(createCustomerResponse.id)
   } yield synthesisedCustomerWithCardDetail
 
-  def fetchPaymentMethod(customerId: String): Future[CustomersPaymentMethods] =
+  def fetchPaymentMethod(customerId: String)(implicit logPrefix: LogPrefix): Future[CustomersPaymentMethods] =
     get[CustomersPaymentMethods](s"payment_methods", "customer" -> customerId, "type" -> "card")
 
-  def fetchSubscription(id: String): Future[Stripe.Subscription] =
+  def fetchSubscription(id: String)(implicit logPrefix: LogPrefix): Future[Stripe.Subscription] =
     get[Stripe.Subscription](s"subscriptions/$id", params = ("expand[]", "customer"))
 }
 

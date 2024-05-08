@@ -4,6 +4,7 @@ import com.gu.memsub
 import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
+import com.gu.monitoring.SafeLogger.LogPrefix
 import models.ApiError
 import org.joda.time.LocalDate
 import scalaz.{EitherT, Monad}
@@ -20,7 +21,7 @@ class CancelSubscription(subscriptionService: SubscriptionService, zuoraRestServ
       reason: String,
       accountId: memsub.Subscription.AccountId,
       endOfTermDate: LocalDate,
-  )(implicit ec: ExecutionContext, reads: SubPlanReads[P]): EitherT[ApiError, Future, Option[LocalDate]] =
+  )(implicit ec: ExecutionContext, reads: SubPlanReads[P], logPrefix: LogPrefix): EitherT[ApiError, Future, Option[LocalDate]] =
     (for {
       _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
       _ <- EitherT(zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message =>
@@ -37,7 +38,7 @@ class CancelSubscription(subscriptionService: SubscriptionService, zuoraRestServ
     */
   def disableAutoPayOnlyIfAccountHasOneSubscription[P <: SubscriptionPlan.AnyPlan](
       accountId: memsub.Subscription.AccountId,
-  )(implicit ec: ExecutionContext, reads: SubPlanReads[P]): SimpleEitherT[Unit] = {
+  )(implicit ec: ExecutionContext, reads: SubPlanReads[P], logPrefix: LogPrefix): SimpleEitherT[Unit] = {
     EitherT(subscriptionService.subscriptionsForAccountId[P](accountId)).flatMap { currentSubscriptions =>
       if (currentSubscriptions.size <= 1)
         SimpleEitherT(zuoraRestService.disableAutoPay(accountId).map(_.toEither))
