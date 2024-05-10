@@ -41,6 +41,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithNewspaperPlusUserId = "6"
   private val userWithGuardianWeeklyUserId = "7"
   private val unvalidatedEmailUserId = "8"
+  private val userWithSupporterPlusWithGuardianWeeklyId = "9"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
@@ -73,6 +74,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
 
+  private val supporterPlusWithGuardianWeeklyAttributes = Attributes(
+    UserId = userWithSupporterPlusWithGuardianWeeklyId,
+    SupporterPlusExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+    GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+  )
+
   private val validUserCookie = Cookie("validUser", "true")
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
@@ -81,6 +88,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val newspaperCookie = Cookie("newspaper", "true")
   private val newspaperPlusCookie = Cookie("newspaperPlus", "true")
   private val guardianWeeklyCookie = Cookie("guardianWeekly", "true")
+  private val supporterPlusWithGuardianWeeklyCookie = Cookie("supporterPlusWithGuardianWeekly", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@thegulocal.com",
     identityId = validUserId,
@@ -126,6 +134,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     authTime = None,
   )
 
+  private val userWithSupporterPlusWithGuardianWeekly = UserFromToken(
+    primaryEmailAddress = "SupporterPlusWithGuardianWeekly@thegulocal.com",
+    identityId = userWithSupporterPlusWithGuardianWeeklyId,
+    authTime = None,
+  )
+
   private val guardianEmployeeUser = UserFromToken(
     primaryEmailAddress = "foo@guardian.co.uk",
     identityId = "1234321",
@@ -161,6 +175,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == newspaperCookie => Future.successful(Right(userWithNewspaper))
         case Some(c) if c == newspaperPlusCookie => Future.successful(Right(userWithNewspaperPlus))
         case Some(c) if c == guardianWeeklyCookie => Future.successful(Right(userWithGuardianWeekly))
+        case Some(c) if c == supporterPlusWithGuardianWeeklyCookie => Future.successful(Right(userWithSupporterPlusWithGuardianWeekly))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -248,6 +263,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(newspaperPlusAttributes))
         } else if (identityId == userWithGuardianWeeklyUserId) {
           ("Zuora", Some(guardianWeeklyOnlyAttributes))
+        } else if (identityId == userWithSupporterPlusWithGuardianWeeklyId) {
+          ("Zuora", Some(supporterPlusWithGuardianWeeklyAttributes))
         } else
           ("Zuora", None)
       }
@@ -465,7 +482,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |{
              |  "userId": "$userWithNewspaperUserId",
              |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-             |  "feastIosSubscriptionGroup":"21445388",
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
              |  "showSupportMessaging": false,
              |  "contentAccess": {
              |    "member": false,
@@ -540,6 +557,35 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithGuardianWeeklyUserId)
+
+    }
+
+    "return the correct attributes for Supporter Plus With Guardian Weekly subscribers" in {
+      val req = FakeRequest().withCookies(supporterPlusWithGuardianWeeklyCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      println(Json.prettyPrint(jsonBody))
+      jsonBody shouldEqual
+        Json.parse(s"""
+             |{
+             |  "userId": "$userWithSupporterPlusWithGuardianWeeklyId",
+             |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "showSupportMessaging": false,
+             |  "contentAccess": {
+             |    "member": false,
+             |    "paidMember": false,
+             |    "recurringContributor": false,
+             |    "supporterPlus" : true,
+             |    "feast": true,
+             |    "digitalPack": true,
+             |    "paperSubscriber": false,
+             |    "guardianWeeklySubscriber": true,
+             |    "guardianPatron": false
+             |  }
+             |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithSupporterPlusWithGuardianWeeklyId)
 
     }
 
