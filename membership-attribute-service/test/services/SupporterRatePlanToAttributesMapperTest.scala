@@ -113,6 +113,29 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       )
     }
 
+    "handle a SupporterPlusWithGuardianWeekly subscription" in {
+      testMapper(
+        Map(
+          "PROD" -> List(
+            ratePlanItem("8a1292628f51a923018f52a324e45710"), // Supporter Plus V2 & Guardian Weekly ROW - Annual
+            ratePlanItem("8a1281f38f518d11018f52a599806a65"), // Supporter Plus V2 & Guardian Weekly ROW - Monthly
+            ratePlanItem("8a1282048f518d08018f529ead0f3d91"), // Supporter Plus V2 & Guardian Weekly Domestic - Annual
+            ratePlanItem("8a1288a38f518d01018f529a04443172"), // Supporter Plus V2 & Guardian Weekly Domestic - Monthly
+          ),
+          "CODE" -> List(
+            ratePlanItem("8ad097b48f006681018f05a0496e01f4"), // Supporter Plus V2 & Guardian Weekly ROW - Annual
+            ratePlanItem("8ad097b48f006681018f05a2c0fb0227"), // Supporter Plus V2 & Guardian Weekly ROW - Monthly
+            ratePlanItem("8ad097b48f006681018f059b755e0140"), // Supporter Plus V2 & Guardian Weekly Domestic - Annual
+            ratePlanItem("8ad081dd8ef57784018ef6e159224bfa"), // Supporter Plus V2 & Guardian Weekly Domestic - Monthly
+          ),
+        ),
+        _ should beSome.which { attributes: Attributes =>
+          attributes.SupporterPlusExpiryDate should beSome(termEndDate)
+          attributes.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate)
+        },
+      )
+    }
+
     "identify a Digital Subscription" in {
       val possibleProductRatePlanIds = List(
         "2c92a0fb4edd70c8014edeaa4eae220a", // Monthly
