@@ -109,19 +109,16 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
       logPrefix: LogPrefix,
   ): Future[Option[PaymentMethod]] =
     for {
-      maybePaymentMethod <- getPaymentMethodByAccount(defaultPaymentMethodId).withLogging(s"get payment method for $defaultPaymentMethodId")
+      maybePaymentMethod <- getPaymentMethod(defaultPaymentMethodId).withLogging(s"get payment method for $defaultPaymentMethodId")
     } yield for {
       soapPaymentMethod <- maybePaymentMethod
       memsubPaymentMethod <- buildPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod)
     } yield memsubPaymentMethod
 
-  private def getPaymentMethodByAccount(
-      defaultPaymentMethodId: Option[String],
-  )(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] = {
-    defaultPaymentMethodId match {
-      case Some(defaultPaymentMethodId) => zuoraService.getPaymentMethod(defaultPaymentMethodId).map(Some(_))
+  private def getPaymentMethod(maybePaymentMethodId: Option[String])(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] =
+    maybePaymentMethodId match {
+      case Some(paymentMethodId) => zuoraService.getPaymentMethod(paymentMethodId).map(Some(_))
       case None => Future.successful(None)
     }
-  }
 
 }
