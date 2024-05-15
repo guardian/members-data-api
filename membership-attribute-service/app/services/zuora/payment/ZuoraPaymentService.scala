@@ -90,9 +90,7 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
       case _ => None
     }
 
-  private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit
-      logPrefix: LogPrefix,
-  ): Future[Option[Bill]] =
+  private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[Option[Bill]] =
     zuoraService.previewInvoices(subId, numberOfBills).map { previewInvoiceItems =>
       val maybeBillingSchedule = BillingSchedule.fromPreviewInvoiceItems(planMap, previewInvoiceItems)
       maybeBillingSchedule.flatMap { billingSched =>
@@ -105,20 +103,14 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
       }
     }
 
-  def getPaymentMethod(defaultPaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit
+  def getPaymentMethod(maybePaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit
       logPrefix: LogPrefix,
   ): Future[Option[PaymentMethod]] =
-    for {
-      maybePaymentMethod <- getPaymentMethod(defaultPaymentMethodId).withLogging(s"get payment method for $defaultPaymentMethodId")
+    (for {
+      paymentMethodId <- maybePaymentMethodId
     } yield for {
-      soapPaymentMethod <- maybePaymentMethod
-      memsubPaymentMethod <- buildPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod)
-    } yield memsubPaymentMethod
-
-  private def getPaymentMethod(maybePaymentMethodId: Option[String])(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] =
-    maybePaymentMethodId match {
-      case Some(paymentMethodId) => zuoraService.getPaymentMethod(paymentMethodId).map(Some(_))
-      case None => Future.successful(None)
-    }
+      soapPaymentMethod <- zuoraService.getPaymentMethod(paymentMethodId).withLogging(s"get payment method for $maybePaymentMethodId")
+    } yield buildPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod))
+      .getOrElse(Future.successful(None))
 
 }
