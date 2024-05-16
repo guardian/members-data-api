@@ -231,7 +231,6 @@ object CatalogPlan {
 
   type Member = CatalogPlan[Product.Membership, ChargeList with SingleBenefit[MemberTier], Current]
   type FreeMember = CatalogPlan[Product.Membership, FreeCharge[FreeMemberTier], Current]
-  type Friend = CatalogPlan[Product.Membership, FreeCharge[Friend.type], Current]
   type Staff = CatalogPlan[Product.Membership, FreeCharge[Staff.type], Current]
 
   type PaidMember[+B <: BillingPeriod] = CatalogPlan[Product.Membership, PaidCharge[PaidMemberTier, B], Current]
@@ -349,7 +348,6 @@ case class WeeklyPlans(
 }
 
 case class Catalog(
-    friend: CatalogPlan.Friend,
     staff: CatalogPlan.Staff,
     supporter: PaidMembershipPlans[Supporter.type],
     partner: PaidMembershipPlans[Partner.type],
@@ -400,7 +398,7 @@ sealed trait SingleBenefit[+B <: Benefit] {
   def benefit: B
 }
 
-/** So this is a charge "list" that must contain exactly one free charge like if you're a friend on membership
+/** So this is a charge "list" that must contain exactly one free charge like if you have staff membership
   */
 case class FreeCharge[+B <: Benefit](benefit: B, currencies: Set[Currency]) extends FreeChargeList with SingleBenefit[B] {
   def benefits = NonEmptyList(benefit)
@@ -525,7 +523,6 @@ object SubscriptionPlan {
   type FreeMember = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.FreeMemberTier]]
 
   type Staff = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Staff.type]]
-  type Friend = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Friend.type]]
   type Supporter = PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]]
   type Partner = PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Partner.type, BillingPeriod]]
   type Patron = PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Patron.type, BillingPeriod]]
@@ -536,8 +533,6 @@ object SubscriptionPlan {
   type Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges]
   type Voucher = PaidSubscriptionPlan[Product.Voucher, PaperCharges]
   type DigitalVoucher = PaidSubscriptionPlan[Product.DigitalVoucher, PaperCharges]
-  type DailyPaper = PaidSubscriptionPlan[Product.Paper, PaperCharges]
-  type PaperPlan = PaidSubscriptionPlan[Product.Paper, PaidChargeList]
 
   type WeeklyZoneA = PaidSubscriptionPlan[Product.WeeklyZoneA, PaidCharge[Weekly.type, BillingPeriod]]
   type WeeklyZoneB = PaidSubscriptionPlan[Product.WeeklyZoneB, PaidCharge[Weekly.type, BillingPeriod]]

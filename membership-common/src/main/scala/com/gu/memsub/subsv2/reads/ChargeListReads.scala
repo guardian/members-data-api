@@ -54,7 +54,6 @@ object ChargeListReads {
       weeklyZoneC: ProductId,
       weeklyDomestic: ProductId,
       weeklyRestOfWorld: ProductId,
-      friend: ProductId,
       supporter: ProductId,
       partner: ProductId,
       patron: ProductId,

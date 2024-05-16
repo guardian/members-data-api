@@ -59,11 +59,6 @@ case class Subscription[+P <: SubscriptionPlan.AnyPlan](
       None
   }
 
-  def asDelivery = as[Product.Delivery, PaperCharges, SubscriptionPlan.Delivery]
-  def asVoucher = as[Product.Voucher, PaperCharges, SubscriptionPlan.Voucher]
-  def asWeekly =
-    as[Product.Weekly, PaidCharge[Weekly.type, BillingPeriod] /* TODO should check the benefit and billing period*/, SubscriptionPlan.WeeklyPlan]
-  def asDigipack = as[Product.ZDigipack, PaidChargeList, SubscriptionPlan.Digipack]
   def asContribution = as[Product.Contribution, PaidChargeList, SubscriptionPlan.Contributor]
   def asMembership = as[Product.Membership, ChargeList, SubscriptionPlan.Member]
 }
@@ -87,9 +82,9 @@ object GetCurrentPlans {
       (x, y) match {
         case (_: PaidSubscriptionPlan[_, _], _: FreeSubscriptionPlan[_, _]) => gt
         case (_: FreeSubscriptionPlan[_, _], _: PaidSubscriptionPlan[_, _]) => lt
-        case (friendX: FreeSubscriptionPlan[_, _], friendY: FreeSubscriptionPlan[_, _]) => {
-          if (friendX.start < friendY.start) lt
-          else if (friendX.start > friendY.start) gt
+        case (staffX: FreeSubscriptionPlan[_, _], staffY: FreeSubscriptionPlan[_, _]) => {
+          if (staffX.start < staffY.start) lt
+          else if (staffX.start > staffY.start) gt
           else eq
         }
         case (planX: PaidSubscriptionPlan[_, _], planY: PaidSubscriptionPlan[_, _]) => {

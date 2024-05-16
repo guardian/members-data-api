@@ -42,7 +42,7 @@ object SubPlanReads {
   implicit val zDigipackReads: SubPlanReads[ZDigipack] = findProduct(_.digipack.point[List], Digipack)
   implicit val supporterPlusReads: SubPlanReads[SupporterPlus] = findProduct(_.supporterPlus.point[List], SupporterPlus)
   implicit val membershipReads: SubPlanReads[Membership] =
-    findProduct(ids => List(ids.friend, ids.supporter, ids.partner, ids.patron, ids.staff), Membership)
+    findProduct(ids => List(ids.supporter, ids.partner, ids.patron, ids.staff), Membership)
   implicit val contributionReads: SubPlanReads[Contribution] = findProduct(_.contributor.point[List], Contribution)
   implicit val weeklyZoneAReads: SubPlanReads[WeeklyZoneA] = findProduct(_.weeklyZoneA.point[List], WeeklyZoneA)
   implicit val weeklyZoneBReads: SubPlanReads[WeeklyZoneB] = findProduct(_.weeklyZoneB.point[List], WeeklyZoneB)
@@ -197,8 +197,4 @@ object SubPlanReads {
       }
     }
 
-  val nothingReads: SubPlanReads[Nothing] = new SubPlanReads[Nothing] {
-    override def read(p: ProductIds, z: SubscriptionZuoraPlan, c: CatalogZuoraPlan): ValidationNel[String, Nothing] =
-      Validation.failureNel("Attempt to read nothing")
-  }
 }

@@ -43,7 +43,7 @@ object CatPlanReads {
   implicit val y: CatPlanReads[Contribution] = findProduct(_.contributor.point[List], Contribution)
   implicit val s: CatPlanReads[SupporterPlus] = findProduct(_.supporterPlus.point[List], SupporterPlus)
   implicit val z: CatPlanReads[ZDigipack] = findProduct(_.digipack.point[List], Digipack)
-  implicit val b: CatPlanReads[Membership] = findProduct(ids => List(ids.friend, ids.supporter, ids.partner, ids.patron, ids.staff), Membership)
+  implicit val b: CatPlanReads[Membership] = findProduct(ids => List(ids.supporter, ids.partner, ids.patron, ids.staff), Membership)
 
   implicit val currentReads: CatPlanReads[Current] = new CatPlanReads[Current] {
     override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, Current] =
