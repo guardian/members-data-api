@@ -31,8 +31,8 @@ class BillingScheduleTest extends Specification {
       val expectedSchedule = BillingSchedule(
         NonEmptyList(Bill(jan15, 1.month, NonEmptyList(BillItem("Digipack", None, 15.0f, 15.0f), BillItem("Discount", None, -3.75f, 30.0f)))),
       )
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems) mustEqual Some(expectedSchedule)
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems).get.first.amount mustEqual 11.25f
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems) must beSome(expectedSchedule)
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems).get.first.amount mustEqual 11.25f
     }
 
     "Not stick together invoice items with different ServiceEndDates" in {
@@ -47,7 +47,7 @@ class BillingScheduleTest extends Specification {
           Bill(feb15, 1.month, BillItem("Charge name", None, 15f, 15f).wrapNel),
         ),
       )
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems) mustEqual Some(expectedSchedule)
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems) must beSome(expectedSchedule)
     }
 
     "Merge credits occurring half way through a month into the subsequent bill" in {
@@ -69,19 +69,17 @@ class BillingScheduleTest extends Specification {
         PreviewInvoiceItem(15.0f, start.plusMonths(3), start.plusMonths(4), "some other product id", "", "Another normal charge", 15.0f),
       )
 
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(withHolidays) mustEqual Some(
-        BillingSchedule(
-          NonEmptyList(
-            Bill(start.plusMonths(1), 1.month, NonEmptyList(BillItem("Normal bill", None, 15f, 15f), BillItem("Discount", None, -15f, -15f))),
-            Bill(start.plusMonths(2), 1.month, NonEmptyList(BillItem("Also normal", None, 15f, 15f))),
-            Bill(
-              start.plusMonths(3),
-              1.month,
-              NonEmptyList(BillItem("Another normal charge", None, 15f, 15f), BillItem("Another discount", None, -1f, -1f)),
-            ),
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, withHolidays) must beSome(BillingSchedule(
+        NonEmptyList(
+          Bill(start.plusMonths(1), 1.month, NonEmptyList(BillItem("Normal bill", None, 15f, 15f), BillItem("Discount", None, -15f, -15f))),
+          Bill(start.plusMonths(2), 1.month, NonEmptyList(BillItem("Also normal", None, 15f, 15f))),
+          Bill(
+            start.plusMonths(3),
+            1.month,
+            NonEmptyList(BillItem("Another normal charge", None, 15f, 15f), BillItem("Another discount", None, -1f, -1f)),
           ),
         ),
-      )
+      ))
     }
 
     "Handle floating point math which may sum things greater than 2dp, e.g. 20.74 => 20.740002" in {
@@ -115,10 +113,10 @@ class BillingScheduleTest extends Specification {
         ),
       )
 
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems) mustEqual Some(expectedSchedule)
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems).get.first.totalGross mustEqual 20.74f
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems).get.first.totalDeductions mustEqual 20.74f
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(invoiceItems).get.first.amount mustEqual 0f
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems) must beSome(expectedSchedule)
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems).get.first.totalGross mustEqual 20.74f
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems).get.first.totalDeductions mustEqual 20.74f
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, invoiceItems).get.first.amount mustEqual 0f
     }
 
     "Zero out negative invoices with a non zero gross and add the remainder to the following invoice" in {
@@ -130,18 +128,16 @@ class BillingScheduleTest extends Specification {
         PreviewInvoiceItem(15.0f, start.plusMonths(1), start.plusMonths(2), "some other product id", "", "Normal", 15.0f),
       )
 
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(withHolidays) mustEqual Some(
-        BillingSchedule(
-          NonEmptyList(
-            Bill(
-              start,
-              1.month,
-              NonEmptyList(BillItem("Credit balance", None, 3, 3), BillItem("Discount", None, -18f, -18f), BillItem("Normal bill", None, 15f, 15f)),
-            ),
-            Bill(start.plusMonths(1), 1.month, NonEmptyList(BillItem(s"Credit from $start", None, -3, -3), BillItem("Normal", None, 15f, 15f))),
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, withHolidays) must beSome(BillingSchedule(
+        NonEmptyList(
+          Bill(
+            start,
+            1.month,
+            NonEmptyList(BillItem("Credit balance", None, 3, 3), BillItem("Discount", None, -18f, -18f), BillItem("Normal bill", None, 15f, 15f)),
           ),
+          Bill(start.plusMonths(1), 1.month, NonEmptyList(BillItem(s"Credit from $start", None, -3, -3), BillItem("Normal", None, 15f, 15f))),
         ),
-      )
+      ))
     }
 
     "Daisy chain large credits over more than one month" in {
@@ -153,50 +149,45 @@ class BillingScheduleTest extends Specification {
         PreviewInvoiceItem(15.0f, 1 Sep 2016, 1 Oct 2016, "", "", "Everyday+", 15.0f),
       )
 
-      BillingSchedule.fromPreviewInvoiceItems(_ => None)(withHolidays) mustEqual Some(
-        BillingSchedule(
-          NonEmptyList(
-            Bill(
-              1 Jul 2016,
-              1.month,
-              NonEmptyList(BillItem("Credit balance", None, 25, 25), BillItem("Everyday+", None, 15.0f, 15.0f), BillItem("Holidays!", None, -40, -40)),
-            ),
-            Bill(
-              1 Aug 2016,
-              1.month,
-              NonEmptyList(
-                BillItem("Credit balance", None, 10, 10),
-                BillItem("Credit from 2016-07-01", None, -25, -25),
-                BillItem("Everyday+", None, 15.0f, 15.0f),
-              ),
-            ),
-            Bill(1 Sep 2016, 1.month, NonEmptyList(BillItem("Credit from 2016-08-01", None, -10, -10), BillItem("Everyday+", None, 15.0f, 15.0f))),
+      BillingSchedule.fromPreviewInvoiceItems(Map.empty, withHolidays) must beSome(BillingSchedule(
+        NonEmptyList(
+          Bill(
+            1 Jul 2016,
+            1.month,
+            NonEmptyList(BillItem("Credit balance", None, 25, 25), BillItem("Everyday+", None, 15.0f, 15.0f), BillItem("Holidays!", None, -40, -40)),
           ),
+          Bill(
+            1 Aug 2016,
+            1.month,
+            NonEmptyList(
+              BillItem("Credit balance", None, 10, 10),
+              BillItem("Credit from 2016-07-01", None, -25, -25),
+              BillItem("Everyday+", None, 15.0f, 15.0f),
+            ),
+          ),
+          Bill(1 Sep 2016, 1.month, NonEmptyList(BillItem("Credit from 2016-08-01", None, -10, -10), BillItem("Everyday+", None, 15.0f, 15.0f))),
         ),
-      )
+      ))
     }
 
     "Include any products found with the productFinder in the bill items" in {
       val start = new LocalDate("2016-01-01")
 
-      val discerningFinder: ProductRatePlanChargeId => Option[Benefit] = {
-        case ProductRatePlanChargeId("DigiPrpcId") => Some(Digipack)
-        case _ => None
-      }
+      val discerningFinder = Map(
+         ProductRatePlanChargeId("DigiPrpcId") -> Digipack
+      )
 
       val items = Seq(
         PreviewInvoiceItem(15.0f, start, start.plusMonths(1), "A holiday discount", "DigiPrpcId", "Month 1", 15.0f),
         PreviewInvoiceItem(15.0f, start.plusMonths(1), start.plusMonths(2), "some other product id", "Foo", "Month 2", 15.0f),
       )
 
-      BillingSchedule.fromPreviewInvoiceItems(discerningFinder)(items) mustEqual Some(
-        BillingSchedule(
-          NonEmptyList(
-            Bill(start, 1.month, NonEmptyList(BillItem("Month 1", Some(Digipack), 15f, 15f))),
-            Bill(start.plusMonths(1), 1.month, NonEmptyList(BillItem("Month 2", None, 15f, 15f))),
-          ),
+      BillingSchedule.fromPreviewInvoiceItems(discerningFinder, items) must beSome(BillingSchedule(
+        NonEmptyList(
+          Bill(start, 1.month, NonEmptyList(BillItem("Month 1", Some(Digipack), 15f, 15f))),
+          Bill(start.plusMonths(1), 1.month, NonEmptyList(BillItem("Month 2", None, 15f, 15f))),
         ),
-      )
+      ))
     }
 
     "Roll up to a shorter view" in {
@@ -258,13 +249,8 @@ class BillingScheduleTest extends Specification {
         ),
       )
       val scheduleWithCreditDisplayed = confusingQuarterlyEchoLegacySchedule.withCreditBalanceApplied(2.1f)
-      val displayedInvoices = scheduleWithCreditDisplayed.invoices.list
-      displayedInvoices.toList(0).amount mustEqual 0f
-      displayedInvoices.toList(1).amount mustEqual 0f
-      displayedInvoices.toList(2).amount mustEqual 90f - 2.1f
-      displayedInvoices.toList(3).amount mustEqual 0f
-      displayedInvoices.toList(4).amount mustEqual 0f
-      displayedInvoices.toList(5).amount mustEqual 90f
+      val amounts = scheduleWithCreditDisplayed.invoices.list.map(_.amount).toList
+      amounts.take(6) mustEqual List(0f, 0f, 90f - 2.1f, 0f, 0f, 90f)
     }
 
     "Spread a large account credit over the available positive invoices" in {
@@ -303,13 +289,8 @@ class BillingScheduleTest extends Specification {
         ),
       )
       val scheduleWithCreditDisplayed = confusingQuarterlyEchoLegacySchedule.withCreditBalanceApplied(100)
-      val displayedInvoices = scheduleWithCreditDisplayed.invoices.list
-      displayedInvoices.toList(0).amount mustEqual 0f
-      displayedInvoices.toList(1).amount mustEqual 0f
-      displayedInvoices.toList(2).amount mustEqual 0f
-      displayedInvoices.toList(3).amount mustEqual 0f
-      displayedInvoices.toList(4).amount mustEqual 0f
-      displayedInvoices.toList(5).amount mustEqual 80f
+      val amounts = scheduleWithCreditDisplayed.invoices.list.map(_.amount).toList
+      amounts.take(6) mustEqual List(0f, 0f, 0f, 0f, 0f, 80f)
     }
   }
 }

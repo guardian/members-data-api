@@ -1,8 +1,9 @@
 package services.zuora.payment
 
 import _root_.services.zuora.soap.ZuoraSoapService
+import com.gu.memsub.BillingSchedule.Bill
 import com.gu.memsub.Subscription._
-import com.gu.memsub.subsv2.SubscriptionPlan.Contributor
+import com.gu.memsub.promo.LogImplicit._
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingSchedule, Subscription => _, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -35,47 +36,22 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
   )(sub: Subscription[SubscriptionPlan.Paid])(implicit logPrefix: LogPrefix): Future[PaymentDetails] = {
     val currency = sub.plan.charges.currencies.head
     // I am not convinced this function is very safe, hence the option
-    val lastPaymentDate = zuoraService
+    val eventualMaybeLastPaymentDate = zuoraService
       .getPaymentSummary(sub.name, currency)
       .map(_.current.serviceStartDate.some)
       .recover { case _ => None }
-    lastPaymentDate.onComplete {
-      case Failure(exception) =>
-        val message = scrub"Failed to get last payment date for sub $sub"
-        logger.error(message, exception)
-      case Success(_) => logger.info(s"Successfully got payment details for $sub")
-    }
+    eventualMaybeLastPaymentDate.withLogging(s"lastPaymentDate for $sub")
 
-    val nextPaymentDate = sub.plan match {
-      case _: Contributor =>
-        sub.plan.chargedThrough.getOrElse(
-          sub.plan.start,
-        ) // If the user has updated their contribution amount via MMA, there may be no charged through date
-      case _ => sub.plan.chargedThrough.getOrElse(sub.acceptanceDate) // If the user hasn't paid us yet, there's no charged through date
-    }
-    val futureMaybePrice = sub.plan.product.name match {
-      // There's no need to get the billing schedule for membership - since there are no promos etc.
-      case "membership" => {
-        Future.successful(sub.plan.charges.price.prices.headOption)
-      }
-      case _ => {
-        val schedule = billingSchedule(sub.id, sub.accountId, 15).map { maybeSchedule =>
-          maybeSchedule.map(schedule => Price(schedule.first.amount, currency))
-        }
-        schedule.onComplete {
-          case Failure(exception) =>
-            val message = scrub"Failed to get billing schedule for sub $sub"
-            logger.error(message, exception)
-          case Success(_) => logger.info(s"Successfully got billing schedule for $sub")
-        }
-        schedule
-      }
-    }
-    (futureMaybePrice |@| getPaymentMethod(sub.accountId, defaultMandateIdIfApplicable) |@| lastPaymentDate) {
-      case (maybePrice, paymentMethod, lpd) => {
-        val nextPayment = maybePrice.map { price => Payment(price, nextPaymentDate) }
-        PaymentDetails(sub, paymentMethod, nextPayment, lpd)
-      }
+    for {
+      account <- zuoraService.getAccount(sub.accountId)
+      eventualMaybeBill = getNextBill(sub.id, account, 15).withLogging(s"next bill for $sub")
+      eventualMaybePaymentMethod = getPaymentMethod(account.defaultPaymentMethodId, defaultMandateIdIfApplicable) // kick off async
+      maybeBill <- eventualMaybeBill
+      maybePaymentMethod <- eventualMaybePaymentMethod
+      lpd <- eventualMaybeLastPaymentDate
+    } yield {
+      val maybePayment = maybeBill.map(bill => Payment(Price(bill.amount, currency), bill.date))
+      PaymentDetails(sub, maybePaymentMethod, maybePayment, lpd)
     }
   }
 
@@ -97,7 +73,8 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
 
   private def buildPaymentMethod(
       defaultMandateIdIfApplicable: Option[String] = None,
-  )(soapPaymentMethod: Queries.PaymentMethod): Option[PaymentMethod] =
+      soapPaymentMethod: Queries.PaymentMethod,
+  ): Option[PaymentMethod] =
     soapPaymentMethod.`type` match {
       case `CreditCard` | `CreditCardReferenceTransaction` =>
         val isReferenceTransaction = soapPaymentMethod.`type` == `CreditCardReferenceTransaction`
@@ -113,61 +90,27 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
       case _ => None
     }
 
-  private def billingSchedule(subId: Id, accountFuture: Future[Account], numberOfBills: Int)(implicit
-      logPrefix: LogPrefix,
-  ): Future[Option[BillingSchedule]] = {
-    val finder: ProductRatePlanChargeId => Option[Benefit] = planMap.get
-    val adapter: Seq[Queries.PreviewInvoiceItem] => Option[BillingSchedule] = BillingSchedule.fromPreviewInvoiceItems(finder)
-    val scheduleFuture = zuoraService.previewInvoices(subId, numberOfBills).map(adapter)
-    for {
-      account <- accountFuture
-      scheduleOpt <- scheduleFuture
-    } yield {
-      scheduleOpt.map(_.withCreditBalanceApplied(account.creditBalance))
+  private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[Option[Bill]] =
+    zuoraService.previewInvoices(subId, numberOfBills).map { previewInvoiceItems =>
+      val maybeBillingSchedule = BillingSchedule.fromPreviewInvoiceItems(planMap, previewInvoiceItems)
+      maybeBillingSchedule.flatMap { billingSched =>
+        billingSched
+          .withCreditBalanceApplied(account.creditBalance)
+          .invoices
+          .list
+          .find(_.amount > 0)
+          .toOption
+      }
     }
-  }
 
-  def billingSchedule(subId: Id, accountId: AccountId, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[Option[BillingSchedule]] =
-    billingSchedule(subId, zuoraService.getAccount(accountId), numberOfBills)
-
-  def getPaymentMethod(accountId: AccountId, defaultMandateIdIfApplicable: Option[String] = None)(implicit
+  def getPaymentMethod(maybePaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit
       logPrefix: LogPrefix,
   ): Future[Option[PaymentMethod]] =
-    getPaymentMethodByAccountId(accountId).map(_.flatMap(buildPaymentMethod(defaultMandateIdIfApplicable)))
-
-  private def getPaymentMethodByAccountId(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] = {
-    val accountFuture = {
-      val account = zuoraService.getAccount(accountId)
-      account.onComplete {
-        case Failure(exception) =>
-          val message = scrub"Failed to get account for account $accountId"
-          logger.error(message, exception)
-        case Success(_) => logger.info(s"Successfully got account for $accountId")
-      }
-      account
-    }
-    def getPaymentMethod(account: Account) = {
-      val paymentMethod = getPaymentMethodByAccount(account)
-      paymentMethod.onComplete {
-        case Failure(exception) =>
-          val message = scrub"Failed to get payment method for account $accountId"
-          logger.error(message, exception)
-        case Success(_) => logger.info(s"Successfully got payment method for $accountId")
-      }
-      paymentMethod
-    }
-    for {
-      account <- accountFuture
-      paymentMethod <- getPaymentMethod(account)
-    } yield paymentMethod
-  }
-
-  private def getPaymentMethodByAccount(account: Account)(implicit logPrefix: LogPrefix): Future[Option[Queries.PaymentMethod]] = {
-    val maybeEventualPaymentMethod = account.defaultPaymentMethodId.map(zuoraService.getPaymentMethod)
-    maybeEventualPaymentMethod match {
-      case Some(eventualPaymentMethod) => eventualPaymentMethod.map(Some.apply)
-      case None => Future.successful(None)
-    }
-  }
+    (for {
+      paymentMethodId <- maybePaymentMethodId
+    } yield for {
+      soapPaymentMethod <- zuoraService.getPaymentMethod(paymentMethodId).withLogging(s"get payment method for $maybePaymentMethodId")
+    } yield buildPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod))
+      .getOrElse(Future.successful(None))
 
 }

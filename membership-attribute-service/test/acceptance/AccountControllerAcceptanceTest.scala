@@ -6,9 +6,11 @@ import acceptance.data.{
   TestAccountSummary,
   TestCatalog,
   TestContact,
+  TestInvoiceItem,
   TestPaidCharge,
   TestPaidSubscriptionPlan,
   TestPaymentSummary,
+  TestPreviewInvoiceItem,
   TestQueriesAccount,
   TestSubscription,
 }
@@ -18,6 +20,7 @@ import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
 import kong.unirest.Unirest
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{LocalDate, LocalTime}
@@ -186,6 +189,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP)(any) returns Future(TestPaymentSummary())
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(TestQueriesAccount())
+      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 15)(any) returns Future(Seq(TestPreviewInvoiceItem()))
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(
         identityId = "200067388",
@@ -229,6 +233,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP)(any) was called
+      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 15)(any) was called
 
       supporterProductDataServiceMock wasNever calledAgain
       contactRepositoryMock wasNever calledAgain
