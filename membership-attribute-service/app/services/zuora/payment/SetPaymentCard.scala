@@ -4,9 +4,9 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, PaymentCard, PaymentCardDetails, PaymentCardUpdateResult}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.stripe.Stripe
+import com.gu.zuora.ZuoraSoapService
 import scalaz.Monad
 import services.stripe.StripeService
-import services.zuora.soap.ZuoraSoapService
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 

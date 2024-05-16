@@ -23,6 +23,8 @@ import scalaz.syntax.std.either._
 import scalaz.{EitherT, Monad, NonEmptyList, Validation, ValidationNel, \/}
 import scalaz.syntax.apply.ToApplyOps
 
+import scala.concurrent.Future
+
 object FetchCatalog {
 
   def fromZuoraApi[M[_]: Monad](httpClient: SimpleClient[M])(implicit logPrefix: LogPrefix): M[String \/ JsValue] =
@@ -33,9 +35,9 @@ object FetchCatalog {
       logPrefix,
     )
 
-  def fromS3[M[_]: Monad](zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client): M[String \/ JsValue] = {
+  def fromS3(zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client)(implicit m: Monad[Future]): Future[String \/ JsValue] = {
     val catalogRequest = new GetObjectRequest(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}", "catalog.json")
-    AwsS3.fetchJson(s3Client, catalogRequest)(LogPrefix.noLogPrefix).point[M]
+    AwsS3.fetchJson(s3Client, catalogRequest)(LogPrefix.noLogPrefix).point[Future]
   }
 
 }
@@ -58,7 +60,7 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
   ): Validation[NonEmptyList[String], P] = {
     many(plans.filter(_.frontendId.contains(frontendId)), name).flatMap {
       case a if a.size == 1 => Validation.s(a.head)
-      case e => Validation.failureNel(s"Too many plans! $e")
+      case e => Validation.failureNel(s"Too many plans! for name $name with frontendId $frontendId $e")
     }
   }
 
@@ -84,7 +86,7 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
   def joinUp: M[String \/ List[CatalogZuoraPlan]] = (for {
     catalog <- EitherT[String, M, JsValue](fetchCatalog)
     catalogPlans <- EitherT[String, M, List[CatalogZuoraPlan]](
-      Json.fromJson[List[CatalogZuoraPlan]](catalog).asEither.disjunction.leftMap(_.toString).point[M],
+      Json.fromJson[List[CatalogZuoraPlan]](catalog).asEither.toDisjunction.leftMap(_.toString).point[M],
     )
   } yield catalogPlans).run
 
@@ -158,7 +160,7 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
     catalog <- EitherT(validatePlans(plans).toDisjunction.point[M])
   } yield catalog).run
 
-  lazy val unsafeCatalog: Catalog = unsafeGet(
+  def unsafeCatalog = unsafeGet(
     catalog.map(
       _.valueOr(e => throw new IllegalStateException(s"$e while getting catalog")),
     ),

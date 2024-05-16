@@ -1,53 +1,32 @@
 package acceptance
 
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
-import acceptance.data.{
-  IdentityResponse,
-  TestAccountSummary,
-  TestCatalog,
-  TestContact,
-  TestInvoiceItem,
-  TestPaidCharge,
-  TestPaidSubscriptionPlan,
-  TestPaymentSummary,
-  TestPreviewInvoiceItem,
-  TestQueriesAccount,
-  TestSubscription,
-}
+import acceptance.data._
 import com.gu.i18n.Currency
 import com.gu.memsub.Product.Contribution
 import com.gu.memsub.Subscription.Name
+import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
 import com.gu.memsub.{Product, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
-import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
+import com.gu.zuora.ZuoraSoapService
 import kong.unirest.Unirest
+import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
-import org.joda.time.{LocalDate, LocalTime}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchersSugar.eqTo
 import org.mockserver.model.Cookie
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
-import play.api.libs.json.Json.parse
 import play.api.libs.json.{JsArray, Json}
 import scalaz.\/
 import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
-import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
-import services.zuora.soap.ZuoraSoapService
-import services.{
-  CatalogService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  SupporterProductDataService,
-  SupporterRatePlanToAttributesMapper,
-}
-import testdata.TestLogPrefix.testLogPrefix
+import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService, SupporterRatePlanToAttributesMapper}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
@@ -56,9 +35,9 @@ import scala.concurrent.Future
 
 class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
-  var subscriptionServiceMock: SubscriptionService = _
+  var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogService = _
+  var catalogServiceMock: CatalogService[Future] = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -67,9 +46,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
-    subscriptionServiceMock = mock[SubscriptionService]
+    subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = mock[CatalogService]
+    catalogServiceMock = mock[CatalogService[Future]]
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]

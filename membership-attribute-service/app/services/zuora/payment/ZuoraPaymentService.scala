@@ -1,6 +1,5 @@
 package services.zuora.payment
 
-import _root_.services.zuora.soap.ZuoraSoapService
 import com.gu.memsub.BillingSchedule.Bill
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.LogImplicit._
@@ -10,6 +9,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.Payment
+import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Queries.Account
 import com.gu.zuora.soap.models.Queries.PaymentMethod._

@@ -1,11 +1,13 @@
 package acceptance
 
 import acceptance.data.Randoms.randomId
-import acceptance.data.stripe.{TestStripeCard, TestStripeCustomer}
 import acceptance.data._
+import acceptance.data.stripe.{TestStripeCard, TestStripeCustomer}
 import com.gu.i18n.Country
 import com.gu.memsub.Subscription
+import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
+import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{GoCardlessZuoraInstance, PaymentGateway}
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.gu.zuora.soap.models.Queries
@@ -17,15 +19,13 @@ import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.Json
+import scalaz.Id.Id
 import scalaz.\/
 import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe, StripePublicKey, StripeService}
-import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
-import services.zuora.soap.ZuoraSoapService
-import services.{CatalogService, ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
-import testdata.TestLogPrefix.testLogPrefix
+import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
 import wiring.MyComponents
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,9 +33,9 @@ import scala.concurrent.Future
 
 class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
-  var subscriptionServiceMock: SubscriptionService = _
+  var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogService = _
+  var catalogServiceMock: CatalogService[Future] = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -47,9 +47,9 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
-    subscriptionServiceMock = mock[SubscriptionService]
+    subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = mock[CatalogService]
+    catalogServiceMock = mock[CatalogService[Future]]
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]

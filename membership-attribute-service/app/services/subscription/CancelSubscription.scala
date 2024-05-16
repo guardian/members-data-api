@@ -4,6 +4,7 @@ import com.gu.memsub
 import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.SubscriptionPlan
 import com.gu.memsub.subsv2.reads.SubPlanReads
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.monitoring.SafeLogger.LogPrefix
 import models.ApiError
 import org.joda.time.LocalDate
@@ -14,7 +15,7 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class CancelSubscription(subscriptionService: SubscriptionService, zuoraRestService: ZuoraRestService)(implicit m: Monad[Future]) {
+class CancelSubscription(subscriptionService: SubscriptionService[Future], zuoraRestService: ZuoraRestService)(implicit m: Monad[Future]) {
   def cancel[P <: SubscriptionPlan.AnyPlan](
       subscriptionName: Name,
       cancellationEffectiveDate: Option[LocalDate],

@@ -5,13 +5,16 @@ import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
+import com.gu.memsub.subsv2.Catalog
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
+import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{SafeLogging, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
-import com.gu.zuora.rest
+import com.gu.zuora.rest.SimpleClient
 import com.gu.zuora.soap.ClientWithFeatureSupplier
+import com.gu.zuora.{ZuoraSoapService, rest}
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
@@ -21,10 +24,9 @@ import scalaz.std.scalaFuture._
 import services._
 import services.salesforce.{ContactRepository, CreateScalaforce, SimpleContactRepository}
 import services.stripe.{BasicStripeService, ChooseStripe, HttpBasicStripeService}
-import services.subscription.{CancelSubscription, SubscriptionService, ZuoraSubscriptionService}
+import services.subscription.CancelSubscription
 import services.zuora.payment.{PaymentService, SetPaymentCard}
-import services.zuora.rest.{SimpleClient, SimpleClientZuoraRestService, ZuoraRestService}
-import services.zuora.soap.{SimpleZuoraSoapService, ZuoraSoapService}
+import services.zuora.rest.{SimpleClientZuoraRestService, ZuoraRestService}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
   EnvironmentVariableCredentialsProvider,
@@ -44,9 +46,9 @@ class TouchpointComponents(
     conf: Config,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
     contactRepositoryOverride: Option[ContactRepository] = None,
-    subscriptionServiceOverride: Option[SubscriptionService] = None,
+    subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[CatalogService] = None,
+    catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,
@@ -107,7 +109,7 @@ class TouchpointComponents(
         metrics = zuoraMetrics,
       )
 
-    lazy val simpleZuoraSoapService = new SimpleZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
+    lazy val simpleZuoraSoapService = new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
       override def checkHealth: Boolean = zuoraSoapClient.isReady
     }
 
@@ -126,7 +128,7 @@ class TouchpointComponents(
     new CatalogService(
       productIds,
       FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix),
-      Await.result(_, 60.seconds),
+      Await.result(_: Future[Catalog], 60.seconds),
       stage.value,
     ),
   )
@@ -138,8 +140,8 @@ class TouchpointComponents(
       throw error
     }
 
-  lazy val subscriptionService: SubscriptionService = {
-    lazy val zuoraSubscriptionService = new ZuoraSubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService)
+  lazy val subscriptionService: SubscriptionService[Future] = {
+    lazy val zuoraSubscriptionService = new SubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService)
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }

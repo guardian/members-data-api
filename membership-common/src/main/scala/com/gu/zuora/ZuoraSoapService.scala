@@ -5,16 +5,19 @@ import com.gu.memsub.Subscription._
 import com.gu.memsub.{Subscription => S}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
+import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
 import com.gu.zuora.soap.Readers._
 import com.gu.zuora.soap._
-import com.gu.zuora.soap.actions.Action
+import com.gu.zuora.soap.actions.{Action, XmlWriterAction}
 import com.gu.zuora.soap.actions.Actions._
+import com.gu.zuora.soap.models.Commands.CreatePaymentMethod
 import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
-import com.gu.zuora.soap.models.Results.{AmendResult, UpdateResult}
+import com.gu.zuora.soap.models.Results.{AmendResult, CreateResult, UpdateResult}
 import com.gu.zuora.soap.models.errors._
 import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
+import com.gu.zuora.soap.writers.Command.createPaymentMethodWrites
 import org.joda.time.LocalDate
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,12 +34,25 @@ object ZuoraSoapService {
   }
 }
 
-class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends SafeLogging {
+trait SoapClient[M[_]] {
+
+  def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): M[List[AccountId]]
+}
+
+class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
 
   import ZuoraSoapService._
 
+  def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): Future[List[AccountId]] =
+    soapClient
+      .query[SoapQueries.Account](SimpleFilter("crmId", contactId.salesforceAccountId))
+      .map(_.map(a => AccountId(a.id)).toList)
+
   def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[SoapQueries.Account] =
     soapClient.queryOne[SoapQueries.Account](SimpleFilter("id", accountId.get))
+
+  def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
+    soapClient.queryOne[SoapQueries.Contact](SimpleFilter("Id", contactId))
 
   def getSubscription(id: S.Id)(implicit logPrefix: LogPrefix): Future[SoapQueries.Subscription] =
     soapClient.queryOne[SoapQueries.Subscription](SimpleFilter("id", id.get))
@@ -87,6 +103,16 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
       ),
     )
   }
+
+  // Creates a payment method in zuora and sets it as default in the specified account.To satisfy zuora validations this has to be done in three steps
+  def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[UpdateResult] = for {
+    _ <- setGatewayAndClearDefaultMethod(
+      command.accountId,
+      command.paymentGateway,
+    ) // We need to set gateway correctly because it must match with the payment method we'll create below
+    createMethodResult <- soapClient.extendedAuthenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
+    result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway, command.invoiceTemplateOverride)
+  } yield result
 
   def createCreditCardPaymentMethod(
       accountId: AccountId,
