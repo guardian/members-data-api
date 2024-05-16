@@ -1,15 +1,15 @@
 package components
 
-import org.apache.pekko.actor.ActorSystem
+import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.zuora.ZuoraSoapService
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
+import org.apache.pekko.actor.ActorSystem
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe}
-import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
-import services.zuora.soap.ZuoraSoapService
-import services.{CatalogService, HealthCheckableService, SupporterProductDataService}
+import services.{HealthCheckableService, SupporterProductDataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -19,9 +19,9 @@ class TouchpointBackends(
     createMetrics: CreateMetrics,
     supporterProductDataServiceOverride: Option[SupporterProductDataService] = None,
     contactRepositoryOverride: Option[ContactRepository] = None,
-    subscriptionServiceOverride: Option[SubscriptionService] = None,
+    subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[CatalogService] = None,
+    catalogServiceOverride: Option[CatalogService[Future]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,

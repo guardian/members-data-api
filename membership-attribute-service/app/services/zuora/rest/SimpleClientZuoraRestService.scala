@@ -3,14 +3,14 @@ package services.zuora.rest
 import com.gu.memsub.Subscription._
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
-import com.gu.zuora.rest.ZuoraResponse
+import com.gu.zuora.rest.{SimpleClient, ZuoraResponse}
 import org.joda.time.LocalDate
 import scalaz.{Name => avoidclash, _}
 import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SimpleClientZuoraRestService(private val simpleRest: SimpleClient)(implicit val m: Monad[Future], ec: ExecutionContext)
+class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])(implicit val m: Monad[Future])
     extends ZuoraRestService
     with SafeLogging {
 

@@ -63,7 +63,7 @@ object BillingSchedule {
       Bill(
         date,
         new Period(date, items.map(_.serviceEndDate).list.toList.max),
-        items.map(item => BillItem.fromItem(planMap, item))
+        items.map(item => BillItem.fromItem(planMap, item)),
       )
   }
 

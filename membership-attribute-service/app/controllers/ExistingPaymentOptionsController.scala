@@ -1,13 +1,17 @@
 package controllers
 
+import _root_.services.salesforce.ContactRepository
+import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
 import actions.{CommonActions, ContinueRegardlessOfSignInRecency}
 import com.gu.i18n.Currency
 import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
-import com.gu.memsub._
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import components.TouchpointComponents
 import models.AccessScope.completeReadSelf
@@ -20,14 +24,10 @@ import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 import scalaz.-\/
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monadPlus._
-import _root_.services.salesforce.ContactRepository
-import _root_.services.subscription.SubscriptionService
-import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
-import com.gu.monitoring.SafeLogger.LogPrefix
 import utils.ListTEither
 import utils.SimpleEitherT.SimpleEitherT
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class ExistingPaymentOptionsController(
     commonActions: CommonActions,
@@ -43,7 +43,7 @@ class ExistingPaymentOptionsController(
       date: LocalDate,
       maybeUserId: Option[String],
       contactRepository: ContactRepository,
-      subscriptionService: SubscriptionService,
+      subscriptionService: SubscriptionService[Future],
   )(implicit logPrefix: LogPrefix): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
     (for {
       user <- ListTEither.fromOption(maybeUserId)

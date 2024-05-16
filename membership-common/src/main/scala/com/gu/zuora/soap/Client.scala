@@ -60,7 +60,8 @@ class Client(
       logger.info(
         s"Zuora SOAP call in environment ${apiConfig.envName}. Request info:\n${action.prettyLogInfo}. Is authentication defined: ${authentication.isDefined}",
       )
-    client.execute(request)
+    client
+      .execute(request)
       .map { result =>
         val responseBody = result.body().string()
         reader.read(responseBody) match {

@@ -1,4 +1,4 @@
-package services.subscription
+package com.gu.memsub.subsv2.services
 
 import com.gu.memsub.Subscription.{ProductRatePlanId, RatePlanId}
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
@@ -17,7 +17,6 @@ import scalaz.syntax.all._
 import scalaz.syntax.std.either._
 import scalaz.syntax.std.option._
 
-import scala.language.higherKinds
 import scala.util.Try
 
 // this is (all?) the testable stuff without mocking needed
