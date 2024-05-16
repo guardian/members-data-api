@@ -4,6 +4,7 @@ import actions._
 import com.gu.i18n.Currency
 import com.gu.memsub
 import com.gu.memsub.BillingPeriod.RecurringPeriod
+import com.gu.memsub.Product.Contribution
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
@@ -40,12 +41,11 @@ object AccountHelpers {
   case object NoFilter extends OptionalSubscriptionsFilter
 
   def subscriptionSelector[P <: SubscriptionPlan.AnyPlan](
-      subscriptionNameOption: Option[memsub.Subscription.Name],
+      subscriptionName: memsub.Subscription.Name,
       messageSuffix: String,
-  )(subscriptions: List[Subscription[P]]): Either[String, Subscription[P]] = subscriptionNameOption match {
-    case Some(subName) => subscriptions.find(_.name == subName).toRight(s"$subName was not a subscription for $messageSuffix")
-    case None => subscriptions.headOption.toRight(s"No current subscriptions for $messageSuffix")
-  }
+      subscriptions: List[Subscription[P]],
+  ): Either[String, Subscription[P]] =
+    subscriptions.find(_.name == subscriptionName).toRight(s"$subscriptionName was not a subscription for $messageSuffix")
 
   def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String)(implicit
       executionContext: ExecutionContext,
@@ -112,7 +112,7 @@ class AccountController(
           subscription <- SimpleEitherT(
             services.subscriptionService
               .current[P](contact)
-              .map(subs => subscriptionSelector(Some(subscriptionName), s"Salesforce user $contact")(subs)),
+              .map(subs => subscriptionSelector(subscriptionName, s"Salesforce user $contact", subs)),
           ).leftMap(CancelError(_, 404))
           accountId <-
             (if (subscription.name == subscriptionName)
@@ -242,13 +242,10 @@ class AccountController(
       }
     }
 
-  private def updateContributionAmount(subscriptionNameOption: Option[memsub.Subscription.Name]) =
+  private def updateContributionAmount(subscriptionName: memsub.Subscription.Name) =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/contribution-update-amount/:subscriptionName") {
-        if (subscriptionNameOption.isEmpty) {
-          DeprecatedRequestLogger.logDeprecatedRequest(request)
-        }
 
         val services = request.touchpoint
         val userId = request.user.identityId
@@ -260,21 +257,25 @@ class AccountController(
           contact <- SimpleEitherT.fromFutureOption(services.contactRepository.get(user), s"No SF user $user")
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current[SubscriptionPlan.Contributor](contact)
-              .map(subs => subscriptionSelector(subscriptionNameOption, s"the sfUser $contact")(subs)),
+              .current[SubscriptionPlan.AnyPlan](contact)
+              .map(subs => subscriptionSelector(subscriptionName, s"the sfUser $contact", subs)),
           )
-          billingPeriod = subscription.plan.charges.billingPeriod.asInstanceOf[RecurringPeriod]
-          applyFromDate = subscription.plan.chargedThrough.getOrElse(subscription.plan.start)
-          currency = subscription.plan.charges.price.prices.head.currency
+          contributionPlan <- SimpleEitherT.fromEither(subscription.plan match {
+            case p: SubscriptionPlan.Contributor @unchecked /* extra guard needed due to type erasure --> */ if p.product == Contribution => Right(p)
+            case nc => Left(s"$subscriptionName plan is not a contribution: " + nc)
+          })
+          billingPeriod = contributionPlan.charges.billingPeriod.asInstanceOf[RecurringPeriod]
+          applyFromDate = contributionPlan.chargedThrough.getOrElse(contributionPlan.start)
+          currency = contributionPlan.charges.price.prices.head.currency
           currencyGlyph = currency.glyph
-          oldPrice = subscription.plan.charges.price.prices.head.amount
+          oldPrice = contributionPlan.charges.price.prices.head.amount
           reasonForChange =
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
           result <- SimpleEitherT(
             services.zuoraRestService.updateChargeAmount(
               subscription.name,
-              subscription.plan.charges.subRatePlanChargeId,
-              subscription.plan.id,
+              contributionPlan.charges.subRatePlanChargeId,
+              contributionPlan.id,
               newPrice.toDouble,
               reasonForChange,
               applyFromDate,
@@ -356,11 +357,8 @@ class AccountController(
 
   def cancelledSubscriptions(): Action[AnyContent] = fetchCancelledSubscriptions()
 
-  @Deprecated def contributionUpdateAmount: Action[AnyContent] = updateContributionAmount(None)
-
-  def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] = updateContributionAmount(
-    Some(memsub.Subscription.Name(subscriptionName)),
-  )
+  def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] =
+    updateContributionAmount(memsub.Subscription.Name(subscriptionName))
 
   def allPaymentDetails(productType: Option[String]): Action[AnyContent] =
     anyPaymentDetails(
