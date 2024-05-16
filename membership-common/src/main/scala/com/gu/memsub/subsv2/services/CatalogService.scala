@@ -26,9 +26,12 @@ import scalaz.syntax.apply.ToApplyOps
 object FetchCatalog {
 
   def fromZuoraApi[M[_]: Monad](httpClient: SimpleClient[M])(implicit logPrefix: LogPrefix): M[String \/ JsValue] =
-    httpClient.get[JsValue]("catalog/products?pageSize=40")(new JsReads[JsValue] {
-      override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
-    }, logPrefix)
+    httpClient.get[JsValue]("catalog/products?pageSize=40")(
+      new JsReads[JsValue] {
+        override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
+      },
+      logPrefix,
+    )
 
   def fromS3[M[_]: Monad](zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client): M[String \/ JsValue] = {
     val catalogRequest = new GetObjectRequest(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}", "catalog.json")
