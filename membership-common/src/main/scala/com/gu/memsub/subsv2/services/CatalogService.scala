@@ -91,7 +91,6 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
   } yield catalogPlans).run
 
   def validatePlans(plans: List[CatalogZuoraPlan]): Validation[NonEmptyList[String], Catalog] = for {
-    friend <- one[Friend](plans, "Friend", FrontendId.Free)
     staff <- one[Staff](plans, "Staff", FrontendId.Free)
     supporter <- (
       one[Supporter[Month.type]](plans, "Supporter month", FrontendId.Monthly) |@|
@@ -153,7 +152,7 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
     weekly = WeeklyPlans(weeklyZoneA, weeklyZoneB, weeklyZoneC, weeklyDomestic, weeklyRestOfWorld)
 
     map <- Validation.s[NonEmptyList[String]](plans.map(p => p.id -> p).toMap)
-  } yield Catalog(friend, staff, supporter, partner, patron, digipack, supporterPlus, contributor, voucher, digitalVoucher, delivery, weekly, map)
+  } yield Catalog(staff, supporter, partner, patron, digipack, supporterPlus, contributor, voucher, digitalVoucher, delivery, weekly, map)
 
   lazy val catalog: M[NonEmptyList[String] \/ Catalog] = (for {
     plans <- EitherT[String, M, List[CatalogZuoraPlan]](joinUp).leftMap(_.wrapNel)

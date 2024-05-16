@@ -6,7 +6,6 @@ import acceptance.data.TestPlans.{testDigipackPlans, testPaidMembershipPlans, te
 import com.gu.i18n.Currency
 import com.gu.memsub.Benefit.{
   FridayPaper,
-  Friend,
   MondayPaper,
   PaperDay,
   Partner,
@@ -57,13 +56,6 @@ object TestCatalogPlan {
       saving: Option[Int] = None,
   ): CatalogPlan[P, C, S] =
     CatalogPlan[P, C, S](id, product, name, description, saving, charges, status)
-
-  val FriendPlan = TestCatalogPlan[Product.Membership, FreeCharge[Friend.type], Current](
-    product = Membership,
-    name = "Friend",
-    charges = FreeCharge(Friend, Set(Currency.GBP)),
-    status = Status.current,
-  )
 
   val StaffPlan = TestCatalogPlan[Product.Membership, FreeCharge[Staff.type], Current](
     product = Membership,
@@ -234,7 +226,6 @@ object TestPlans {
 
 object TestCatalog {
   def apply(
-      friend: CatalogPlan.Friend = TestCatalogPlan.FriendPlan,
       staff: CatalogPlan.Staff = TestCatalogPlan.StaffPlan,
       supporter: PaidMembershipPlans[Supporter.type] = testPaidMembershipPlans(Supporter),
       partner: PaidMembershipPlans[Partner.type] = testPaidMembershipPlans(Partner),
@@ -248,7 +239,6 @@ object TestCatalog {
       weekly: WeeklyPlans = weeklyPlans(),
       map: Map[ProductRatePlanId, CatalogZuoraPlan] = Map.empty,
   ): Catalog = Catalog(
-    friend,
     staff,
     supporter,
     partner,

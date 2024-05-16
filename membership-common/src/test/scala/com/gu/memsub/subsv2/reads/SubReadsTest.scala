@@ -55,42 +55,6 @@ class SubReadsTest extends Specification {
       )
     }
 
-    "Set hasPendingFreePlan to true when you're pending a downgrade to friend" in {
-      val json = Resource.getJson("rest/DowngradeNonRecurring.json")
-      val finalPartnerDay = 26 Oct 2016
-      val firstFriendDay = 27 Oct 2016
-
-      val partnerPlan = PaidSubscriptionPlan(
-        id = RatePlanId(""),
-        productRatePlanId = ProductRatePlanId(""),
-        name = "",
-        description = "",
-        productName = "",
-        lastChangeType = None,
-        productType = "",
-        product = Product.Membership,
-        features = List.empty,
-        charges =
-          PaidCharge(Partner, BillingPeriod.Month, PricingSummary(Map.empty), ProductRatePlanChargeId("prpcId"), SubscriptionRatePlanChargeId("")),
-        chargedThrough = Some(finalPartnerDay),
-        start = 26 Oct 2015,
-        end = finalPartnerDay,
-      )
-
-      val subOnFinalPartnerDay = subscriptionReads[SubscriptionPlan.Partner](finalPartnerDay)
-        .reads(json)
-        .get
-        .apply(NonEmptyList(partnerPlan))
-
-      val subOnFirstFriendDay = subscriptionReads[SubscriptionPlan.Partner](firstFriendDay)
-        .reads(json)
-        .get
-        .apply(NonEmptyList(partnerPlan)) // ignore the plan please, it is not important here
-
-      subOnFinalPartnerDay.hasPendingFreePlan mustEqual true
-      subOnFirstFriendDay.hasPendingFreePlan mustEqual false
-    }
-
     "parse Patron reader type correctly from subscription" in {
       val now = LocalDate.parse("2020-10-19")
       val json = Resource.getJson("rest/PatronReaderType.json")

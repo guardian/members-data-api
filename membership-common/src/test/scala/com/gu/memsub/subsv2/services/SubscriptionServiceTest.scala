@@ -45,10 +45,10 @@ class SubscriptionServiceTest extends Specification {
       prpId,
       "foo",
       "",
-      productIds.friend,
+      productIds.staff,
       None,
       List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f84cc6d9e5014cdb4c48b02d83") -> Friend),
+      Map(ProductRatePlanChargeId("2c92c0f84cc6d9e5014cdb4c48b02d83") -> Staff),
       Status.current,
       None,
       Some("Membership"),
@@ -174,8 +174,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def friendPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Friend =
-      FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Friend.type]](
+    def staffPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Staff =
+      FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Staff.type]](
         RatePlanId("idFriend"),
         ProductRatePlanId("prpi"),
         "Friend",
@@ -183,12 +183,12 @@ class SubscriptionServiceTest extends Specification {
         "Friend",
         "Membership",
         Product.Membership,
-        FreeCharge(Friend, Set(GBP)),
+        FreeCharge(Staff, Set(GBP)),
         startDate,
         endDate,
       )
-    def legacyFriendPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Friend =
-      FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Friend.type]](
+    def legacyStaffPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Staff =
+      FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Staff.type]](
         RatePlanId("idLegacyFriend"),
         ProductRatePlanId("prpi"),
         "LegacyFriend",
@@ -196,7 +196,7 @@ class SubscriptionServiceTest extends Specification {
         "LegacyFriend",
         "Membership",
         Product.Membership,
-        FreeCharge(Friend, Set(GBP)),
+        FreeCharge(Staff, Set(GBP)),
         startDate,
         endDate,
       )
@@ -334,20 +334,6 @@ class SubscriptionServiceTest extends Specification {
       result mustEqual -\/(true)
     }
 
-    "tell you a downgraded plan to friend, friend is current if we're after the plan end date" in {
-      val plans = NonEmptyList(friendPlan(referenceDate, referenceDate + 1.year), partnerPlan(referenceDate - 1.year, referenceDate))
-      val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate + 1.day).map(_.head.id.get)
-      result mustEqual \/-("idFriend")
-    }
-
-    "tell you a downgraded plan to friend is current if we're before the term end date" in {
-      val plans = NonEmptyList(friendPlan(referenceDate, referenceDate + 1.year), partnerPlan(referenceDate - 1.year, referenceDate))
-      val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate).map(_.head.id.get)
-      result mustEqual \/-("idPartner")
-    }
-
     "tell you a upgraded plan is current on the change date" in {
       val plans = NonEmptyList(supporterPlan(referenceDate.minusDays(4), referenceDate), partnerPlan(referenceDate, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = false)(plans)
@@ -355,19 +341,8 @@ class SubscriptionServiceTest extends Specification {
       result mustEqual \/-("idPartner")
     }
 
-    "tell you are a supporter if you were a partner then friend then supporter" in {
-      val plans = NonEmptyList(
-        partnerPlan(referenceDate - 1.year, referenceDate),
-        friendPlan(referenceDate, referenceDate + 1.year),
-        supporterPlan(referenceDate, referenceDate + 1.year),
-      )
-      val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate + 1.day).map(_.head.id.get)
-      result mustEqual \/-("idSupporter")
-    }
-
-    "tell you you aren't a friend if your subscription is cancelled regardless of the date" in {
-      val plans = NonEmptyList(friendPlan(referenceDate, referenceDate + 1.year))
+    "tell you you aren't a staff membership if your subscription is cancelled regardless of the date" in {
+      val plans = NonEmptyList(staffPlan(referenceDate, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = true)(plans)
       val result = GetCurrentPlans(subs, referenceDate).leftMap(_.contains("cancelled"))
       result mustEqual -\/(true) // not helpful
@@ -394,14 +369,6 @@ class SubscriptionServiceTest extends Specification {
       result mustEqual \/-("idSupporter")
     }
 
-    "if you have both legacy and current Friend rate plans on your sub, should return the sub with the new Friends rate plan" in {
-      val plans =
-        NonEmptyList(friendPlan(referenceDate, referenceDate + 1.year), legacyFriendPlan(referenceDate - 3.months, referenceDate + 9.months))
-      val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate).map(_.head.id.get)
-      result mustEqual \/-("idFriend")
-    }
-
     "if you're in a free trial of digipack, tell you you're already a digipack subscriber" in {
 
       val firstPayment = referenceDate + 14.days
@@ -415,8 +382,8 @@ class SubscriptionServiceTest extends Specification {
 
   "Subscription service" should {
 
-    "Be able to fetch a friend subscription" in {
-      val sub = service.get[SubscriptionPlan.Friend](memsub.Subscription.Name("1234"))
+    "Be able to fetch a staff subscription" in {
+      val sub = service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("1234"))
       sub.map(_.plan) mustEqual Some(
         FreeSubscriptionPlan(
           RatePlanId("id"),
@@ -426,7 +393,7 @@ class SubscriptionServiceTest extends Specification {
           "Friend",
           "Membership",
           Product.Membership,
-          FreeCharge(Friend, Set(GBP)),
+          FreeCharge(Staff, Set(GBP)),
           start = 12 Aug 2016,
           end = 13 Aug 2016,
         ),
@@ -435,7 +402,7 @@ class SubscriptionServiceTest extends Specification {
     }
 
     "Give you back a none in the event of the sub not existing" in {
-      service.get[SubscriptionPlan.Friend](memsub.Subscription.Name("foo")) mustEqual None
+      service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("foo")) mustEqual None
     }
 
     val contact = new ContactId {
@@ -444,13 +411,13 @@ class SubscriptionServiceTest extends Specification {
     }
 
     "Leverage the soap client to fetch subs by contact ID" in {
-      val subs = service.current[SubscriptionPlan.Friend](contact)
+      val subs = service.current[SubscriptionPlan.AnyPlan](contact)
       subs.headOption.map(_.name) mustEqual Some(memsub.Subscription.Name("subscriptionNumber")) // what is in the config file
     }
 
     "Be able to fetch subs where term ends after the specified date" in {
-      val currentSubs = service.current[SubscriptionPlan.Friend](contact)
-      val sinceSubs = service.since[SubscriptionPlan.Friend](1 Jan 2020)(contact)
+      val currentSubs = service.current[SubscriptionPlan.AnyPlan](contact)
+      val sinceSubs = service.since[SubscriptionPlan.AnyPlan](1 Jan 2020)(contact)
       currentSubs mustNotEqual sinceSubs
       sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jan 2020
     }

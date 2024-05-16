@@ -163,7 +163,6 @@ object Benefit {
 
   object FreeMemberTier {
     def fromId(id: String): Option[FreeMemberTier] = id match {
-      case Friend.id => Friend.some
       case Staff.id => Staff.some
       case _ => None
     }
@@ -176,11 +175,6 @@ object Benefit {
       case Patron.id => Patron.some
       case _ => None
     }
-  }
-
-  object Friend extends FreeMemberTier {
-    override val id = "Friend"
-    override val isPhysical: Boolean = false
   }
 
   object Contributor extends Benefit {

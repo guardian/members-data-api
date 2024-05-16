@@ -43,7 +43,6 @@ case class Attributes(
     AlertAvailableFor: Option[String] = None,
     RecurringContributionAcquisitionDate: Option[LocalDate] = None,
 ) {
-  lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
@@ -62,7 +61,7 @@ case class Attributes(
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(
-    member = isPaidTier || isFriendTier,
+    member = isPaidTier,
     paidMember = isPaidTier,
     recurringContributor = isRecurringContributor,
     supporterPlus = isSupporterPlus,
