@@ -176,8 +176,14 @@ class PaymentUpdateController(
           _ <- SimpleEitherT(
             annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
           )
+          freshAccount <- SimpleEitherT(
+            annotateFailableFuture(
+              services.zuoraSoapService.getAccount(subscription.accountId),
+              s"get fresh account with id ${subscription.accountId}",
+            ),
+          )
           freshDefaultPaymentMethodOption <- SimpleEitherT(
-            annotateFailableFuture(services.paymentService.getPaymentMethod(subscription.accountId), "get fresh default payment method"),
+            annotateFailableFuture(services.paymentService.getPaymentMethod(freshAccount.defaultPaymentMethodId), "get fresh default payment method"),
           )
           _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit, subscription.plan)
         } yield checkDirectDebitUpdateResult(userId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run

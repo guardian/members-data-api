@@ -36,14 +36,13 @@ case class BillingSchedule(invoices: NonEmptyList[Bill]) {
 
 object BillingSchedule {
 
-  type ProductFinder = ProductRatePlanChargeId => Option[Benefit]
   case class BillItem(name: String, product: Option[Benefit], amount: Float, unitPrice: Float) {
     override lazy val toString = s"| $amount\t| ($unitPrice)\t| $name | ${product.mkString}"
   }
 
   object BillItem {
-    def fromItem(finder: ProductFinder)(in: PreviewInvoiceItem) =
-      BillItem(in.chargeName, finder(ProductRatePlanChargeId(in.productRatePlanChargeId)), in.price, in.unitPrice)
+    def fromItem(planMap: Map[ProductRatePlanChargeId, Benefit], in: PreviewInvoiceItem) =
+      BillItem(in.chargeName, planMap.get(ProductRatePlanChargeId(in.productRatePlanChargeId)), in.price, in.unitPrice)
   }
 
   case class Bill(date: LocalDate, duration: Period, items: NonEmptyList[BillItem], accountCredit: Option[Float] = None) {
@@ -60,11 +59,15 @@ object BillingSchedule {
   }
 
   object Bill {
-    def fromGroupedItems(finder: ProductFinder)(date: LocalDate, items: NonEmptyList[PreviewInvoiceItem]) =
-      Bill(date, new Period(date, items.map(_.serviceEndDate).list.toList.max), items.map(BillItem.fromItem(finder)))
+    def fromGroupedItems(planMap: Map[ProductRatePlanChargeId, Benefit], date: LocalDate, items: NonEmptyList[PreviewInvoiceItem]): Bill =
+      Bill(
+        date,
+        new Period(date, items.map(_.serviceEndDate).list.toList.max),
+        items.map(item => BillItem.fromItem(planMap, item))
+      )
   }
 
-  def fromPreviewInvoiceItems(finder: ProductFinder)(invoices: Seq[PreviewInvoiceItem]): Option[BillingSchedule] = {
+  def fromPreviewInvoiceItems(planMap: Map[ProductRatePlanChargeId, Benefit], invoices: Seq[PreviewInvoiceItem]): Option[BillingSchedule] = {
 
     @tailrec
     def sortOutCredits(z: Zipper[Bill]): NonEmptyList[Bill] = z match {
@@ -93,7 +96,9 @@ object BillingSchedule {
     invoices.toList
       .groupBy1(_.serviceStartDate)
       .toList
-      .map((Bill.fromGroupedItems(finder) _).tupled)
+      .map { case (date, invoiceItems) =>
+        Bill.fromGroupedItems(planMap, date, invoiceItems)
+      }
       .sortBy(_.date)
       .toNel
       .toOption

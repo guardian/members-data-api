@@ -119,9 +119,10 @@ class ExistingPaymentOptionsController(
             -\/[String, ObjectAccount](s"error receiving OBJECT account with account id $accountId. Reason: $x")
           }) if currencyMatchesFilter(objectAccount.currency) &&
             objectAccount.defaultPaymentMethodId.isDefined
+          account <- ListTEither.singleRightT(tp.zuoraSoapService.getAccount(accountId))
           paymentMethodOption <- ListTEither.single(
             tp.paymentService
-              .getPaymentMethod(accountId, Some(defaultMandateIdIfApplicable))
+              .getPaymentMethod(account.defaultPaymentMethodId, Some(defaultMandateIdIfApplicable))
               .map(Right(_))
               .recover { case x => Left(s"error retrieving payment method for account: $accountId. Reason: $x") },
           )
