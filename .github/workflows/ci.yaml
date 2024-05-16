@@ -23,4 +23,4 @@ jobs:
         run: |
           LAST_TEAMCITY_BUILD=11657
           export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
-          sbt "project membership-common" test "project membership-attribute-service" clean scalafmtCheckAll scalafmtSbtCheck test riffRaffUpload
+          sbt "project membership-common" scalafmtCheckAll test "project membership-attribute-service" clean scalafmtCheckAll scalafmtSbtCheck test riffRaffUpload
