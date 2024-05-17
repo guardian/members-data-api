@@ -597,8 +597,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       val jsonBody = contentAsJson(result)
       println(Json.prettyPrint(jsonBody))
       jsonBody shouldEqual
-        Json.parse(
-          s"""
+        Json.parse(s"""
              |{
              |  "userId": "$userWithSupporterPlusWithGuardianWeeklyId",
              |  "encryptedUserId": "${userWithSupporterPlusWithGuardianWeeklyId.reverse}",
