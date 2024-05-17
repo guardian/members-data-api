@@ -589,6 +589,37 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
     }
 
+    "the attributeWithEncryptedUserId returns the correct attributes plus encryptedUserId" in {
+      val req = FakeRequest().withCookies(supporterPlusWithGuardianWeeklyCookie)
+      val result = controller.attributesWithEncryptedUserId(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      println(Json.prettyPrint(jsonBody))
+      jsonBody shouldEqual
+        Json.parse(
+          s"""
+             |{
+             |  "userId": "$userWithSupporterPlusWithGuardianWeeklyId",
+             |  "encryptedUserId": "${userWithSupporterPlusWithGuardianWeeklyId.reverse}",
+             |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "showSupportMessaging": false,
+             |  "contentAccess": {
+             |    "member": false,
+             |    "paidMember": false,
+             |    "recurringContributor": false,
+             |    "supporterPlus" : true,
+             |    "feast": true,
+             |    "digitalPack": true,
+             |    "paperSubscriber": false,
+             |    "guardianWeeklySubscriber": true,
+             |    "guardianPatron": false
+             |  }
+             |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithSupporterPlusWithGuardianWeeklyId)
+
+    }
+
     "retrieve default features and set identity headers for unknown users" in {
       val req = FakeRequest().withCookies(userWithoutAttributesCookie)
 

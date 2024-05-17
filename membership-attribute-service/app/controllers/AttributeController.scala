@@ -14,7 +14,7 @@ import models._
 import monitoring.CreateMetrics
 import org.apache.pekko.actor.ActorSystem
 import org.joda.time.LocalDate
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import services._
 
@@ -214,6 +214,23 @@ class AttributeController(
       sendAttributesIfNotFound = true,
       requiredScopes = List(readSelf),
       metricName = "GET /user-attributes/me",
+      useBatchedMetrics = true,
+    )
+
+  private def augmentWithEncryptedUserId(attributes: Attributes): JsObject = {
+    val encryptedUserId = Json.obj("encryptedUserId" -> attributes.UserId.reverse)
+    Attributes.jsAttributesWrites.writes(attributes) ++ encryptedUserId
+  }
+
+  def attributesWithEncryptedUserId =
+    lookup(
+      endpointDescription = "attributesWithEncryptedUserId",
+      onSuccessMember = attrs => Ok(augmentWithEncryptedUserId(attrs)),
+      onSuccessSupporter = attrs => Ok(augmentWithEncryptedUserId(attrs)),
+      onNotFound = notFound,
+      sendAttributesIfNotFound = true,
+      requiredScopes = List(readSelf),
+      metricName = "GET /user-attributes/me/with-encrypted-user-id",
       useBatchedMetrics = true,
     )
 
