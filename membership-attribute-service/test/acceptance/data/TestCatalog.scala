@@ -31,11 +31,11 @@ object TestCatalogPlan {
       billingPeriod: BP,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, BP], Current] =
-    TestCatalogPlan[P, PaidCharge[B, BP], Current](
+  ): CatalogPlan[P, SingleCharge[B, BP], Current] =
+    TestCatalogPlan[P, SingleCharge[B, BP], Current](
       product = product,
       name = name + "Paid",
-      charges = TestPaidCharge[B, BP](benefit, billingPeriod, TestPricingSummary.gbp(amount)),
+      charges = TestSingleCharge[B, BP](benefit, billingPeriod, TestPricingSummary.gbp(amount)),
       status = Status.current,
     )
 
@@ -44,7 +44,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, Month.type], Current] =
+  ): CatalogPlan[P, SingleCharge[B, Month.type], Current] =
     paid(product, benefit, Month, name + "Monthly", amount)
 
   def sixWeeksPaid[P <: Product, B <: Benefit](
@@ -52,7 +52,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, SixWeeks.type], Current] =
+  ): CatalogPlan[P, SingleCharge[B, SixWeeks.type], Current] =
     paid(product, benefit, SixWeeks, name + "SixWeeks", amount)
 
   def quarterlyPaid[P <: Product, B <: Benefit](
@@ -60,7 +60,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, Quarter.type], Current] =
+  ): CatalogPlan[P, SingleCharge[B, Quarter.type], Current] =
     paid(product, benefit, Quarter, name + "Quarterly", amount)
 
   def yearlyPaid[P <: Product, B <: Benefit](
@@ -68,7 +68,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, Year.type], Current] =
+  ): CatalogPlan[P, SingleCharge[B, Year.type], Current] =
     paid(product, benefit, Year, name + "Yearly", amount)
 
   def threeMonthsPaid[P <: Product, B <: Benefit](
@@ -76,7 +76,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, ThreeMonths.type], Current] =
+  ): CatalogPlan[P, SingleCharge[B, ThreeMonths.type], Current] =
     paid(product, benefit, ThreeMonths, name + "ThreeMonths", amount)
 
   def oneYearPaid[P <: Product, B <: Benefit](
@@ -84,7 +84,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, PaidCharge[B, OneYear.type], Current] =
+  ): CatalogPlan[P, SingleCharge[B, OneYear.type], Current] =
     paid(product, benefit, OneYear, name + "OneYear", amount)
 
   def paperCharges[P <: Product, BP <: BillingPeriod](product: P, name: String): CatalogPlan[P, PaperCharges, Current] =
@@ -116,8 +116,8 @@ object TestPaperCharges {
 }
 
 object TestPlans {
-  def testPaidMembershipPlans[B <: Benefit](benefit: B): PaidMembershipPlans[B] = {
-    PaidMembershipPlans(
+  def testPaidMembershipPlans[B <: Benefit](benefit: B): MembershipPlans[B] = {
+    MembershipPlans(
       monthlyPaid(Membership, benefit, "Membership", 10),
       yearlyPaid(Membership, benefit, "Membership", 120),
     )
@@ -187,9 +187,9 @@ object TestPlans {
 
 object TestCatalog {
   def apply(
-      supporter: PaidMembershipPlans[Supporter.type] = testPaidMembershipPlans(Supporter),
-      partner: PaidMembershipPlans[Partner.type] = testPaidMembershipPlans(Partner),
-      patron: PaidMembershipPlans[Patron.type] = testPaidMembershipPlans(Patron),
+      supporter: MembershipPlans[Supporter.type] = testPaidMembershipPlans(Supporter),
+      partner: MembershipPlans[Partner.type] = testPaidMembershipPlans(Partner),
+      patron: MembershipPlans[Patron.type] = testPaidMembershipPlans(Patron),
       digipack: DigipackPlans = testDigipackPlans(),
       supporterPlus: SupporterPlusPlans = testSupporterPlusPlans(),
       contributor: CatalogPlan.Contributor = monthlyPaid(Product.Contribution, Benefit.Contributor, "Contributor", 12),

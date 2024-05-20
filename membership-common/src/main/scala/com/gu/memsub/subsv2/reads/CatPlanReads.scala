@@ -50,17 +50,8 @@ object CatPlanReads {
       (c.status == Status.current).option(Status.current).toSuccess(s"Needed current, got ${c.status}".wrapNel)
   }
 
-  implicit val legacy: CatPlanReads[Legacy] = new CatPlanReads[Legacy] {
-    override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, Legacy] =
-      (c.status == Status.legacy).option(Status.legacy).toSuccess(s"Needed legacy, got ${c.status}".wrapNel)
-  }
-
-  implicit val statusReads: CatPlanReads[Status] = new CatPlanReads[Status] {
-    override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, Status] =
-      legacy.read(p, c).map(identity[Status]) orElse currentReads.read(p, c).map(identity[Status])
-  }
-
-  implicit def planReads[P <: Product: CatPlanReads, C <: ChargeList: ChargeListReads, S <: Status: CatPlanReads] =
+  implicit def planReads[P <: Product: CatPlanReads, C <: ChargeList: ChargeListReads, S <: Status: CatPlanReads]
+      : CatPlanReads[CatalogPlan[P, C, S]] =
     new CatPlanReads[CatalogPlan[P, C, S]] {
       override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, CatalogPlan[P, C, S]] =
         (implicitly[ChargeListReads[C]].read(c.benefits, c.charges) |@|

@@ -151,8 +151,8 @@ class SubscriptionServiceTest extends Specification {
 
   "Current Plan" should {
 
-    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): SubscriptionPlan.Contributor =
-      PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
+    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): SubscriptionPlan.AnyPlan =
+      SubscriptionPlan[Product.Contribution, SingleCharge[Benefit.Contributor.type, BillingPeriod]](
         RatePlanId("idContributor"),
         ProductRatePlanId("prpi"),
         "Contributor",
@@ -162,7 +162,7 @@ class SubscriptionServiceTest extends Specification {
         "Contribution",
         Product.Contribution,
         List.empty,
-        PaidCharge(
+        SingleCharge(
           Contributor,
           BillingPeriod.Month,
           PricingSummary(Map(GBP -> Price(5.0f, GBP))),
@@ -173,8 +173,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def partnerPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Partner =
-      PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Partner.type, BillingPeriod]](
+    def partnerPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+      SubscriptionPlan[Product.Membership, SingleCharge[Benefit.Partner.type, BillingPeriod]](
         RatePlanId("idPartner"),
         ProductRatePlanId("prpi"),
         "Partner",
@@ -184,7 +184,7 @@ class SubscriptionServiceTest extends Specification {
         "Membership",
         Product.Membership,
         List.empty,
-        PaidCharge(
+        SingleCharge(
           Partner,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(149.0f, GBP))),
@@ -195,8 +195,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Supporter =
-      PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]](
+    def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+      SubscriptionPlan[Product.Membership, SingleCharge[Benefit.Supporter.type, BillingPeriod]](
         RatePlanId("idSupporter"),
         ProductRatePlanId("prpi"),
         "Supporter",
@@ -206,7 +206,7 @@ class SubscriptionServiceTest extends Specification {
         "Membership",
         Product.Membership,
         List.empty,
-        PaidCharge(
+        SingleCharge(
           Supporter,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(49.0f, GBP))),
@@ -217,8 +217,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack =
-      PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
+    def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+      SubscriptionPlan[Product.ZDigipack, SingleCharge[Benefit.Digipack.type, BillingPeriod]](
         RatePlanId("idDigipack"),
         ProductRatePlanId("prpi"),
         "Digipack",
@@ -228,7 +228,7 @@ class SubscriptionServiceTest extends Specification {
         "Digital Pack",
         Product.Digipack,
         List.empty,
-        PaidCharge(
+        SingleCharge(
           Digipack,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(119.90f, GBP))),
@@ -240,8 +240,8 @@ class SubscriptionServiceTest extends Specification {
         endDate,
       )
 
-    def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.SupporterPlus =
-      PaidSubscriptionPlan[Product.SupporterPlus, PaidCharge[Benefit.SupporterPlus.type, BillingPeriod]](
+    def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+      SubscriptionPlan[Product.SupporterPlus, SingleCharge[Benefit.SupporterPlus.type, BillingPeriod]](
         id = RatePlanId("idSupporterPlus"),
         productRatePlanId = ProductRatePlanId("prpi"),
         name = "SupporterPlus",
@@ -251,7 +251,7 @@ class SubscriptionServiceTest extends Specification {
         productType = "Supporter Plus",
         product = Product.SupporterPlus,
         features = List.empty,
-        charges = PaidCharge(
+        charges = SingleCharge(
           SupporterPlus,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(119.90f, GBP))),
@@ -351,7 +351,7 @@ class SubscriptionServiceTest extends Specification {
     "Be able to fetch a supporter plus subscription" in {
       val sub = service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("1234"))
       sub.map(_.plan) must beSome(
-        PaidSubscriptionPlan(
+        SubscriptionPlan(
           RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
           supporterPlusPrpId,
           "Supporter Plus",
@@ -396,8 +396,8 @@ class SubscriptionServiceTest extends Specification {
     val referenceDate = 15 Aug 2017
 
     "Allow you to fetch an upgraded subscription" in {
-      service.get[SubscriptionPlan.Partner](Name("A-S00063478")).map(GetCurrentPlans(_, referenceDate).map(_.head.charges.benefit)) mustEqual Some(
-        \/-(Partner),
+      service.get[SubscriptionPlan.AnyPlan](Name("A-S00063478")).map(GetCurrentPlans(_, referenceDate).map(_.head.charges.benefits)) must beSome(
+        \/-(NonEmptyList(Partner)),
       )
     }
 

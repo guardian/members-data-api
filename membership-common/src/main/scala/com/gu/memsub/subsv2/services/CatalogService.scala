@@ -94,15 +94,15 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
     supporter <- (
       one[Supporter[Month.type]](plans, "Supporter month", FrontendId.Monthly) |@|
         one[Supporter[Year.type]](plans, "Supporter year", FrontendId.Yearly)
-    )(PaidMembershipPlans[Supporter.type])
+    )(MembershipPlans[Supporter.type])
     partner <- (
       one[Partner[Month.type]](plans, "Partner month", FrontendId.Monthly) |@|
         one[Partner[Year.type]](plans, "Partner year", FrontendId.Yearly)
-    )(PaidMembershipPlans[Partner.type])
+    )(MembershipPlans[Partner.type])
     patron <- (
       one[Patron[Month.type]](plans, "Patron month", FrontendId.Monthly) |@|
         one[Patron[Year.type]](plans, "Patron year", FrontendId.Yearly)
-    )(PaidMembershipPlans[Patron.type])
+    )(MembershipPlans[Patron.type])
     digipack <- (
       one[Digipack[Month.type]](plans, "Digipack month", FrontendId.Monthly) |@|
         one[Digipack[Quarter.type]](plans, "Digipack quarter", FrontendId.Quarterly) |@|

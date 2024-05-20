@@ -1,6 +1,7 @@
 package services
 
 import com.gu.memsub.Product
+import com.gu.memsub.Product.{Contribution, Membership}
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
@@ -53,13 +54,14 @@ object PaymentFailureAlerter extends SafeLogging {
         case None => Future.successful(None)
       }
 
-      def getProductDescription(subscription: Subscription[SubscriptionPlan.AnyPlan]) = if (subscription.asMembership.isDefined) {
-        s"${subscription.plan.productName} membership"
-      } else if (subscription.asContribution.isDefined) {
-        "contribution"
-      } else {
-        subscription.plan.productName
-      }
+      def getProductDescription(subscription: Subscription[SubscriptionPlan.AnyPlan]) =
+        if (subscription.plans.head.product == Membership) {
+          s"${subscription.plan.productName} membership"
+        } else if (subscription.plans.head.product == Contribution) {
+          "contribution"
+        } else {
+          subscription.plan.productName
+        }
 
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
         maybeDate map { latestDate: DateTime =>

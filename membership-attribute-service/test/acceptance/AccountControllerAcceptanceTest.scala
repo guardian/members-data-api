@@ -310,7 +310,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
-      val charge = TestPaidCharge()
+      val charge = TestSingleCharge()
       val chargedThroughDate = new LocalDate(2023, 3, 11)
       val plan = TestPaidSubscriptionPlan(
         product = Contribution,
@@ -320,9 +320,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
         plans = CovariantNonEmptyList(plan, Nil),
-      ).asInstanceOf[com.gu.memsub.subsv2.Subscription[SubscriptionPlan.Contributor]]
+      )
 
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) returns Future(List(subscription))
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) returns Future(List(subscription))
 
       zuoraRestServiceMock.updateChargeAmount(
         subscription.name,
@@ -350,7 +350,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) was called
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) was called
       zuoraRestServiceMock.updateChargeAmount(
         subscription.name,
         charge.subRatePlanChargeId,
@@ -465,7 +465,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) was called
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) was called
 
       subscriptionServiceMock.decideCancellationEffectiveDate[SubscriptionPlan.AnyPlan](Name(subscriptionId), any, any)(any, any) was called
       subscriptionServiceMock.subscriptionsForAccountId[SubscriptionPlan.AnyPlan](subscription.accountId)(any, any) was called

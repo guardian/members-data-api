@@ -1,5 +1,6 @@
 package services
 
+import com.gu.memsub.promo.LogImplicit.LoggableFuture
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -7,34 +8,22 @@ import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import models.ContactAndSubscription
-import scalaz.\/
-import services.DifferentiateSubscription.differentiateSubscription
 import services.zuora.payment.PaymentService
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 class PaymentDetailsForSubscription(paymentService: PaymentService) extends SafeLogging {
   def getPaymentDetails(
       contactAndSubscription: ContactAndSubscription,
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[PaymentDetails] = {
-    val isGiftRedemption = contactAndSubscription.isGiftRedemption
-    val differentiated = differentiateSubscription(contactAndSubscription)
-    differentiated match {
-      case Right(giftSub) if isGiftRedemption =>
-        Future.successful(giftPaymentDetailsFor(giftSub))
-      case Right(paidSub) =>
-        val paymentDetails = paymentService.paymentDetails(\/.fromEither(differentiated), defaultMandateIdIfApplicable = Some(""))
-        paymentDetails.onComplete {
-          case Failure(exception) => logger.error(scrub"Failed to get payment details for $paidSub: $exception")
-          case Success(_) => logger.info(s"Successfully got payment details for $paidSub")
-        }
-        paymentDetails
-      case Left(freeSub) => Future.successful(PaymentDetails(freeSub))
-    }
+    val subscription = contactAndSubscription.subscription
+    if (contactAndSubscription.isGiftRedemption)
+      Future.successful(giftPaymentDetailsFor(subscription))
+    else
+      paymentService.paymentDetails(subscription, defaultMandateIdIfApplicable = Some("")).withLogging(s"get payment details for $subscription")
   }
 
-  private def giftPaymentDetailsFor(giftSubscription: Subscription[SubscriptionPlan.Paid]): PaymentDetails = PaymentDetails(
+  private def giftPaymentDetailsFor(giftSubscription: Subscription[SubscriptionPlan.AnyPlan]): PaymentDetails = PaymentDetails(
     pendingCancellation = giftSubscription.isCancelled,
     chargedThroughDate = None,
     startDate = giftSubscription.startDate,

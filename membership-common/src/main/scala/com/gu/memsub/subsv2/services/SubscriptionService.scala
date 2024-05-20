@@ -114,37 +114,11 @@ class SubscriptionService[M[_]: Monad](pids: ProductIds, futureCatalog: => M[Cat
         val allSubscriptionsForSubscriberName = subJson.flatMap { jsValue =>
           SubscriptionTransform.getSubscription[P](catalog, pids)(jsValue).withTrace("getAllValidSubscriptionsFromJson")
         }
-        warnOnMissingChargedThroughDate(allSubscriptionsForSubscriberName)
         allSubscriptionsForSubscriberName.leftMap(error => logger.warn(s"Error from sub service for $name: $error")).toOption
 
       }
     }
   }
-
-  /** A paid subscription that is active today should have been invoiced, which means Bill Run should have happened, and so chargedThroughDate should
-    * be populated. If a paid subscription is missing chargeThroughDate also known as End of Last Invoice Period, or day after service period end
-    * date, then the likelihood of bugs increases. For example, holiday credit or cancellation effective date should be applied on End of Last Invoice
-    * Period date, and we have had bugs around both of these functionalities.
-    *
-    * Free trials are an exception, however we might be able to execute real-time Bill Run at point of acquisition with future target date in which
-    * case chargedThroughDate date should again be populated even though payment run has not happened yet. Currently there is assumption in the
-    * codebase if chargedThroughDate does not exist on paid product then it is free trial, however this is not a safe assumption. We should explicitly
-    * be determining free free trial state by perhaps if(sub.startDate <= today && sub.acceptanceDate > today) then free trial.
-    *
-    * This logging side-effect should make more visible in which scenarios we are missing chargedThroughDate.
-    */
-  private def warnOnMissingChargedThroughDate[P <: AnyPlan: SubPlanReads](
-      subscription: String \/ Subscription[P],
-  )(implicit logPrefix: LogPrefix): Unit =
-    Try { // just to make sure it is not interfering with main business logic
-      subscription.foreach { sub =>
-        sub.plan match {
-          case p: PaidSubscriptionPlan[_, _] if p.chargedThrough.isEmpty =>
-            logger.warn(s"chargedThroughDate (end of last invoice date) does not exist for ${sub.name}")
-          case _ => // do nothing
-        }
-      }
-    }
 
   /** Using fromContact above fetch all the subscriptions for a given contact
     */
@@ -239,7 +213,7 @@ class SubscriptionService[M[_]: Monad](pids: ProductIds, futureCatalog: => M[Cat
       OptionT(get[P](subscriptionName, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
           val paidPlans =
-            zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
+            zuoraSubscriptionWithCurrentSegment.plans.list
           val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(BillRunCompletedByTime)
 
           paidPlans match {
