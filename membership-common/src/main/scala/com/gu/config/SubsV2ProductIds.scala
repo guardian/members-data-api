@@ -18,7 +18,6 @@ object SubsV2ProductIds {
     supporter = ProductId(config.getString("membership.supporter")),
     partner = ProductId(config.getString("membership.partner")),
     patron = ProductId(config.getString("membership.patron")),
-    staff = ProductId(config.getString("membership.staff")),
     contributor = ProductId(config.getString("contributions.contributor")),
   )
 }

@@ -46,8 +46,7 @@ case class Attributes(
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
-  lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
-  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
+  lazy val isPaidTier: Boolean = isSupporterTier || isPartnerTier || isPatronTier
   lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
   lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(3)))
   lazy val isSupporterPlus = SupporterPlusExpiryDate.exists(_.isAfter(now))

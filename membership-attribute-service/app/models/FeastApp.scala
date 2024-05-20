@@ -17,8 +17,7 @@ object FeastApp {
   private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(FeastIosLaunchDate)
 
   def shouldGetFeastAccess(attributes: Attributes): Boolean =
-    attributes.isStaffTier ||
-      attributes.isPartnerTier ||
+    attributes.isPartnerTier ||
       attributes.isPatronTier ||
       attributes.isGuardianPatron ||
       attributes.digitalSubscriberHasActivePlan ||

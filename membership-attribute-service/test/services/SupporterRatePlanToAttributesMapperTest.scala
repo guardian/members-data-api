@@ -287,9 +287,6 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
 
     "identify memberships correctly" in {
       val possibleProductRatePlanIds = Map(
-        "2c92a0fb4ce4b8e7014ce711d3c37e60" -> "Friend",
-        "2c92a0f9479fb46d0147d0155c6f558b" -> "Friend",
-        "2c92a0f949efde7c0149f1f18162178e" -> "Staff",
         "2c92a0f94c547592014c69f5b0ff4f7e" -> "Supporter",
         "2c92a0fb4c5481db014c69f4a1e03bbd" -> "Supporter",
         "2c92a0fb4bb97034014bbbc562114fef" -> "Supporter",
@@ -491,7 +488,6 @@ object SupporterRatePlanToAttributesMapperTest {
     ("Sixday+", "2c92a00870ec598001710740c4582ead"),
     ("Sixday+", "2c92a0fc56fe26ba0157040c5ea17f6a"),
     ("Sixday+", "2c92a0ff560d311b0156136b697438a9"),
-    ("Staff - monthly", "2c92a0f949efde7c0149f1f18162178e"),
     ("Sunday", "2c92a00870ec598001710740d0d83017"),
     ("Sunday", "2c92a0fe5af9a6b9015b0fe1ecc0116c"),
     ("Sunday", "2c92a0ff5af9b657015b0fea5b653f81"),

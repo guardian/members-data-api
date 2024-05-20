@@ -31,27 +31,26 @@ import utils.TestLogPrefix.testLogPrefix
   */
 class SubscriptionServiceTest extends Specification {
 
-  // this is the UAT prpId of friend, which we need for the catalog
-  val prpId = ProductRatePlanId("2c92c0f94cc6ea05014cdb4b1d1f037d")
+  val digipackAnnualPrpId = ProductRatePlanId("2c92c0f94bbffaaa014bc6a4212e205b")
   val partnerPrpId = ProductRatePlanId("2c92c0f84c510081014c569327003593")
-  val supporterPrpId = ProductRatePlanId("2c92c0f84bbfeca5014bc0c5a793241d")
+  val supporterPlusPrpId = ProductRatePlanId("8ad08cbd8586721c01858804e3275376")
   val digipackPrpId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591")
   val gw6for6PrpId = ProductRatePlanId("2c92c0f965f212210165f69b94c92d66")
   val gw = ProductRatePlanId("2c92c0f965dc30640165f150c0956859")
   val now = 27 Sep 2016
 
   val cat = Map[ProductRatePlanId, CatalogZuoraPlan](
-    prpId -> CatalogZuoraPlan(
-      prpId,
+    digipackAnnualPrpId -> CatalogZuoraPlan(
+      digipackAnnualPrpId,
       "foo",
       "",
-      productIds.staff,
+      productIds.digipack,
       None,
       List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f84cc6d9e5014cdb4c48b02d83") -> Staff),
+      Map(ProductRatePlanChargeId("2c92c0f94bbffaaa014bc6a4213e205d") -> Digipack),
       Status.current,
       None,
-      Some("Membership"),
+      Some("type"),
     ),
     partnerPrpId -> CatalogZuoraPlan(
       partnerPrpId,
@@ -65,14 +64,14 @@ class SubscriptionServiceTest extends Specification {
       None,
       Some("type"),
     ),
-    supporterPrpId -> CatalogZuoraPlan(
-      supporterPrpId,
-      "Supporter",
+    supporterPlusPrpId -> CatalogZuoraPlan(
+      supporterPlusPrpId,
+      "Supporter Plus",
       "",
       productIds.supporter,
       None,
       List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f84c5100b6014c569b83b33ebd") -> Supporter),
+      Map(ProductRatePlanChargeId("8ad08cbd8586721c01858804e3715378") -> SupporterPlus),
       Status.current,
       None,
       Some("type"),
@@ -135,9 +134,9 @@ class SubscriptionServiceTest extends Specification {
   val subscriptions: HttpClient[scalaz.Id.Id] = new HttpClient[Id]() {
     override def execute(request: Request)(implicit logPrefix: SafeLogger.LogPrefix): scalaz.Id.Id[Response] =
       request.url().uri().getPath match {
-        case "/subscriptions/accounts/foo" => jsonResponse("rest/plans/accounts/Friend.json")(request)
-        case "/subscriptions/accounts/bar" => jsonResponse("rest/plans/accounts/Friend.json")(request)
-        case "/subscriptions/1234" => jsonResponse("rest/plans/Friend.json")(request)
+        case "/subscriptions/accounts/foo" => jsonResponse("rest/plans/accounts/SPlus.json")(request)
+        case "/subscriptions/accounts/bar" => jsonResponse("rest/plans/accounts/Digi.json")(request)
+        case "/subscriptions/1234" => jsonResponse("rest/plans/SPlus.json")(request)
         case "/subscriptions/A-S00063478" => jsonResponse("rest/plans/Upgraded.json")(request)
         case "/subscriptions/A-lead-time" => jsonResponse("rest/cancellation/GW-6for6-lead-time.json")(request)
         case "/subscriptions/A-segment-6for6" => jsonResponse("rest/cancellation/GW-6for6-segment-6for6.json")(request)
@@ -148,7 +147,7 @@ class SubscriptionServiceTest extends Specification {
   }
 
   val rc = new SimpleClient[Id](ZuoraRestConfig("TESTS", "https://localhost", "foo", "bar"), subscriptions)
-  val service = new SubscriptionService[Id](Fixtures.productIds, cat, rc, soapClient)
+  private val service = new SubscriptionService[Id](Fixtures.productIds, cat, rc, soapClient)
 
   "Current Plan" should {
 
@@ -171,32 +170,6 @@ class SubscriptionServiceTest extends Specification {
           SubscriptionRatePlanChargeId("noo"),
         ),
         None,
-        startDate,
-        endDate,
-      )
-    def staffPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Staff =
-      FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Staff.type]](
-        RatePlanId("idFriend"),
-        ProductRatePlanId("prpi"),
-        "Friend",
-        "desc",
-        "Friend",
-        "Membership",
-        Product.Membership,
-        FreeCharge(Staff, Set(GBP)),
-        startDate,
-        endDate,
-      )
-    def legacyStaffPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Staff =
-      FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Staff.type]](
-        RatePlanId("idLegacyFriend"),
-        ProductRatePlanId("prpi"),
-        "LegacyFriend",
-        "desc",
-        "LegacyFriend",
-        "Membership",
-        Product.Membership,
-        FreeCharge(Staff, Set(GBP)),
         startDate,
         endDate,
       )
@@ -341,13 +314,6 @@ class SubscriptionServiceTest extends Specification {
       result mustEqual \/-("idPartner")
     }
 
-    "tell you you aren't a staff membership if your subscription is cancelled regardless of the date" in {
-      val plans = NonEmptyList(staffPlan(referenceDate, referenceDate + 1.year))
-      val subs = toSubscription(isCancelled = true)(plans)
-      val result = GetCurrentPlans(subs, referenceDate).leftMap(_.contains("cancelled"))
-      result mustEqual -\/(true) // not helpful
-    }
-
     "tell you you are still a supporter if your subscription is cancelled but it's still before the date" in {
       val plans = NonEmptyList(supporterPlan(referenceDate, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = true)(plans)
@@ -382,27 +348,8 @@ class SubscriptionServiceTest extends Specification {
 
   "Subscription service" should {
 
-    "Be able to fetch a staff subscription" in {
-      val sub = service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("1234"))
-      sub.map(_.plan) mustEqual Some(
-        FreeSubscriptionPlan(
-          RatePlanId("id"),
-          prpId,
-          "foo",
-          "",
-          "Friend",
-          "Membership",
-          Product.Membership,
-          FreeCharge(Staff, Set(GBP)),
-          start = 12 Aug 2016,
-          end = 13 Aug 2016,
-        ),
-      )
-      sub.map(_.name) mustEqual Some(memsub.Subscription.Name("subscriptionNumber"))
-    }
-
     "Give you back a none in the event of the sub not existing" in {
-      service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("foo")) mustEqual None
+      service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("foo")) must beNone
     }
 
     val contact = new ContactId {
@@ -412,14 +359,14 @@ class SubscriptionServiceTest extends Specification {
 
     "Leverage the soap client to fetch subs by contact ID" in {
       val subs = service.current[SubscriptionPlan.AnyPlan](contact)
-      subs.headOption.map(_.name) mustEqual Some(memsub.Subscription.Name("subscriptionNumber")) // what is in the config file
+      subs.map(_.name.get).sorted mustEqual List("A-S00890520", "A-S00890521") // from the test resources jsons
     }
 
     "Be able to fetch subs where term ends after the specified date" in {
       val currentSubs = service.current[SubscriptionPlan.AnyPlan](contact)
-      val sinceSubs = service.since[SubscriptionPlan.AnyPlan](1 Jan 2020)(contact)
+      val sinceSubs = service.since[SubscriptionPlan.AnyPlan](1 Jun 2025)(contact)
       currentSubs mustNotEqual sinceSubs
-      sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jan 2020
+      sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jun 2025
     }
 
     val referenceDate = 15 Aug 2017

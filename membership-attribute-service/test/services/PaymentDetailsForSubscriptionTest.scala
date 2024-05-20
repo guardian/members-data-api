@@ -86,15 +86,5 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
-    "recognise a free subscription" in {
-      val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[PaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails(staff)
-
-      paymentDetailsForSubscription
-        .getPaymentDetails(ContactAndSubscription(contact, staff, false))
-        .map(details => details mustEqual expectedPaymentDetails)
-    }
   }
 }
