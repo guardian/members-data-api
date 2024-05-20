@@ -2,7 +2,7 @@ package com.gu.memsub.subsv2.services
 
 import com.github.nscala_time.time.Implicits._
 import com.github.nscala_time.time.Imports.LocalTime
-import com.gu.i18n.Currency.GBP
+import com.gu.i18n.Currency.{EUR, GBP}
 import com.gu.lib.DateDSL._
 import com.gu.memsub
 import com.gu.memsub.Benefit._
@@ -348,6 +348,30 @@ class SubscriptionServiceTest extends Specification {
 
   "Subscription service" should {
 
+    "Be able to fetch a supporter plus subscription" in {
+      val sub = service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("1234"))
+      sub.map(_.plan) must beSome(
+        PaidSubscriptionPlan(
+          RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
+          supporterPlusPrpId,
+          "Supporter Plus",
+          "",
+          "Supporter Plus",
+          None,
+          "type",
+          Product.Membership,
+          Nil,
+          SupporterPlusCharges(
+            BillingPeriod.Month,
+            List(PricingSummary(Map(EUR -> Price(10.0f, EUR))), PricingSummary(Map(EUR -> Price(0.0f, EUR)))),
+          ),
+          Some(20 Jun 2024),
+          20 May 2024,
+          20 May 2025,
+        ),
+      )
+      sub.map(_.name.get) must beSome("A-S00890520")
+    }
     "Give you back a none in the event of the sub not existing" in {
       service.get[SubscriptionPlan.AnyPlan](memsub.Subscription.Name("foo")) must beNone
     }
