@@ -589,9 +589,9 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
     }
 
-    "the attributeWithEncryptedUserId returns the correct attributes plus encryptedUserId" in {
+    "attributesForApps returns the correct attributes plus encryptedUserId" in {
       val req = FakeRequest().withCookies(supporterPlusWithGuardianWeeklyCookie)
-      val result = controller.attributesWithEncryptedUserId(req)
+      val result = controller.attributesForApps(req)
 
       status(result) shouldEqual OK
       val jsonBody = contentAsJson(result)

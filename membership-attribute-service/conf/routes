@@ -1,7 +1,7 @@
 GET         /healthcheck                                                        controllers.HealthCheckController.healthCheck()
 
 GET         /user-attributes/me                                                 controllers.AttributeController.attributes
-GET         /user-attributes/me/with-encrypted-user-id                          controllers.AttributeController.attributesWithEncryptedUserId
+GET         /user-attributes/me/apps                                            controllers.AttributeController.attributesForApps
 
 GET         /user-attributes/me/existing-payment-options                        controllers.ExistingPaymentOptionsController.existingPaymentOptions(currencyFilter: Option[String])
 

@@ -222,15 +222,15 @@ class AttributeController(
     Attributes.jsAttributesWrites.writes(attributes) ++ encryptedUserId
   }
 
-  def attributesWithEncryptedUserId =
+  def attributesForApps =
     lookup(
-      endpointDescription = "attributesWithEncryptedUserId",
+      endpointDescription = "attributesForApps",
       onSuccessMember = attrs => Ok(augmentWithEncryptedUserId(attrs)),
       onSuccessSupporter = attrs => Ok(augmentWithEncryptedUserId(attrs)),
       onNotFound = notFound,
       sendAttributesIfNotFound = true,
       requiredScopes = List(readSelf),
-      metricName = "GET /user-attributes/me/with-encrypted-user-id",
+      metricName = "GET /user-attributes/me/apps",
       useBatchedMetrics = true,
     )
 
