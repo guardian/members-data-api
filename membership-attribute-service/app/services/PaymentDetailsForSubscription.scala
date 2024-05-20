@@ -23,7 +23,7 @@ class PaymentDetailsForSubscription(paymentService: PaymentService) extends Safe
       paymentService.paymentDetails(subscription, defaultMandateIdIfApplicable = Some("")).withLogging(s"get payment details for $subscription")
   }
 
-  private def giftPaymentDetailsFor(giftSubscription: Subscription[SubscriptionPlan.AnyPlan]): PaymentDetails = PaymentDetails(
+  private def giftPaymentDetailsFor(giftSubscription: Subscription): PaymentDetails = PaymentDetails(
     pendingCancellation = giftSubscription.isCancelled,
     chargedThroughDate = None,
     startDate = giftSubscription.startDate,

@@ -3,8 +3,7 @@ package services
 import com.gu.memsub.Product
 import com.gu.memsub.Product.{Contribution, Membership}
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.Subscription
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
@@ -39,7 +38,7 @@ object PaymentFailureAlerter extends SafeLogging {
 
   def alertText(
       accountSummary: AccountSummary,
-      subscription: Subscription[AnyPlan],
+      subscription: Subscription,
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[Option[String]] = {
 
@@ -54,7 +53,7 @@ object PaymentFailureAlerter extends SafeLogging {
         case None => Future.successful(None)
       }
 
-      def getProductDescription(subscription: Subscription[SubscriptionPlan.AnyPlan]) =
+      def getProductDescription(subscription: Subscription) =
         if (subscription.plans.head.product == Membership) {
           s"${subscription.plan.productName} membership"
         } else if (subscription.plans.head.product == Contribution) {
@@ -85,7 +84,7 @@ object PaymentFailureAlerter extends SafeLogging {
 
   def alertAvailableFor(
       account: AccountObject,
-      subscription: Subscription[AnyPlan],
+      subscription: Subscription,
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
   )(implicit ec: ExecutionContext): Future[Boolean] = {
     def isAlertableProduct = !nonAlertableProducts.contains(subscription.plan.product)

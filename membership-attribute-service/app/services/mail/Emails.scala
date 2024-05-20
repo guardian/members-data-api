@@ -12,7 +12,7 @@ import java.text.DecimalFormat
 object Emails {
   private val dateFormat = DateTimeFormat.forPattern("d MMMM yyyy")
 
-  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: SubscriptionPlan.AnyPlan): EmailData = {
+  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: SubscriptionPlan): EmailData = {
     EmailData(
       emailAddress = emailAddress,
       salesforceContactId = contact.salesforceContactId,
@@ -29,7 +29,7 @@ object Emails {
   def subscriptionCancelledEmail(
       emailAddress: String,
       contact: Contact,
-      plan: SubscriptionPlan.AnyPlan,
+      plan: SubscriptionPlan,
       cancellationEffectiveDate: Option[LocalDate],
   ): EmailData = {
     EmailData(

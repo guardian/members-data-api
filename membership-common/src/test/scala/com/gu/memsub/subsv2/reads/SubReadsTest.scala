@@ -8,7 +8,6 @@ import com.gu.memsub.Product.WeeklyDomestic
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.memsub._
 import com.gu.memsub.subsv2.ReaderType.Patron
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
 import org.joda.time.LocalDate
@@ -80,7 +79,7 @@ class SubReadsTest extends Specification {
         end = now,
       )
       val subscription =
-        SubJsonReads.subscriptionReads[AnyPlan](now).reads(json).get(NonEmptyList(plan))
+        SubJsonReads.subscriptionReads(now).reads(json).get(NonEmptyList(plan))
 
       subscription.readerType mustEqual Patron
     }

@@ -11,7 +11,7 @@ case class ExistingPaymentOption(
     freshlySignedIn: Boolean,
     objectAccount: ObjectAccount,
     paymentMethodOption: Option[PaymentMethod],
-    subscriptions: List[Subscription[SubscriptionPlan.AnyPlan]],
+    subscriptions: List[Subscription],
 )
 
 object ExistingPaymentOption {
@@ -20,7 +20,7 @@ object ExistingPaymentOption {
 
     import existingPaymentOption._
 
-    private def getSubscriptionFriendlyName(plan: SubscriptionPlan.AnyPlan): String = plan.product match {
+    private def getSubscriptionFriendlyName(plan: SubscriptionPlan): String = plan.product match {
       case _: Product.Weekly => "Guardian Weekly"
       case _: Product.Membership => plan.productName + " Membership"
       case _: Product.Contribution => plan.name

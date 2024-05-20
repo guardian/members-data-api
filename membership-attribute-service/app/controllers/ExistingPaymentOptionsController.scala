@@ -44,11 +44,11 @@ class ExistingPaymentOptionsController(
       maybeUserId: Option[String],
       contactRepository: ContactRepository,
       subscriptionService: SubscriptionService[Future],
-  )(implicit logPrefix: LogPrefix): SimpleEitherT[Map[AccountId, List[Subscription[SubscriptionPlan.AnyPlan]]]] =
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[Map[AccountId, List[Subscription]]] =
     (for {
       user <- ListTEither.fromOption(maybeUserId)
       contact <- ListTEither.fromFutureOption(contactRepository.get(user))
-      subscription <- ListTEither.fromFutureList(subscriptionService.since[SubscriptionPlan.AnyPlan](date)(contact))
+      subscription <- ListTEither.fromFutureList(subscriptionService.since(date)(contact))
     } yield subscription).toList.map(_.groupBy(_.accountId))
 
   def consolidatePaymentMethod(existingPaymentOptions: List[ExistingPaymentOption]): Iterable[ExistingPaymentOption] = {

@@ -1,7 +1,6 @@
 package com.gu.memsub.subsv2.services
 
 import com.gu.memsub.Subscription.{ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
 import com.gu.memsub.subsv2.reads.CommonReads._
@@ -33,51 +32,23 @@ object SubscriptionTransform extends SafeLogging {
     }
   }
 
-  def backdoorRatePlanIdsFromJson(subJson: JsValue)(implicit logPrefix: LogPrefix): Disjunction[String, List[SubIds]] = {
-    val ids = (subJson \ "ratePlans").validate[List[SubIds]](niceListReads(subIdsReads)).asEither.toDisjunction.leftMap(_.toString)
-    // didn't actually check if they're current
+  type TimeRelativeSubTransformer = (CatalogMap, ProductIds) => List[JsValue] => Disjunction[String, NonEmptyList[Subscription]]
 
-    ids.leftMap { error =>
-      logger.warn(s"Error from sub service for json: $error")
-    }
-
-    ids
-  }
-
-  def tryTwoReadersForSubscriptionJson[PREFERRED <: AnyPlan: SubPlanReads, FALLBACK <: AnyPlan: SubPlanReads](catalog: CatalogMap, pids: ProductIds)(
+  def getCurrentSubscriptions(catalog: CatalogMap, pids: ProductIds)(
       subJsons: List[JsValue],
-  ): \/[String, Disjunction[Subscription[FALLBACK], Subscription[PREFERRED]]] = {
-    val maybePreferred =
-      getCurrentSubscriptions[PREFERRED](catalog, pids)(subJsons).map(_.head /*if more than one current, just pick one (for now!)*/ )
-    lazy val maybeFallback =
-      getCurrentSubscriptions[FALLBACK](catalog, pids)(subJsons).map(_.head /*if more than one current, just pick one (for now!)*/ )
-    maybePreferred match {
-      case \/-(preferredSub) => \/.right(\/-(preferredSub))
-      case -\/(err1) =>
-        maybeFallback match {
-          case \/-(fallbackSub) => \/.right(-\/(fallbackSub))
-          case -\/(err2) => \/.left(s"Error from sub service: $err1\n\n$err2")
-        }
-    }
-  }
+  ): Disjunction[String, NonEmptyList[Subscription]] = {
 
-  type TimeRelativeSubTransformer[P <: AnyPlan] = (CatalogMap, ProductIds) => List[JsValue] => Disjunction[String, NonEmptyList[Subscription[P]]]
-
-  def getCurrentSubscriptions[P <: AnyPlan: SubPlanReads](catalog: CatalogMap, pids: ProductIds)(
-      subJsons: List[JsValue],
-  ): Disjunction[String, NonEmptyList[Subscription[P]]] = {
-
-    def getFirstCurrentSub[P <: AnyPlan](
-        subs: NonEmptyList[Subscription[P]],
-    ): String \/ NonEmptyList[Subscription[P]] = // just quickly check to find one with a current plan
+    def getFirstCurrentSub(
+        subs: NonEmptyList[Subscription],
+    ): String \/ NonEmptyList[Subscription] = // just quickly check to find one with a current plan
       Sequence(
         subs
           .map { sub =>
             Try {
               sub.plan // just to force a throw if it doesn't have one
             } match {
-              case scala.util.Success(_) => \/-(sub): \/[String, Subscription[P]]
-              case scala.util.Failure(ex) => -\/(ex.toString): \/[String, Subscription[P]]
+              case scala.util.Success(_) => \/-(sub): \/[String, Subscription]
+              case scala.util.Failure(ex) => -\/(ex.toString): \/[String, Subscription]
             }
           }
           .list
@@ -86,27 +57,27 @@ object SubscriptionTransform extends SafeLogging {
 
     Sequence(subJsons.map { subJson =>
       getSubscription(catalog, pids)(subJson)
-    }).flatMap(getFirstCurrentSub[P])
+    }).flatMap(getFirstCurrentSub)
   }
 
-  def getSubscriptionsActiveOnOrAfter[P <: AnyPlan: SubPlanReads](
+  def getSubscriptionsActiveOnOrAfter(
       onOrAfter: LocalDate,
-  )(catalog: CatalogMap, pids: ProductIds)(subJsons: List[JsValue]): Disjunction[String, NonEmptyList[Subscription[P]]] =
-    Sequence(subJsons.map(getSubscription[P](catalog, pids)).filter {
+  )(catalog: CatalogMap, pids: ProductIds)(subJsons: List[JsValue]): Disjunction[String, NonEmptyList[Subscription]] =
+    Sequence(subJsons.map(getSubscription(catalog, pids)).filter {
       case \/-(sub) => !sub.termEndDate.isBefore(onOrAfter)
       case _ => false
     })
 
-  def getRecentlyCancelledSubscriptions[P <: AnyPlan: SubPlanReads](
+  def getRecentlyCancelledSubscriptions(
       today: LocalDate,
       lastNMonths: Int, // cancelled in the last n months
       catalog: CatalogMap,
       pids: ProductIds,
       subJsons: List[JsValue],
-  ): Disjunction[String, List[Subscription[P]]] = {
+  ): Disjunction[String, List[Subscription]] = {
     import Scalaz._
     subJsons
-      .map(getSubscription[P](catalog, pids))
+      .map(getSubscription(catalog, pids))
       .sequence
       .map {
         _.filter { sub =>
@@ -117,14 +88,14 @@ object SubscriptionTransform extends SafeLogging {
       }
   }
 
-  def getSubscription[P <: AnyPlan: SubPlanReads](
+  def getSubscription(
       catalog: CatalogMap,
       pids: ProductIds,
       now: () => LocalDate = LocalDate.now, /*now only needed for pending friend downgrade*/
-  )(subJson: JsValue): Disjunction[String, Subscription[P]] = {
+  )(subJson: JsValue): Disjunction[String, Subscription] = {
     import Trace.Traceable
     val planToSubscriptionFunction =
-      subscriptionReads[P](now()).reads(subJson).asEither.toDisjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
+      subscriptionReads(now()).reads(subJson).asEither.toDisjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
 
     val lowLevelPlans = subJson
       .validate[List[SubscriptionZuoraPlan]](subZuoraPlanListReads)
@@ -133,7 +104,7 @@ object SubscriptionTransform extends SafeLogging {
       .leftMap(_.toString)
       .withTrace("validate-lowLevelPlans")
     lowLevelPlans.flatMap { lowLevelPlans =>
-      val validHighLevelPlans: String \/ NonEmptyList[P] =
+      val validHighLevelPlans: String \/ NonEmptyList[SubscriptionPlan] =
         Sequence(
           lowLevelPlans
             .map { lowLevelPlan =>
@@ -142,7 +113,7 @@ object SubscriptionTransform extends SafeLogging {
                 .get(lowLevelPlan.productRatePlanId)
                 .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
                 .flatMap { catalogPlan =>
-                  val maybePlans = implicitly[SubPlanReads[P]].read(pids, lowLevelPlan, catalogPlan)
+                  val maybePlans = SubPlanReads.anyPlanReads(pids, lowLevelPlan, catalogPlan)
                   maybePlans.toDisjunction
                     .leftMap(
                       _.list.zipWithIndex
