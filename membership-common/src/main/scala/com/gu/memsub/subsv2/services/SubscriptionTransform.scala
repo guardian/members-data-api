@@ -103,7 +103,7 @@ object SubscriptionTransform extends SafeLogging {
       .leftMap(_.toString)
       .withTrace("validate-lowLevelPlans")
     lowLevelPlans.flatMap { lowLevelPlans =>
-      val validHighLevelPlans: String \/ NonEmptyList[SubscriptionPlan] =
+      val validHighLevelPlans: String \/ NonEmptyList[RatePlan] =
         Sequence(
           lowLevelPlans
             .map { lowLevelPlan =>

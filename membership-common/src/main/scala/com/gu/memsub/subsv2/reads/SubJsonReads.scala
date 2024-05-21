@@ -79,7 +79,7 @@ object SubJsonReads {
     }
   }
 
-  implicit val subZuoraPlanListReads: Reads[List[SubscriptionZuoraPlan]] = new Reads[List[SubscriptionZuoraPlan]] {
+  val subZuoraPlanListReads: Reads[List[SubscriptionZuoraPlan]] = new Reads[List[SubscriptionZuoraPlan]] {
     override def reads(json: JsValue): JsResult[List[SubscriptionZuoraPlan]] = {
       (json \ "ratePlans").validate[List[SubscriptionZuoraPlan]](niceListReads(commonZuoraPlanReads))
     }
@@ -95,8 +95,8 @@ object SubJsonReads {
   private val lenientDateTimeReader: Reads[DateTime] =
     JodaReads.DefaultJodaDateTimeReads orElse Reads.IsoDateReads.map(new DateTime(_))
 
-  val subscriptionReads: Reads[NonEmptyList[SubscriptionPlan] => Subscription] = new Reads[NonEmptyList[SubscriptionPlan] => Subscription] {
-    override def reads(json: JsValue): JsResult[NonEmptyList[SubscriptionPlan] => Subscription] = {
+  val subscriptionReads: Reads[NonEmptyList[RatePlan] => Subscription] = new Reads[NonEmptyList[RatePlan] => Subscription] {
+    override def reads(json: JsValue): JsResult[NonEmptyList[RatePlan] => Subscription] = {
 
       json match {
         case o: JsObject =>

@@ -1,5 +1,5 @@
 package com.gu.services.model
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.memsub.{BillingPeriod, PaymentMethod, Price}
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import org.joda.time.{DateTime, Days, LocalDate}

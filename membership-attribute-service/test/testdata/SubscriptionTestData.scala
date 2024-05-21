@@ -15,8 +15,8 @@ trait SubscriptionTestData {
 
   def referenceDate: LocalDate
 
-  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-    SubscriptionPlan(
+  def supporterPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+    RatePlan(
       RatePlanId("idSupporter"),
       ProductRatePlanId("prpi"),
       "Supporter",
@@ -26,7 +26,7 @@ trait SubscriptionTestData {
       "Membership",
       Product.Membership,
       List.empty,
-      SingleCharge(
+      RatePlanCharge(
         Supporter,
         BillingPeriod.Year,
         PricingSummary(Map(GBP -> Price(49.0f, GBP))),
@@ -37,8 +37,8 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-    SubscriptionPlan(
+  def digipackPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+    RatePlan(
       RatePlanId("idDigipack"),
       ProductRatePlanId("prpi"),
       "Digipack",
@@ -48,7 +48,7 @@ trait SubscriptionTestData {
       "Digital Pack",
       Product.Digipack,
       List.empty,
-      SingleCharge(
+      RatePlanCharge(
         Digipack,
         BillingPeriod.Year,
         PricingSummary(Map(GBP -> Price(119.90f, GBP))),
@@ -59,7 +59,7 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan = SubscriptionPlan(
+  def paperPlan(startDate: LocalDate, endDate: LocalDate): RatePlan = RatePlan(
     RatePlanId("idPaperPlan"),
     ProductRatePlanId("prpi"),
     "Sunday",
@@ -74,7 +74,7 @@ trait SubscriptionTestData {
     startDate,
     endDate,
   )
-  def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan = SubscriptionPlan(
+  def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan = RatePlan(
     RatePlanId("idPaperPlusPlan"),
     ProductRatePlanId("prpi"),
     "Sunday+",
@@ -89,8 +89,8 @@ trait SubscriptionTestData {
     startDate,
     endDate,
   )
-  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-    SubscriptionPlan(
+  def contributorPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+    RatePlan(
       RatePlanId("idContributor"),
       ProductRatePlanId("prpi"),
       "Monthly Contribution",
@@ -100,7 +100,7 @@ trait SubscriptionTestData {
       "Contribution",
       Product.Contribution,
       List.empty,
-      SingleCharge(
+      RatePlanCharge(
         Contributor,
         BillingPeriod.Month,
         PricingSummary(Map(GBP -> Price(5.0f, GBP))),
@@ -111,8 +111,8 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-    SubscriptionPlan(
+  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+    RatePlan(
       RatePlanId("idGuardianWeeklyPlan"),
       ProductRatePlanId("prpi"),
       "Guardian Weekly",
@@ -122,7 +122,7 @@ trait SubscriptionTestData {
       "Guardian Weekly",
       Product.WeeklyDomestic,
       List.empty,
-      SingleCharge(
+      RatePlanCharge(
         Weekly,
         BillingPeriod.Quarter,
         PricingSummary(Map(GBP -> Price(37.50f, GBP))),
@@ -134,8 +134,8 @@ trait SubscriptionTestData {
       endDate,
     )
 
-  def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-    SubscriptionPlan(
+  def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+    RatePlan(
       RatePlanId("idSupporterPlusPlan"),
       ProductRatePlanId("prpi"),
       "Supporter Plus",
@@ -145,7 +145,7 @@ trait SubscriptionTestData {
       "Supporter Plus",
       Product.SupporterPlus,
       List.empty,
-      SingleCharge(
+      RatePlanCharge(
         Benefit.SupporterPlus,
         BillingPeriod.Month,
         PricingSummary(Map(GBP -> Price(10.0f, GBP))),
@@ -157,7 +157,7 @@ trait SubscriptionTestData {
       endDate,
     )
 
-  def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[SubscriptionPlan]): Subscription = {
+  def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[RatePlan]): Subscription = {
     Subscription(
       id = Id(plans.head.id.get),
       name = Name("AS-123123"),

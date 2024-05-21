@@ -148,8 +148,8 @@ class SubscriptionServiceTest extends Specification {
 
   "Current Plan" should {
 
-    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): SubscriptionPlan =
-      SubscriptionPlan(
+    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): RatePlan =
+      RatePlan(
         RatePlanId("idContributor"),
         ProductRatePlanId("prpi"),
         "Contributor",
@@ -159,7 +159,7 @@ class SubscriptionServiceTest extends Specification {
         "Contribution",
         Product.Contribution,
         List.empty,
-        SingleCharge(
+        RatePlanCharge(
           Contributor,
           BillingPeriod.Month,
           PricingSummary(Map(GBP -> Price(5.0f, GBP))),
@@ -170,8 +170,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def partnerPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-      SubscriptionPlan(
+    def partnerPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+      RatePlan(
         RatePlanId("idPartner"),
         ProductRatePlanId("prpi"),
         "Partner",
@@ -181,7 +181,7 @@ class SubscriptionServiceTest extends Specification {
         "Membership",
         Product.Membership,
         List.empty,
-        SingleCharge(
+        RatePlanCharge(
           Partner,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(149.0f, GBP))),
@@ -192,8 +192,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-      SubscriptionPlan(
+    def supporterPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+      RatePlan(
         RatePlanId("idSupporter"),
         ProductRatePlanId("prpi"),
         "Supporter",
@@ -203,7 +203,7 @@ class SubscriptionServiceTest extends Specification {
         "Membership",
         Product.Membership,
         List.empty,
-        SingleCharge(
+        RatePlanCharge(
           Supporter,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(49.0f, GBP))),
@@ -214,8 +214,8 @@ class SubscriptionServiceTest extends Specification {
         startDate,
         endDate,
       )
-    def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-      SubscriptionPlan(
+    def digipackPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+      RatePlan(
         RatePlanId("idDigipack"),
         ProductRatePlanId("prpi"),
         "Digipack",
@@ -225,7 +225,7 @@ class SubscriptionServiceTest extends Specification {
         "Digital Pack",
         Product.Digipack,
         List.empty,
-        SingleCharge(
+        RatePlanCharge(
           Digipack,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(119.90f, GBP))),
@@ -237,8 +237,8 @@ class SubscriptionServiceTest extends Specification {
         endDate,
       )
 
-    def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
-      SubscriptionPlan(
+    def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
+      RatePlan(
         id = RatePlanId("idSupporterPlus"),
         productRatePlanId = ProductRatePlanId("prpi"),
         name = "SupporterPlus",
@@ -248,7 +248,7 @@ class SubscriptionServiceTest extends Specification {
         productType = "Supporter Plus",
         product = Product.SupporterPlus,
         features = List.empty,
-        charges = SingleCharge(
+        charges = RatePlanCharge(
           SupporterPlus,
           BillingPeriod.Year,
           PricingSummary(Map(GBP -> Price(119.90f, GBP))),
@@ -260,7 +260,7 @@ class SubscriptionServiceTest extends Specification {
         end = endDate,
       )
 
-    def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[SubscriptionPlan]): Subscription = {
+    def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[RatePlan]): Subscription = {
       import com.gu.memsub.Subscription._
       Subscription(
         id = Id(plans.head.id.get),
@@ -347,7 +347,7 @@ class SubscriptionServiceTest extends Specification {
     "Be able to fetch a supporter plus subscription" in {
       val sub = service.get(memsub.Subscription.Name("1234"))
       sub.map(_.plan) must beSome(
-        SubscriptionPlan(
+        RatePlan(
           RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
           supporterPlusPrpId,
           "Supporter Plus",

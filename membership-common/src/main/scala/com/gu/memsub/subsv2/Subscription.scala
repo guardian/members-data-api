@@ -5,7 +5,7 @@ import com.gu.memsub
 import com.gu.memsub.BillingPeriod.OneTimeChargeBillingPeriod
 import com.gu.memsub.Product.Contribution
 import com.gu.memsub.promo.PromoCode
-import com.gu.memsub.subsv2.SubscriptionPlan._
+import com.gu.memsub.subsv2.RatePlan._
 import com.gu.memsub.subsv2.services.Sequence
 import com.gu.memsub.Product
 import org.joda.time.{DateTime, LocalDate}
@@ -28,7 +28,7 @@ case class Subscription(
     casActivationDate: Option[DateTime],
     promoCode: Option[PromoCode],
     isCancelled: Boolean,
-    plans: CovariantNonEmptyList[SubscriptionPlan],
+    plans: CovariantNonEmptyList[RatePlan],
     readerType: ReaderType,
     gifteeIdentityId: Option[String],
     autoRenew: Boolean,
@@ -36,7 +36,7 @@ case class Subscription(
 
   val firstPaymentDate: LocalDate = (acceptanceDate :: plans.list.map(_.start)).min
 
-  lazy val plan: SubscriptionPlan = {
+  lazy val plan: RatePlan = {
     GetCurrentPlans(this, LocalDate.now).fold(error => throw new RuntimeException(error), _.head)
   }
 
@@ -55,24 +55,24 @@ object GetCurrentPlans {
   /*- negative if x < y
    *  - positive if x > y
    *  - zero otherwise (if x == y)*/
-  private val planGoodnessOrder = new scala.Ordering[SubscriptionPlan] {
-    override def compare(planX: SubscriptionPlan, planY: SubscriptionPlan): Int = {
+  private val planGoodnessOrder = new scala.Ordering[RatePlan] {
+    override def compare(planX: RatePlan, planY: RatePlan): Int = {
       val priceX = planX.charges.price.prices.head.amount
       val priceY = planY.charges.price.prices.head.amount
       (priceX * 100).toInt - (priceY * 100).toInt
     }
   }
 
-  def bestCancelledPlan(sub: Subscription): Option[SubscriptionPlan] =
+  def bestCancelledPlan(sub: Subscription): Option[RatePlan] =
     if (sub.isCancelled && sub.termEndDate.isBefore(LocalDate.now()))
       sub.plans.list.sorted(planGoodnessOrder).reverse.headOption
     else None
 
-  case class DiscardedPlan(plan: SubscriptionPlan, why: String)
+  case class DiscardedPlan(plan: RatePlan, why: String)
 
-  def apply(sub: Subscription, date: LocalDate): String \/ NonEmptyList[SubscriptionPlan] = {
+  def apply(sub: Subscription, date: LocalDate): String \/ NonEmptyList[RatePlan] = {
 
-    val currentPlans = sub.plans.list.toList.sorted(planGoodnessOrder).reverse.map { plan =>
+    val currentPlans = sub.plans.list.sorted(planGoodnessOrder).reverse.map { plan =>
       // If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
       val dateToCheck = if (sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date
 
@@ -102,7 +102,7 @@ object GetCurrentPlans {
 
     Sequence(
       currentPlans.map(
-        _.leftMap(_.map(discard => s"Discarded ${discard.plan.id.get} because it ${discard.why}").list.toList.mkString("\n")).disjunction,
+        _.leftMap(_.map(discard => s"Discarded ${discard.plan.id.get} because it ${discard.why}").list.toList.mkString("\n")).toDisjunction,
       ),
     )
   }
@@ -123,7 +123,7 @@ object Subscription {
       readerType: ReaderType,
       gifteeIdentityId: Option[String],
       autoRenew: Boolean,
-  )(plans: NonEmptyList[SubscriptionPlan]): Subscription =
+  )(plans: NonEmptyList[RatePlan]): Subscription =
     new Subscription(
       id = id,
       name = name,

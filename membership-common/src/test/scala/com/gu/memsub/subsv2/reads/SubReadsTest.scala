@@ -21,7 +21,7 @@ class SubReadsTest extends Specification {
 
     "Discard discount rate plans when reading JSON" in {
 
-      val plans = Resource.getJson("rest/plans/Promo.json").validate[List[SubscriptionZuoraPlan]].get
+      val plans = Resource.getJson("rest/plans/Promo.json").validate[List[SubscriptionZuoraPlan]](subZuoraPlanListReads).get
       plans mustEqual List(
         SubscriptionZuoraPlan(
           id = RatePlanId("2c92c0f957220b5d01573252b3bb7c71"),
@@ -57,7 +57,7 @@ class SubReadsTest extends Specification {
     "parse Patron reader type correctly from subscription" in {
       val now = LocalDate.parse("2020-10-19")
       val json = Resource.getJson("rest/PatronReaderType.json")
-      val plan = SubscriptionPlan(
+      val plan = RatePlan(
         id = RatePlanId("rpid"),
         productRatePlanId = ProductRatePlanId("prpid"),
         name = "n",
@@ -67,7 +67,7 @@ class SubReadsTest extends Specification {
         productType = "pt",
         product = WeeklyDomestic,
         features = Nil,
-        charges = SingleCharge(
+        charges = RatePlanCharge(
           benefit = Weekly,
           billingPeriod = Quarter,
           price = PricingSummary(Map.empty),

@@ -2,7 +2,7 @@ package models
 
 import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
 import com.gu.memsub._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.monitoring.SafeLogging
 import org.joda.time.LocalDate.now
 import play.api.libs.json.Json
@@ -20,7 +20,7 @@ object ExistingPaymentOption {
 
     import existingPaymentOption._
 
-    private def getSubscriptionFriendlyName(plan: SubscriptionPlan): String = plan.product match {
+    private def getSubscriptionFriendlyName(plan: RatePlan): String = plan.product match {
       case _: Product.Weekly => "Guardian Weekly"
       case _: Product.Membership => plan.productName + " Membership"
       case _: Product.Contribution => plan.name

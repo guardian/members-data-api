@@ -2,7 +2,7 @@ package controllers
 
 import actions.{CommonActions, Return401IfNotSignedInRecently}
 import com.gu.memsub
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.RatePlan
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
@@ -90,7 +90,7 @@ class PaymentUpdateController(
       emailAddress: String,
       contact: Contact,
       paymentMethod: PaymentType,
-      plan: SubscriptionPlan,
+      plan: RatePlan,
   )(implicit logPrefix: LogPrefix): SimpleEitherT[Unit] =
     SimpleEitherT.rightT(sendEmail.send(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, plan)))
 

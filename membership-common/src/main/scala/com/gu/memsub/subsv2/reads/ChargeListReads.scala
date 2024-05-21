@@ -134,20 +134,20 @@ object ChargeListReads {
   implicit def readPaidCharge[P <: Benefit, BP <: BillingPeriod](implicit
       product: ChargeReads[P],
       bp: ChargeReads[BP],
-  ): ChargeListReads[SingleCharge[P, BP]] = new ChargeListReads[SingleCharge[P, BP]] {
-    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SingleCharge[P, BP]] = charges match {
+  ): ChargeListReads[RatePlanCharge[P, BP]] = new ChargeListReads[RatePlanCharge[P, BP]] {
+    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, RatePlanCharge[P, BP]] = charges match {
       case charge :: Nil =>
         (product.read(cat, charge) |@| bp.read(cat, charge) |@|
           charge.pricing.prices.exists(_.amount != 0).option(charge.pricing).toSuccess(NonEmptyList("Could not read paid charge: Charge is free")))
-          .apply({ case (p, b, pricing) => SingleCharge(p, b, pricing, charge.productRatePlanChargeId, charge.id) })
+          .apply({ case (p, b, pricing) => RatePlanCharge(p, b, pricing, charge.productRatePlanChargeId, charge.id) })
       case charge :: others => Validation.failureNel(s"Too many charges! I got $charge and $others")
       case Nil => Validation.failureNel(s"No charges found!")
     }
   }
 
-  def readChargeList: ChargeListReads[ChargeList] = new ChargeListReads[ChargeList] {
-    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList] = {
-      readPaperChargeList.read(cat, charges).map(identity[ChargeList]) orElse2
+  def readChargeList: ChargeListReads[RatePlanChargeList] = new ChargeListReads[RatePlanChargeList] {
+    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, RatePlanChargeList] = {
+      readPaperChargeList.read(cat, charges).map(identity[RatePlanChargeList]) orElse2
         readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges) orElse2
         readSupporterPlusV2ChargeList.read(cat, charges)
     }.withTrace("readChargeList")

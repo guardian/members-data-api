@@ -8,7 +8,7 @@ import com.gu.memsub.Product.Contribution
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
@@ -306,7 +306,7 @@ class AccountController(
   private def sendSubscriptionCancelledEmail(
       email: String,
       contact: Contact,
-      plan: SubscriptionPlan,
+      plan: RatePlan,
       cancellationEffectiveDate: Option[LocalDate],
   )(implicit logPrefix: LogPrefix) =
     SimpleEitherT

@@ -2,7 +2,7 @@ package services.mail
 
 import com.gu.i18n.Currency
 import com.gu.memsub.BillingPeriod.RecurringPeriod
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.RatePlan
 import com.gu.salesforce.Contact
 import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
@@ -12,7 +12,7 @@ import java.text.DecimalFormat
 object Emails {
   private val dateFormat = DateTimeFormat.forPattern("d MMMM yyyy")
 
-  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: SubscriptionPlan): EmailData = {
+  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: RatePlan): EmailData = {
     EmailData(
       emailAddress = emailAddress,
       salesforceContactId = contact.salesforceContactId,
@@ -29,7 +29,7 @@ object Emails {
   def subscriptionCancelledEmail(
       emailAddress: String,
       contact: Contact,
-      plan: SubscriptionPlan,
+      plan: RatePlan,
       cancellationEffectiveDate: Option[LocalDate],
   ): EmailData = {
     EmailData(

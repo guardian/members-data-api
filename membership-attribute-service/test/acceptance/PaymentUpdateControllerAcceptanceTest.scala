@@ -6,7 +6,7 @@ import acceptance.data.stripe.{TestStripeCard, TestStripeCustomer}
 import com.gu.i18n.Country
 import com.gu.memsub.Subscription
 import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
+import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan}
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{GoCardlessZuoraInstance, PaymentGateway}
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
