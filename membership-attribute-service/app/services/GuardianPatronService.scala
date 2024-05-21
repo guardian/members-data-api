@@ -85,7 +85,6 @@ class GuardianPatronService(
         casActivationDate = None,
         promoCode = None,
         isCancelled = subscription.isCancelled,
-        hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
           SubscriptionPlan(
             id = RatePlanId(guardianPatronProductRatePlanId),
@@ -125,7 +124,6 @@ class GuardianPatronService(
         nextPaymentDate = subscription.nextPaymentDate,
         remainingTrialLength = 0,
         pendingCancellation = subscription.isPastDue,
-        pendingAmendment = false,
         paymentMethod = paymentDetails.cardStripeList.data.headOption.map(card =>
           PaymentCard(
             isReferenceTransaction = false,

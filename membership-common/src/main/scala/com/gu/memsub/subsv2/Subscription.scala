@@ -28,7 +28,6 @@ case class Subscription(
     casActivationDate: Option[DateTime],
     promoCode: Option[PromoCode],
     isCancelled: Boolean,
-    hasPendingFreePlan: Boolean,
     plans: CovariantNonEmptyList[SubscriptionPlan],
     readerType: ReaderType,
     gifteeIdentityId: Option[String],
@@ -110,7 +109,7 @@ object GetCurrentPlans {
 }
 
 object Subscription {
-  def partial(hasPendingFreePlan: Boolean)(
+  def partial(
       id: memsub.Subscription.Id,
       name: memsub.Subscription.Name,
       accountId: memsub.Subscription.AccountId,
@@ -136,7 +135,6 @@ object Subscription {
       casActivationDate = casActivationDate,
       promoCode = promoCode,
       isCancelled = isCancelled,
-      hasPendingFreePlan = hasPendingFreePlan,
       plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
       readerType = readerType,
       gifteeIdentityId = gifteeIdentityId,

@@ -2,7 +2,7 @@ package com.gu.memsub.subsv2.reads
 
 import com.gu.i18n.Currency._
 import com.gu.lib.DateDSL._
-import com.gu.memsub.Benefit.{Partner, Weekly}
+import com.gu.memsub.Benefit.Weekly
 import com.gu.memsub.BillingPeriod.Quarter
 import com.gu.memsub.Product.WeeklyDomestic
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, SubscriptionRatePlanChargeId}
@@ -79,7 +79,7 @@ class SubReadsTest extends Specification {
         end = now,
       )
       val subscription =
-        SubJsonReads.subscriptionReads(now).reads(json).get(NonEmptyList(plan))
+        SubJsonReads.subscriptionReads.reads(json).get(NonEmptyList(plan))
 
       subscription.readerType mustEqual Patron
     }

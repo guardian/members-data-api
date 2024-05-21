@@ -2,14 +2,11 @@ package com.gu.memsub.subsv2.services
 
 import com.gu.memsub
 import com.gu.memsub.Subscription.{AccountId, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.SubscriptionPlan._
+import com.gu.memsub.promo.LogImplicit.Loggable
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
 import com.gu.memsub.subsv2.reads.SubJsonReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
-import com.gu.memsub.subsv2.services.Trace.Traceable
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
@@ -19,8 +16,6 @@ import org.joda.time.{LocalDate, LocalTime}
 import play.api.libs.json.{Reads => JsReads, _}
 import scalaz._
 import scalaz.syntax.all._
-
-import scala.util.Try
 
 case class SubIds(ratePlanId: RatePlanId, productRatePlanId: ProductRatePlanId)
 
@@ -68,7 +63,7 @@ class SubscriptionService[M[_]: Monad](pids: ProductIds, futureCatalog: => M[Cat
     extends SafeLogging {
   type EitherTM[A] = EitherT[String, M, A]
 
-  private implicit val idReads = new JsReads[JsValue] {
+  private val idReads = new JsReads[JsValue] {
     override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
   }
 
@@ -95,10 +90,7 @@ class SubscriptionService[M[_]: Monad](pids: ProductIds, futureCatalog: => M[Cat
     * @see
     *   https://community.zuora.com/t5/Admin-Settings-Ideas/Get-current-active-subscription-rate-plans/idi-p/19049
     */
-  def get(
-      name: memsub.Subscription.Name,
-      isActiveToday: Boolean = false,
-  )(implicit logPrefix: LogPrefix): M[Option[Subscription]] = {
+  def get(name: memsub.Subscription.Name, isActiveToday: Boolean = false)(implicit logPrefix: LogPrefix): M[Option[Subscription]] = {
 
     val url =
       if (isActiveToday)
@@ -106,42 +98,38 @@ class SubscriptionService[M[_]: Monad](pids: ProductIds, futureCatalog: => M[Cat
       else
         s"subscriptions/${name.get}" // FIXME: equivalent to ?charge-detail=last-segment which returns even removed historical charges. We should not have this as default.
 
-    val futureSubJson = rest.get[JsValue](url)(idReads, logPrefix)
-
-    futureSubJson.flatMap { subJson =>
-      futureCatalog.map { catalog =>
-        // FIXME: Why naming indicates multiple subscriptions? There should be only one sub per provided name.
-        val allSubscriptionsForSubscriberName = subJson.flatMap { jsValue =>
-          SubscriptionTransform.getSubscription(catalog, pids)(jsValue).withTrace("getAllValidSubscriptionsFromJson")
-        }
-        allSubscriptionsForSubscriberName.leftMap(error => logger.warn(s"Error from sub service for $name: $error")).toOption
-
-      }
-    }
+    for {
+      subJson <- rest.get[JsValue](url)(idReads, logPrefix)
+      catalog <- futureCatalog
+    } yield for {
+      jsValue <- subJson.withLogging(s"get subscription $name from zuora").toOption
+      subscription <- SubscriptionTransform
+        .getSubscription(catalog, pids)(jsValue)
+        .withLogging(s"getAllValidSubscriptionsFromJson for $name")
+        .toOption
+    } yield subscription
   }
 
   /** Using fromContact above fetch all the subscriptions for a given contact
     */
   private def subscriptionsForContact(
       transform: SubscriptionTransform.TimeRelativeSubTransformer,
-  )(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] = {
-    val subJsonsFuture = jsonSubscriptionsFromContact(contact)
-
-    subJsonsFuture.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        val highLevelSubscriptions = subJsonsEither.map { subJsons =>
-          transform(catalog, pids)(subJsons)
-            .leftMap(e => logger.warn(s"Error from sub service for contact $contact: $e"))
-            .toList
-            .flatMap(_.list.toList) // returns an empty list if there's an error
-        }
-        highLevelSubscriptions
-          .leftMap(e => logger.warn(s"Error from sub service for contact $contact: $e"))
-          .toList
-          .flatten // returns an empty list if there's an error
+  )(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
+    for {
+      subJsonsEither <- jsonSubscriptionsFromContact(contact)
+      catalog <- futureCatalog
+    } yield {
+      val highLevelSubscriptions = for {
+        subJsons <- subJsonsEither.withLogging("sub service - get for contact")
+        subscriptions <- transform(catalog, pids)(subJsons).withLogging("sub transform for json")
+      } yield subscriptions
+      highLevelSubscriptions.toEither match {
+        case Left(error) =>
+          logger.warn(s"Error from sub service for contact $contact: $error")
+          List.empty // returns an empty list if there's an error
+        case Right(nel) => nel.toList
       }
     }
-  }
 
   def current(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
     subscriptionsForContact(SubscriptionTransform.getCurrentSubscriptions)(contact)
@@ -153,38 +141,34 @@ class SubscriptionService[M[_]: Monad](pids: ProductIds, futureCatalog: => M[Cat
       contact: ContactId,
       today: LocalDate = LocalDate.now(),
       lastNMonths: Int = 3, // cancelled in the last N months
-  )(implicit logPrefix: LogPrefix): M[String \/ List[Subscription]] = {
+  )(implicit logPrefix: LogPrefix): M[String \/ List[Subscription]] =
     (for {
       catalog <- EitherT(futureCatalog.map(\/.right[String, CatalogMap]))
       jsonSubs <- EitherT(jsonSubscriptionsFromContact(contact))
-      subs <- EitherT(Monad[M].pure(getRecentlyCancelledSubscriptions(today, lastNMonths, catalog, pids, jsonSubs)))
+      subs <- EitherT(Monad[M].pure(SubscriptionTransform.getRecentlyCancelledSubscriptions(today, lastNMonths, catalog, pids, jsonSubs)))
     } yield subs).run
-  }
 
   def subscriptionsForAccountId(
       accountId: AccountId,
-  )(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] = {
-    val subsAsJson = jsonSubscriptionsFromAccount(accountId)
-
-    subsAsJson.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        subJsonsEither.rightMap { subJsons =>
-          SubscriptionTransform.getCurrentSubscriptions(catalog, pids)(subJsons).toList.flatMap(_.list.toList)
-        }
+  )(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
+    for {
+      subJsonsEither <- jsonSubscriptionsFromAccount(accountId)
+      catalog <- futureCatalog
+    } yield {
+      subJsonsEither.rightMap { subJsons =>
+        SubscriptionTransform.getCurrentSubscriptions(catalog, pids)(subJsons).toList.flatMap(_.list.toList)
       }
     }
-  }
 
-  def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[JsValue]]] = {
+  private def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[JsValue]]] =
     (for {
       account <- ListT[EitherTM, AccountId](
         EitherT[String, M, IList[AccountId]](soap.getAccountIds(contact).map(l => \/.r[String](IList.fromSeq(l)))),
       )
       subJson <- ListT[EitherTM, JsValue](EitherT(jsonSubscriptionsFromAccount(account)).map(IList.fromSeq))
     } yield subJson).toList.run
-  }
 
-  def jsonSubscriptionsFromAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[JsValue]]] =
+  private def jsonSubscriptionsFromAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[JsValue]]] =
     rest.get[List[JsValue]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads, implicitly)
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges

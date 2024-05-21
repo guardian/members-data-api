@@ -92,26 +92,11 @@ object SubJsonReads {
     }
   }
 
-  implicit val lenientDateTimeReader: Reads[DateTime] =
+  private val lenientDateTimeReader: Reads[DateTime] =
     JodaReads.DefaultJodaDateTimeReads orElse Reads.IsoDateReads.map(new DateTime(_))
 
-  def subscriptionReads(
-      now: LocalDate, /*TODO get rid when we fix the below*/
-  ): Reads[NonEmptyList[SubscriptionPlan] => Subscription] = new Reads[NonEmptyList[SubscriptionPlan] => Subscription] {
+  val subscriptionReads: Reads[NonEmptyList[SubscriptionPlan] => Subscription] = new Reads[NonEmptyList[SubscriptionPlan] => Subscription] {
     override def reads(json: JsValue): JsResult[NonEmptyList[SubscriptionPlan] => Subscription] = {
-
-      // ideally we'd use the plans list
-      // on the main subscription model, but this is a quick fix.
-      val hasPendingFreePlan: Boolean = json \ "ratePlans" match {
-        case JsDefined(JsArray(plans)) =>
-          plans.exists { plan =>
-            val prices = (plan \\ "price").flatMap(_.asOpt[Float])
-            val chargeStartDates = (plan \\ "effectiveStartDate").flatMap(_.asOpt[LocalDate])
-            val planAddedThroughAmendment = (plan \ "lastChangeType").asOpt[String].contains("Add")
-            chargeStartDates.forall(_ >= now) && prices.forall(_ == 0f) && planAddedThroughAmendment
-          }
-        case _ => false
-      }
 
       json match {
         case o: JsObject =>
@@ -129,7 +114,7 @@ object SubJsonReads {
               (__ \ "ReaderType__c").readNullable[String].map(ReaderType.apply) and
               (__ \ "GifteeIdentityId__c").readNullable[String] and
               (__ \ "autoRenew").read[Boolean]
-          )(memsub.subsv2.Subscription.partial(hasPendingFreePlan) _).reads(o)
+          )(memsub.subsv2.Subscription.partial _).reads(o)
         case e => JsError(s"Needed a JsObject, got ${e.getClass.getSimpleName}")
       }
     }
