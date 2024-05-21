@@ -113,7 +113,7 @@ object SubscriptionTransform extends SafeLogging {
                 .get(lowLevelPlan.productRatePlanId)
                 .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
                 .flatMap { catalogPlan =>
-                  val maybePlans = SubPlanReads.anyPlanReads(pids, lowLevelPlan, catalogPlan)
+                  val maybePlans = SubPlanReads.planReads(pids, lowLevelPlan, catalogPlan)
                   maybePlans.toDisjunction
                     .leftMap(
                       _.list.zipWithIndex

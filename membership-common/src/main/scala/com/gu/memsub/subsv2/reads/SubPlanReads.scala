@@ -8,7 +8,7 @@ import scalaz.syntax.std.option._
 
 object SubPlanReads {
 
-  def anyPlanReads(
+  def planReads(
       ids: ProductIds,
       subZuoraPlan: SubscriptionZuoraPlan,
       catZuoraPlan: CatalogZuoraPlan,
