@@ -28,7 +28,7 @@ object PaymentDetails {
   implicit def dateToDateTime(date: LocalDate): DateTime = date.toDateTimeAtStartOfDay()
 
   def apply(
-      sub: Subscription[SubscriptionPlan.AnyPlan],
+      sub: Subscription,
       paymentMethod: Option[PaymentMethod],
       nextPayment: Option[Payment],
       lastPaymentDate: Option[LocalDate],
@@ -58,7 +58,7 @@ object PaymentDetails {
   case class PersonalPlan(name: String, price: Price, interval: String)
 
   object PersonalPlan {
-    def paid(subscription: Subscription[SubscriptionPlan.AnyPlan]): PersonalPlan = PersonalPlan(
+    def paid(subscription: Subscription): PersonalPlan = PersonalPlan(
       name = subscription.plan.productName,
       price = subscription.plan.charges.price.prices.head,
       interval = subscription.plan.charges.billingPeriod.noun,

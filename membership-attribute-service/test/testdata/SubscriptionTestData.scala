@@ -15,8 +15,8 @@ trait SubscriptionTestData {
 
   def referenceDate: LocalDate
 
-  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
-    SubscriptionPlan[Product.Membership, SingleCharge[Benefit.Supporter.type, BillingPeriod]](
+  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
+    SubscriptionPlan(
       RatePlanId("idSupporter"),
       ProductRatePlanId("prpi"),
       "Supporter",
@@ -37,8 +37,8 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
-    SubscriptionPlan[Product.ZDigipack, SingleCharge[Benefit.Digipack.type, BillingPeriod]](
+  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
+    SubscriptionPlan(
       RatePlanId("idDigipack"),
       ProductRatePlanId("prpi"),
       "Digipack",
@@ -59,7 +59,7 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan = SubscriptionPlan[Product.Delivery, PaperCharges](
+  def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan = SubscriptionPlan(
     RatePlanId("idPaperPlan"),
     ProductRatePlanId("prpi"),
     "Sunday",
@@ -74,7 +74,7 @@ trait SubscriptionTestData {
     startDate,
     endDate,
   )
-  def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan = SubscriptionPlan[Product.Delivery, PaperCharges](
+  def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan = SubscriptionPlan(
     RatePlanId("idPaperPlusPlan"),
     ProductRatePlanId("prpi"),
     "Sunday+",
@@ -89,8 +89,8 @@ trait SubscriptionTestData {
     startDate,
     endDate,
   )
-  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
-    SubscriptionPlan[Product.Contribution, SingleCharge[Benefit.Contributor.type, BillingPeriod]](
+  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
+    SubscriptionPlan(
       RatePlanId("idContributor"),
       ProductRatePlanId("prpi"),
       "Monthly Contribution",
@@ -111,8 +111,8 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
-    SubscriptionPlan[Product.WeeklyDomestic, SingleCharge[Benefit.Weekly.type, BillingPeriod]](
+  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
+    SubscriptionPlan(
       RatePlanId("idGuardianWeeklyPlan"),
       ProductRatePlanId("prpi"),
       "Guardian Weekly",
@@ -134,8 +134,8 @@ trait SubscriptionTestData {
       endDate,
     )
 
-  def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
-    SubscriptionPlan[Product.SupporterPlus, SingleCharge[Benefit.SupporterPlus.type, BillingPeriod]](
+  def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan =
+    SubscriptionPlan(
       RatePlanId("idSupporterPlusPlan"),
       ProductRatePlanId("prpi"),
       "Supporter Plus",
@@ -157,7 +157,7 @@ trait SubscriptionTestData {
       endDate,
     )
 
-  def toSubscription[P <: SubscriptionPlan.AnyPlan](isCancelled: Boolean)(plans: NonEmptyList[P]): Subscription[P] = {
+  def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[SubscriptionPlan]): Subscription = {
     Subscription(
       id = Id(plans.head.id.get),
       name = Name("AS-123123"),

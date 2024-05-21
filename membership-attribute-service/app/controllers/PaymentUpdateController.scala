@@ -60,7 +60,7 @@ class PaymentUpdateController(
           contact <- EitherT.fromEither(services.contactRepository.get(userId).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $userId"))))
           subscription <- EitherT.fromEither(
             services.subscriptionService
-              .current[SubscriptionPlan.AnyPlan](contact)
+              .current(contact)
               .map(subs => subscriptionSelector(memsub.Subscription.Name(subscriptionName), s"the sfUser $contact", subs)),
           )
           (stripeCardIdentifier, stripePublicKey) = stripeDetails
@@ -90,7 +90,7 @@ class PaymentUpdateController(
       emailAddress: String,
       contact: Contact,
       paymentMethod: PaymentType,
-      plan: SubscriptionPlan.AnyPlan,
+      plan: SubscriptionPlan,
   )(implicit logPrefix: LogPrefix): SimpleEitherT[Unit] =
     SimpleEitherT.rightT(sendEmail.send(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, plan)))
 
@@ -149,7 +149,7 @@ class PaymentUpdateController(
           contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user $userId"))))
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current[SubscriptionPlan.AnyPlan](contact)
+              .current(contact)
               .map(subs => subscriptionSelector(memsub.Subscription.Name(subscriptionName), s"the sfUser $contact", subs)),
           )
           account <- SimpleEitherT(

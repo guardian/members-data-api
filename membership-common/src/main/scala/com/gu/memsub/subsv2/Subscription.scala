@@ -17,7 +17,7 @@ case class CovariantNonEmptyList[+T](head: T, tail: List[T]) {
   val list = head :: tail
 }
 
-case class Subscription[+P <: SubscriptionPlan.AnyPlan](
+case class Subscription(
     id: memsub.Subscription.Id,
     name: memsub.Subscription.Name,
     accountId: memsub.Subscription.AccountId,
@@ -29,7 +29,7 @@ case class Subscription[+P <: SubscriptionPlan.AnyPlan](
     promoCode: Option[PromoCode],
     isCancelled: Boolean,
     hasPendingFreePlan: Boolean,
-    plans: CovariantNonEmptyList[P],
+    plans: CovariantNonEmptyList[SubscriptionPlan],
     readerType: ReaderType,
     gifteeIdentityId: Option[String],
     autoRenew: Boolean,
@@ -37,7 +37,7 @@ case class Subscription[+P <: SubscriptionPlan.AnyPlan](
 
   val firstPaymentDate: LocalDate = (acceptanceDate :: plans.list.map(_.start)).min
 
-  lazy val plan: P = {
+  lazy val plan: SubscriptionPlan = {
     GetCurrentPlans(this, LocalDate.now).fold(error => throw new RuntimeException(error), _.head)
   }
 
@@ -56,28 +56,28 @@ object GetCurrentPlans {
   /*- negative if x < y
    *  - positive if x > y
    *  - zero otherwise (if x == y)*/
-  private val planGoodnessOrder = new scala.Ordering[SubscriptionPlan.AnyPlan] {
-    override def compare(planX: AnyPlan, planY: AnyPlan): Int = {
+  private val planGoodnessOrder = new scala.Ordering[SubscriptionPlan] {
+    override def compare(planX: SubscriptionPlan, planY: SubscriptionPlan): Int = {
       val priceX = planX.charges.price.prices.head.amount
       val priceY = planY.charges.price.prices.head.amount
       (priceX * 100).toInt - (priceY * 100).toInt
     }
   }
 
-  def bestCancelledPlan[P <: SubscriptionPlan.AnyPlan](sub: Subscription[P]): Option[P] =
+  def bestCancelledPlan(sub: Subscription): Option[SubscriptionPlan] =
     if (sub.isCancelled && sub.termEndDate.isBefore(LocalDate.now()))
       sub.plans.list.sorted(planGoodnessOrder).reverse.headOption
     else None
 
-  case class DiscardedPlan[+P <: SubscriptionPlan.AnyPlan](plan: P, why: String)
+  case class DiscardedPlan(plan: SubscriptionPlan, why: String)
 
-  def apply[P <: SubscriptionPlan.AnyPlan](sub: Subscription[P], date: LocalDate): String \/ NonEmptyList[P] = {
+  def apply(sub: Subscription, date: LocalDate): String \/ NonEmptyList[SubscriptionPlan] = {
 
     val currentPlans = sub.plans.list.toList.sorted(planGoodnessOrder).reverse.map { plan =>
       // If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
       val dateToCheck = if (sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date
 
-      val unvalidated = Validation.s[NonEmptyList[DiscardedPlan[P]]](plan)
+      val unvalidated = Validation.s[NonEmptyList[DiscardedPlan]](plan)
       /*
       Note that a Contributor may have future sub.acceptanceDate and plan.startDate values if the user has
       updated their payment amount via MMA since starting the contribution. In this case the alreadyStarted assessment
@@ -110,7 +110,7 @@ object GetCurrentPlans {
 }
 
 object Subscription {
-  def partial[P <: SubscriptionPlan.AnyPlan](hasPendingFreePlan: Boolean)(
+  def partial(hasPendingFreePlan: Boolean)(
       id: memsub.Subscription.Id,
       name: memsub.Subscription.Name,
       accountId: memsub.Subscription.AccountId,
@@ -124,7 +124,7 @@ object Subscription {
       readerType: ReaderType,
       gifteeIdentityId: Option[String],
       autoRenew: Boolean,
-  )(plans: NonEmptyList[P]): Subscription[P] =
+  )(plans: NonEmptyList[SubscriptionPlan]): Subscription =
     new Subscription(
       id = id,
       name = name,

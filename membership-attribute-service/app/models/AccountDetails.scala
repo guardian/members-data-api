@@ -1,6 +1,5 @@
 package models
 import com.gu.i18n.Country
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2._
 import com.gu.memsub.{Subscription, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -21,7 +20,7 @@ case class AccountDetails(
     regNumber: Option[String],
     email: Option[String],
     deliveryAddress: Option[DeliveryAddress],
-    subscription: Subscription[SubscriptionPlan.AnyPlan],
+    subscription: Subscription,
     paymentDetails: PaymentDetails,
     billingCountry: Option[Country],
     stripePublicKey: String,
@@ -97,13 +96,13 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      def externalisePlanName(plan: SubscriptionPlan.AnyPlan): Option[String] = plan.product match {
+      def externalisePlanName(plan: SubscriptionPlan): Option[String] = plan.product match {
         case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
         case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
         case _ => None
       }
 
-      def jsonifyPlan(plan: SubscriptionPlan.AnyPlan) = Json.obj(
+      def jsonifyPlan(plan: SubscriptionPlan) = Json.obj(
         "name" -> externalisePlanName(plan),
         "start" -> plan.start,
         "end" -> plan.end,
@@ -226,7 +225,7 @@ object AccountDetails {
 
 object CancelledSubscription {
   import AccountDetails._
-  def apply(subscription: Subscription[AnyPlan]): JsObject = {
+  def apply(subscription: Subscription): JsObject = {
     GetCurrentPlans
       .bestCancelledPlan(subscription)
       .map { plan =>

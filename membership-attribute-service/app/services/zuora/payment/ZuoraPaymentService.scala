@@ -24,7 +24,7 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
     extends SafeLogging {
 
   def paymentDetails(
-      sub: Subscription[SubscriptionPlan.AnyPlan],
+      sub: Subscription,
       defaultMandateIdIfApplicable: Option[String] = None,
   )(implicit logPrefix: LogPrefix): Future[PaymentDetails] = {
     val currency = sub.plan.charges.currencies.head

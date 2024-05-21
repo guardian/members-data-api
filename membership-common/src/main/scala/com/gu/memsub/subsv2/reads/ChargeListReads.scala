@@ -59,7 +59,31 @@ object ChargeListReads {
       delivery: ProductId,
       nationalDelivery: ProductId,
       contributor: ProductId,
-  )
+  ) {
+
+    val productMap: Map[ProductId, Product] = {
+      import Product._
+      Map[ProductId, Product](
+        weeklyZoneA -> Product.WeeklyZoneA,
+        voucher -> Voucher,
+        digitalVoucher -> DigitalVoucher,
+        delivery -> Delivery,
+        nationalDelivery -> NationalDelivery,
+        weeklyZoneA -> WeeklyZoneA,
+        weeklyZoneB -> WeeklyZoneB,
+        weeklyZoneC -> WeeklyZoneC,
+        weeklyDomestic -> WeeklyDomestic,
+        weeklyRestOfWorld -> WeeklyRestOfWorld,
+        digipack -> Digipack,
+        supporterPlus -> SupporterPlus,
+        supporter -> Membership,
+        partner -> Membership,
+        patron -> Membership,
+        contributor -> Contribution,
+      )
+    }
+
+  }
 
   implicit def readAnyProduct[P <: Benefit: ClassTag]: ChargeReads[P] = new ChargeReads[Benefit] {
     def read(cat: PlanChargeMap, charge: ZuoraCharge): ValidationNel[String, Benefit] =
@@ -121,7 +145,7 @@ object ChargeListReads {
     }
   }
 
-  implicit def readChargeList: ChargeListReads[ChargeList] = new ChargeListReads[ChargeList] {
+  def readChargeList: ChargeListReads[ChargeList] = new ChargeListReads[ChargeList] {
     def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList] = {
       readPaperChargeList.read(cat, charges).map(identity[ChargeList]) orElse2
         readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges) orElse2

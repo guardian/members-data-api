@@ -396,16 +396,7 @@ case class SupporterPlusCharges(billingPeriod: BillingPeriod, pricingSummaries: 
   override def benefits: NonEmptyList[Benefit] = NonEmptyList(SupporterPlus)
 }
 
-/** This is the higher level model of a zuora rate plan, This particular trait is stuff common to both catalog and subscription plans
-  */
-sealed trait Plan[+P <: Product, +C <: ChargeList] {
-  def name: String
-  def description: String
-  def charges: C
-  def product: P
-}
-
-case class SubscriptionPlan[+P <: Product, +C <: ChargeList](
+case class SubscriptionPlan(
     id: RatePlanId,
     productRatePlanId: ProductRatePlanId,
     name: String,
@@ -413,15 +404,15 @@ case class SubscriptionPlan[+P <: Product, +C <: ChargeList](
     productName: String,
     lastChangeType: Option[String],
     productType: String,
-    product: P,
+    product: Product,
     features: List[SubsFeature],
-    charges: C,
+    charges: ChargeList,
     chargedThrough: Option[
       LocalDate,
     ], // this is None if the sub hasn't been billed yet (on a free trial) or if you have been billed it is the date at which you'll next be billed
     start: LocalDate,
     end: LocalDate,
-) extends Plan[P, C]
+)
 
 case class CatalogPlan[+P <: Product, +C <: ChargeList, +S <: Status](
     id: ProductRatePlanId,
@@ -431,12 +422,4 @@ case class CatalogPlan[+P <: Product, +C <: ChargeList, +S <: Status](
     saving: Option[Int],
     charges: C,
     s: S,
-) extends Plan[P, C]
-
-/** So the benefit of all these type parameters on the higher level models is that you can uniquely identify a particular plan by its type signature
-  * and if you can do that then you can pass your super specific (or more generic) plan into subscription service to find the subscription of your
-  * dreams
-  */
-object SubscriptionPlan {
-  type AnyPlan = SubscriptionPlan[Product, ChargeList]
-}
+)

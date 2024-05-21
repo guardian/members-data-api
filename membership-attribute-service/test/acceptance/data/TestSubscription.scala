@@ -3,7 +3,6 @@ package acceptance.data
 import acceptance.data.Randoms.randomId
 import com.gu.memsub
 import com.gu.memsub.promo.PromoCode
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, ReaderType, Subscription, SubscriptionPlan}
 import org.joda.time.{DateTime, LocalDate}
 
@@ -20,12 +19,12 @@ object TestSubscription {
       promoCode: Option[PromoCode] = None,
       isCancelled: Boolean = false,
       hasPendingFreePlan: Boolean = false,
-      plans: CovariantNonEmptyList[AnyPlan] = CovariantNonEmptyList(TestPaidSubscriptionPlan(), Nil),
+      plans: CovariantNonEmptyList[SubscriptionPlan] = CovariantNonEmptyList(TestPaidSubscriptionPlan(), Nil),
       readerType: ReaderType = ReaderType.Direct,
       gifteeIdentityId: Option[String] = None,
       autoRenew: Boolean = false,
-  ): Subscription[AnyPlan] =
-    Subscription[AnyPlan](
+  ): Subscription =
+    Subscription(
       id: memsub.Subscription.Id,
       name,
       accountId,

@@ -2,9 +2,8 @@ package services
 
 import com.gu.memsub.Product
 import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
+import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.services.SubscriptionService
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.Contact
 import com.gu.services.model.PaymentDetails
@@ -78,7 +77,7 @@ class AccountDetailsFromZuora(
 
   private def nonGiftContactAndSubscriptionsFor(contact: Contact)(implicit logPrefix: LogPrefix): Future[List[ContactAndSubscription]] = {
     subscriptionService
-      .current[SubscriptionPlan.AnyPlan](contact)
+      .current(contact)
       .map(_.map(ContactAndSubscription(contact, _, isGiftRedemption = false)))
   }
 
@@ -181,7 +180,7 @@ class AccountDetailsFromZuora(
   private def reuseAlreadyFetchedSubscriptionIfAvailable(
       giftRecords: List[ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord],
       nonGiftSubs: List[ContactAndSubscription],
-  )(implicit logPrefix: LogPrefix): SimpleEitherT[List[Subscription[AnyPlan]]] = {
+  )(implicit logPrefix: LogPrefix): SimpleEitherT[List[Subscription]] = {
     val all = giftRecords.map { giftRecord =>
       val subscriptionName = Name(giftRecord.Name)
       // If the current user is both the gifter and the giftee we will have already retrieved their
@@ -189,9 +188,9 @@ class AccountDetailsFromZuora(
       val matchingSubscription: Option[ContactAndSubscription] = nonGiftSubs.find(_.subscription.name == subscriptionName)
       matchingSubscription
         .map(contactAndSubscription => Future.successful(Some(contactAndSubscription.subscription)))
-        .getOrElse(subscriptionService.get[AnyPlan](subscriptionName, isActiveToday = false))
+        .getOrElse(subscriptionService.get(subscriptionName, isActiveToday = false))
     }
-    val result: Future[List[Subscription[AnyPlan]]] = Future.sequence(all).map(_.flatten)
+    val result: Future[List[Subscription]] = Future.sequence(all).map(_.flatten)
     SimpleEitherT.rightT(result) // failures turn to None, and are logged, so just ignore them
   }
 

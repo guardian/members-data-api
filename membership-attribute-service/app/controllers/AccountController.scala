@@ -40,11 +40,11 @@ object AccountHelpers {
   case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
   case object NoFilter extends OptionalSubscriptionsFilter
 
-  def subscriptionSelector[P <: SubscriptionPlan.AnyPlan](
+  def subscriptionSelector(
       subscriptionName: memsub.Subscription.Name,
       messageSuffix: String,
-      subscriptions: List[Subscription[P]],
-  ): Either[String, Subscription[P]] =
+      subscriptions: List[Subscription],
+  ): Either[String, Subscription] =
     subscriptions.find(_.name == subscriptionName).toRight(s"$subscriptionName was not a subscription for $messageSuffix")
 
   def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String)(implicit
@@ -90,7 +90,7 @@ class AccountController(
         Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
       }
 
-  def cancelSubscription[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
+  def cancelSubscription(subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
@@ -111,7 +111,7 @@ class AccountController(
             ).leftMap(CancelError(_, 404))
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current[P](contact)
+              .current(contact)
               .map(subs => subscriptionSelector(subscriptionName, s"Salesforce user $contact", subs)),
           ).leftMap(CancelError(_, 404))
           accountId <-
@@ -120,7 +120,7 @@ class AccountController(
              else
                SimpleEitherT.left(s"$subscriptionName does not belong to $identityId"))
               .leftMap(CancelError(_, 503))
-          cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate[P](subscriptionName).leftMap(CancelError(_, 500))
+          cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate(subscriptionName).leftMap(CancelError(_, 500))
           _ <- services.cancelSubscription.cancel(
             subscriptionName,
             cancellationEffectiveDate,
@@ -146,7 +146,7 @@ class AccountController(
       }
     }
 
-  private def getCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](subscriptionName: memsub.Subscription.Name) =
+  private def getCancellationEffectiveDate(subscriptionName: memsub.Subscription.Name) =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
@@ -155,7 +155,7 @@ class AccountController(
 
         (for {
           cancellationEffectiveDate <- services.subscriptionService
-            .decideCancellationEffectiveDate[P](subscriptionName)
+            .decideCancellationEffectiveDate(subscriptionName)
             .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
@@ -257,7 +257,7 @@ class AccountController(
           contact <- SimpleEitherT.fromFutureOption(services.contactRepository.get(user), s"No SF user $user")
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current[SubscriptionPlan.AnyPlan](contact)
+              .current(contact)
               .map(subs => subscriptionSelector(subscriptionName, s"the sfUser $contact", subs)),
           )
           contributionPlan <- SimpleEitherT.fromEither(subscription.plan match {
@@ -306,7 +306,7 @@ class AccountController(
   private def sendSubscriptionCancelledEmail(
       email: String,
       contact: Contact,
-      plan: SubscriptionPlan.AnyPlan,
+      plan: SubscriptionPlan,
       cancellationEffectiveDate: Option[LocalDate],
   )(implicit logPrefix: LogPrefix) =
     SimpleEitherT
@@ -322,7 +322,7 @@ class AccountController(
   }
 
   def cancelSpecificSub(subscriptionName: String): Action[AnyContent] =
-    cancelSubscription[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+    cancelSubscription(memsub.Subscription.Name(subscriptionName))
 
   def updateCancellationReason(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
@@ -353,7 +353,7 @@ class AccountController(
     }
 
   def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
-    getCancellationEffectiveDate[SubscriptionPlan.AnyPlan](memsub.Subscription.Name(subscriptionName))
+    getCancellationEffectiveDate(memsub.Subscription.Name(subscriptionName))
 
   def cancelledSubscriptions(): Action[AnyContent] = fetchCancelledSubscriptions()
 

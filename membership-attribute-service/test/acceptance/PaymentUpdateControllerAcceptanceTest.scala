@@ -158,7 +158,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Newspaper - Home Delivery"), Nil),
       )
 
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) returns Future(List(subscription))
+      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
 
       val account = TestQueriesAccount()
       val paymentMethodId = randomId("paymentMethod")
@@ -214,7 +214,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       httpResponse.getStatus shouldEqual 200
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) was called
+      subscriptionServiceMock.current(contact)(any) was called
       contactRepositoryMock.get("200067388")(any) was called
       catalogServiceMock.unsafeCatalog was called
       zuoraSoapServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
@@ -319,7 +319,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Digital Pack"), Nil),
       )
 
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) returns Future(List(subscription))
+      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
 
       val customer = TestStripeCustomer(card =
         TestStripeCard(
@@ -364,7 +364,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       httpResponse.getStatus shouldEqual 200
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) was called
+      subscriptionServiceMock.current(contact)(any) was called
       contactRepositoryMock.get("200067388")(any) was called
       ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId")(any) was called
       ukStripeServiceMock.paymentIntentsGateway was called

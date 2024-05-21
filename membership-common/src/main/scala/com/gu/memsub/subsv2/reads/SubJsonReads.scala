@@ -95,10 +95,10 @@ object SubJsonReads {
   implicit val lenientDateTimeReader: Reads[DateTime] =
     JodaReads.DefaultJodaDateTimeReads orElse Reads.IsoDateReads.map(new DateTime(_))
 
-  def subscriptionReads[P <: SubscriptionPlan.AnyPlan](
+  def subscriptionReads(
       now: LocalDate, /*TODO get rid when we fix the below*/
-  ): Reads[NonEmptyList[P] => Subscription[P]] = new Reads[NonEmptyList[P] => Subscription[P]] {
-    override def reads(json: JsValue): JsResult[NonEmptyList[P] => Subscription[P]] = {
+  ): Reads[NonEmptyList[SubscriptionPlan] => Subscription] = new Reads[NonEmptyList[SubscriptionPlan] => Subscription] {
+    override def reads(json: JsValue): JsResult[NonEmptyList[SubscriptionPlan] => Subscription] = {
 
       // ideally we'd use the plans list
       // on the main subscription model, but this is a quick fix.
@@ -129,7 +129,7 @@ object SubJsonReads {
               (__ \ "ReaderType__c").readNullable[String].map(ReaderType.apply) and
               (__ \ "GifteeIdentityId__c").readNullable[String] and
               (__ \ "autoRenew").read[Boolean]
-          )(memsub.subsv2.Subscription.partial[P](hasPendingFreePlan) _).reads(o)
+          )(memsub.subsv2.Subscription.partial(hasPendingFreePlan) _).reads(o)
         case e => JsError(s"Needed a JsObject, got ${e.getClass.getSimpleName}")
       }
     }

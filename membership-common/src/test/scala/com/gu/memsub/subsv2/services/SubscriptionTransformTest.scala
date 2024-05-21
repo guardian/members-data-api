@@ -67,10 +67,10 @@ class SubscriptionTransformTest extends AnyFlatSpec {
   "subscription transform" should "load a one year guardian weekly subscription" in {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklyOneYear.json")
-    val result: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] =
-      SubscriptionTransform.getSubscription[SubscriptionPlan.AnyPlan](cat, Fixtures.productIds, () => 3 May 2017)(json)
-    val expected: String \/ V2Subscription[SubscriptionPlan.AnyPlan] = \/-(
-      V2Subscription[SubscriptionPlan[Product.WeeklyZoneB.type, SingleCharge[Weekly.type, BillingPeriod.OneYear.type]]](
+    val result: Disjunction[String, V2Subscription] =
+      SubscriptionTransform.getSubscription(cat, Fixtures.productIds, () => 3 May 2017)(json)
+    val expected: String \/ V2Subscription = \/-(
+      V2Subscription(
         id = Id("2c92c0f85bae511e015bcead968f69e0"),
         name = Name("A-S00069184"),
         accountId = AccountId("2c92c0f859b047b70159bc8dcc901253"),
@@ -117,11 +117,11 @@ class SubscriptionTransformTest extends AnyFlatSpec {
   "subscription transform" should "load a 6 month guardian weekly subscription" in {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklySixMonths.json")
-    val result: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] =
-      SubscriptionTransform.getSubscription[SubscriptionPlan.AnyPlan](cat, Fixtures.productIds, () => 3 May 2017)(json)
+    val result: Disjunction[String, V2Subscription] =
+      SubscriptionTransform.getSubscription(cat, Fixtures.productIds, () => 3 May 2017)(json)
 
-    val expected: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] = \/-(
-      V2Subscription[SubscriptionPlan[Product.WeeklyZoneB.type, SingleCharge[Weekly.type, BillingPeriod.SixMonths.type]]](
+    val expected: Disjunction[String, V2Subscription] = \/-(
+      V2Subscription(
         id = Id("2c92c0f95bae6218015bceaf243d0fa4"),
         name = Name("A-S00069185"),
         accountId = AccountId("2c92c0f859b047b70159bc8dcc901253"),
@@ -169,10 +169,10 @@ class SubscriptionTransformTest extends AnyFlatSpec {
   "subscription transform" should "load a 6 monthly recurring guardian weekly subscription" in {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklySixMonthly.json")
-    val result: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] =
-      SubscriptionTransform.getSubscription[SubscriptionPlan.AnyPlan](cat, Fixtures.productIds, () => 3 May 2017)(json)
-    val expected: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] = \/-(
-      V2Subscription[SubscriptionPlan[Product.WeeklyZoneB.type, SingleCharge[Weekly.type, BillingPeriod.SixMonthsRecurring.type]]](
+    val result: Disjunction[String, V2Subscription] =
+      SubscriptionTransform.getSubscription(cat, Fixtures.productIds, () => 3 May 2017)(json)
+    val expected: Disjunction[String, V2Subscription] = \/-(
+      V2Subscription(
         id = Id("2c92c0f85be67835015be8f374217f86"),
         name = Name("A-S00069279"),
         accountId = AccountId("2c92c0f859b047b70159bc8dcc901253"),
