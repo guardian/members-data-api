@@ -68,7 +68,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklyOneYear.json")
     val result: Disjunction[String, V2Subscription] =
-      SubscriptionTransform.getSubscription(cat, Fixtures.productIds, () => 3 May 2017)(json)
+      SubscriptionTransform.getSubscription(cat, Fixtures.productIds)(json)
     val expected: String \/ V2Subscription = \/-(
       V2Subscription(
         id = Id("2c92c0f85bae511e015bcead968f69e0"),
@@ -81,7 +81,6 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         casActivationDate = None,
         promoCode = None,
         isCancelled = false,
-        hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
           SubscriptionPlan(
             id = RatePlanId("2c92c0f85bae511e015bcead96a569e5"),
@@ -118,7 +117,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklySixMonths.json")
     val result: Disjunction[String, V2Subscription] =
-      SubscriptionTransform.getSubscription(cat, Fixtures.productIds, () => 3 May 2017)(json)
+      SubscriptionTransform.getSubscription(cat, Fixtures.productIds)(json)
 
     val expected: Disjunction[String, V2Subscription] = \/-(
       V2Subscription(
@@ -132,7 +131,6 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         casActivationDate = None,
         promoCode = None,
         isCancelled = false,
-        hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
           SubscriptionPlan(
             id = RatePlanId("2c92c0f95bae6218015bceaf24520fa9"),
@@ -170,7 +168,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklySixMonthly.json")
     val result: Disjunction[String, V2Subscription] =
-      SubscriptionTransform.getSubscription(cat, Fixtures.productIds, () => 3 May 2017)(json)
+      SubscriptionTransform.getSubscription(cat, Fixtures.productIds)(json)
     val expected: Disjunction[String, V2Subscription] = \/-(
       V2Subscription(
         id = Id("2c92c0f85be67835015be8f374217f86"),
@@ -183,7 +181,6 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         casActivationDate = None,
         promoCode = None,
         isCancelled = false,
-        hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
           SubscriptionPlan(
             id = RatePlanId("2c92c0f85be67835015be8f3743a7f8e"),

@@ -32,7 +32,6 @@ class PaymentDetailsForSubscription(paymentService: PaymentService) extends Safe
     lastPaymentDate = None,
     nextPaymentDate = None,
     termEndDate = giftSubscription.termEndDate,
-    pendingAmendment = false,
     paymentMethod = None,
     plan = PersonalPlan(
       name = giftSubscription.plan.productName,

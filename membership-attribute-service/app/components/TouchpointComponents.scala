@@ -133,7 +133,7 @@ class TouchpointComponents(
     ),
   )
 
-  lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
+  private lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
     .map(_.fold[CatalogMap](error => { logger.errorNoPrefix(scrub"error: ${error.list.toList.mkString}"); Map() }, _.map))
     .recover { case error =>
       logger.errorNoPrefix(scrub"Failed to load the product catalog from Zuora due to: $error")

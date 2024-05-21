@@ -41,7 +41,6 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
             lastPaymentDate = None,
             nextPaymentDate = None,
             termEndDate = digipackGift.termEndDate,
-            pendingAmendment = false,
             paymentMethod = None,
             plan = PersonalPlan(
               name = "Digital Pack",

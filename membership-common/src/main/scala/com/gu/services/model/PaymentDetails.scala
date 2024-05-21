@@ -18,7 +18,6 @@ case class PaymentDetails(
     nextPaymentDate: Option[LocalDate],
     remainingTrialLength: Int,
     pendingCancellation: Boolean,
-    pendingAmendment: Boolean,
     paymentMethod: Option[PaymentMethod],
     plan: PersonalPlan,
 )
@@ -47,7 +46,6 @@ object PaymentDetails {
       lastPaymentDate = lastPaymentDate,
       nextPaymentDate = nextPayment.map(_.date),
       termEndDate = sub.termEndDate,
-      pendingAmendment = sub.hasPendingFreePlan,
       paymentMethod = paymentMethod,
       plan = PersonalPlan.paid(sub),
       subscriberId = sub.name.get,

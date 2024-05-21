@@ -91,11 +91,10 @@ object SubscriptionTransform extends SafeLogging {
   def getSubscription(
       catalog: CatalogMap,
       pids: ProductIds,
-      now: () => LocalDate = LocalDate.now, /*now only needed for pending friend downgrade*/
   )(subJson: JsValue): Disjunction[String, Subscription] = {
     import Trace.Traceable
     val planToSubscriptionFunction =
-      subscriptionReads(now()).reads(subJson).asEither.toDisjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
+      subscriptionReads.reads(subJson).asEither.toDisjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
 
     val lowLevelPlans = subJson
       .validate[List[SubscriptionZuoraPlan]](subZuoraPlanListReads)

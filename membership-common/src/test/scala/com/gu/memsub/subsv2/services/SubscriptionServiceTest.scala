@@ -273,7 +273,6 @@ class SubscriptionServiceTest extends Specification {
         casActivationDate = None,
         promoCode = None,
         isCancelled = isCancelled,
-        hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
         readerType = ReaderType.Direct,
         gifteeIdentityId = None,
