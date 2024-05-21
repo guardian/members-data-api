@@ -214,7 +214,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       httpResponse.getStatus shouldEqual 200
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) was called
       contactRepositoryMock.get("200067388")(any) was called
       catalogServiceMock.unsafeCatalog was called
       zuoraSoapServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
@@ -364,7 +364,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       httpResponse.getStatus shouldEqual 200
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any, any) was called
+      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any, any) was called
       contactRepositoryMock.get("200067388")(any) was called
       ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId")(any) was called
       ukStripeServiceMock.paymentIntentsGateway was called

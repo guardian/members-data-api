@@ -43,11 +43,6 @@ object ChargeListReads {
 
   type PlanChargeMap = Map[ProductRatePlanChargeId, Benefit]
 
-  def pure[A](a: A) = new ChargeListReads[A] {
-    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, A] =
-      Validation.s[NonEmptyList[String]](a)
-  }
-
   case class ProductIds(
       weeklyZoneA: ProductId,
       weeklyZoneB: ProductId,
@@ -65,11 +60,6 @@ object ChargeListReads {
       nationalDelivery: ProductId,
       contributor: ProductId,
   )
-
-  // shorthand syntax for creating new ChargeListReads
-  def apply[A](f: (PlanChargeMap, List[ZuoraCharge]) => ValidationNel[String, A]) = new ChargeListReads[A] {
-    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, A] = f(cat, charges)
-  }
 
   implicit def readAnyProduct[P <: Benefit: ClassTag]: ChargeReads[P] = new ChargeReads[Benefit] {
     def read(cat: PlanChargeMap, charge: ZuoraCharge): ValidationNel[String, Benefit] =
@@ -120,28 +110,22 @@ object ChargeListReads {
   implicit def readPaidCharge[P <: Benefit, BP <: BillingPeriod](implicit
       product: ChargeReads[P],
       bp: ChargeReads[BP],
-  ): ChargeListReads[PaidCharge[P, BP]] = new ChargeListReads[PaidCharge[P, BP]] {
-    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidCharge[P, BP]] = charges match {
+  ): ChargeListReads[SingleCharge[P, BP]] = new ChargeListReads[SingleCharge[P, BP]] {
+    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, SingleCharge[P, BP]] = charges match {
       case charge :: Nil =>
         (product.read(cat, charge) |@| bp.read(cat, charge) |@|
           charge.pricing.prices.exists(_.amount != 0).option(charge.pricing).toSuccess(NonEmptyList("Could not read paid charge: Charge is free")))
-          .apply({ case (p, b, pricing) => PaidCharge(p, b, pricing, charge.productRatePlanChargeId, charge.id) })
+          .apply({ case (p, b, pricing) => SingleCharge(p, b, pricing, charge.productRatePlanChargeId, charge.id) })
       case charge :: others => Validation.failureNel(s"Too many charges! I got $charge and $others")
       case Nil => Validation.failureNel(s"No charges found!")
     }
   }
 
-  implicit def readPaidChargeList: ChargeListReads[PaidChargeList] = new ChargeListReads[PaidChargeList] {
-    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, PaidChargeList] = {
-      readPaperChargeList.read(cat, charges).map(identity[PaidChargeList]) orElse2
+  implicit def readChargeList: ChargeListReads[ChargeList] = new ChargeListReads[ChargeList] {
+    def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList] = {
+      readPaperChargeList.read(cat, charges).map(identity[ChargeList]) orElse2
         readPaidCharge[Benefit, BillingPeriod](readAnyProduct, anyBpReads).read(cat, charges) orElse2
         readSupporterPlusV2ChargeList.read(cat, charges)
-    }.withTrace("readPaidChargeList")
-  }
-
-  implicit def readChargeList: ChargeListReads[ChargeList] = new ChargeListReads[ChargeList] {
-    override def read(cat: PlanChargeMap, charges: List[ZuoraCharge]) = {
-      readPaidChargeList.read(cat, charges).map(identity[ChargeList])
     }.withTrace("readChargeList")
   }
 
@@ -197,10 +181,4 @@ object ChargeListReads {
     }
   }
 
-  implicit def readSingle[B <: Benefit: ChargeReads]: ChargeListReads[ChargeList with SingleBenefit[B]] =
-    new ChargeListReads[ChargeList with SingleBenefit[B]] {
-      def read(cat: PlanChargeMap, charges: List[ZuoraCharge]): ValidationNel[String, ChargeList with SingleBenefit[B]] = {
-        readPaidCharge[B, BillingPeriod].read(cat, charges).map(identity[ChargeList with SingleBenefit[B]])
-      }.withTrace("readSingle")
-    }
 }

@@ -14,7 +14,6 @@ import models.{AccountDetails, ContactAndSubscription, DeliveryAddress}
 import monitoring.CreateMetrics
 import scalaz.ListT
 import scalaz.std.scalaFuture._
-import services.DifferentiateSubscription.differentiateSubscription
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
 import services.salesforce.ContactRepository
 import services.stripe.ChooseStripe
@@ -47,7 +46,6 @@ class AccountDetailsFromZuora(
   ): ListT[SimpleEitherT, AccountDetails] = {
     for {
       contactAndSubscription <- allCurrentSubscriptions(userId, filter)
-      isPaidSubscription = differentiateSubscription(contactAndSubscription).isRight
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
       country = accountSummary.billToContact.country
@@ -64,7 +62,7 @@ class AccountDetailsFromZuora(
         paymentDetails = paymentDetails,
         billingCountry = accountSummary.billToContact.country,
         stripePublicKey = stripePublicKey.key,
-        accountHasMissedRecentPayments = isPaidSubscription &&
+        accountHasMissedRecentPayments =
           accountHasMissedPayments(contactAndSubscription.subscription.accountId, accountSummary.invoices, accountSummary.payments),
         safeToUpdatePaymentMethod = safeToAllowPaymentUpdate(contactAndSubscription.subscription.accountId, accountSummary.invoices),
         isAutoRenew = isAutoRenew,

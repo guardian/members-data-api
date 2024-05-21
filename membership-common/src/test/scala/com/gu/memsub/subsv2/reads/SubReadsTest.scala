@@ -58,7 +58,7 @@ class SubReadsTest extends Specification {
     "parse Patron reader type correctly from subscription" in {
       val now = LocalDate.parse("2020-10-19")
       val json = Resource.getJson("rest/PatronReaderType.json")
-      val plan = PaidSubscriptionPlan(
+      val plan = SubscriptionPlan(
         id = RatePlanId("rpid"),
         productRatePlanId = ProductRatePlanId("prpid"),
         name = "n",
@@ -68,7 +68,7 @@ class SubReadsTest extends Specification {
         productType = "pt",
         product = WeeklyDomestic,
         features = Nil,
-        charges = PaidCharge(
+        charges = SingleCharge(
           benefit = Weekly,
           billingPeriod = Quarter,
           price = PricingSummary(Map.empty),

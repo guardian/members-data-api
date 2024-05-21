@@ -109,18 +109,13 @@ object AccountDetails {
         "end" -> plan.end,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
         "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30))),
-      ) ++ (plan match {
-        case paidPlan: PaidSubscriptionPlan[_, _] =>
-          Json.obj(
-            "chargedThrough" -> paidPlan.chargedThrough,
-            "price" -> paidPlan.charges.price.prices.head.amount * 100,
-            "currency" -> paidPlan.charges.price.prices.head.currency.glyph,
-            "currencyISO" -> paidPlan.charges.price.prices.head.currency.iso,
-            "billingPeriod" -> paidPlan.charges.billingPeriod.noun,
-            "features" -> paidPlan.features.map(_.code.get).mkString(","),
-          )
-        case _ => Json.obj()
-      }) ++ (plan.charges match {
+        "chargedThrough" -> plan.chargedThrough,
+        "price" -> plan.charges.price.prices.head.amount * 100,
+        "currency" -> plan.charges.price.prices.head.currency.glyph,
+        "currencyISO" -> plan.charges.price.prices.head.currency.iso,
+        "billingPeriod" -> plan.charges.billingPeriod.noun,
+        "features" -> plan.features.map(_.code.get).mkString(","),
+      ) ++ (plan.charges match {
         case paperCharges: PaperCharges =>
           Json.obj(
             "daysOfWeek" ->

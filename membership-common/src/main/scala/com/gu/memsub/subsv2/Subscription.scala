@@ -2,16 +2,14 @@ package com.gu.memsub.subsv2
 
 import com.github.nscala_time.time.Imports._
 import com.gu.memsub
-import com.gu.memsub.Benefit._
-import com.gu.memsub.BillingPeriod.{OneTimeChargeBillingPeriod, OneYear, ThreeMonths}
+import com.gu.memsub.BillingPeriod.OneTimeChargeBillingPeriod
+import com.gu.memsub.Product.Contribution
 import com.gu.memsub.promo.PromoCode
 import com.gu.memsub.subsv2.SubscriptionPlan._
 import com.gu.memsub.subsv2.services.Sequence
-import com.gu.memsub.{BillingPeriod, Product}
+import com.gu.memsub.Product
 import org.joda.time.{DateTime, LocalDate}
 
-import scala.language.higherKinds
-import scala.reflect.ClassTag
 import scalaz.syntax.all._
 import scalaz.{NonEmptyList, Validation, \/}
 
@@ -37,30 +35,12 @@ case class Subscription[+P <: SubscriptionPlan.AnyPlan](
     autoRenew: Boolean,
 ) {
 
-  private def isPaid[P <: SubscriptionPlan.AnyPlan](plan: P) = plan.charges match {
-    case _: PaidChargeList => true
-    case _ => false
-  }
-
-  val firstPaymentDate = {
-    val paidPlans = plans.list.filter(isPaid)
-    (acceptanceDate :: paidPlans.map(_.start)).toList.min
-  }
+  val firstPaymentDate: LocalDate = (acceptanceDate :: plans.list.map(_.start)).min
 
   lazy val plan: P = {
     GetCurrentPlans(this, LocalDate.now).fold(error => throw new RuntimeException(error), _.head)
   }
 
-  // can we make it optional to specify A and B?
-  def as[A <: Product, B <: ChargeList, SP <: SubscriptionPlan[A, B]](implicit a: ClassTag[A], b: ClassTag[B]): Option[Subscription[SP]] = {
-    if (a.runtimeClass.isInstance(plans.head.product) && b.runtimeClass.isInstance(plans.head.charges))
-      Some(asInstanceOf[Subscription[SP]])
-    else
-      None
-  }
-
-  def asContribution = as[Product.Contribution, PaidChargeList, SubscriptionPlan.Contributor]
-  def asMembership = as[Product.Membership, ChargeList, SubscriptionPlan.Member]
 }
 
 /*
@@ -76,15 +56,11 @@ object GetCurrentPlans {
   /*- negative if x < y
    *  - positive if x > y
    *  - zero otherwise (if x == y)*/
-  val planGoodnessOrder = new scala.Ordering[SubscriptionPlan.AnyPlan] {
-    override def compare(x: AnyPlan, y: AnyPlan): Int = {
-      (x, y) match {
-        case (planX: PaidSubscriptionPlan[_, _], planY: PaidSubscriptionPlan[_, _]) => {
-          val priceX = planX.charges.price.prices.head.amount
-          val priceY = planY.charges.price.prices.head.amount
-          (priceX * 100).toInt - (priceY * 100).toInt
-        }
-      }
+  private val planGoodnessOrder = new scala.Ordering[SubscriptionPlan.AnyPlan] {
+    override def compare(planX: AnyPlan, planY: AnyPlan): Int = {
+      val priceX = planX.charges.price.prices.head.amount
+      val priceY = planY.charges.price.prices.head.amount
+      (priceX * 100).toInt - (priceY * 100).toInt
     }
   }
 
@@ -108,23 +84,21 @@ object GetCurrentPlans {
       just checks that the sub.startDate is before, or the same as, the date received by this function.
        */
       val ensureStarted = unvalidated.ensure(DiscardedPlan(plan, s"hasn't started as of $dateToCheck").wrapNel)(_)
-      val alreadyStarted = plan match {
-        case _: Contributor => ensureStarted(_ => sub.startDate <= date)
-        case _ => ensureStarted(_.start <= dateToCheck)
-      }
-      val freePlanCancelled = alreadyStarted.ensure(DiscardedPlan(plan, "has a free plan which has been cancelled").wrapNel)(_)
+      val alreadyStarted =
+        if (plan.product == Contribution)
+          ensureStarted(_ => sub.startDate <= date)
+        else
+          ensureStarted(_.start <= dateToCheck)
       val contributorPlanCancelled =
         alreadyStarted.ensure(DiscardedPlan(plan, "has a contributor plan which has been cancelled or removed").wrapNel)(_)
       val paidPlanEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a paid plan which has ended").wrapNel)(_)
       val digipackGiftEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a digipack gift plan which has ended").wrapNel)(_)
-      plan match {
-        case _: FreeSubscriptionPlan[_, _] => freePlanCancelled(_ => !sub.isCancelled)
-        case plan: PaidSubscriptionPlan[_, _] if plan.product == Product.Contribution =>
-          contributorPlanCancelled(_ => !sub.isCancelled && !plan.lastChangeType.contains("Remove"))
-        case plan: PaidSubscriptionPlan[_, _] if plan.product == Product.Digipack && plan.charges.billingPeriod == OneTimeChargeBillingPeriod =>
-          digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
-        case plan: PaidSubscriptionPlan[_, _] => paidPlanEnded(_ => plan.end >= dateToCheck)
-      }
+      if (plan.product == Product.Contribution)
+        contributorPlanCancelled(_ => !sub.isCancelled && !plan.lastChangeType.contains("Remove"))
+      else if (plan.product == Product.Digipack && plan.charges.billingPeriod == OneTimeChargeBillingPeriod)
+        digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
+      else
+        paidPlanEnded(_ => plan.end >= dateToCheck)
     }
 
     Sequence(

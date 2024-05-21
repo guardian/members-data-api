@@ -15,8 +15,8 @@ trait SubscriptionTestData {
 
   def referenceDate: LocalDate
 
-  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Supporter =
-    PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]](
+  def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+    SubscriptionPlan[Product.Membership, SingleCharge[Benefit.Supporter.type, BillingPeriod]](
       RatePlanId("idSupporter"),
       ProductRatePlanId("prpi"),
       "Supporter",
@@ -26,7 +26,7 @@ trait SubscriptionTestData {
       "Membership",
       Product.Membership,
       List.empty,
-      PaidCharge(
+      SingleCharge(
         Supporter,
         BillingPeriod.Year,
         PricingSummary(Map(GBP -> Price(49.0f, GBP))),
@@ -37,8 +37,8 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Digipack =
-    PaidSubscriptionPlan[Product.ZDigipack, PaidCharge[Benefit.Digipack.type, BillingPeriod]](
+  def digipackPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+    SubscriptionPlan[Product.ZDigipack, SingleCharge[Benefit.Digipack.type, BillingPeriod]](
       RatePlanId("idDigipack"),
       ProductRatePlanId("prpi"),
       "Digipack",
@@ -48,7 +48,7 @@ trait SubscriptionTestData {
       "Digital Pack",
       Product.Digipack,
       List.empty,
-      PaidCharge(
+      SingleCharge(
         Digipack,
         BillingPeriod.Year,
         PricingSummary(Map(GBP -> Price(119.90f, GBP))),
@@ -59,7 +59,7 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges](
+  def paperPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan = SubscriptionPlan[Product.Delivery, PaperCharges](
     RatePlanId("idPaperPlan"),
     ProductRatePlanId("prpi"),
     "Sunday",
@@ -74,7 +74,7 @@ trait SubscriptionTestData {
     startDate,
     endDate,
   )
-  def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Delivery = PaidSubscriptionPlan[Product.Delivery, PaperCharges](
+  def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan = SubscriptionPlan[Product.Delivery, PaperCharges](
     RatePlanId("idPaperPlusPlan"),
     ProductRatePlanId("prpi"),
     "Sunday+",
@@ -89,8 +89,8 @@ trait SubscriptionTestData {
     startDate,
     endDate,
   )
-  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Contributor =
-    PaidSubscriptionPlan[Product.Contribution, PaidCharge[Benefit.Contributor.type, BillingPeriod]](
+  def contributorPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+    SubscriptionPlan[Product.Contribution, SingleCharge[Benefit.Contributor.type, BillingPeriod]](
       RatePlanId("idContributor"),
       ProductRatePlanId("prpi"),
       "Monthly Contribution",
@@ -100,7 +100,7 @@ trait SubscriptionTestData {
       "Contribution",
       Product.Contribution,
       List.empty,
-      PaidCharge(
+      SingleCharge(
         Contributor,
         BillingPeriod.Month,
         PricingSummary(Map(GBP -> Price(5.0f, GBP))),
@@ -111,8 +111,8 @@ trait SubscriptionTestData {
       startDate,
       endDate,
     )
-  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.WeeklyPlan =
-    PaidSubscriptionPlan[Product.WeeklyDomestic, PaidCharge[Benefit.Weekly.type, BillingPeriod]](
+  def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+    SubscriptionPlan[Product.WeeklyDomestic, SingleCharge[Benefit.Weekly.type, BillingPeriod]](
       RatePlanId("idGuardianWeeklyPlan"),
       ProductRatePlanId("prpi"),
       "Guardian Weekly",
@@ -122,7 +122,7 @@ trait SubscriptionTestData {
       "Guardian Weekly",
       Product.WeeklyDomestic,
       List.empty,
-      PaidCharge(
+      SingleCharge(
         Weekly,
         BillingPeriod.Quarter,
         PricingSummary(Map(GBP -> Price(37.50f, GBP))),
@@ -134,8 +134,8 @@ trait SubscriptionTestData {
       endDate,
     )
 
-  def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.SupporterPlus =
-    PaidSubscriptionPlan[Product.SupporterPlus, PaidCharge[Benefit.SupporterPlus.type, BillingPeriod]](
+  def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.AnyPlan =
+    SubscriptionPlan[Product.SupporterPlus, SingleCharge[Benefit.SupporterPlus.type, BillingPeriod]](
       RatePlanId("idSupporterPlusPlan"),
       ProductRatePlanId("prpi"),
       "Supporter Plus",
@@ -145,7 +145,7 @@ trait SubscriptionTestData {
       "Supporter Plus",
       Product.SupporterPlus,
       List.empty,
-      PaidCharge(
+      SingleCharge(
         Benefit.SupporterPlus,
         BillingPeriod.Month,
         PricingSummary(Map(GBP -> Price(10.0f, GBP))),

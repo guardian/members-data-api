@@ -11,7 +11,6 @@ import com.gu.memsub.Subscription._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.Fixtures.productIds
 import com.gu.memsub.subsv2.ReaderType.Direct
-import com.gu.memsub.subsv2.SubscriptionPlan.ContentSubscription
 import com.gu.memsub.subsv2.{Subscription => V2Subscription, _}
 import com.softwaremill.diffx.generic.auto._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -68,10 +67,10 @@ class SubscriptionTransformTest extends AnyFlatSpec {
   "subscription transform" should "load a one year guardian weekly subscription" in {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklyOneYear.json")
-    val result: Disjunction[String, V2Subscription[ContentSubscription]] =
-      SubscriptionTransform.getSubscription[ContentSubscription](cat, Fixtures.productIds, () => 3 May 2017)(json)
-    val expected: String \/ V2Subscription[ContentSubscription] = \/-(
-      V2Subscription[PaidSubscriptionPlan[Product.WeeklyZoneB.type, PaidCharge[Weekly.type, BillingPeriod.OneYear.type]]](
+    val result: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] =
+      SubscriptionTransform.getSubscription[SubscriptionPlan.AnyPlan](cat, Fixtures.productIds, () => 3 May 2017)(json)
+    val expected: String \/ V2Subscription[SubscriptionPlan.AnyPlan] = \/-(
+      V2Subscription[SubscriptionPlan[Product.WeeklyZoneB.type, SingleCharge[Weekly.type, BillingPeriod.OneYear.type]]](
         id = Id("2c92c0f85bae511e015bcead968f69e0"),
         name = Name("A-S00069184"),
         accountId = AccountId("2c92c0f859b047b70159bc8dcc901253"),
@@ -84,7 +83,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         isCancelled = false,
         hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
-          PaidSubscriptionPlan(
+          SubscriptionPlan(
             id = RatePlanId("2c92c0f85bae511e015bcead96a569e5"),
             productRatePlanId = ProductRatePlanId("2c92c0f9585841e7015862c9128e153b"),
             name = "foo",
@@ -94,7 +93,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
             productType = "Guardian Weekly",
             product = WeeklyZoneB,
             features = List(),
-            charges = PaidCharge(
+            charges = SingleCharge(
               Benefit.Weekly,
               OneYear,
               PricingSummary(Map(GBP -> Price(152.0f, GBP))),
@@ -118,11 +117,11 @@ class SubscriptionTransformTest extends AnyFlatSpec {
   "subscription transform" should "load a 6 month guardian weekly subscription" in {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklySixMonths.json")
-    val result: Disjunction[String, V2Subscription[ContentSubscription]] =
-      SubscriptionTransform.getSubscription[ContentSubscription](cat, Fixtures.productIds, () => 3 May 2017)(json)
+    val result: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] =
+      SubscriptionTransform.getSubscription[SubscriptionPlan.AnyPlan](cat, Fixtures.productIds, () => 3 May 2017)(json)
 
-    val expected: Disjunction[String, V2Subscription[ContentSubscription]] = \/-(
-      V2Subscription[PaidSubscriptionPlan[Product.WeeklyZoneB.type, PaidCharge[Weekly.type, BillingPeriod.SixMonths.type]]](
+    val expected: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] = \/-(
+      V2Subscription[SubscriptionPlan[Product.WeeklyZoneB.type, SingleCharge[Weekly.type, BillingPeriod.SixMonths.type]]](
         id = Id("2c92c0f95bae6218015bceaf243d0fa4"),
         name = Name("A-S00069185"),
         accountId = AccountId("2c92c0f859b047b70159bc8dcc901253"),
@@ -135,7 +134,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         isCancelled = false,
         hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
-          PaidSubscriptionPlan(
+          SubscriptionPlan(
             id = RatePlanId("2c92c0f95bae6218015bceaf24520fa9"),
             productRatePlanId = ProductRatePlanId("2c92c0f85a4b3a23015a5be3fc2271ad"),
             name = "foo",
@@ -145,7 +144,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
             productType = "Guardian Weekly",
             product = WeeklyZoneB,
             features = List(),
-            charges = PaidCharge(
+            charges = SingleCharge(
               Benefit.Weekly,
               SixMonths,
               PricingSummary(Map(GBP -> Price(76.0f, GBP))),
@@ -170,10 +169,10 @@ class SubscriptionTransformTest extends AnyFlatSpec {
   "subscription transform" should "load a 6 monthly recurring guardian weekly subscription" in {
 
     val json: JsValue = Resource.getJson("rest/plans/WeeklySixMonthly.json")
-    val result: Disjunction[String, V2Subscription[ContentSubscription]] =
-      SubscriptionTransform.getSubscription[ContentSubscription](cat, Fixtures.productIds, () => 3 May 2017)(json)
-    val expected: Disjunction[String, V2Subscription[ContentSubscription]] = \/-(
-      V2Subscription[PaidSubscriptionPlan[Product.WeeklyZoneB.type, PaidCharge[Weekly.type, BillingPeriod.SixMonthsRecurring.type]]](
+    val result: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] =
+      SubscriptionTransform.getSubscription[SubscriptionPlan.AnyPlan](cat, Fixtures.productIds, () => 3 May 2017)(json)
+    val expected: Disjunction[String, V2Subscription[SubscriptionPlan.AnyPlan]] = \/-(
+      V2Subscription[SubscriptionPlan[Product.WeeklyZoneB.type, SingleCharge[Weekly.type, BillingPeriod.SixMonthsRecurring.type]]](
         id = Id("2c92c0f85be67835015be8f374217f86"),
         name = Name("A-S00069279"),
         accountId = AccountId("2c92c0f859b047b70159bc8dcc901253"),
@@ -186,7 +185,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         isCancelled = false,
         hasPendingFreePlan = false,
         plans = CovariantNonEmptyList(
-          PaidSubscriptionPlan(
+          SubscriptionPlan(
             id = RatePlanId("2c92c0f85be67835015be8f3743a7f8e"),
             productRatePlanId = ProductRatePlanId("2c92c0f95a4b48b8015a5be1205d042b"),
             name = "foo",
@@ -196,7 +195,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
             productType = "Guardian Weekly",
             product = WeeklyZoneB,
             features = List(),
-            charges = PaidCharge(
+            charges = SingleCharge(
               Benefit.Weekly,
               SixMonthsRecurring,
               PricingSummary(Map(GBP -> Price(76.0f, GBP))),

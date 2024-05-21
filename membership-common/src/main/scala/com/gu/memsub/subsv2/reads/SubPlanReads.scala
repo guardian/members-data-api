@@ -25,7 +25,7 @@ trait SubPlanReads[A] {
 
 object SubPlanReads {
 
-  def findProduct[P <: Product](id: ProductIds => List[ProductId], product: P) = new SubPlanReads[P] {
+  def findProduct[P <: Product](id: ProductIds => List[ProductId], product: P): SubPlanReads[P] = new SubPlanReads[P] {
 
     override def read(p: ProductIds, z: SubscriptionZuoraPlan, c: CatalogZuoraPlan): ValidationNel[String, P] = {
       id(p)
@@ -35,35 +35,35 @@ object SubPlanReads {
     }
   }
 
-  implicit val voucherReads: SubPlanReads[Voucher] = findProduct(_.voucher.point[List], Voucher)
-  implicit val digitalVoucherReads: SubPlanReads[DigitalVoucher] = findProduct(_.digitalVoucher.point[List], DigitalVoucher)
-  implicit val deliveryReads: SubPlanReads[Delivery] = findProduct(_.delivery.point[List], Delivery)
-  implicit val nationalDeliveryReads: SubPlanReads[NationalDelivery] = findProduct(_.nationalDelivery.point[List], NationalDelivery)
-  implicit val zDigipackReads: SubPlanReads[ZDigipack] = findProduct(_.digipack.point[List], Digipack)
-  implicit val supporterPlusReads: SubPlanReads[SupporterPlus] = findProduct(_.supporterPlus.point[List], SupporterPlus)
-  implicit val membershipReads: SubPlanReads[Membership] = findProduct(ids => List(ids.supporter, ids.partner, ids.patron), Membership)
-  implicit val contributionReads: SubPlanReads[Contribution] = findProduct(_.contributor.point[List], Contribution)
-  implicit val weeklyZoneAReads: SubPlanReads[WeeklyZoneA] = findProduct(_.weeklyZoneA.point[List], WeeklyZoneA)
-  implicit val weeklyZoneBReads: SubPlanReads[WeeklyZoneB] = findProduct(_.weeklyZoneB.point[List], WeeklyZoneB)
-  implicit val weeklyZoneCReads: SubPlanReads[WeeklyZoneC] = findProduct(_.weeklyZoneC.point[List], WeeklyZoneC)
-  implicit val weeklyDomesticReads: SubPlanReads[WeeklyDomestic] = findProduct(_.weeklyDomestic.point[List], WeeklyDomestic)
-  implicit val weeklyRestOfWorldReads: SubPlanReads[WeeklyRestOfWorld] = findProduct(_.weeklyRestOfWorld.point[List], WeeklyRestOfWorld)
+  private val voucherReads: SubPlanReads[Voucher] = findProduct(_.voucher.point[List], Voucher)
+  private val digitalVoucherReads: SubPlanReads[DigitalVoucher] = findProduct(_.digitalVoucher.point[List], DigitalVoucher)
+  private val deliveryReads: SubPlanReads[Delivery] = findProduct(_.delivery.point[List], Delivery)
+  private val nationalDeliveryReads: SubPlanReads[NationalDelivery] = findProduct(_.nationalDelivery.point[List], NationalDelivery)
+  private val zDigipackReads: SubPlanReads[ZDigipack] = findProduct(_.digipack.point[List], Digipack)
+  private val supporterPlusReads: SubPlanReads[SupporterPlus] = findProduct(_.supporterPlus.point[List], SupporterPlus)
+  private val membershipReads: SubPlanReads[Membership] = findProduct(ids => List(ids.supporter, ids.partner, ids.patron), Membership)
+  private val contributionReads: SubPlanReads[Contribution] = findProduct(_.contributor.point[List], Contribution)
+  private val weeklyZoneAReads: SubPlanReads[WeeklyZoneA] = findProduct(_.weeklyZoneA.point[List], WeeklyZoneA)
+  private val weeklyZoneBReads: SubPlanReads[WeeklyZoneB] = findProduct(_.weeklyZoneB.point[List], WeeklyZoneB)
+  private val weeklyZoneCReads: SubPlanReads[WeeklyZoneC] = findProduct(_.weeklyZoneC.point[List], WeeklyZoneC)
+  private val weeklyDomesticReads: SubPlanReads[WeeklyDomestic] = findProduct(_.weeklyDomestic.point[List], WeeklyDomestic)
+  private val weeklyRestOfWorldReads: SubPlanReads[WeeklyRestOfWorld] = findProduct(_.weeklyRestOfWorld.point[List], WeeklyRestOfWorld)
 
-  implicit val productReads = new SubPlanReads[Product] {
+  implicit val productReads: SubPlanReads[Product] = new SubPlanReads[Product] {
     override def read(p: ProductIds, z: SubscriptionZuoraPlan, c: CatalogZuoraPlan): ValidationNel[String, Product] =
       (contentSubscriptionReads.read(p, z, c) orElse2
         membershipReads.read(p, z, c) orElse2
         contributionReads.read(p, z, c)).withTrace("productReads")
   }
 
-  implicit val contentSubscriptionReads: SubPlanReads[ContentSubscription] = new SubPlanReads[ContentSubscription] {
+  private val contentSubscriptionReads: SubPlanReads[ContentSubscription] = new SubPlanReads[ContentSubscription] {
     override def read(p: ProductIds, z: SubscriptionZuoraPlan, c: CatalogZuoraPlan): ValidationNel[String, ContentSubscription] =
       (paperReads.read(p, z, c) orElse2
-        zDigipackReads.read(p, z, c)) orElse2
-        supporterPlusReads.read(p, z, c).withTrace("contentSubscriptionReads")
+        zDigipackReads.read(p, z, c) orElse2
+        supporterPlusReads.read(p, z, c)).withTrace("contentSubscriptionReads")
   }
 
-  implicit val paperReads = new SubPlanReads[Paper] {
+  private val paperReads: SubPlanReads[Paper] = new SubPlanReads[Paper] {
     override def read(p: ProductIds, z: SubscriptionZuoraPlan, c: CatalogZuoraPlan): ValidationNel[String, Paper] =
       (voucherReads.read(p, z, c).map(identity[Paper]) orElse2
         digitalVoucherReads.read(p, z, c) orElse2
@@ -71,124 +71,42 @@ object SubPlanReads {
         nationalDeliveryReads.read(p, z, c) orElse2
         weeklyZoneAReads.read(p, z, c) orElse2
         weeklyZoneBReads.read(p, z, c) orElse2
-        weeklyZoneCReads.read(p, z, c)) orElse2
+        weeklyZoneCReads.read(p, z, c) orElse2
         weeklyDomesticReads.read(p, z, c) orElse2
-        weeklyRestOfWorldReads.read(p, z, c).withTrace("paperReads")
+        weeklyRestOfWorldReads.read(p, z, c)).withTrace("paperReads")
   }
 
-  implicit def paidPlanReads[P <: Product, C <: PaidChargeList](implicit productReads: SubPlanReads[P], chargeListReads: ChargeListReads[C]) =
-    new SubPlanReads[PaidSubscriptionPlan[P, C]] {
-      override def read(p: ProductIds, z: SubscriptionZuoraPlan, c: CatalogZuoraPlan): ValidationNel[String, PaidSubscriptionPlan[P, C]] =
-        (chargeListReads.read(c.benefits, z.charges.list.toList) |@| productReads.read(p, z, c)) { case (charges, product) =>
-          val highLevelFeatures = z.features.map(com.gu.memsub.Subscription.Feature.fromRest)
-          PaidSubscriptionPlan(
-            z.id,
-            c.id,
-            c.name,
-            c.description,
-            z.productName,
-            z.lastChangeType,
-            c.productType,
+  implicit def anyPlanReads[P <: Product, C <: ChargeList](implicit
+      productReads: SubPlanReads[P],
+      chargeListReads: ChargeListReads[C],
+  ): SubPlanReads[SubscriptionPlan[P, C]] =
+    new SubPlanReads[SubscriptionPlan[P, C]] {
+      override def read(
+          ids: ProductIds,
+          subZuoraPlan: SubscriptionZuoraPlan,
+          catZuoraPlan: CatalogZuoraPlan,
+      ): ValidationNel[String, SubscriptionPlan[P, C]] =
+        (for {
+          charges <- chargeListReads.read(catZuoraPlan.benefits, subZuoraPlan.charges.list.toList)
+          product <- productReads.read(ids, subZuoraPlan, catZuoraPlan)
+        } yield {
+          val highLevelFeatures = subZuoraPlan.features.map(com.gu.memsub.Subscription.Feature.fromRest)
+          SubscriptionPlan(
+            subZuoraPlan.id,
+            catZuoraPlan.id,
+            catZuoraPlan.name,
+            catZuoraPlan.description,
+            subZuoraPlan.productName,
+            subZuoraPlan.lastChangeType,
+            catZuoraPlan.productType,
             product,
             highLevelFeatures,
             charges,
-            z.chargedThroughDate,
-            z.start,
-            z.end,
+            subZuoraPlan.chargedThroughDate,
+            subZuoraPlan.start,
+            subZuoraPlan.end,
           )
-        }.withTrace("paidPlanReads")
-    }
-
-  implicit def freePlanReads[P <: Product, C <: FreeChargeList](implicit productReads: SubPlanReads[P], chargeListReads: ChargeListReads[C]) =
-    new SubPlanReads[FreeSubscriptionPlan[P, C]] {
-      override def read(
-          ids: ProductIds,
-          subZuoraPlan: SubscriptionZuoraPlan,
-          catZuoraPlan: CatalogZuoraPlan,
-      ): ValidationNel[String, FreeSubscriptionPlan[P, C]] =
-        (chargeListReads.read(catZuoraPlan.benefits, subZuoraPlan.charges.list.toList) |@| productReads.read(ids, subZuoraPlan, catZuoraPlan)) {
-          case (charges, product) =>
-            FreeSubscriptionPlan(
-              subZuoraPlan.id,
-              catZuoraPlan.id,
-              catZuoraPlan.name,
-              catZuoraPlan.description,
-              subZuoraPlan.productName,
-              catZuoraPlan.productType,
-              product,
-              charges,
-              subZuoraPlan.start,
-              subZuoraPlan.end,
-            )
-        }.withTrace("freePlanReads")
-    }
-
-  implicit def planReads[P <: Product: SubPlanReads, B <: Benefit: ChargeReads]: SubPlanReads[SubscriptionPlan[P, ChargeList with SingleBenefit[B]]] =
-    new SubPlanReads[SubscriptionPlan[P, ChargeList with SingleBenefit[B]]] {
-      override def read(
-          p: ProductIds,
-          z: SubscriptionZuoraPlan,
-          c: CatalogZuoraPlan,
-      ): ValidationNel[String, SubscriptionPlan[P, ChargeList with SingleBenefit[B]]] = {
-        (
-          ChargeListReads
-            .readPaidCharge[B, BillingPeriod]
-            .read(c.benefits, z.charges.list.toList)
-          )
-          .flatMap(paid =>
-            paidPlanReads(implicitly[SubPlanReads[P]], ChargeListReads.pure(paid))
-              .read(p, z, c)
-              .map(identity[SubscriptionPlan[P, ChargeList with SingleBenefit[B]]]),
-          )
-      }.withTrace("planReads")
-    }
-
-  implicit def anyPlanReads[P <: Product](implicit
-      productReads: SubPlanReads[P],
-      chargeListReads: ChargeListReads[ChargeList],
-  ): SubPlanReads[SubscriptionPlan[P, ChargeList]] =
-    new SubPlanReads[SubscriptionPlan[P, ChargeList]] {
-      override def read(
-          ids: ProductIds,
-          subZuoraPlan: SubscriptionZuoraPlan,
-          catZuoraPlan: CatalogZuoraPlan,
-      ): ValidationNel[String, SubscriptionPlan[P, ChargeList]] = {
-        (chargeListReads.read(catZuoraPlan.benefits, subZuoraPlan.charges.list.toList) |@| productReads.read(ids, subZuoraPlan, catZuoraPlan)) {
-          case (charges: ChargeList, product: P) =>
-            (charges match {
-              case freeChargeList: FreeChargeList =>
-                FreeSubscriptionPlan(
-                  subZuoraPlan.id,
-                  catZuoraPlan.id,
-                  catZuoraPlan.name,
-                  catZuoraPlan.description,
-                  subZuoraPlan.productName,
-                  catZuoraPlan.productType,
-                  product,
-                  freeChargeList,
-                  subZuoraPlan.start,
-                  subZuoraPlan.end,
-                )
-              case paidChargeList: PaidChargeList =>
-                val highLevelFeatures = subZuoraPlan.features.map(com.gu.memsub.Subscription.Feature.fromRest)
-                PaidSubscriptionPlan(
-                  subZuoraPlan.id,
-                  catZuoraPlan.id,
-                  catZuoraPlan.name,
-                  catZuoraPlan.description,
-                  subZuoraPlan.productName,
-                  subZuoraPlan.lastChangeType,
-                  catZuoraPlan.productType,
-                  product,
-                  highLevelFeatures,
-                  paidChargeList,
-                  subZuoraPlan.chargedThroughDate,
-                  subZuoraPlan.start,
-                  subZuoraPlan.end,
-                )
-            }): SubscriptionPlan[P, ChargeList]
-        }.withTrace("anyPlanReads")
-      }
+        }).withTrace("paidPlanReads")
     }
 
 }

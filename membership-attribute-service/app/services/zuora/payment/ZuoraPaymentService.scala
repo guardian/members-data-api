@@ -13,27 +13,20 @@ import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Queries.Account
 import com.gu.zuora.soap.models.Queries.PaymentMethod._
-import scalaz.\/
 import scalaz.std.option._
-import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
     extends SafeLogging {
 
   def paymentDetails(
-      sub: Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid],
+      sub: Subscription[SubscriptionPlan.AnyPlan],
       defaultMandateIdIfApplicable: Option[String] = None,
-  )(implicit logPrefix: LogPrefix): Future[PaymentDetails] =
-    sub.fold(a => Future.successful(PaymentDetails(a)), paidPaymentDetails(defaultMandateIdIfApplicable))
-
-  private def paidPaymentDetails(
-      defaultMandateIdIfApplicable: Option[String],
-  )(sub: Subscription[SubscriptionPlan.Paid])(implicit logPrefix: LogPrefix): Future[PaymentDetails] = {
+  )(implicit logPrefix: LogPrefix): Future[PaymentDetails] = {
     val currency = sub.plan.charges.currencies.head
     // I am not convinced this function is very safe, hence the option
     val eventualMaybeLastPaymentDate = zuoraService

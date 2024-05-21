@@ -6,14 +6,6 @@ import utils.Resource
 class ContactDeserializerTest extends Specification {
 
   "MemberDeserializer" should {
-    "deserialize FreeMember" in {
-      val c = Resource.getJson("free-member.json").as[Contact]
-      c.salesforceAccountId mustEqual "000001"
-      c.salesforceContactId mustEqual "00000003dfdsf"
-      c.identityId must beSome("1004444")
-      c.regNumber must beNone
-    }
-
     "deserialize PaidMember" in {
       val c = Resource.getJson("paid-member.json").as[Contact]
       c.salesforceAccountId mustEqual "0011100000XjDmQAAV"

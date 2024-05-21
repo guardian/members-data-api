@@ -61,7 +61,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
       val expectedPaymentDetails = PaymentDetails(digipackGift, None, None, None)
 
       paymentService.paymentDetails(
-        any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]],
+        any[Subscription[SubscriptionPlan.AnyPlan]],
         any[Option[String]],
       ) returns Future.successful(expectedPaymentDetails)
 
@@ -77,7 +77,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
       val expectedPaymentDetails = PaymentDetails(digipack, None, None, None)
 
       paymentService.paymentDetails(
-        any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]](),
+        any[Subscription[SubscriptionPlan.AnyPlan]](),
         any[Option[String]](),
       ) returns Future.successful(expectedPaymentDetails)
 

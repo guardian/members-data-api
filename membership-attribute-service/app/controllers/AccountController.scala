@@ -261,7 +261,7 @@ class AccountController(
               .map(subs => subscriptionSelector(subscriptionName, s"the sfUser $contact", subs)),
           )
           contributionPlan <- SimpleEitherT.fromEither(subscription.plan match {
-            case p: SubscriptionPlan.Contributor @unchecked /* extra guard needed due to type erasure --> */ if p.product == Contribution => Right(p)
+            case p if p.product == Contribution => Right(p)
             case nc => Left(s"$subscriptionName plan is not a contribution: " + nc)
           })
           billingPeriod = contributionPlan.charges.billingPeriod.asInstanceOf[RecurringPeriod]
