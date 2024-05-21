@@ -1,46 +1,14 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import acceptance.data.TestCatalogPlan.{monthlyPaid, oneYearPaid, paperCharges, quarterlyPaid, sixWeeksPaid, threeMonthsPaid, yearlyPaid}
+import acceptance.data.TestCatalogPlan._
 import acceptance.data.TestPlans.{testDigipackPlans, testPaidMembershipPlans, testSupporterPlusPlans, weeklyPlans}
-import com.gu.i18n.Currency
-import com.gu.memsub.Benefit.{
-  FridayPaper,
-  MondayPaper,
-  PaperDay,
-  Partner,
-  Patron,
-  SaturdayPaper,
-  Staff,
-  SundayPaper,
-  Supporter,
-  ThursdayPaper,
-  TuesdayPaper,
-  WednesdayPaper,
-}
-import com.gu.memsub.BillingPeriod.{Month, OneYear, Quarter, SixWeeks, ThreeMonths, Year}
+import com.gu.memsub.Benefit._
+import com.gu.memsub.BillingPeriod._
 import com.gu.memsub.Product.Membership
 import com.gu.memsub.Subscription.ProductRatePlanId
-import com.gu.memsub.subsv2.{
-  Catalog,
-  CatalogPlan,
-  CatalogZuoraPlan,
-  ChargeList,
-  DigipackPlans,
-  FreeCharge,
-  PaidCharge,
-  PaidMembershipPlans,
-  PaperCharges,
-  SupporterPlusPlans,
-  SupporterPlusCharges,
-  WeeklyDomesticPlans,
-  WeeklyPlans,
-  WeeklyRestOfWorldPlans,
-  WeeklyZoneAPlans,
-  WeeklyZoneBPlans,
-  WeeklyZoneCPlans,
-}
-import com.gu.memsub.{Benefit, BillingPeriod, Current, PricingSummary, Product, Status}
+import com.gu.memsub.subsv2._
+import com.gu.memsub._
 import scalaz.NonEmptyList
 
 object TestCatalogPlan {
@@ -56,13 +24,6 @@ object TestCatalogPlan {
       saving: Option[Int] = None,
   ): CatalogPlan[P, C, S] =
     CatalogPlan[P, C, S](id, product, name, description, saving, charges, status)
-
-  val StaffPlan = TestCatalogPlan[Product.Membership, FreeCharge[Staff.type], Current](
-    product = Membership,
-    name = "Staff",
-    charges = FreeCharge(Staff, Set(Currency.GBP)),
-    status = Status.current,
-  )
 
   def paid[P <: Product, B <: Benefit, BP <: BillingPeriod](
       product: P,
@@ -226,7 +187,6 @@ object TestPlans {
 
 object TestCatalog {
   def apply(
-      staff: CatalogPlan.Staff = TestCatalogPlan.StaffPlan,
       supporter: PaidMembershipPlans[Supporter.type] = testPaidMembershipPlans(Supporter),
       partner: PaidMembershipPlans[Partner.type] = testPaidMembershipPlans(Partner),
       patron: PaidMembershipPlans[Patron.type] = testPaidMembershipPlans(Patron),
@@ -239,7 +199,6 @@ object TestCatalog {
       weekly: WeeklyPlans = weeklyPlans(),
       map: Map[ProductRatePlanId, CatalogZuoraPlan] = Map.empty,
   ): Catalog = Catalog(
-    staff,
     supporter,
     partner,
     patron,

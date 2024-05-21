@@ -191,13 +191,6 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0086619bf8901661ab545f51b21",
     ) -> guardianWeeklyTransformer,
     List(
-      "2c92a0fb4ce4b8e7014ce711d3c37e60",
-      "2c92a0f9479fb46d0147d0155c6f558b",
-    ) -> memberTransformer(Friend),
-    List(
-      "2c92a0f949efde7c0149f1f18162178e",
-    ) -> memberTransformer(Staff),
-    List(
       "8a129ce886834fa90186a20c3ee70b6a", // 2023 price rise annual
       "8a1287c586832d250186a2040b1548fe", // 2023 price rise monthly
       "2c92a0f94c547592014c69f5b0ff4f7e",
@@ -298,13 +291,6 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f878ac40300178acaa04bb401d",
     ) -> guardianWeeklyTransformer,
     List(
-      "2c92c0f94c9ca1c5014c9e5c64ba4260",
-      "2c92c0f945fee1c90146057402c7066b",
-    ) -> memberTransformer(Friend),
-    List(
-      "2c92c0f849c6e58a0149c73d6f114be2",
-    ) -> memberTransformer(Staff),
-    List(
       "2c92c0f94c510a0d014c569ba8eb45f7",
       "2c92c0f94c510a01014c569e2d857cfd",
       "2c92c0f84b079582014b2754c07c0f7d",
@@ -350,14 +336,12 @@ object SupporterRatePlanToAttributesMapper {
 sealed abstract class MembershipTier(val name: String, val value: Int)
 
 object MembershipTier {
-  case object Friend extends MembershipTier("Friend", 1)
-  case object Staff extends MembershipTier("Staff", 2)
   case object Supporter extends MembershipTier("Supporter", 3)
   case object Partner extends MembershipTier("Partner", 4)
   case object Patron extends MembershipTier("Patron", 5)
 
   private def fromString(name: String): Option[MembershipTier] =
-    List(Friend, Staff, Supporter, Partner, Patron).find(_.name == name)
+    List(Supporter, Partner, Patron).find(_.name == name)
 
   def getMostValuableTier(newTier: MembershipTier, existingTier: Option[String]) =
     if (existingTier.flatMap(fromString).exists(_.value > newTier.value))

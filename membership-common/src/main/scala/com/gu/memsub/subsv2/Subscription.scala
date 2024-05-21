@@ -77,16 +77,8 @@ object GetCurrentPlans {
    *  - positive if x > y
    *  - zero otherwise (if x == y)*/
   val planGoodnessOrder = new scala.Ordering[SubscriptionPlan.AnyPlan] {
-    val lt = -1; val eq = 0; val gt = 1
     override def compare(x: AnyPlan, y: AnyPlan): Int = {
       (x, y) match {
-        case (_: PaidSubscriptionPlan[_, _], _: FreeSubscriptionPlan[_, _]) => gt
-        case (_: FreeSubscriptionPlan[_, _], _: PaidSubscriptionPlan[_, _]) => lt
-        case (staffX: FreeSubscriptionPlan[_, _], staffY: FreeSubscriptionPlan[_, _]) => {
-          if (staffX.start < staffY.start) lt
-          else if (staffX.start > staffY.start) gt
-          else eq
-        }
         case (planX: PaidSubscriptionPlan[_, _], planY: PaidSubscriptionPlan[_, _]) => {
           val priceX = planX.charges.price.prices.head.amount
           val priceY = planY.charges.price.prices.head.amount

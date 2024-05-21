@@ -130,7 +130,6 @@ object Benefit {
 
   def fromId(id: String): Option[Benefit] =
     PaperDay.fromId(id) orElse
-      FreeMemberTier.fromId(id) orElse
       PaidMemberTier.fromId(id) orElse
       (id == SupporterPlus.id).option(SupporterPlus) orElse
       (id == Digipack.id).option(Digipack) orElse
@@ -139,7 +138,6 @@ object Benefit {
       (id == Weekly.id).option(Weekly)
 
   sealed trait MemberTier extends Benefit
-  sealed trait FreeMemberTier extends MemberTier
   sealed trait PaidMemberTier extends MemberTier {
     override val isPhysical: Boolean = true
   }
@@ -161,13 +159,6 @@ object Benefit {
     }
   }
 
-  object FreeMemberTier {
-    def fromId(id: String): Option[FreeMemberTier] = id match {
-      case Staff.id => Staff.some
-      case _ => None
-    }
-  }
-
   object PaidMemberTier {
     def fromId(id: String): Option[PaidMemberTier] = id match {
       case Supporter.id => Supporter.some
@@ -180,11 +171,6 @@ object Benefit {
   object Contributor extends Benefit {
     override val id = "Contributor"
     override val isPhysical: Boolean = false
-  }
-
-  object Staff extends FreeMemberTier {
-    override val id = "Staff"
-    override val isPhysical: Boolean = true
   }
 
   object Supporter extends PaidMemberTier {

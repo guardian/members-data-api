@@ -41,8 +41,7 @@ object SubPlanReads {
   implicit val nationalDeliveryReads: SubPlanReads[NationalDelivery] = findProduct(_.nationalDelivery.point[List], NationalDelivery)
   implicit val zDigipackReads: SubPlanReads[ZDigipack] = findProduct(_.digipack.point[List], Digipack)
   implicit val supporterPlusReads: SubPlanReads[SupporterPlus] = findProduct(_.supporterPlus.point[List], SupporterPlus)
-  implicit val membershipReads: SubPlanReads[Membership] =
-    findProduct(ids => List(ids.supporter, ids.partner, ids.patron, ids.staff), Membership)
+  implicit val membershipReads: SubPlanReads[Membership] = findProduct(ids => List(ids.supporter, ids.partner, ids.patron), Membership)
   implicit val contributionReads: SubPlanReads[Contribution] = findProduct(_.contributor.point[List], Contribution)
   implicit val weeklyZoneAReads: SubPlanReads[WeeklyZoneA] = findProduct(_.weeklyZoneA.point[List], WeeklyZoneA)
   implicit val weeklyZoneBReads: SubPlanReads[WeeklyZoneB] = findProduct(_.weeklyZoneB.point[List], WeeklyZoneB)
@@ -132,20 +131,15 @@ object SubPlanReads {
           c: CatalogZuoraPlan,
       ): ValidationNel[String, SubscriptionPlan[P, ChargeList with SingleBenefit[B]]] = {
         (
-          ChargeListReads.readPaidCharge[B, BillingPeriod].read(c.benefits, z.charges.list.toList).map(\/.r[FreeCharge[B]].apply) orElse
-            ChargeListReads.readFreeCharge[B].read(c.benefits, z.charges.list.toList).map(\/.left)
-        ).flatMap(
-          _.fold(
-            free =>
-              freePlanReads(implicitly[SubPlanReads[P]], ChargeListReads.pure(free))
-                .read(p, z, c)
-                .map(identity[SubscriptionPlan[P, ChargeList with SingleBenefit[B]]]),
-            paid =>
-              paidPlanReads(implicitly[SubPlanReads[P]], ChargeListReads.pure(paid))
-                .read(p, z, c)
-                .map(identity[SubscriptionPlan[P, ChargeList with SingleBenefit[B]]]),
-          ),
-        )
+          ChargeListReads
+            .readPaidCharge[B, BillingPeriod]
+            .read(c.benefits, z.charges.list.toList)
+          )
+          .flatMap(paid =>
+            paidPlanReads(implicitly[SubPlanReads[P]], ChargeListReads.pure(paid))
+              .read(p, z, c)
+              .map(identity[SubscriptionPlan[P, ChargeList with SingleBenefit[B]]]),
+          )
       }.withTrace("planReads")
     }
 

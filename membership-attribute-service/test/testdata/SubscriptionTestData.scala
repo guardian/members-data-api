@@ -15,18 +15,6 @@ trait SubscriptionTestData {
 
   def referenceDate: LocalDate
 
-  val staffPlan = FreeSubscriptionPlan[Product.Membership, FreeCharge[Benefit.Staff.type]](
-    RatePlanId("idStaff"),
-    ProductRatePlanId("prpi"),
-    "Staff",
-    "desc",
-    "Staff",
-    "Membership",
-    Product.Membership,
-    FreeCharge(Staff, Set(GBP)),
-    referenceDate,
-    referenceDate + 1.year,
-  )
   def supporterPlan(startDate: LocalDate, endDate: LocalDate): SubscriptionPlan.Supporter =
     PaidSubscriptionPlan[Product.Membership, PaidCharge[Benefit.Supporter.type, BillingPeriod]](
       RatePlanId("idSupporter"),
@@ -198,7 +186,6 @@ trait SubscriptionTestData {
   val membership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate, referenceDate + 1.year)))
   val cancelledMembership = toSubscription(true)(NonEmptyList(supporterPlan(referenceDate, referenceDate + 1.year)))
   val expiredMembership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate - 2.year, referenceDate - 1.year)))
-  val staff = toSubscription(false)(NonEmptyList(staffPlan))
   val contributor = toSubscription(false)(NonEmptyList(contributorPlan(referenceDate, referenceDate + 1.month)))
   val supporterPlus = toSubscription(false)(NonEmptyList(supporterPlusPlan(referenceDate, referenceDate + 1.month)))
 }

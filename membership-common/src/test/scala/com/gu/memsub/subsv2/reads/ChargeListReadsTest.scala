@@ -135,17 +135,6 @@ class ChargeListReadsTest extends AnyFlatSpec {
 
   }
 
-  "product reads" should "not read any supporter as a Free member" in {
-
-    val result: ValidationNel[String, Unit] = implicitly[ChargeReads[FreeMemberTier]].read(planChargeMap, supporterCharge).map(_ => ())
-
-    val expected: ValidationNel[String, Unit] =
-      Failure(NonEmptyList("expected interface com.gu.memsub.Benefit$FreeMemberTier but was Supporter (isPhysical? = true)"))
-
-    result shouldMatchTo (expected)
-
-  }
-
   "ChargeList reads" should "read single-charge non-paper rate plans as generic PaidCharge type" in {
     val result: ValidationNel[String, PaidChargeList] = implicitly[ChargeListReads[PaidChargeList]].read(planChargeMap, List(weeklyCharge))
 
