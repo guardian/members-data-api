@@ -12,7 +12,7 @@ object SubPlanReads {
       ids: ProductIds,
       subZuoraPlan: SubscriptionZuoraPlan,
       catZuoraPlan: CatalogZuoraPlan,
-  ): ValidationNel[String, SubscriptionPlan] =
+  ): ValidationNel[String, RatePlan] =
     (for {
       charges <- readChargeList.read(catZuoraPlan.benefits, subZuoraPlan.charges.list.toList)
       product <- ids.productMap
@@ -20,7 +20,7 @@ object SubPlanReads {
         .toSuccessNel(s"couldn't read a product as the product id is ${catZuoraPlan.productId} but we need one of $ids")
     } yield {
       val highLevelFeatures = subZuoraPlan.features.map(com.gu.memsub.Subscription.Feature.fromRest)
-      SubscriptionPlan(
+      RatePlan(
         subZuoraPlan.id,
         catZuoraPlan.id,
         catZuoraPlan.name,

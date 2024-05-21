@@ -96,13 +96,13 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      def externalisePlanName(plan: SubscriptionPlan): Option[String] = plan.product match {
+      def externalisePlanName(plan: RatePlan): Option[String] = plan.product match {
         case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
         case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
         case _ => None
       }
 
-      def jsonifyPlan(plan: SubscriptionPlan) = Json.obj(
+      def jsonifyPlan(plan: RatePlan) = Json.obj(
         "name" -> externalisePlanName(plan),
         "start" -> plan.start,
         "end" -> plan.end,

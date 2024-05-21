@@ -4,7 +4,7 @@ import acceptance.data.Randoms.randomId
 import com.gu.memsub.Product
 import com.gu.memsub.Product.Membership
 import com.gu.memsub.Subscription.{Feature, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.{ChargeList, SubscriptionPlan}
+import com.gu.memsub.subsv2.{RatePlanChargeList, RatePlan}
 import org.joda.time.LocalDate
 
 object TestPaidSubscriptionPlan {
@@ -18,11 +18,11 @@ object TestPaidSubscriptionPlan {
       productType: String = randomId("paidSubscriptionPlanProductType"),
       product: Product = Membership,
       features: List[Feature] = Nil,
-      charges: ChargeList = TestSingleCharge(),
+      charges: RatePlanChargeList = TestSingleCharge(),
       chargedThrough: Option[LocalDate] = None, // this is None if the sub hasn't been billed yet (on a free trial)
       start: LocalDate = LocalDate.now().minusDays(13),
       end: LocalDate = LocalDate.now().minusDays(13).plusYears(1),
-  ): SubscriptionPlan = SubscriptionPlan(
+  ): RatePlan = RatePlan(
     id: RatePlanId,
     productRatePlanId,
     name,

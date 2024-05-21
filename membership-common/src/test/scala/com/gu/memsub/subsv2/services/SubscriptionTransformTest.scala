@@ -82,7 +82,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         promoCode = None,
         isCancelled = false,
         plans = CovariantNonEmptyList(
-          SubscriptionPlan(
+          RatePlan(
             id = RatePlanId("2c92c0f85bae511e015bcead96a569e5"),
             productRatePlanId = ProductRatePlanId("2c92c0f9585841e7015862c9128e153b"),
             name = "foo",
@@ -92,7 +92,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
             productType = "Guardian Weekly",
             product = WeeklyZoneB,
             features = List(),
-            charges = SingleCharge(
+            charges = RatePlanCharge(
               Benefit.Weekly,
               OneYear,
               PricingSummary(Map(GBP -> Price(152.0f, GBP))),
@@ -132,7 +132,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         promoCode = None,
         isCancelled = false,
         plans = CovariantNonEmptyList(
-          SubscriptionPlan(
+          RatePlan(
             id = RatePlanId("2c92c0f95bae6218015bceaf24520fa9"),
             productRatePlanId = ProductRatePlanId("2c92c0f85a4b3a23015a5be3fc2271ad"),
             name = "foo",
@@ -142,7 +142,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
             productType = "Guardian Weekly",
             product = WeeklyZoneB,
             features = List(),
-            charges = SingleCharge(
+            charges = RatePlanCharge(
               Benefit.Weekly,
               SixMonths,
               PricingSummary(Map(GBP -> Price(76.0f, GBP))),
@@ -182,7 +182,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
         promoCode = None,
         isCancelled = false,
         plans = CovariantNonEmptyList(
-          SubscriptionPlan(
+          RatePlan(
             id = RatePlanId("2c92c0f85be67835015be8f3743a7f8e"),
             productRatePlanId = ProductRatePlanId("2c92c0f95a4b48b8015a5be1205d042b"),
             name = "foo",
@@ -192,7 +192,7 @@ class SubscriptionTransformTest extends AnyFlatSpec {
             productType = "Guardian Weekly",
             product = WeeklyZoneB,
             features = List(),
-            charges = SingleCharge(
+            charges = RatePlanCharge(
               Benefit.Weekly,
               SixMonthsRecurring,
               PricingSummary(Map(GBP -> Price(76.0f, GBP))),

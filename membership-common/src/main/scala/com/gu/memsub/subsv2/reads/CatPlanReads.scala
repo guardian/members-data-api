@@ -50,14 +50,14 @@ object CatPlanReads {
       (c.status == Status.current).option(Status.current).toSuccess(s"Needed current, got ${c.status}".wrapNel)
   }
 
-  implicit def planReads[P <: Product: CatPlanReads, C <: ChargeList: ChargeListReads, S <: Status: CatPlanReads]
-      : CatPlanReads[CatalogPlan[P, C, S]] =
-    new CatPlanReads[CatalogPlan[P, C, S]] {
-      override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, CatalogPlan[P, C, S]] =
+  implicit def planReads[P <: Product: CatPlanReads, C <: RatePlanChargeList: ChargeListReads, S <: Status: CatPlanReads]
+      : CatPlanReads[ProductRatePlan[P, C, S]] =
+    new CatPlanReads[ProductRatePlan[P, C, S]] {
+      override def read(p: ProductIds, c: CatalogZuoraPlan): ValidationNel[String, ProductRatePlan[P, C, S]] =
         (implicitly[ChargeListReads[C]].read(c.benefits, c.charges) |@|
           implicitly[CatPlanReads[P]].read(p, c) |@|
           implicitly[CatPlanReads[S]].read(p, c)) { case (charges, product, s) =>
-          CatalogPlan(c.id, product, c.name, c.description, Try(c.saving.get.toInt).toOption, charges, s)
+          ProductRatePlan(c.id, product, c.name, c.description, Try(c.saving.get.toInt).toOption, charges, s)
         }
     }
 }

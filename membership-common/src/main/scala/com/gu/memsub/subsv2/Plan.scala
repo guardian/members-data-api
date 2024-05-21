@@ -225,87 +225,86 @@ object FrontendId {
 
 }
 
-object CatalogPlan {
+object ProductRatePlan {
 
-  type Supporter[+B <: BillingPeriod] = CatalogPlan[Product.Membership, SingleCharge[Supporter.type, B], Current]
-  type Partner[+B <: BillingPeriod] = CatalogPlan[Product.Membership, SingleCharge[Partner.type, B], Current]
-  type Patron[+B <: BillingPeriod] = CatalogPlan[Product.Membership, SingleCharge[Patron.type, B], Current]
+  type Supporter[+B <: BillingPeriod] = ProductRatePlan[Product.Membership, RatePlanCharge[Supporter.type, B], Current]
+  type Partner[+B <: BillingPeriod] = ProductRatePlan[Product.Membership, RatePlanCharge[Partner.type, B], Current]
+  type Patron[+B <: BillingPeriod] = ProductRatePlan[Product.Membership, RatePlanCharge[Patron.type, B], Current]
 
-  type Contributor = CatalogPlan[Product.Contribution, SingleCharge[Contributor.type, Month.type], Current]
+  type Contributor = ProductRatePlan[Product.Contribution, RatePlanCharge[Contributor.type, Month.type], Current]
 
-  type Digipack[+B <: BillingPeriod] = CatalogPlan[Product.ZDigipack, SingleCharge[Digipack.type, B], Current]
-  type SupporterPlus[+B <: BillingPeriod] = CatalogPlan[Product.SupporterPlus, SupporterPlusCharges, Current]
-  type Delivery = CatalogPlan[Product.Delivery, PaperCharges, Current]
-  type Voucher = CatalogPlan[Product.Voucher, PaperCharges, Current]
-  type DigitalVoucher = CatalogPlan[Product.DigitalVoucher, PaperCharges, Current]
-  type AnyPlan = CatalogPlan[Product, ChargeList, Current]
+  type Digipack[+B <: BillingPeriod] = ProductRatePlan[Product.ZDigipack, RatePlanCharge[Digipack.type, B], Current]
+  type SupporterPlus[+B <: BillingPeriod] = ProductRatePlan[Product.SupporterPlus, SupporterPlusCharges, Current]
+  type Delivery = ProductRatePlan[Product.Delivery, PaperCharges, Current]
+  type Voucher = ProductRatePlan[Product.Voucher, PaperCharges, Current]
+  type DigitalVoucher = ProductRatePlan[Product.DigitalVoucher, PaperCharges, Current]
 
-  type WeeklyZoneA[+B <: BillingPeriod] = CatalogPlan[Product.WeeklyZoneA, SingleCharge[Weekly.type, B], Current]
-  type WeeklyZoneB[+B <: BillingPeriod] = CatalogPlan[Product.WeeklyZoneB, SingleCharge[Weekly.type, B], Current]
-  type WeeklyZoneC[+B <: BillingPeriod] = CatalogPlan[Product.WeeklyZoneC, SingleCharge[Weekly.type, B], Current]
-  type WeeklyDomestic[+B <: BillingPeriod] = CatalogPlan[Product.WeeklyDomestic, SingleCharge[Weekly.type, B], Current]
-  type WeeklyRestOfWorld[+B <: BillingPeriod] = CatalogPlan[Product.WeeklyRestOfWorld, SingleCharge[Weekly.type, B], Current]
+  type WeeklyZoneA[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyZoneA, RatePlanCharge[Weekly.type, B], Current]
+  type WeeklyZoneB[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyZoneB, RatePlanCharge[Weekly.type, B], Current]
+  type WeeklyZoneC[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyZoneC, RatePlanCharge[Weekly.type, B], Current]
+  type WeeklyDomestic[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyDomestic, RatePlanCharge[Weekly.type, B], Current]
+  type WeeklyRestOfWorld[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyRestOfWorld, RatePlanCharge[Weekly.type, B], Current]
 
-  type Paper = CatalogPlan[Product.Paper, ChargeList, Current]
-  type ContentSubscription = CatalogPlan[Product.ContentSubscription, ChargeList, Current]
+  type Paper = ProductRatePlan[Product.Paper, RatePlanChargeList, Current]
+  type ContentSubscription = ProductRatePlan[Product.ContentSubscription, RatePlanChargeList, Current]
 
 }
 
 case class PlansWithIntroductory[+B](plans: List[B], associations: List[(B, B)])
 
 case class MembershipPlans[+B <: Benefit](
-    month: CatalogPlan[Product.Membership, SingleCharge[B, Month.type], Current],
-    year: CatalogPlan[Product.Membership, SingleCharge[B, Year.type], Current],
+    month: ProductRatePlan[Product.Membership, RatePlanCharge[B, Month.type], Current],
+    year: ProductRatePlan[Product.Membership, RatePlanCharge[B, Year.type], Current],
 ) {
   lazy val plans = List(month, year)
 }
 
 case class DigipackPlans(
-    month: CatalogPlan.Digipack[Month.type],
-    quarter: CatalogPlan.Digipack[Quarter.type],
-    year: CatalogPlan.Digipack[Year.type],
+    month: ProductRatePlan.Digipack[Month.type],
+    quarter: ProductRatePlan.Digipack[Quarter.type],
+    year: ProductRatePlan.Digipack[Year.type],
 ) {
   lazy val plans = List(month, quarter, year)
 }
 
-case class SupporterPlusPlans(month: CatalogPlan.SupporterPlus[Month.type], year: CatalogPlan.SupporterPlus[Year.type]) {
+case class SupporterPlusPlans(month: ProductRatePlan.SupporterPlus[Month.type], year: ProductRatePlan.SupporterPlus[Year.type]) {
   lazy val plans = List(month, year)
 }
 
 case class WeeklyZoneBPlans(
-    quarter: CatalogPlan.WeeklyZoneB[Quarter.type],
-    year: CatalogPlan.WeeklyZoneB[Year.type],
-    oneYear: CatalogPlan.WeeklyZoneB[OneYear.type],
+    quarter: ProductRatePlan.WeeklyZoneB[Quarter.type],
+    year: ProductRatePlan.WeeklyZoneB[Year.type],
+    oneYear: ProductRatePlan.WeeklyZoneB[OneYear.type],
 ) {
   lazy val plans = List(quarter, year, oneYear)
   val plansWithAssociations = PlansWithIntroductory(plans, List.empty)
 }
 case class WeeklyZoneAPlans(
-    sixWeeks: CatalogPlan.WeeklyZoneA[SixWeeks.type],
-    quarter: CatalogPlan.WeeklyZoneA[Quarter.type],
-    year: CatalogPlan.WeeklyZoneA[Year.type],
-    oneYear: CatalogPlan.WeeklyZoneA[OneYear.type],
+    sixWeeks: ProductRatePlan.WeeklyZoneA[SixWeeks.type],
+    quarter: ProductRatePlan.WeeklyZoneA[Quarter.type],
+    year: ProductRatePlan.WeeklyZoneA[Year.type],
+    oneYear: ProductRatePlan.WeeklyZoneA[OneYear.type],
 ) {
   val plans = List(sixWeeks, quarter, year, oneYear)
   val associations = List(sixWeeks -> quarter)
   val plansWithAssociations = PlansWithIntroductory(plans, associations)
 }
 case class WeeklyZoneCPlans(
-    sixWeeks: CatalogPlan.WeeklyZoneC[SixWeeks.type],
-    quarter: CatalogPlan.WeeklyZoneC[Quarter.type],
-    year: CatalogPlan.WeeklyZoneC[Year.type],
+    sixWeeks: ProductRatePlan.WeeklyZoneC[SixWeeks.type],
+    quarter: ProductRatePlan.WeeklyZoneC[Quarter.type],
+    year: ProductRatePlan.WeeklyZoneC[Year.type],
 ) {
   lazy val plans = List(sixWeeks, quarter, year)
   val associations = List(sixWeeks -> quarter)
   val plansWithAssociations = PlansWithIntroductory(plans, associations)
 }
 case class WeeklyDomesticPlans(
-    sixWeeks: CatalogPlan.WeeklyDomestic[SixWeeks.type],
-    quarter: CatalogPlan.WeeklyDomestic[Quarter.type],
-    year: CatalogPlan.WeeklyDomestic[Year.type],
-    month: CatalogPlan.WeeklyDomestic[Month.type],
-    oneYear: CatalogPlan.WeeklyDomestic[OneYear.type],
-    threeMonths: CatalogPlan.WeeklyDomestic[ThreeMonths.type],
+    sixWeeks: ProductRatePlan.WeeklyDomestic[SixWeeks.type],
+    quarter: ProductRatePlan.WeeklyDomestic[Quarter.type],
+    year: ProductRatePlan.WeeklyDomestic[Year.type],
+    month: ProductRatePlan.WeeklyDomestic[Month.type],
+    oneYear: ProductRatePlan.WeeklyDomestic[OneYear.type],
+    threeMonths: ProductRatePlan.WeeklyDomestic[ThreeMonths.type],
 ) {
   lazy val plans = List(sixWeeks, quarter, year, month, oneYear, threeMonths)
   val associations = List(sixWeeks -> quarter)
@@ -313,12 +312,12 @@ case class WeeklyDomesticPlans(
 }
 
 case class WeeklyRestOfWorldPlans(
-    sixWeeks: CatalogPlan.WeeklyRestOfWorld[SixWeeks.type],
-    quarter: CatalogPlan.WeeklyRestOfWorld[Quarter.type],
-    year: CatalogPlan.WeeklyRestOfWorld[Year.type],
-    month: CatalogPlan.WeeklyRestOfWorld[Month.type],
-    oneYear: CatalogPlan.WeeklyRestOfWorld[OneYear.type],
-    threeMonths: CatalogPlan.WeeklyRestOfWorld[ThreeMonths.type],
+    sixWeeks: ProductRatePlan.WeeklyRestOfWorld[SixWeeks.type],
+    quarter: ProductRatePlan.WeeklyRestOfWorld[Quarter.type],
+    year: ProductRatePlan.WeeklyRestOfWorld[Year.type],
+    month: ProductRatePlan.WeeklyRestOfWorld[Month.type],
+    oneYear: ProductRatePlan.WeeklyRestOfWorld[OneYear.type],
+    threeMonths: ProductRatePlan.WeeklyRestOfWorld[ThreeMonths.type],
 ) {
   lazy val plans = List(sixWeeks, quarter, year, month, oneYear, threeMonths)
   val associations = List(sixWeeks -> quarter)
@@ -341,10 +340,10 @@ case class Catalog(
     patron: MembershipPlans[Patron.type],
     digipack: DigipackPlans,
     supporterPlus: SupporterPlusPlans,
-    contributor: CatalogPlan.Contributor,
-    voucher: NonEmptyList[CatalogPlan.Voucher],
-    digitalVoucher: NonEmptyList[CatalogPlan.DigitalVoucher],
-    delivery: NonEmptyList[CatalogPlan.Delivery],
+    contributor: ProductRatePlan.Contributor,
+    voucher: NonEmptyList[ProductRatePlan.Voucher],
+    digitalVoucher: NonEmptyList[ProductRatePlan.DigitalVoucher],
+    delivery: NonEmptyList[ProductRatePlan.Delivery],
     weekly: WeeklyPlans,
     map: Map[ProductRatePlanId, CatalogZuoraPlan],
 ) {
@@ -355,7 +354,7 @@ case class Catalog(
 
 /** A higher level representation of a number of Zuora rate plan charges
   */
-sealed trait ChargeList {
+sealed trait RatePlanChargeList {
   def benefits: NonEmptyList[Benefit]
   def gbpPrice = price.getPrice(GBP).getOrElse(throw new Exception("No GBP price"))
   def currencies = price.currencies
@@ -366,20 +365,20 @@ sealed trait ChargeList {
 
 /** Same as above but we must have exactly one charge, giving us exactly one benefit This is used for supporter, partner, patron and digital pack subs
   */
-case class SingleCharge[+B <: Benefit, +BP <: BillingPeriod](
+case class RatePlanCharge[+B <: Benefit, +BP <: BillingPeriod](
     benefit: B,
     billingPeriod: BP,
     price: PricingSummary,
     chargeId: ProductRatePlanChargeId,
     subRatePlanChargeId: SubscriptionRatePlanChargeId,
-) extends ChargeList {
+) extends RatePlanChargeList {
   def benefits = NonEmptyList(benefit)
 }
 
 /** Paper plans will have lots of rate plan charges, but the general structure of them is that they'll give you the paper on a bunch of days, and if
   * you're on a plus plan you'll have a digipack
   */
-case class PaperCharges(dayPrices: Map[PaperDay, PricingSummary], digipack: Option[PricingSummary]) extends ChargeList {
+case class PaperCharges(dayPrices: Map[PaperDay, PricingSummary], digipack: Option[PricingSummary]) extends RatePlanChargeList {
   def benefits = NonEmptyList.fromSeq[Benefit](dayPrices.keys.head, dayPrices.keys.tail.toSeq ++ digipack.map(_ => Digipack))
   def price: PricingSummary = (dayPrices.values.toSeq ++ digipack.toSeq).reduce(_ |+| _)
   override def billingPeriod: BillingPeriod = BillingPeriod.Month
@@ -389,14 +388,14 @@ case class PaperCharges(dayPrices: Map[PaperDay, PricingSummary], digipack: Opti
 
 /** Supporter Plus V2 has two rate plan charges, one for the subscription element and one for the additional contribution.
   */
-case class SupporterPlusCharges(billingPeriod: BillingPeriod, pricingSummaries: List[PricingSummary]) extends ChargeList {
+case class SupporterPlusCharges(billingPeriod: BillingPeriod, pricingSummaries: List[PricingSummary]) extends RatePlanChargeList {
 
   val subRatePlanChargeId = SubscriptionRatePlanChargeId("")
   override def price: PricingSummary = pricingSummaries.reduce(_ |+| _)
   override def benefits: NonEmptyList[Benefit] = NonEmptyList(SupporterPlus)
 }
 
-case class SubscriptionPlan(
+case class RatePlan(
     id: RatePlanId,
     productRatePlanId: ProductRatePlanId,
     name: String,
@@ -406,7 +405,7 @@ case class SubscriptionPlan(
     productType: String,
     product: Product,
     features: List[SubsFeature],
-    charges: ChargeList,
+    charges: RatePlanChargeList,
     chargedThrough: Option[
       LocalDate,
     ], // this is None if the sub hasn't been billed yet (on a free trial) or if you have been billed it is the date at which you'll next be billed
@@ -414,7 +413,7 @@ case class SubscriptionPlan(
     end: LocalDate,
 )
 
-case class CatalogPlan[+P <: Product, +C <: ChargeList, +S <: Status](
+case class ProductRatePlan[+P <: Product, +C <: RatePlanChargeList, +S <: Status](
     id: ProductRatePlanId,
     product: P,
     name: String,

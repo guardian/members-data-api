@@ -1,7 +1,7 @@
 package services
 
 import com.gu.memsub.promo.LogImplicit.LoggableFuture
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging

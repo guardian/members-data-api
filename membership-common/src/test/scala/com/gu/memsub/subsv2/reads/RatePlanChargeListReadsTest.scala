@@ -7,7 +7,7 @@ import com.gu.memsub.Benefit._
 import com.gu.memsub.BillingPeriod.Month
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, SubscriptionRatePlanChargeId}
 import com.gu.memsub._
-import com.gu.memsub.subsv2.{ChargeList, _}
+import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.softwaremill.diffx
 import com.softwaremill.diffx._
@@ -17,7 +17,7 @@ import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import org.scalatest.flatspec.AnyFlatSpec
 import scalaz.{Failure, NonEmptyList, Success, ValidationNel}
 
-class ChargeListReadsTest extends AnyFlatSpec {
+class RatePlanChargeListReadsTest extends AnyFlatSpec {
 
   val planChargeMap = Map[ProductRatePlanChargeId, Benefit](
     ProductRatePlanChargeId("weekly") -> Weekly,
@@ -136,10 +136,10 @@ class ChargeListReadsTest extends AnyFlatSpec {
   }
 
   "ChargeList reads" should "read single-charge non-paper rate plans as generic PaidCharge type" in {
-    val result: ValidationNel[String, ChargeList] = readChargeList.read(planChargeMap, List(weeklyCharge))
+    val result: ValidationNel[String, RatePlanChargeList] = readChargeList.read(planChargeMap, List(weeklyCharge))
 
-    val expected: ValidationNel[String, ChargeList] =
-      Success(SingleCharge(Weekly, Month, weeklyCharge.pricing, weeklyCharge.productRatePlanChargeId, weeklyCharge.id))
+    val expected: ValidationNel[String, RatePlanChargeList] =
+      Success(RatePlanCharge(Weekly, Month, weeklyCharge.pricing, weeklyCharge.productRatePlanChargeId, weeklyCharge.id))
 
     result shouldMatchTo expected
 
@@ -151,9 +151,9 @@ class ChargeListReadsTest extends AnyFlatSpec {
 
     val sundayPrices = Seq((SundayPaper, paperCharge.pricing)).toMap[PaperDay, PricingSummary]
 
-    val result: ValidationNel[String, ChargeList] = readChargeList.read(planChargeMap, List(paperCharge))
+    val result: ValidationNel[String, RatePlanChargeList] = readChargeList.read(planChargeMap, List(paperCharge))
 
-    val expected: ValidationNel[String, ChargeList] = Success(PaperCharges(dayPrices = sundayPrices, digipack = None))
+    val expected: ValidationNel[String, RatePlanChargeList] = Success(PaperCharges(dayPrices = sundayPrices, digipack = None))
 
     result shouldMatchTo expected
 
@@ -162,10 +162,10 @@ class ChargeListReadsTest extends AnyFlatSpec {
   }
 
   "ChargeList reads" should "not confuse digipack rate plan with paper+digital plan" in {
-    val result: ValidationNel[String, ChargeList] = readChargeList.read(planChargeMap, List(digipackCharge))
+    val result: ValidationNel[String, RatePlanChargeList] = readChargeList.read(planChargeMap, List(digipackCharge))
 
-    val expected: ValidationNel[String, ChargeList] =
-      Success(SingleCharge(Digipack, Month, digipackCharge.pricing, digipackCharge.productRatePlanChargeId, digipackCharge.id))
+    val expected: ValidationNel[String, RatePlanChargeList] =
+      Success(RatePlanCharge(Digipack, Month, digipackCharge.pricing, digipackCharge.productRatePlanChargeId, digipackCharge.id))
 
     result shouldMatchTo expected
 

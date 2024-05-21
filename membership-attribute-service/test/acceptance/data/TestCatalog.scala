@@ -14,7 +14,7 @@ import scalaz.NonEmptyList
 object TestCatalogPlan {
   def randomPlanId(): ProductRatePlanId = ProductRatePlanId(randomId("productRatePlanId"))
 
-  def apply[P <: Product, C <: ChargeList, S <: Status](
+  def apply[P <: Product, C <: RatePlanChargeList, S <: Status](
       product: P,
       name: String,
       charges: C,
@@ -22,8 +22,8 @@ object TestCatalogPlan {
       id: ProductRatePlanId = randomPlanId(),
       description: String = "",
       saving: Option[Int] = None,
-  ): CatalogPlan[P, C, S] =
-    CatalogPlan[P, C, S](id, product, name, description, saving, charges, status)
+  ): ProductRatePlan[P, C, S] =
+    ProductRatePlan[P, C, S](id, product, name, description, saving, charges, status)
 
   def paid[P <: Product, B <: Benefit, BP <: BillingPeriod](
       product: P,
@@ -31,8 +31,8 @@ object TestCatalogPlan {
       billingPeriod: BP,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, BP], Current] =
-    TestCatalogPlan[P, SingleCharge[B, BP], Current](
+  ): ProductRatePlan[P, RatePlanCharge[B, BP], Current] =
+    TestCatalogPlan[P, RatePlanCharge[B, BP], Current](
       product = product,
       name = name + "Paid",
       charges = TestSingleCharge[B, BP](benefit, billingPeriod, TestPricingSummary.gbp(amount)),
@@ -44,7 +44,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, Month.type], Current] =
+  ): ProductRatePlan[P, RatePlanCharge[B, Month.type], Current] =
     paid(product, benefit, Month, name + "Monthly", amount)
 
   def sixWeeksPaid[P <: Product, B <: Benefit](
@@ -52,7 +52,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, SixWeeks.type], Current] =
+  ): ProductRatePlan[P, RatePlanCharge[B, SixWeeks.type], Current] =
     paid(product, benefit, SixWeeks, name + "SixWeeks", amount)
 
   def quarterlyPaid[P <: Product, B <: Benefit](
@@ -60,7 +60,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, Quarter.type], Current] =
+  ): ProductRatePlan[P, RatePlanCharge[B, Quarter.type], Current] =
     paid(product, benefit, Quarter, name + "Quarterly", amount)
 
   def yearlyPaid[P <: Product, B <: Benefit](
@@ -68,7 +68,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, Year.type], Current] =
+  ): ProductRatePlan[P, RatePlanCharge[B, Year.type], Current] =
     paid(product, benefit, Year, name + "Yearly", amount)
 
   def threeMonthsPaid[P <: Product, B <: Benefit](
@@ -76,7 +76,7 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, ThreeMonths.type], Current] =
+  ): ProductRatePlan[P, RatePlanCharge[B, ThreeMonths.type], Current] =
     paid(product, benefit, ThreeMonths, name + "ThreeMonths", amount)
 
   def oneYearPaid[P <: Product, B <: Benefit](
@@ -84,10 +84,10 @@ object TestCatalogPlan {
       benefit: B,
       name: String,
       amount: Double,
-  ): CatalogPlan[P, SingleCharge[B, OneYear.type], Current] =
+  ): ProductRatePlan[P, RatePlanCharge[B, OneYear.type], Current] =
     paid(product, benefit, OneYear, name + "OneYear", amount)
 
-  def paperCharges[P <: Product, BP <: BillingPeriod](product: P, name: String): CatalogPlan[P, PaperCharges, Current] =
+  def paperCharges[P <: Product, BP <: BillingPeriod](product: P, name: String): ProductRatePlan[P, PaperCharges, Current] =
     TestCatalogPlan[P, PaperCharges, Current](
       product = product,
       name = name + "PaperCharges",
@@ -192,10 +192,10 @@ object TestCatalog {
       patron: MembershipPlans[Patron.type] = testPaidMembershipPlans(Patron),
       digipack: DigipackPlans = testDigipackPlans(),
       supporterPlus: SupporterPlusPlans = testSupporterPlusPlans(),
-      contributor: CatalogPlan.Contributor = monthlyPaid(Product.Contribution, Benefit.Contributor, "Contributor", 12),
-      voucher: NonEmptyList[CatalogPlan.Voucher] = NonEmptyList(paperCharges(Product.Voucher, "Voucher")),
-      digitalVoucher: NonEmptyList[CatalogPlan.DigitalVoucher] = NonEmptyList(paperCharges(Product.DigitalVoucher, "DigitalVoucher")),
-      delivery: NonEmptyList[CatalogPlan.Delivery] = NonEmptyList(paperCharges(Product.Delivery, "Delivery")),
+      contributor: ProductRatePlan.Contributor = monthlyPaid(Product.Contribution, Benefit.Contributor, "Contributor", 12),
+      voucher: NonEmptyList[ProductRatePlan.Voucher] = NonEmptyList(paperCharges(Product.Voucher, "Voucher")),
+      digitalVoucher: NonEmptyList[ProductRatePlan.DigitalVoucher] = NonEmptyList(paperCharges(Product.DigitalVoucher, "DigitalVoucher")),
+      delivery: NonEmptyList[ProductRatePlan.Delivery] = NonEmptyList(paperCharges(Product.Delivery, "Delivery")),
       weekly: WeeklyPlans = weeklyPlans(),
       map: Map[ProductRatePlanId, CatalogZuoraPlan] = Map.empty,
   ): Catalog = Catalog(

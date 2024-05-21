@@ -7,12 +7,12 @@ import com.gu.memsub.Benefit.{Partner, Patron, Supporter}
 import com.gu.memsub.BillingPeriod._
 import com.gu.memsub.Subscription.ProductRatePlanId
 import com.gu.memsub._
-import com.gu.memsub.subsv2.CatalogPlan._
+import com.gu.memsub.subsv2.ProductRatePlan._
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.CatJsonReads._
 import com.gu.memsub.subsv2.reads.CatPlanReads
 import com.gu.memsub.subsv2.reads.CatPlanReads._
-import com.gu.memsub.subsv2.reads.ChargeListReads.{ProductIds, _}
+import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.zuora.rest.SimpleClient
 import play.api.libs.json.{Reads => JsReads, _}
@@ -55,7 +55,7 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
   in time, I expect them all to be requested by the tag, so we can make frontend id non optional
   in time, I also expect they will all be tagged in zuora, so we don't need to then try untagged ones
    */
-  def one[P <: CatalogPlan[Product, ChargeList, Status]](plans: List[CatalogZuoraPlan], name: String, frontendId: FrontendId)(implicit
+  def one[P <: ProductRatePlan[Product, RatePlanChargeList, Status]](plans: List[CatalogZuoraPlan], name: String, frontendId: FrontendId)(implicit
       p: CatPlanReads[P],
   ): Validation[NonEmptyList[String], P] = {
     many(plans.filter(_.frontendId.contains(frontendId)), name).flatMap {
@@ -64,7 +64,7 @@ class CatalogService[M[_]: Monad](productIds: ProductIds, fetchCatalog: M[String
     }
   }
 
-  def many[P <: CatalogPlan[Product, ChargeList, Status]](plans: List[CatalogZuoraPlan], name: String)(implicit
+  def many[P <: ProductRatePlan[Product, RatePlanChargeList, Status]](plans: List[CatalogZuoraPlan], name: String)(implicit
       p: CatPlanReads[P],
   ): ValidationNel[String, NonEmptyList[P]] = {
     val parsed: List[(ProductRatePlanId, ValidationNel[String, P])] =

@@ -1,6 +1,6 @@
 package com.gu
 
-import com.gu.memsub.subsv2.{ChargeList, PaperCharges, SingleCharge}
+import com.gu.memsub.subsv2.{RatePlanChargeList, PaperCharges, RatePlanCharge}
 import com.gu.memsub.{Benefit, BillingPeriod}
 import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
 import com.softwaremill.diffx.{DiffContext, DiffResultValue, Diff => Diffx}
@@ -18,13 +18,13 @@ object Diff {
   implicit val benefitDiff: Diffx[Benefit] = Diffx.diffForString.contramap(_.id)
   implicit def paidChargeListDiff[TheBenefit <: Benefit, TheBillingPeriod <: BillingPeriod](implicit
       e1: Diffx[PaperCharges],
-      e2: Diffx[SingleCharge[TheBenefit, TheBillingPeriod]],
-  ): Diffx[ChargeList] = (left: ChargeList, right: ChargeList, context: DiffContext) =>
+      e2: Diffx[RatePlanCharge[TheBenefit, TheBillingPeriod]],
+  ): Diffx[RatePlanChargeList] = (left: RatePlanChargeList, right: RatePlanChargeList, context: DiffContext) =>
     (left, right) match {
       case (cl: PaperCharges, cr: PaperCharges) =>
         Diffx[PaperCharges].apply(cl, cr)
-      case (cl: SingleCharge[TheBenefit, TheBillingPeriod], cr: SingleCharge[TheBenefit, TheBillingPeriod]) =>
-        Diffx[SingleCharge[TheBenefit, TheBillingPeriod]].apply(cl, cr)
+      case (cl: RatePlanCharge[TheBenefit, TheBillingPeriod], cr: RatePlanCharge[TheBenefit, TheBillingPeriod]) =>
+        Diffx[RatePlanCharge[TheBenefit, TheBillingPeriod]].apply(cl, cr)
       case _ =>
         DiffResultValue(left, right)
     }

@@ -8,7 +8,7 @@ import com.gu.memsub.Product.GuardianPatron
 import com.gu.memsub.Subscription._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.ReaderType.Direct
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, SingleCharge, Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlanCharge, Subscription, RatePlan}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
@@ -86,7 +86,7 @@ class GuardianPatronService(
         promoCode = None,
         isCancelled = subscription.isCancelled,
         plans = CovariantNonEmptyList(
-          SubscriptionPlan(
+          RatePlan(
             id = RatePlanId(guardianPatronProductRatePlanId),
             productRatePlanId = ProductRatePlanId(guardianPatronProductRatePlanId),
             name = subscription.plan.id,
@@ -96,7 +96,7 @@ class GuardianPatronService(
             productType = "Membership",
             product = GuardianPatron,
             features = Nil,
-            charges = SingleCharge(
+            charges = RatePlanCharge(
               benefit = Benefit.GuardianPatron,
               billingPeriod = billingPeriodFromInterval(subscription.plan.interval),
               price = PricingSummary(Map(subscription.plan.currency -> price)),

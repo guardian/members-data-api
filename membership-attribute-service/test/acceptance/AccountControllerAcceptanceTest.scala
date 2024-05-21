@@ -6,7 +6,7 @@ import com.gu.i18n.Currency
 import com.gu.memsub.Product.Contribution
 import com.gu.memsub.Subscription.Name
 import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
+import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan}
 import com.gu.memsub.{Product, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.zuora.ZuoraSoapService

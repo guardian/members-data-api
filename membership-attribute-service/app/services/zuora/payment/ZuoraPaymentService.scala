@@ -3,7 +3,7 @@ package services.zuora.payment
 import com.gu.memsub.BillingSchedule.Bill
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.LogImplicit._
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.memsub.{BillingSchedule, Subscription => _, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
