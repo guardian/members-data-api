@@ -21,7 +21,7 @@ class SubReadsTest extends Specification {
 
     "Discard discount rate plans when reading JSON" in {
 
-      val plans = Resource.getJson("rest/plans/Promo.json").validate[List[SubscriptionZuoraPlan]].get
+      val plans = Resource.getJson("rest/plans/Promo.json").validate[List[SubscriptionZuoraPlan]](subZuoraPlanListReads).get
       plans mustEqual List(
         SubscriptionZuoraPlan(
           id = RatePlanId("2c92c0f957220b5d01573252b3bb7c71"),
