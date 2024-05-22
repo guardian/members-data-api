@@ -305,7 +305,7 @@ Resources:
     - MembersDataApiLogGroup
     Properties:
       AlarmActions:
-      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       AlarmName: !Join
         - ' '
         - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
@@ -346,7 +346,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       AlarmName:
         !Join
         - ' '
@@ -388,7 +388,7 @@ Resources:
       - MembersDataApiLogGroup
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       AlarmName: !Join
         - ' '
         - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
@@ -423,7 +423,7 @@ Resources:
         - - "Impact - we're serving 4XX for significant proportion of requests - indicative of an issue interacting with identity"
           - !FindInMap [ Constants, Alarm, Process ]
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       TreatMissingData: notBreaching
       EvaluationPeriods: '3'
       Threshold: 20
@@ -462,7 +462,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       AlarmName: !Join
         - ' '
         - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
@@ -491,7 +491,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       AlarmName: !Join
         - ' '
         - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
@@ -542,7 +542,7 @@ Resources:
     Condition: CreateProdMonitoring
     Properties:
       AlarmActions:
-        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:reader-revenue-dev
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
       AlarmName: !Join
         - ' '
         - - 'A DynamoReadError occurred while reading from the SupporterProductData DynamoDB table'
