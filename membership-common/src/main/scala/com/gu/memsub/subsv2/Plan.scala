@@ -19,7 +19,6 @@ import PricingSummary._
 import org.joda.time.LocalDate
 import play.api.libs.json._
 
-import BillingPeriod._
 import Benefit._
 
 trait ZuoraEnum {
@@ -225,139 +224,15 @@ object FrontendId {
 
 }
 
-object ProductRatePlan {
-
-  type Supporter[+B <: BillingPeriod] = ProductRatePlan[Product.Membership, RatePlanCharge[Supporter.type, B], Current]
-  type Partner[+B <: BillingPeriod] = ProductRatePlan[Product.Membership, RatePlanCharge[Partner.type, B], Current]
-  type Patron[+B <: BillingPeriod] = ProductRatePlan[Product.Membership, RatePlanCharge[Patron.type, B], Current]
-
-  type Contributor = ProductRatePlan[Product.Contribution, RatePlanCharge[Contributor.type, Month.type], Current]
-
-  type Digipack[+B <: BillingPeriod] = ProductRatePlan[Product.ZDigipack, RatePlanCharge[Digipack.type, B], Current]
-  type SupporterPlus[+B <: BillingPeriod] = ProductRatePlan[Product.SupporterPlus, SupporterPlusCharges, Current]
-  type Delivery = ProductRatePlan[Product.Delivery, PaperCharges, Current]
-  type Voucher = ProductRatePlan[Product.Voucher, PaperCharges, Current]
-  type DigitalVoucher = ProductRatePlan[Product.DigitalVoucher, PaperCharges, Current]
-
-  type WeeklyZoneA[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyZoneA, RatePlanCharge[Weekly.type, B], Current]
-  type WeeklyZoneB[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyZoneB, RatePlanCharge[Weekly.type, B], Current]
-  type WeeklyZoneC[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyZoneC, RatePlanCharge[Weekly.type, B], Current]
-  type WeeklyDomestic[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyDomestic, RatePlanCharge[Weekly.type, B], Current]
-  type WeeklyRestOfWorld[+B <: BillingPeriod] = ProductRatePlan[Product.WeeklyRestOfWorld, RatePlanCharge[Weekly.type, B], Current]
-
-  type Paper = ProductRatePlan[Product.Paper, RatePlanChargeList, Current]
-  type ContentSubscription = ProductRatePlan[Product.ContentSubscription, RatePlanChargeList, Current]
-
-}
-
-case class PlansWithIntroductory[+B](plans: List[B], associations: List[(B, B)])
-
-case class MembershipPlans[+B <: Benefit](
-    month: ProductRatePlan[Product.Membership, RatePlanCharge[B, Month.type], Current],
-    year: ProductRatePlan[Product.Membership, RatePlanCharge[B, Year.type], Current],
-) {
-  lazy val plans = List(month, year)
-}
-
-case class DigipackPlans(
-    month: ProductRatePlan.Digipack[Month.type],
-    quarter: ProductRatePlan.Digipack[Quarter.type],
-    year: ProductRatePlan.Digipack[Year.type],
-) {
-  lazy val plans = List(month, quarter, year)
-}
-
-case class SupporterPlusPlans(month: ProductRatePlan.SupporterPlus[Month.type], year: ProductRatePlan.SupporterPlus[Year.type]) {
-  lazy val plans = List(month, year)
-}
-
-case class WeeklyZoneBPlans(
-    quarter: ProductRatePlan.WeeklyZoneB[Quarter.type],
-    year: ProductRatePlan.WeeklyZoneB[Year.type],
-    oneYear: ProductRatePlan.WeeklyZoneB[OneYear.type],
-) {
-  lazy val plans = List(quarter, year, oneYear)
-  val plansWithAssociations = PlansWithIntroductory(plans, List.empty)
-}
-case class WeeklyZoneAPlans(
-    sixWeeks: ProductRatePlan.WeeklyZoneA[SixWeeks.type],
-    quarter: ProductRatePlan.WeeklyZoneA[Quarter.type],
-    year: ProductRatePlan.WeeklyZoneA[Year.type],
-    oneYear: ProductRatePlan.WeeklyZoneA[OneYear.type],
-) {
-  val plans = List(sixWeeks, quarter, year, oneYear)
-  val associations = List(sixWeeks -> quarter)
-  val plansWithAssociations = PlansWithIntroductory(plans, associations)
-}
-case class WeeklyZoneCPlans(
-    sixWeeks: ProductRatePlan.WeeklyZoneC[SixWeeks.type],
-    quarter: ProductRatePlan.WeeklyZoneC[Quarter.type],
-    year: ProductRatePlan.WeeklyZoneC[Year.type],
-) {
-  lazy val plans = List(sixWeeks, quarter, year)
-  val associations = List(sixWeeks -> quarter)
-  val plansWithAssociations = PlansWithIntroductory(plans, associations)
-}
-case class WeeklyDomesticPlans(
-    sixWeeks: ProductRatePlan.WeeklyDomestic[SixWeeks.type],
-    quarter: ProductRatePlan.WeeklyDomestic[Quarter.type],
-    year: ProductRatePlan.WeeklyDomestic[Year.type],
-    month: ProductRatePlan.WeeklyDomestic[Month.type],
-    oneYear: ProductRatePlan.WeeklyDomestic[OneYear.type],
-    threeMonths: ProductRatePlan.WeeklyDomestic[ThreeMonths.type],
-) {
-  lazy val plans = List(sixWeeks, quarter, year, month, oneYear, threeMonths)
-  val associations = List(sixWeeks -> quarter)
-  val plansWithAssociations = PlansWithIntroductory(plans, associations)
-}
-
-case class WeeklyRestOfWorldPlans(
-    sixWeeks: ProductRatePlan.WeeklyRestOfWorld[SixWeeks.type],
-    quarter: ProductRatePlan.WeeklyRestOfWorld[Quarter.type],
-    year: ProductRatePlan.WeeklyRestOfWorld[Year.type],
-    month: ProductRatePlan.WeeklyRestOfWorld[Month.type],
-    oneYear: ProductRatePlan.WeeklyRestOfWorld[OneYear.type],
-    threeMonths: ProductRatePlan.WeeklyRestOfWorld[ThreeMonths.type],
-) {
-  lazy val plans = List(sixWeeks, quarter, year, month, oneYear, threeMonths)
-  val associations = List(sixWeeks -> quarter)
-  val plansWithAssociations = PlansWithIntroductory(plans, associations)
-}
-
-case class WeeklyPlans(
-    zoneA: WeeklyZoneAPlans,
-    zoneB: WeeklyZoneBPlans,
-    zoneC: WeeklyZoneCPlans,
-    domestic: WeeklyDomesticPlans,
-    restOfWorld: WeeklyRestOfWorldPlans,
-) {
-  val plans = List(zoneA.plans, zoneB.plans, zoneC.plans, domestic.plans, restOfWorld.plans)
-}
-
 case class Catalog(
-    supporter: MembershipPlans[Supporter.type],
-    partner: MembershipPlans[Partner.type],
-    patron: MembershipPlans[Patron.type],
-    digipack: DigipackPlans,
-    supporterPlus: SupporterPlusPlans,
-    contributor: ProductRatePlan.Contributor,
-    voucher: NonEmptyList[ProductRatePlan.Voucher],
-    digitalVoucher: NonEmptyList[ProductRatePlan.DigitalVoucher],
-    delivery: NonEmptyList[ProductRatePlan.Delivery],
-    weekly: WeeklyPlans,
     map: Map[ProductRatePlanId, CatalogZuoraPlan],
-) {
-  lazy val productMap: Map[ProductRatePlanChargeId, Benefit] =
-    map.values.flatMap(p => p.benefits).toMap
-
-}
+)
 
 /** A higher level representation of a number of Zuora rate plan charges
   */
 sealed trait RatePlanChargeList {
   def benefits: NonEmptyList[Benefit]
-  def gbpPrice = price.getPrice(GBP).getOrElse(throw new Exception("No GBP price"))
-  def currencies = price.currencies
+  def currencies: Set[Currency] = price.currencies
   def billingPeriod: BillingPeriod
   def price: PricingSummary
   def subRatePlanChargeId: SubscriptionRatePlanChargeId

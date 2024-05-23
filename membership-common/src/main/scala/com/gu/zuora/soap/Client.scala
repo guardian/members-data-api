@@ -22,12 +22,9 @@ import scala.util.{Failure, Success}
 class Client(
     apiConfig: ZuoraSoapConfig,
     httpClient: FutureHttpClient,
-    extendedHttpClient: FutureHttpClient,
     metrics: ZuoraMetrics = NoOpZuoraMetrics,
 )(implicit actorSystem: ActorSystem, ec: ExecutionContext)
     extends SafeLogging {
-
-  import Client._
 
   val clientMediaType = MediaType.parse("text/plain; charset=utf-8")
 
@@ -81,9 +78,6 @@ class Client(
 
   def authenticatedRequest[T <: Result](action: => Action[T])(implicit reader: Reader[T], logPrefix: LogPrefix): Future[T] =
     Future.unit.flatMap(_ => request(action, Option(periodicAuth.get), reader))
-
-  def extendedAuthenticatedRequest[T <: Result](action: => Action[T])(implicit reader: Reader[T], logPrefix: LogPrefix): Future[T] =
-    Future.unit.flatMap(_ => request(action, Option(periodicAuth.get), reader, extendedHttpClient))
 
   def query[T <: Query](where: String)(implicit reader: readers.Query[T], logPrefix: LogPrefix): Future[Seq[T]] =
     authenticatedRequest(Actions.Query(reader.format(where))).map { case QueryResult(results) => reader.read(results) }

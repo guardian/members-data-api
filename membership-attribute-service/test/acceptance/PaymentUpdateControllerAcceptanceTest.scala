@@ -5,6 +5,7 @@ import acceptance.data._
 import acceptance.data.stripe.{TestStripeCard, TestStripeCustomer}
 import com.gu.i18n.Country
 import com.gu.memsub.Subscription
+import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan}
 import com.gu.zuora.ZuoraSoapService
@@ -35,7 +36,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogService[Future] = _
+  var catalogServiceMock: CatalogMap = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -49,7 +50,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
     contactRepositoryMock = mock[ContactRepository]
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = mock[CatalogService[Future]]
+    catalogServiceMock = TestCatalog()
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
@@ -70,7 +71,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       override lazy val contactRepositoryOverride = Some(contactRepositoryMock)
       override lazy val subscriptionServiceOverride = Some(subscriptionServiceMock)
       override lazy val zuoraRestServiceOverride = Some(zuoraRestServiceMock)
-      override lazy val catalogServiceOverride = Some(catalogServiceMock)
+      override lazy val catalogServiceOverride = Some(Future.successful(catalogServiceMock))
       override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
@@ -149,8 +150,6 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         ),
       )
 
-      catalogServiceMock.unsafeCatalog returns TestCatalog()
-
       contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
@@ -216,7 +215,6 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       identityMockClientAndServer.verify(identityRequest)
       subscriptionServiceMock.current(contact)(any) was called
       contactRepositoryMock.get("200067388")(any) was called
-      catalogServiceMock.unsafeCatalog was called
       zuoraSoapServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
       zuoraSoapServiceMock.getContact(account.billToId)(any) was called
       zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod)(any) was called
@@ -227,7 +225,6 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever calledAgain
       zuoraSoapServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
@@ -376,7 +373,6 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever calledAgain
       ukStripeServiceMock wasNever calledAgain
       zuoraSoapServiceMock wasNever calledAgain
       databaseServiceMock wasNever called

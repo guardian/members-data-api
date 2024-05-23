@@ -45,13 +45,13 @@ object RequestRunners {
 
   /** Standard no frills run this request and return a response asynchronously A solid choice for the beginner SimpleClient user
     */
-  def futureRunner(implicit ec: ExecutionContext): FutureHttpClient =
+  def futureRunner: FutureHttpClient =
     new FutureHttpClient(client)
 
   /** Adjusts the standard client used in futureRunner to use a configurable read timeout setting, see:
     * https://github.com/square/okhttp/wiki/Recipes#timeouts
     */
-  def configurableFutureRunner(timeout: Duration)(implicit ec: ExecutionContext): FutureHttpClient = {
+  def configurableFutureRunner(timeout: Duration): FutureHttpClient = {
     val seconds: Int = timeout.toSeconds.toInt
     new FutureHttpClient(client.newBuilder().readTimeout(seconds, TimeUnit.SECONDS).build())
   }

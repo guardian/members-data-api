@@ -1,19 +1,18 @@
 package com.gu.memsub.subsv2.services
 import com.gu.config.SubsV2ProductIds
-import com.gu.memsub.BillingPeriod.Year
-import com.gu.memsub.Subscription.ProductId
-import com.gu.zuora.ZuoraRestConfig
-import com.gu.zuora.rest.SimpleClient
-import okhttp3._
-import org.specs2.mutable.Specification
-import com.gu.memsub.subsv2.Fixtures._
+import com.gu.memsub.Status
+import com.gu.memsub.Subscription.ProductRatePlanId
+import com.gu.memsub.subsv2.{ZMonth, ZYear}
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
-import io.lemonlabs.uri.typesafe.dsl._
+import com.gu.zuora.ZuoraRestConfig
+import com.gu.zuora.rest.SimpleClient
 import com.typesafe.config.ConfigFactory
-import utils.Resource
+import io.lemonlabs.uri.typesafe.dsl._
+import okhttp3._
+import org.specs2.mutable.Specification
 import scalaz.Id._
-import scalaz.\/
+import utils.Resource
 import utils.TestLogPrefix.testLogPrefix
 
 class CatalogServiceTest extends Specification {
@@ -23,12 +22,13 @@ class CatalogServiceTest extends Specification {
     "Read a catalog in CODE with the config product IDs" in {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
-      val cats = new CatalogService[Id](ids, FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), identity, "CODE")
-      cats.catalog.map { catalog =>
-        catalog.supporterPlus.year.charges.billingPeriod mustEqual Year
-        catalog.supporterPlus.plans.size
-      } mustEqual \/.right(2)
-
+      val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")))
+      val supporterPlus = cats(ProductRatePlanId("8ad08e1a8586721801858805663f6fab"))
+      val supporterPlusMonth = cats(ProductRatePlanId("8ad08cbd8586721c01858804e3275376"))
+      val supporterPluses = cats.collect { case (_, plan) if plan.productId == ids.supporterPlus && plan.status == Status.Legacy => }.toList
+      supporterPluses.size must beEqualTo(2)
+      supporterPlus.charges.head.billingPeriod must beEqualTo(Some(ZYear))
+      supporterPlusMonth.charges.head.billingPeriod must beEqualTo(Some(ZMonth))
     }
   }
 }

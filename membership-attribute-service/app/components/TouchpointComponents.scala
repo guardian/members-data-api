@@ -5,7 +5,6 @@ import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
-import com.gu.memsub.subsv2.Catalog
 import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -13,7 +12,7 @@ import com.gu.monitoring.{SafeLogging, ZuoraMetrics}
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest.SimpleClient
-import com.gu.zuora.soap.ClientWithFeatureSupplier
+import com.gu.zuora.soap.Client
 import com.gu.zuora.{ZuoraSoapService, rest}
 import com.typesafe.config.Config
 import configuration.Stage
@@ -38,7 +37,7 @@ import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAs
 
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 class TouchpointComponents(
     stage: Stage,
@@ -48,7 +47,7 @@ class TouchpointComponents(
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[CatalogService[Future]] = None,
+    catalogServiceOverride: Option[Future[CatalogMap]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,
@@ -102,10 +101,9 @@ class TouchpointComponents(
 
   lazy val zuoraSoapService = {
     lazy val zuoraSoapClient =
-      new ClientWithFeatureSupplier(
+      new Client(
         apiConfig = backendConfig.zuoraSoap,
         httpClient = RequestRunners.configurableFutureRunner(timeout = Duration(30, SECONDS)),
-        extendedHttpClient = RequestRunners.futureRunner,
         metrics = zuoraMetrics,
       )
 
@@ -124,28 +122,21 @@ class TouchpointComponents(
   }
 
   lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
-  lazy val catalogService = catalogServiceOverride.getOrElse(
-    new CatalogService(
-      productIds,
-      FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix),
-      Await.result(_: Future[Catalog], 60.seconds),
-      stage.value,
-    ),
+  lazy val futureCatalog: Future[CatalogMap] = catalogServiceOverride.getOrElse(
+    CatalogService
+      .read(FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix))
+      .recover { case error =>
+        logger.errorNoPrefix(scrub"Failed to load the product catalog from Zuora due to: $error")
+        throw error
+      },
   )
-
-  private lazy val futureCatalog: Future[CatalogMap] = catalogService.catalog
-    .map(_.fold[CatalogMap](error => { logger.errorNoPrefix(scrub"error: ${error.list.toList.mkString}"); Map() }, _.map))
-    .recover { case error =>
-      logger.errorNoPrefix(scrub"Failed to load the product catalog from Zuora due to: $error")
-      throw error
-    }
 
   lazy val subscriptionService: SubscriptionService[Future] = {
     lazy val zuoraSubscriptionService = new SubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService)
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }
-  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, catalogService.unsafeCatalog.productMap)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
