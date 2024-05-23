@@ -36,13 +36,13 @@ case class BillingSchedule(invoices: NonEmptyList[Bill]) {
 
 object BillingSchedule {
 
-  case class BillItem(name: String, product: Option[Benefit], amount: Float, unitPrice: Float) {
-    override lazy val toString = s"| $amount\t| ($unitPrice)\t| $name | ${product.mkString}"
+  case class BillItem(name: String, amount: Float, unitPrice: Float) {
+    override lazy val toString = s"| $amount\t| ($unitPrice)\t| $name"
   }
 
   object BillItem {
-    def fromItem(planMap: Map[ProductRatePlanChargeId, Benefit], in: PreviewInvoiceItem) =
-      BillItem(in.chargeName, planMap.get(ProductRatePlanChargeId(in.productRatePlanChargeId)), in.price, in.unitPrice)
+    def fromItem(in: PreviewInvoiceItem) =
+      BillItem(in.chargeName, in.price, in.unitPrice)
   }
 
   case class Bill(date: LocalDate, duration: Period, items: NonEmptyList[BillItem], accountCredit: Option[Float] = None) {
@@ -59,15 +59,15 @@ object BillingSchedule {
   }
 
   object Bill {
-    def fromGroupedItems(planMap: Map[ProductRatePlanChargeId, Benefit], date: LocalDate, items: NonEmptyList[PreviewInvoiceItem]): Bill =
+    def fromGroupedItems(date: LocalDate, items: NonEmptyList[PreviewInvoiceItem]): Bill =
       Bill(
         date,
         new Period(date, items.map(_.serviceEndDate).list.toList.max),
-        items.map(item => BillItem.fromItem(planMap, item)),
+        items.map(item => BillItem.fromItem(item)),
       )
   }
 
-  def fromPreviewInvoiceItems(planMap: Map[ProductRatePlanChargeId, Benefit], invoices: Seq[PreviewInvoiceItem]): Option[BillingSchedule] = {
+  def fromPreviewInvoiceItems(invoices: Seq[PreviewInvoiceItem]): Option[BillingSchedule] = {
 
     @tailrec
     def sortOutCredits(z: Zipper[Bill]): NonEmptyList[Bill] = z match {
@@ -80,8 +80,8 @@ object BillingSchedule {
       case Zipper(l, bill, r #:: rs) if bill.totalGross > 0 && bill.amount < 0 =>
         val creditAmount = bill.totalDeductions - bill.totalGross
         val debitAmount = bill.totalGross - bill.totalDeductions
-        val cbCredit = BillItem("Credit balance", None, creditAmount, creditAmount)
-        val cbDebit = BillItem(s"Credit from ${bill.date}", None, debitAmount, debitAmount)
+        val cbCredit = BillItem("Credit balance", creditAmount, creditAmount)
+        val cbDebit = BillItem(s"Credit from ${bill.date}", debitAmount, debitAmount)
         sortOutCredits(Zipper(l.append(Stream(bill.addItem(cbCredit))), r.addItem(cbDebit), rs))
 
       // we have a credit note which we want to remove and assign to the next bill
@@ -97,7 +97,7 @@ object BillingSchedule {
       .groupBy1(_.serviceStartDate)
       .toList
       .map { case (date, invoiceItems) =>
-        Bill.fromGroupedItems(planMap, date, invoiceItems)
+        Bill.fromGroupedItems(date, invoiceItems)
       }
       .sortBy(_.date)
       .toNel

@@ -1,12 +1,13 @@
 package acceptance
 
-import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
 import acceptance.data._
+import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
 import com.gu.i18n.Currency
 import com.gu.memsub.Product.Contribution
 import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan}
+import com.gu.memsub.subsv2.CovariantNonEmptyList
+import com.gu.memsub.subsv2.services.SubscriptionService
+import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.{Product, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.zuora.ZuoraSoapService
@@ -37,7 +38,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogService[Future] = _
+  var catalogServiceMock: CatalogMap = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -48,7 +49,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     contactRepositoryMock = mock[ContactRepository]
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = mock[CatalogService[Future]]
+    catalogServiceMock = TestCatalog()
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
@@ -63,7 +64,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       override lazy val contactRepositoryOverride = Some(contactRepositoryMock)
       override lazy val subscriptionServiceOverride = Some(subscriptionServiceMock)
       override lazy val zuoraRestServiceOverride = Some(zuoraRestServiceMock)
-      override lazy val catalogServiceOverride = Some(catalogServiceMock)
+      override lazy val catalogServiceOverride = Some(Future.successful(catalogServiceMock))
       override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
@@ -156,8 +157,6 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         Some(giftSubscriptionFromSubscriptionService),
       )
 
-      catalogServiceMock.unsafeCatalog returns TestCatalog()
-
       zuoraRestServiceMock.getAccount(giftSubscriptionAccountId)(any) returns Future(\/.right(TestAccountSummary(id = giftSubscriptionAccountId)))
       zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(
         \/.right(TestAccountSummary(id = nonGiftSubscriptionAccountId)),
@@ -202,7 +201,6 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       subscriptionServiceMock.current(contact)(any) was called
       zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388")(any) was called
       subscriptionServiceMock.get(Subscription.Name(giftSubscription.Name), isActiveToday = false)(any) was called
-      catalogServiceMock.unsafeCatalog was called
 
       zuoraRestServiceMock.getAccount(giftSubscriptionAccountId)(any) was called
       zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
@@ -218,7 +216,6 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever calledAgain
       zuoraSoapServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
 
@@ -366,7 +363,6 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever called
       zuoraSoapServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
@@ -479,7 +475,6 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever called
       zuoraSoapServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain

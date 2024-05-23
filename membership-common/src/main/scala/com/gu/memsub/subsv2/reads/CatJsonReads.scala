@@ -52,9 +52,9 @@ object CatJsonReads {
 
   implicit val statusReads: Reads[Status] = new Reads[Status] {
     override def reads(json: JsValue): JsResult[Status] = json match {
-      case JsString("Expired") => JsSuccess(Status.legacy)
-      case JsString("Active") => JsSuccess(Status.current)
-      case JsString("NotStarted") => JsSuccess(Status.upcoming)
+      case JsString("Expired") => JsSuccess(Status.Legacy)
+      case JsString("Active") => JsSuccess(Status.Current)
+      case JsString("NotStarted") => JsSuccess(Status.Upcoming)
       case a => JsError(s"Unknown status $a")
     }
   }

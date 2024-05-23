@@ -39,7 +39,7 @@ trait SoapClient[M[_]] {
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): M[List[AccountId]]
 }
 
-class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
+class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
 
   import ZuoraSoapService._
 
@@ -110,7 +110,7 @@ class ZuoraSoapService(soapClient: soap.ClientWithFeatureSupplier)(implicit ec: 
       command.accountId,
       command.paymentGateway,
     ) // We need to set gateway correctly because it must match with the payment method we'll create below
-    createMethodResult <- soapClient.extendedAuthenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
+    createMethodResult <- soapClient.authenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
     result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway, command.invoiceTemplateOverride)
   } yield result
 

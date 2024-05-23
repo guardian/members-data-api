@@ -3,7 +3,7 @@ package services.zuora.payment
 import com.gu.memsub.BillingSchedule.Bill
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.LogImplicit._
-import com.gu.memsub.subsv2.{Subscription, RatePlan}
+import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.{BillingSchedule, Subscription => _, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
@@ -20,8 +20,7 @@ import scalaz.syntax.std.option._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePlanChargeId, Benefit])(implicit ec: ExecutionContext)
-    extends SafeLogging {
+class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionContext) extends SafeLogging {
 
   def paymentDetails(
       sub: Subscription,
@@ -84,17 +83,17 @@ class PaymentService(zuoraService: ZuoraSoapService, planMap: Map[ProductRatePla
     }
 
   private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[Option[Bill]] =
-    zuoraService.previewInvoices(subId, numberOfBills).map { previewInvoiceItems =>
-      val maybeBillingSchedule = BillingSchedule.fromPreviewInvoiceItems(planMap, previewInvoiceItems)
-      maybeBillingSchedule.flatMap { billingSched =>
-        billingSched
-          .withCreditBalanceApplied(account.creditBalance)
-          .invoices
-          .list
-          .find(_.amount > 0)
-          .toOption
-      }
-    }
+    for {
+      previewInvoiceItems <- zuoraService.previewInvoices(subId, numberOfBills)
+    } yield for {
+      billingSched <- BillingSchedule.fromPreviewInvoiceItems(previewInvoiceItems)
+      bill <- billingSched
+        .withCreditBalanceApplied(account.creditBalance)
+        .invoices
+        .list
+        .find(_.amount > 0)
+        .toOption
+    } yield bill
 
   def getPaymentMethod(maybePaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit
       logPrefix: LogPrefix,

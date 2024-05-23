@@ -7,7 +7,6 @@ import com.gu.zuora.ZuoraRestConfig
 import okhttp3.{Response => OKHttpResponse, _}
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
 import scalaz.syntax.std.either._
-import scalaz.syntax.monad._
 import scalaz.syntax.functor.ToFunctorOps
 import scalaz.{Functor, \/}
 
