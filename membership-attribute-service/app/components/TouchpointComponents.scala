@@ -26,7 +26,12 @@ import services.stripe.{BasicStripeService, ChooseStripe, HttpBasicStripeService
 import services.subscription.CancelSubscription
 import services.zuora.payment.{PaymentService, SetPaymentCard}
 import services.zuora.rest.{SimpleClientZuoraRestService, ZuoraRestService}
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentialsProviderChain,
+  EnvironmentVariableCredentialsProvider,
+  InstanceProfileCredentialsProvider,
+  ProfileCredentialsProvider,
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
