@@ -3,17 +3,14 @@ package controllers
 import actions._
 import com.gu.i18n.Currency
 import com.gu.memsub
+import com.gu.memsub.BillingPeriod
 import com.gu.memsub.BillingPeriod.RecurringPeriod
 import com.gu.memsub.Product.Contribution
-import com.gu.memsub.subsv2.reads.ChargeListReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.memsub.subsv2.reads.SubPlanReads._
-import com.gu.memsub.subsv2.{Subscription, RatePlan}
+import com.gu.memsub.subsv2.{ProductType, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import components.TouchpointComponents
-import loghandling.DeprecatedRequestLogger
 import models.AccessScope.{completeReadSelf, readSelf, updateSelf}
 import models.ApiErrors._
 import models._
@@ -90,11 +87,12 @@ class AccountController(
         Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
       }
 
-  def cancelSubscription(subscriptionName: memsub.Subscription.Name): Action[AnyContent] =
+  def cancelSpecificSub(subscriptionNameString: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
         val services = request.touchpoint
+        val subscriptionName = memsub.Subscription.Name(subscriptionNameString)
         val cancelForm = Form {
           single("reason" -> nonEmptyText)
         }
@@ -129,10 +127,11 @@ class AccountController(
             subscription.termEndDate,
           )
           result = cancellationEffectiveDate.getOrElse("now").toString
+          catalog <- EitherT.rightT(services.futureCatalog)
           _ <- sendSubscriptionCancelledEmail(
             request.user.primaryEmailAddress,
             contact,
-            subscription.plan,
+            subscription.plan(catalog).productType(catalog),
             cancellationEffectiveDate,
           )
         } yield result).run.map(_.toEither).map {
@@ -146,7 +145,7 @@ class AccountController(
       }
     }
 
-  private def getCancellationEffectiveDate(subscriptionName: memsub.Subscription.Name) =
+  def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
@@ -155,7 +154,7 @@ class AccountController(
 
         (for {
           cancellationEffectiveDate <- services.subscriptionService
-            .decideCancellationEffectiveDate(subscriptionName)
+            .decideCancellationEffectiveDate(memsub.Subscription.Name(subscriptionName))
             .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
@@ -198,16 +197,22 @@ class AccountController(
 
         logger.info(s"Attempting to retrieve payment details for identity user: $userId")
 
-        paymentDetails(userId, filter, request.touchpoint).toEither
-          .map {
-            case Right(subscriptionList) =>
-              logger.info(s"Successfully retrieved payment details result for identity user: $userId")
-              val response = ProductsResponse.from(user, subscriptionList)
-              Ok(Json.toJson(response))
-            case Left(message) =>
-              logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
-              InternalServerError("Failed to retrieve payment details due to an internal error")
-          }
+        for {
+          catalog <- request.touchpoint.futureCatalog
+          result <- paymentDetails(userId, filter, request.touchpoint).toEither
+            .map {
+              case Right(subscriptionList) =>
+                logger.info(s"Successfully retrieved payment details result for identity user: $userId")
+                val productsResponseWrites = new ProductsResponseWrites(catalog)
+                val response = productsResponseWrites.from(user, subscriptionList)
+                import productsResponseWrites.writes
+                Ok(Json.toJson(response))
+              case Left(message) =>
+                logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
+                InternalServerError("Failed to retrieve payment details due to an internal error")
+            }
+        } yield result
+
       }
     }
 
@@ -222,7 +227,7 @@ class AccountController(
     } yield fromZuora ++ fromStripe
   }
 
-  def fetchCancelledSubscriptions(): Action[AnyContent] =
+  def cancelledSubscriptions(): Action[AnyContent] =
     AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancelled-subscriptions") {
@@ -230,19 +235,22 @@ class AccountController(
         val emptyResponse = Ok("[]")
         request.redirectAdvice.userId match {
           case Some(identityId) =>
-            (for {
-              contact <- OptionT(EitherT(tp.contactRepository.get(identityId)))
-              subs <- OptionT(EitherT(tp.subscriptionService.recentlyCancelled(contact)).map(Option(_)))
-            } yield {
-              Ok(Json.toJson(subs.map(CancelledSubscription(_))))
-            }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
-
+            for {
+              catalog <- tp.futureCatalog
+              result <-
+                (for {
+                  contact <- OptionT(EitherT(tp.contactRepository.get(identityId)))
+                  subs <- OptionT(EitherT(tp.subscriptionService.recentlyCancelled(contact)).map(Option(_)))
+                } yield {
+                  Ok(Json.toJson(subs.map(CancelledSubscription(_, catalog))))
+                }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
+            } yield result
           case None => Future.successful(unauthorized)
         }
       }
     }
 
-  private def updateContributionAmount(subscriptionName: memsub.Subscription.Name) =
+  def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/contribution-update-amount/:subscriptionName") {
@@ -258,30 +266,36 @@ class AccountController(
           subscription <- SimpleEitherT(
             services.subscriptionService
               .current(contact)
-              .map(subs => subscriptionSelector(subscriptionName, s"the sfUser $contact", subs)),
+              .map(subs => subscriptionSelector(memsub.Subscription.Name(subscriptionName), s"the sfUser $contact", subs)),
           )
-          contributionPlan <- SimpleEitherT.fromEither(subscription.plan match {
-            case p if p.product == Contribution => Right(p)
+          catalog <- SimpleEitherT.rightT(services.futureCatalog)
+          contributionPlan = subscription.plan(catalog)
+          _ <- SimpleEitherT.fromEither(contributionPlan.product(catalog) match {
+            case Contribution => Right(())
             case nc => Left(s"$subscriptionName plan is not a contribution: " + nc)
           })
-          billingPeriod = contributionPlan.charges.billingPeriod.asInstanceOf[RecurringPeriod]
-          applyFromDate = contributionPlan.chargedThrough.getOrElse(contributionPlan.start)
-          currency = contributionPlan.charges.price.prices.head.currency
+          billingPeriod <- SimpleEitherT.fromEither(contributionPlan.billingPeriod.toEither)
+          recurringPeriod <- SimpleEitherT.fromEither(billingPeriod match {
+            case period: RecurringPeriod => Right(period)
+            case period: BillingPeriod.OneOffPeriod => Left(s"period $period was not recurring for contribution update")
+          })
+          applyFromDate = contributionPlan.chargedThroughDate.getOrElse(contributionPlan.start)
+          currency = contributionPlan.charges.head.pricing.prices.head.currency
           currencyGlyph = currency.glyph
-          oldPrice = contributionPlan.charges.price.prices.head.amount
+          oldPrice = contributionPlan.totalChargesMinorUnit.toDouble / 100
           reasonForChange =
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
           result <- SimpleEitherT(
             services.zuoraRestService.updateChargeAmount(
               subscription.name,
-              contributionPlan.charges.subRatePlanChargeId,
+              contributionPlan.charges.head.id,
               contributionPlan.id,
               newPrice.toDouble,
               reasonForChange,
               applyFromDate,
             ),
           ).leftMap(message => s"Error while updating contribution amount: $message")
-          _ <- sendUpdateAmountEmail(newPrice, email, contact, currency, billingPeriod, applyFromDate)
+          _ <- sendUpdateAmountEmail(newPrice, email, contact, currency, recurringPeriod, applyFromDate)
         } yield result).run.map(_.toEither) map {
           case Left(message) =>
             logger.error(scrub"Failed to update payment amount for user $userId, due to: $message")
@@ -306,11 +320,11 @@ class AccountController(
   private def sendSubscriptionCancelledEmail(
       email: String,
       contact: Contact,
-      plan: RatePlan,
+      productType: ProductType,
       cancellationEffectiveDate: Option[LocalDate],
   )(implicit logPrefix: LogPrefix) =
     SimpleEitherT
-      .right(sendEmail.send(subscriptionCancelledEmail(email, contact, plan, cancellationEffectiveDate)))
+      .right(sendEmail.send(subscriptionCancelledEmail(email, contact, productType, cancellationEffectiveDate)))
       .leftMap(ApiError(_, "Email could not be put on the queue", 500))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
@@ -320,9 +334,6 @@ class AccountController(
       validAmount <- Either.cond(amount >= minAmount, amount, s"New payment amount '$amount' is too small")
     } yield validAmount
   }
-
-  def cancelSpecificSub(subscriptionName: String): Action[AnyContent] =
-    cancelSubscription(memsub.Subscription.Name(subscriptionName))
 
   def updateCancellationReason(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
@@ -351,14 +362,6 @@ class AccountController(
         }
       }
     }
-
-  def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
-    getCancellationEffectiveDate(memsub.Subscription.Name(subscriptionName))
-
-  def cancelledSubscriptions(): Action[AnyContent] = fetchCancelledSubscriptions()
-
-  def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] =
-    updateContributionAmount(memsub.Subscription.Name(subscriptionName))
 
   def allPaymentDetails(productType: Option[String]): Action[AnyContent] =
     anyPaymentDetails(

@@ -3,19 +3,13 @@ package com.gu.memsub.subsv2
 import com.github.nscala_time.time.Imports._
 import com.gu.memsub
 import com.gu.memsub.BillingPeriod.OneTimeChargeBillingPeriod
+import com.gu.memsub.Product
 import com.gu.memsub.Product.Contribution
 import com.gu.memsub.promo.PromoCode
-import com.gu.memsub.subsv2.RatePlan._
 import com.gu.memsub.subsv2.services.Sequence
-import com.gu.memsub.Product
 import org.joda.time.{DateTime, LocalDate}
-
 import scalaz.syntax.all._
 import scalaz.{NonEmptyList, Validation, \/}
-
-case class CovariantNonEmptyList[+T](head: T, tail: List[T]) {
-  val list = head :: tail
-}
 
 case class Subscription(
     id: memsub.Subscription.Id,
@@ -28,17 +22,16 @@ case class Subscription(
     casActivationDate: Option[DateTime],
     promoCode: Option[PromoCode],
     isCancelled: Boolean,
-    plans: CovariantNonEmptyList[RatePlan],
+    lowLevelPlans: List[SubscriptionZuoraPlan],
     readerType: ReaderType,
     gifteeIdentityId: Option[String],
     autoRenew: Boolean,
 ) {
 
-  val firstPaymentDate: LocalDate = (acceptanceDate :: plans.list.map(_.start)).min
+  val firstPaymentDate: LocalDate = (acceptanceDate :: lowLevelPlans.map(_.start)).min
 
-  lazy val plan: RatePlan = {
-    GetCurrentPlans(this, LocalDate.now).fold(error => throw new RuntimeException(error), _.head)
-  }
+  def plan(catalog: Catalog): SubscriptionZuoraPlan =
+    GetCurrentPlans.currentPlans(this, LocalDate.now, catalog).fold(error => throw new RuntimeException(error), _.head)
 
 }
 
@@ -52,27 +45,17 @@ with the newest plan for upgrade and cancel scenarios, so in this case the most 
  */
 object GetCurrentPlans {
 
-  /*- negative if x < y
-   *  - positive if x > y
-   *  - zero otherwise (if x == y)*/
-  private val planGoodnessOrder = new scala.Ordering[RatePlan] {
-    override def compare(planX: RatePlan, planY: RatePlan): Int = {
-      val priceX = planX.charges.price.prices.head.amount
-      val priceY = planY.charges.price.prices.head.amount
-      (priceX * 100).toInt - (priceY * 100).toInt
-    }
-  }
-
-  def bestCancelledPlan(sub: Subscription): Option[RatePlan] =
+  def bestCancelledPlan(sub: Subscription): Option[SubscriptionZuoraPlan] =
     if (sub.isCancelled && sub.termEndDate.isBefore(LocalDate.now()))
-      sub.plans.list.sorted(planGoodnessOrder).reverse.headOption
+      sub.lowLevelPlans.sortBy(_.totalChargesMinorUnit).reverse.headOption
     else None
 
-  case class DiscardedPlan(plan: RatePlan, why: String)
+  case class DiscardedPlan(plan: SubscriptionZuoraPlan, why: String)
 
-  def apply(sub: Subscription, date: LocalDate): String \/ NonEmptyList[RatePlan] = {
+  def currentPlans(sub: Subscription, date: LocalDate, catalog: Catalog): String \/ NonEmptyList[SubscriptionZuoraPlan] = {
 
-    val currentPlans = sub.plans.list.sorted(planGoodnessOrder).reverse.map { plan =>
+    val currentPlans = sub.lowLevelPlans.sortBy(_.totalChargesMinorUnit).reverse.map { plan =>
+      val product = plan.product(catalog)
       // If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
       val dateToCheck = if (sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date
 
@@ -84,7 +67,7 @@ object GetCurrentPlans {
        */
       val ensureStarted = unvalidated.ensure(DiscardedPlan(plan, s"hasn't started as of $dateToCheck").wrapNel)(_)
       val alreadyStarted =
-        if (plan.product == Contribution)
+        if (product == Contribution)
           ensureStarted(_ => sub.startDate <= date)
         else
           ensureStarted(_.start <= dateToCheck)
@@ -92,9 +75,14 @@ object GetCurrentPlans {
         alreadyStarted.ensure(DiscardedPlan(plan, "has a contributor plan which has been cancelled or removed").wrapNel)(_)
       val paidPlanEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a paid plan which has ended").wrapNel)(_)
       val digipackGiftEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a digipack gift plan which has ended").wrapNel)(_)
-      if (plan.product == Product.Contribution)
+      if (product == Product.Contribution)
         contributorPlanCancelled(_ => !sub.isCancelled && !plan.lastChangeType.contains("Remove"))
-      else if (plan.product == Product.Digipack && plan.charges.billingPeriod == OneTimeChargeBillingPeriod)
+      else if (
+        product == Product.Digipack && plan.billingPeriod
+          .leftMap(e => throw new RuntimeException("no billing period: " + e))
+          .toOption
+          .get == OneTimeChargeBillingPeriod
+      )
         digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
       else
         paidPlanEnded(_ => plan.end >= dateToCheck)
@@ -106,40 +94,6 @@ object GetCurrentPlans {
       ),
     )
   }
-}
-
-object Subscription {
-  def partial(
-      id: memsub.Subscription.Id,
-      name: memsub.Subscription.Name,
-      accountId: memsub.Subscription.AccountId,
-      startDate: LocalDate,
-      acceptanceDate: LocalDate,
-      termStartDate: LocalDate,
-      termEndDate: LocalDate,
-      casActivationDate: Option[DateTime],
-      promoCode: Option[PromoCode],
-      isCancelled: Boolean,
-      readerType: ReaderType,
-      gifteeIdentityId: Option[String],
-      autoRenew: Boolean,
-  )(plans: NonEmptyList[RatePlan]): Subscription =
-    new Subscription(
-      id = id,
-      name = name,
-      accountId = accountId,
-      startDate = startDate,
-      acceptanceDate = acceptanceDate,
-      termStartDate = termStartDate,
-      termEndDate = termEndDate,
-      casActivationDate = casActivationDate,
-      promoCode = promoCode,
-      isCancelled = isCancelled,
-      plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
-      readerType = readerType,
-      gifteeIdentityId = gifteeIdentityId,
-      autoRenew = autoRenew,
-    )
 }
 
 object ReaderType {

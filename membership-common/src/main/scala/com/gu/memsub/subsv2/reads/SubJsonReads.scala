@@ -1,22 +1,23 @@
 package com.gu.memsub.subsv2.reads
 
+import com.github.nscala_time.time.Imports._
+import com.gu.memsub
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.PromoCode
-import com.gu.memsub
-import com.gu.memsub.{BillingPeriod, PricingSummary}
 import com.gu.memsub.subsv2._
+import com.gu.memsub.subsv2.reads.CommonReads._
+import com.gu.memsub.{Price, PriceParser, PricingSummary}
+import com.gu.zuora.rest.Readers._
+import com.gu.zuora.rest.{Feature => RestFeature}
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.functional.syntax._
-import com.github.nscala_time.time.Imports._
+import play.api.libs.json.Reads._
 import play.api.libs.json._
-import CommonReads._
-import com.gu.zuora.rest.{Feature => RestFeature}
-import com.gu.zuora.rest.Readers._
-
-import scalaz.syntax.traverse._
-import scalaz.std.list._
-import scalaz.syntax.applicative._
 import scalaz.NonEmptyList
+import scalaz.std.list._
+import scalaz.std.option._
+import scalaz.syntax.applicative._
+import scalaz.syntax.traverse._
 
 // since we don't have a stack to trace, we need to make our own
 object Trace {
@@ -29,29 +30,44 @@ object Trace {
   }
 
 }
-import Trace.Traceable
+import com.gu.memsub.subsv2.reads.Trace.Traceable
 
 object SubJsonReads {
 
-  implicit val zuoraSubscriptionRatePlanChargeReads: Reads[ZuoraCharge] = (
+  private implicit val pricingSummaryReads: Reads[PricingSummary] = new Reads[PricingSummary] {
+    override def reads(json: JsValue): JsResult[PricingSummary] = {
+
+      // for subscriptions our pricing summary is a string i.e. 10GBP, for the catalog its an array
+      val normalisedPricingList = json.validate[List[String]] orElse json.validate[String].map(List(_))
+
+      val parsedPrices = normalisedPricingList.flatMap { priceStrings =>
+        priceStrings
+          .map(PriceParser.parse)
+          .sequence[Option, Price] match {
+          case Some(a) => JsSuccess(a)
+          case _ => JsError(s"Failed to parse $normalisedPricingList")
+        }
+      }
+
+      parsedPrices.map(priceList => priceList.map(p => p.currency -> p).toMap).map(PricingSummary)
+    }
+  }
+
+  private val zuoraSubscriptionRatePlanChargeReads: Reads[ZuoraCharge] = (
     (__ \ "id").read[String].map(SubscriptionRatePlanChargeId) and
       (__ \ "productRatePlanChargeId").read[String].map(ProductRatePlanChargeId) and
       (__ \ "pricingSummary").read[PricingSummary] and
       (__ \ "billingPeriod").readNullable[ZBillingPeriod] and
       (__ \ "specificBillingPeriod").readNullable[Int] and
-      (__ \ "model").read[String] and
-      (__ \ "name").read[String] and
-      (__ \ "type").read[String] and
       (__ \ "endDateCondition").read[EndDateCondition] and
       (__ \ "upToPeriods").readNullable[Int] and
       (__ \ "upToPeriodsType").readNullable[UpToPeriodsType]
-  )(ZuoraCharge.apply(_, _, _, _, _, _, _, _, _, _, _))
+  )(ZuoraCharge.apply _)
 
-  val commonZuoraPlanReads: Reads[SubscriptionZuoraPlan] = new Reads[SubscriptionZuoraPlan] {
+  private val commonZuoraPlanReads: Reads[SubscriptionZuoraPlan] = new Reads[SubscriptionZuoraPlan] {
     override def reads(json: JsValue): JsResult[SubscriptionZuoraPlan] = {
 
       // our common zuora plan has effective dates on the plan, but we have them on the charge.
-      // FIXME this is evaluated every time it's used which causes any error message to be repeated 3 times
       val dates = (json \ "ratePlanCharges").toOption
         .collect { case JsArray(chs) =>
           chs.map(c =>
@@ -79,24 +95,16 @@ object SubJsonReads {
     }
   }
 
-  val subZuoraPlanListReads: Reads[List[SubscriptionZuoraPlan]] = new Reads[List[SubscriptionZuoraPlan]] {
-    override def reads(json: JsValue): JsResult[List[SubscriptionZuoraPlan]] = {
-      (json \ "ratePlans").validate[List[SubscriptionZuoraPlan]](niceListReads(commonZuoraPlanReads))
-    }
-  }
-
-  val multiSubJsonReads: Reads[List[JsValue]] = new Reads[List[JsValue]] {
-    override def reads(json: JsValue): JsResult[List[JsValue]] = json \ "subscriptions" match {
-      case JsDefined(JsArray(subs)) => JsSuccess(subs.toList)
-      case _ => JsError("Found no subs")
-    }
+  val multiSubJsonReads: Reads[List[Subscription]] = new Reads[List[Subscription]] {
+    override def reads(json: JsValue): JsResult[List[Subscription]] =
+      (json \ "subscriptions").validate(Reads.traversableReads[List, Subscription](implicitly, subscriptionReads))
   }
 
   private val lenientDateTimeReader: Reads[DateTime] =
     JodaReads.DefaultJodaDateTimeReads orElse Reads.IsoDateReads.map(new DateTime(_))
 
-  val subscriptionReads: Reads[NonEmptyList[RatePlan] => Subscription] = new Reads[NonEmptyList[RatePlan] => Subscription] {
-    override def reads(json: JsValue): JsResult[NonEmptyList[RatePlan] => Subscription] = {
+  val subscriptionReads: Reads[Subscription] = new Reads[Subscription] {
+    override def reads(json: JsValue): JsResult[Subscription] = {
 
       json match {
         case o: JsObject =>
@@ -111,10 +119,11 @@ object SubJsonReads {
               (__ \ "ActivationDate__c").readNullable[DateTime](lenientDateTimeReader) and
               (__ \ "PromotionCode__c").readNullable[String].map(_.map(PromoCode)) and
               (__ \ "status").read[String].map(_ == "Cancelled") and
+              (__ \ "ratePlans").read[List[SubscriptionZuoraPlan]](niceListReads(commonZuoraPlanReads)) and
               (__ \ "ReaderType__c").readNullable[String].map(ReaderType.apply) and
               (__ \ "GifteeIdentityId__c").readNullable[String] and
               (__ \ "autoRenew").read[Boolean]
-          )(memsub.subsv2.Subscription.partial _).reads(o)
+          )(memsub.subsv2.Subscription.apply _).reads(o)
         case e => JsError(s"Needed a JsObject, got ${e.getClass.getSimpleName}")
       }
     }

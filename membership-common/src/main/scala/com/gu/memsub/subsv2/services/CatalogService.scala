@@ -3,9 +3,13 @@ package com.gu.memsub.subsv2.services
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.GetObjectRequest
 import com.gu.aws.AwsS3
+import com.gu.config.SubsV2ProductIds
+import com.gu.config.SubsV2ProductIds.ProductIds
+import com.gu.memsub.Benefit
+import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId}
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.CatJsonReads._
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
+import Catalog.CatalogMap
 import com.gu.monitoring.SafeLogger._
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.rest.SimpleClient
@@ -36,21 +40,33 @@ object FetchCatalog {
 
 object CatalogService extends SafeLogging {
 
-  def read[M[_]: Functor](fetchCatalog: M[String \/ JsValue]): M[CatalogMap] = {
+  def read[M[_]: Functor](fetchCatalog: M[String \/ JsValue], productIds: ProductIds): M[Catalog] =
+    for {
+      failableJsCatalog <- fetchCatalog
+    } yield {
 
-    val catalog: M[String \/ CatalogMap] = {
-      fetchCatalog.map(_ => ())
-      for {
-        failableCatalog <- fetchCatalog
-      } yield for {
-        catalog <- failableCatalog
-        plans <- Json.fromJson[List[CatalogZuoraPlan]](catalog).asEither.toDisjunction.leftMap(_.toString)
+      val failableCatalog = for {
+        catalog <- failableJsCatalog
+        plans <- Json.fromJson[List[CatalogZuoraPlan]](catalog)(catalogZuoraPlanListReads).asEither.toDisjunction.leftMap(_.toString)
       } yield plans.map(catalogZuoraPlan => catalogZuoraPlan.id -> catalogZuoraPlan).toMap
+
+      val catalogMap = failableCatalog
+        .leftMap[CatalogMap](error => {
+          logger.errorNoPrefix(scrub"error: $error"); Map.empty // not sure why we empty-on-failure
+        })
+        .merge
+
+      Catalog(catalogMap ++ patronPlans, productIds)
     }
 
-    catalog.map(_.leftMap[CatalogMap](error => {
-      logger.errorNoPrefix(scrub"error: $error"); Map.empty
-    }).merge)
+  private val patronPlans = Map[ProductRatePlanId, CatalogZuoraPlan](
+    Catalog.guardianPatronProductRatePlanId -> CatalogZuoraPlan(
+      Catalog.guardianPatronProductRatePlanId,
+      "Guardian Patron", // was subscription.plan.id but isn't used for patron
+      SubsV2ProductIds.guardianPatronProductId,
+      Map[ProductRatePlanChargeId, Benefit](Catalog.guardianPatronProductRatePlanChargeId -> Benefit.GuardianPatron),
+      Some(ProductType("Membership")), // not used for patron - only used for payment related emails
+    ),
+  )
 
-  }
 }

@@ -1,5 +1,6 @@
 package services
 
+import com.gu.memsub.subsv2.Catalog
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import configuration.Stage
@@ -86,10 +87,9 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       GuardianPatronExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
-  val guardianPatronProductRatePlanId = "guardian_patron"
 
   private val prodMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
+    List(Catalog.guardianPatronProductRatePlanId.get) -> guardianPatronTransformer,
     List(
       "8a12865b8219d9b401822106192b64dc",
       "8a12865b8219d9b40182210618a464ba",
@@ -214,7 +214,7 @@ object SupporterRatePlanToAttributesMapper {
   )
 
   private val codeMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
+    List(Catalog.guardianPatronProductRatePlanId.get) -> guardianPatronTransformer,
     List(
       "8ad09fc281de1ce70181de3b251736a4",
       "8ad09fc281de1ce70181de3b28ee3783",

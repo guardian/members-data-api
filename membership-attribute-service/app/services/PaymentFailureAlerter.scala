@@ -3,7 +3,7 @@ package services
 import com.gu.memsub.Product
 import com.gu.memsub.Product.{Contribution, Membership}
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub.subsv2.Subscription
+import com.gu.memsub.subsv2.{Catalog, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
@@ -40,6 +40,7 @@ object PaymentFailureAlerter extends SafeLogging {
       accountSummary: AccountSummary,
       subscription: Subscription,
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
+      catalog: Catalog,
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
@@ -54,12 +55,12 @@ object PaymentFailureAlerter extends SafeLogging {
       }
 
       def getProductDescription(subscription: Subscription) =
-        if (subscription.plans.head.product == Membership) {
-          s"${subscription.plan.productName} membership"
-        } else if (subscription.plans.head.product == Contribution) {
+        if (subscription.lowLevelPlans.head.product(catalog) == Membership) {
+          s"${subscription.plan(catalog).productName} membership"
+        } else if (subscription.lowLevelPlans.head.product(catalog) == Contribution) {
           "contribution"
         } else {
-          subscription.plan.productName
+          subscription.plan(catalog).productName
         }
 
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
@@ -75,7 +76,7 @@ object PaymentFailureAlerter extends SafeLogging {
       }
     }
 
-    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap { shouldShowAlert: Boolean =>
+    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter, catalog) flatMap { shouldShowAlert: Boolean =>
       expectedAlertText.map { someText => shouldShowAlert.option(someText).flatten }
     }
   }
@@ -86,8 +87,9 @@ object PaymentFailureAlerter extends SafeLogging {
       account: AccountObject,
       subscription: Subscription,
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
+      catalog: Catalog,
   )(implicit ec: ExecutionContext): Future[Boolean] = {
-    def isAlertableProduct = !nonAlertableProducts.contains(subscription.plan.product)
+    def isAlertableProduct = !nonAlertableProducts.contains(subscription.plan(catalog).product(catalog))
 
     def creditCard(paymentMethodResponse: PaymentMethodResponse) =
       paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"

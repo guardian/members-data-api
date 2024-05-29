@@ -2,10 +2,10 @@ package models
 
 import _root_.services.zuora.rest.ZuoraRestService.ObjectAccount
 import com.gu.memsub._
-import com.gu.memsub.subsv2.{Subscription, RatePlan}
+import com.gu.memsub.subsv2.{Catalog, Subscription, SubscriptionZuoraPlan}
 import com.gu.monitoring.SafeLogging
 import org.joda.time.LocalDate.now
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 
 case class ExistingPaymentOption(
     freshlySignedIn: Boolean,
@@ -20,10 +20,10 @@ object ExistingPaymentOption {
 
     import existingPaymentOption._
 
-    private def getSubscriptionFriendlyName(plan: RatePlan): String = plan.product match {
+    private def getSubscriptionFriendlyName(plan: SubscriptionZuoraPlan, catalog: Catalog): String = plan.product(catalog) match {
       case _: Product.Weekly => "Guardian Weekly"
       case _: Product.Membership => plan.productName + " Membership"
-      case _: Product.Contribution => plan.name
+      case _: Product.Contribution => plan.name(catalog)
       case _ => plan.productName // Newspaper & Digipack
     }
 
@@ -39,7 +39,7 @@ object ExistingPaymentOption {
       case _ => Json.obj()
     }
 
-    private val sensitiveDetailIfApplicable = if (freshlySignedIn) {
+    private def sensitiveDetailIfApplicable(catalog: Catalog) = if (freshlySignedIn) {
       Json.obj(
         "billingAccountId" -> objectAccount.id.get,
         "subscriptions" -> subscriptions.map(subscription =>
@@ -47,7 +47,9 @@ object ExistingPaymentOption {
             "billingAccountId" -> subscription.accountId.get, // this could be different to the top level one due to consolidation
             "isCancelled" -> subscription.isCancelled,
             "isActive" -> (!subscription.isCancelled && !subscription.termEndDate.isBefore(now)),
-            "name" -> subscription.plans.list.headOption.map(getSubscriptionFriendlyName),
+            "name" -> subscription.lowLevelPlans.headOption.map { plan =>
+              getSubscriptionFriendlyName(plan, catalog)
+            },
           ),
         ),
       ) ++ sensitivePaymentPart
@@ -55,13 +57,13 @@ object ExistingPaymentOption {
       Json.obj()
     }
 
-    def toJson = Json.obj(
+    def toJson(catalog: Catalog): JsObject = Json.obj(
       "paymentType" -> (paymentMethodOption match {
         case Some(_: PaymentCard) => "Card"
         case Some(_: GoCardless) => "DirectDebit"
         case Some(_: PayPalMethod) => "PayPal"
         case _ => null
       }),
-    ) ++ sensitiveDetailIfApplicable
+    ) ++ sensitiveDetailIfApplicable(catalog)
   }
 }

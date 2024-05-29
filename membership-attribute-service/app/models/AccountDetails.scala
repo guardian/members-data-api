@@ -1,7 +1,8 @@
 package models
 import com.gu.i18n.Country
+import com.gu.memsub.Benefit.PaperDay
+import com.gu.memsub._
 import com.gu.memsub.subsv2._
-import com.gu.memsub.{Subscription, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
@@ -38,9 +39,9 @@ object AccountDetails {
 
     import accountDetails._
 
-    def toJson(implicit logPrefix: LogPrefix): JsObject = {
+    def toJson(catalog: Catalog)(implicit logPrefix: LogPrefix): JsObject = {
 
-      val product = accountDetails.subscription.plan.product
+      val product = accountDetails.subscription.plan(catalog).product(catalog)
 
       val mmaCategory = mmaCategoryFrom(product)
 
@@ -96,41 +97,40 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      def externalisePlanName(plan: RatePlan): Option[String] = plan.product match {
-        case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
-        case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
+      def externalisePlanName(plan: SubscriptionZuoraPlan): Option[String] = plan.product(catalog) match {
+        case _: Product.Weekly => if (plan.name(catalog).contains("Six for Six")) Some("currently on '6 for 6'") else None
+        case _: Product.Paper => Some(plan.name(catalog).replace("+", " plus Digital Subscription"))
         case _ => None
       }
 
-      def jsonifyPlan(plan: RatePlan) = Json.obj(
+      def maybePaperDaysOfWeek(plan: SubscriptionZuoraPlan) = {
+        val dayNames = for {
+          charge <- plan.charges.list.toList
+            .filterNot(_.pricing.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
+          catalogZuoraPlan <- catalog.catalogMap.get(plan.productRatePlanId)
+          dayName <- catalogZuoraPlan.benefits
+            .get(charge.productRatePlanChargeId)
+            .collect { case benefit: PaperDay => DayOfWeek.of(benefit.dayOfTheWeekIndex).getDisplayName(TextStyle.FULL, Locale.ENGLISH) }
+        } yield dayName
+
+        if (dayNames.nonEmpty) Json.obj("daysOfWeek" -> dayNames) else Json.obj()
+      }
+
+      def jsonifyPlan(plan: SubscriptionZuoraPlan) = Json.obj(
         "name" -> externalisePlanName(plan),
         "start" -> plan.start,
         "end" -> plan.end,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
         "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30))),
-        "chargedThrough" -> plan.chargedThrough,
-        "price" -> plan.charges.price.prices.head.amount * 100,
-        "currency" -> plan.charges.price.prices.head.currency.glyph,
-        "currencyISO" -> plan.charges.price.prices.head.currency.iso,
-        "billingPeriod" -> plan.charges.billingPeriod.noun,
-        "features" -> plan.features.map(_.code.get).mkString(","),
-      ) ++ (plan.charges match {
-        case paperCharges: PaperCharges =>
-          Json.obj(
-            "daysOfWeek" ->
-              paperCharges.dayPrices
-                .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
-                .keys
-                .toList
-                .map(_.dayOfTheWeekIndex)
-                .sorted
-                .map(DayOfWeek.of)
-                .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH)),
-          )
-        case _ => Json.obj()
-      })
+        "chargedThrough" -> plan.chargedThroughDate,
+        "price" -> plan.chargesPrice.prices.head.amount * 100,
+        "currency" -> plan.chargesPrice.prices.head.currency.glyph,
+        "currencyISO" -> plan.chargesPrice.prices.head.currency.iso,
+        "billingPeriod" -> plan.billingPeriod.leftMap(e => throw new RuntimeException("no billing period: " + e)).toOption.get.noun,
+        "features" -> plan.features.map(_.featureCode).mkString(","),
+      ) ++ maybePaperDaysOfWeek(plan)
 
-      val sortedPlans = subscription.plans.list.sortBy(_.start.toDate)
+      val sortedPlans = subscription.lowLevelPlans.sortBy(_.start.toDate)
       val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 
@@ -225,12 +225,12 @@ object AccountDetails {
 
 object CancelledSubscription {
   import AccountDetails._
-  def apply(subscription: Subscription): JsObject = {
+  def apply(subscription: Subscription, catalog: Catalog): JsObject = {
     GetCurrentPlans
       .bestCancelledPlan(subscription)
       .map { plan =>
         Json.obj(
-          "mmaCategory" -> mmaCategoryFrom(plan.product),
+          "mmaCategory" -> mmaCategoryFrom(plan.product(catalog)),
           "tier" -> plan.productName,
           "subscription" -> (
             Json.obj(

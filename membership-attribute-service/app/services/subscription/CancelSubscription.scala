@@ -2,8 +2,6 @@ package services.subscription
 
 import com.gu.memsub
 import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.RatePlan
-import com.gu.memsub.subsv2.reads.SubPlanReads
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.monitoring.SafeLogger.LogPrefix
 import models.ApiError
