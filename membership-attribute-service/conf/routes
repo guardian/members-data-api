@@ -7,14 +7,14 @@ GET         /user-attributes/me/existing-payment-options                        
 GET         /user-attributes/me/mma                                             controllers.AccountController.allPaymentDetails(productType: Option[String])
 GET         /user-attributes/me/mma/:subscriptionName                           controllers.AccountController.paymentDetailsSpecificSub(subscriptionName: String)
 
-POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSpecificSub(subscriptionName: String)
-GET         /user-attributes/me/cancellation-date/:subscriptionName             controllers.AccountController.decideCancellationEffectiveDate(subscriptionName: String)
-GET         /user-attributes/me/cancelled-subscriptions                         controllers.AccountController.cancelledSubscriptions()
+POST        /user-attributes/me/cancel/:subscriptionName                        controllers.AccountController.cancelSubscription(subscriptionName: String)
+GET         /user-attributes/me/cancellation-date/:subscriptionName             controllers.AccountController.getCancellationEffectiveDate(subscriptionName: String)
+GET         /user-attributes/me/cancelled-subscriptions                         controllers.AccountController.fetchCancelledSubscriptions()
 POST        /user-attributes/me/update-cancellation-reason/:subscriptionName    controllers.AccountController.updateCancellationReason(subscriptionName: String)
 
 GET         /user-attributes/me/reminders                                       controllers.AccountController.reminders
 
-POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateAmountForSpecificContribution(subscriptionName: String)
+POST        /user-attributes/me/contribution-update-amount/:subscriptionName    controllers.AccountController.updateContributionAmount(subscriptionName: String)
 
 POST        /user-attributes/me/update-card/:subscriptionName                   controllers.PaymentUpdateController.updateCard(subscriptionName: String)
 POST        /user-attributes/me/update-direct-debit/:subscriptionName           controllers.PaymentUpdateController.updateDirectDebit(subscriptionName: String)

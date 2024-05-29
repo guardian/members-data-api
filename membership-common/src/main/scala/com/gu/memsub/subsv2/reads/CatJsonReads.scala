@@ -11,41 +11,42 @@ import scalaz.syntax.traverse._
 
 object CatJsonReads {
 
-  private implicit val ProductReads: Reads[Benefit] = new Reads[Benefit] {
-    override def reads(json: JsValue): JsResult[Benefit] = json match {
-      case JsString(id) => Benefit.fromId(id).fold[JsResult[Benefit]](JsError(s"Bad product $id"))(e => JsSuccess(e))
+  private implicit val productRatePlanChargeProductTypeReads: Reads[ProductRatePlanChargeProductType] = new Reads[ProductRatePlanChargeProductType] {
+    override def reads(json: JsValue): JsResult[ProductRatePlanChargeProductType] = json match {
+      case JsString(id) =>
+        ProductRatePlanChargeProductType.fromId(id).fold[JsResult[ProductRatePlanChargeProductType]](JsError(s"Bad product $id"))(e => JsSuccess(e))
       case a => JsError(s"Malformed product JSON, needed a string but got $a")
     }
   }
 
-  private implicit val catalogZuoraPlanBenefitReads: Reads[(ProductRatePlanChargeId, Benefit)] = (
+  private implicit val productRatePlanChargeReads: Reads[(ProductRatePlanChargeId, ProductRatePlanChargeProductType)] = (
     (__ \ "id").read[String].map(ProductRatePlanChargeId) and
-      (__ \ "ProductType__c").read[Benefit]
+      (__ \ "ProductType__c").read[ProductRatePlanChargeProductType]
   )(_ -> _)
 
-  private val listOfProductsReads = new Reads[Map[ProductRatePlanChargeId, Benefit]] {
-    override def reads(json: JsValue): JsResult[Map[ProductRatePlanChargeId, Benefit]] = json match {
+  private val productRatePlanChargesReads = new Reads[Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType]] {
+    override def reads(json: JsValue): JsResult[Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType]] = json match {
       case JsArray(vals) =>
         vals
-          .map(_.validate[(ProductRatePlanChargeId, Benefit)])
+          .map(_.validate[(ProductRatePlanChargeId, ProductRatePlanChargeProductType)])
           .filter(_.isSuccess)
           .toList // bad things are happening here, we're chucking away errors
-          .sequence[JsResult, (ProductRatePlanChargeId, Benefit)]
+          .sequence[JsResult, (ProductRatePlanChargeId, ProductRatePlanChargeProductType)]
           .map(_.toMap)
       case _ => JsError("No valid benefits found")
     }
   }
 
-  private def catalogZuoraPlanReads(productType: Option[ProductType], pid: ProductId): Reads[CatalogZuoraPlan] =
+  private def productRatePlanReads(productType: Option[ProductType], pid: ProductId): Reads[ProductRatePlan] =
     (json: JsValue) => {
       ((__ \ "id").read[String].map(ProductRatePlanId) and
         (__ \ "name").read[String] and
         Reads.pure(pid) and
-        (__ \ "productRatePlanCharges").read[Map[ProductRatePlanChargeId, Benefit]](listOfProductsReads) and
-        Reads.pure(productType))(CatalogZuoraPlan.apply _).reads(json)
+        (__ \ "productRatePlanCharges").read[Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType]](productRatePlanChargesReads) and
+        Reads.pure(productType))(ProductRatePlan.apply _).reads(json)
     }
 
-  val catalogZuoraPlanListReads: Reads[List[CatalogZuoraPlan]] =
+  val productsReads: Reads[List[ProductRatePlan]] =
     (json: JsValue) =>
       json \ "products" match {
         case JsDefined(JsArray(products)) =>
@@ -53,11 +54,11 @@ object CatJsonReads {
             .map { product =>
               val productId = (product \ "id").as[String]
               val productType = (product \ "ProductType__c").asOpt[String].map(ProductType)
-              val reads = catalogZuoraPlanReads(productType, ProductId(productId))
-              (product \ "productRatePlans").validate[List[CatalogZuoraPlan]](niceListReads(reads))
+              val reads = productRatePlanReads(productType, ProductId(productId))
+              (product \ "productRatePlans").validate[List[ProductRatePlan]](niceListReads(reads))
             }
             .filter(_.isSuccess)
-            .sequence[JsResult, List[CatalogZuoraPlan]]
+            .sequence[JsResult, List[ProductRatePlan]]
             .map(_.flatten)
         case a => JsError(s"No product array found, got $a")
       }

@@ -53,7 +53,7 @@ object SubJsonReads {
     }
   }
 
-  private val zuoraSubscriptionRatePlanChargeReads: Reads[ZuoraCharge] = (
+  private val ratePlanChargeReads: Reads[RatePlanCharge] = (
     (__ \ "id").read[String].map(SubscriptionRatePlanChargeId) and
       (__ \ "productRatePlanChargeId").read[String].map(ProductRatePlanChargeId) and
       (__ \ "pricingSummary").read[PricingSummary] and
@@ -62,10 +62,10 @@ object SubJsonReads {
       (__ \ "endDateCondition").read[EndDateCondition] and
       (__ \ "upToPeriods").readNullable[Int] and
       (__ \ "upToPeriodsType").readNullable[UpToPeriodsType]
-  )(ZuoraCharge.apply _)
+  )(RatePlanCharge.apply _)
 
-  private val commonZuoraPlanReads: Reads[SubscriptionZuoraPlan] = new Reads[SubscriptionZuoraPlan] {
-    override def reads(json: JsValue): JsResult[SubscriptionZuoraPlan] = {
+  private val ratePlanReads: Reads[RatePlan] = new Reads[RatePlan] {
+    override def reads(json: JsValue): JsResult[RatePlan] = {
 
       // our common zuora plan has effective dates on the plan, but we have them on the charge.
       val dates = (json \ "ratePlanCharges").toOption
@@ -88,10 +88,10 @@ object SubJsonReads {
           (json \ "lastChangeType").validateOpt[String] |@|
           (json \ "subscriptionProductFeatures").validate[List[RestFeature]] |@|
           dates.map(_.map(_._3).sorted.reduceOption(_ orElse _).flatten) |@|
-          (json \ "ratePlanCharges").validate[NonEmptyList[ZuoraCharge]](nelReads(niceListReads(zuoraSubscriptionRatePlanChargeReads))) |@|
+          (json \ "ratePlanCharges").validate[NonEmptyList[RatePlanCharge]](nelReads(niceListReads(ratePlanChargeReads))) |@|
           dates.flatMap(_.map(_._1).sorted.headOption.fold[JsResult[LocalDate]](JsError("Missing start"))(JsSuccess(_))) |@|
           dates.flatMap(_.map(_._2).sorted.headOption.fold[JsResult[LocalDate]](JsError("Missing end"))(JsSuccess(_)))
-      )(SubscriptionZuoraPlan).withTrace("low-level-plan")
+      )(RatePlan).withTrace("low-level-plan")
     }
   }
 
@@ -119,7 +119,7 @@ object SubJsonReads {
               (__ \ "ActivationDate__c").readNullable[DateTime](lenientDateTimeReader) and
               (__ \ "PromotionCode__c").readNullable[String].map(_.map(PromoCode)) and
               (__ \ "status").read[String].map(_ == "Cancelled") and
-              (__ \ "ratePlans").read[List[SubscriptionZuoraPlan]](niceListReads(commonZuoraPlanReads)) and
+              (__ \ "ratePlans").read[List[RatePlan]](niceListReads(ratePlanReads)) and
               (__ \ "ReaderType__c").readNullable[String].map(ReaderType.apply) and
               (__ \ "GifteeIdentityId__c").readNullable[String] and
               (__ \ "autoRenew").read[Boolean]

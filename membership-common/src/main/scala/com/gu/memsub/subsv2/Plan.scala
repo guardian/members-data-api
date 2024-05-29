@@ -114,7 +114,7 @@ object UpToPeriodsType {
 
 /** Low level model of a Zuora rate plan charge
   */
-case class ZuoraCharge(
+case class RatePlanCharge(
     id: SubscriptionRatePlanChargeId,
     productRatePlanChargeId: ProductRatePlanChargeId,
     pricing: PricingSummary,
@@ -162,23 +162,23 @@ case class ZuoraCharge(
 
 /** Low level model of a rate plan, as it appears on a subscription in Zuora
   */
-case class SubscriptionZuoraPlan(
+case class RatePlan(
     id: RatePlanId,
     productRatePlanId: ProductRatePlanId,
     productName: String,
     lastChangeType: Option[String],
     features: List[Feature],
     chargedThroughDate: Option[LocalDate],
-    charges: NonEmptyList[ZuoraCharge],
+    ratePlanCharges: NonEmptyList[RatePlanCharge],
     start: LocalDate,
     end: LocalDate,
 ) {
 
   def totalChargesMinorUnit: Int =
-    charges.map(c => (c.pricing.prices.head.amount * 100).toInt).list.toList.sum
+    ratePlanCharges.map(c => (c.pricing.prices.head.amount * 100).toInt).list.toList.sum
 
   def chargesPrice: PricingSummary =
-    charges
+    ratePlanCharges
       .map(_.pricing)
       .list
       .toList
@@ -189,7 +189,7 @@ case class SubscriptionZuoraPlan(
       )
 
   def billingPeriod: Validation[String, BillingPeriod] = {
-    val billingPeriods = charges.list.toList.map(c => c.billingPeriod).distinct
+    val billingPeriods = ratePlanCharges.list.toList.map(c => c.billingPeriod).distinct
     billingPeriods match {
       case Nil => Validation.f[BillingPeriod]("No billing period found")
       case b :: Nil => b
@@ -214,11 +214,11 @@ case class SubscriptionZuoraPlan(
 
 /** Low level model of a product rate plan, as it appears in the Zuora product catalog
   */
-case class CatalogZuoraPlan(
+case class ProductRatePlan(
     id: ProductRatePlanId,
     name: String,
     productId: ProductId,
-    benefits: Map[ProductRatePlanChargeId, Benefit],
+    productRatePlanCharges: Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType],
     private val productTypeOption: Option[ProductType],
 ) {
   lazy val productType: ProductType = productTypeOption.getOrElse(throw new RuntimeException("Product type is undefined for plan: " + name))

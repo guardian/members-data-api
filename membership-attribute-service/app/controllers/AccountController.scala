@@ -87,7 +87,7 @@ class AccountController(
         Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
       }
 
-  def cancelSpecificSub(subscriptionNameString: String): Action[AnyContent] =
+  def cancelSubscription(subscriptionNameString: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
@@ -145,7 +145,7 @@ class AccountController(
       }
     }
 
-  def decideCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
+  def getCancellationEffectiveDate(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancellation-date/:subscriptionName") {
@@ -227,7 +227,7 @@ class AccountController(
     } yield fromZuora ++ fromStripe
   }
 
-  def cancelledSubscriptions(): Action[AnyContent] =
+  def fetchCancelledSubscriptions(): Action[AnyContent] =
     AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(completeReadSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("GET /user-attributes/me/cancelled-subscriptions") {
@@ -250,7 +250,7 @@ class AccountController(
       }
     }
 
-  def updateAmountForSpecificContribution(subscriptionName: String): Action[AnyContent] =
+  def updateContributionAmount(subscriptionName: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/contribution-update-amount/:subscriptionName") {
@@ -280,7 +280,7 @@ class AccountController(
             case period: BillingPeriod.OneOffPeriod => Left(s"period $period was not recurring for contribution update")
           })
           applyFromDate = contributionPlan.chargedThroughDate.getOrElse(contributionPlan.start)
-          currency = contributionPlan.charges.head.pricing.prices.head.currency
+          currency = contributionPlan.ratePlanCharges.head.pricing.prices.head.currency
           currencyGlyph = currency.glyph
           oldPrice = contributionPlan.totalChargesMinorUnit.toDouble / 100
           reasonForChange =
@@ -288,7 +288,7 @@ class AccountController(
           result <- SimpleEitherT(
             services.zuoraRestService.updateChargeAmount(
               subscription.name,
-              contributionPlan.charges.head.id,
+              contributionPlan.ratePlanCharges.head.id,
               contributionPlan.id,
               newPrice.toDouble,
               reasonForChange,

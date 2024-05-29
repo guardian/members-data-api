@@ -188,7 +188,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
       OptionT(get(subscriptionName, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
           val paidPlans =
-            zuoraSubscriptionWithCurrentSegment.lowLevelPlans
+            zuoraSubscriptionWithCurrentSegment.ratePlans
           val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(BillRunCompletedByTime)
 
           paidPlans match {

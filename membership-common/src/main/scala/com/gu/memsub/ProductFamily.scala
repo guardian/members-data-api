@@ -93,14 +93,14 @@ object Product {
 }
 
 // Benefit is the catalog charge level ProductType__c
-sealed trait Benefit {
+sealed trait ProductRatePlanChargeProductType {
   val id: String
   override def toString = s"benefit $id"
 }
 
-object Benefit {
+object ProductRatePlanChargeProductType {
 
-  def fromId(id: String): Option[Benefit] =
+  def fromId(id: String): Option[ProductRatePlanChargeProductType] =
     PaperDay.fromId(id) orElse
       PaidMemberTier.fromId(id) orElse
       (id == SupporterPlus.id).option(SupporterPlus) orElse
@@ -109,9 +109,9 @@ object Benefit {
       (id == Contributor.id).option(Contributor) orElse
       (id == Weekly.id).option(Weekly)
 
-  sealed trait MemberTier extends Benefit
+  sealed trait MemberTier extends ProductRatePlanChargeProductType
   sealed trait PaidMemberTier extends MemberTier
-  sealed trait PaperDay extends Benefit {
+  sealed trait PaperDay extends ProductRatePlanChargeProductType {
     val dayOfTheWeekIndex: Int
   }
 
@@ -137,7 +137,7 @@ object Benefit {
     }
   }
 
-  object Contributor extends Benefit {
+  object Contributor extends ProductRatePlanChargeProductType {
     override val id = "Contributor"
   }
 
@@ -154,19 +154,19 @@ object Benefit {
   }
 
   // This is the new non-membership version of a patron
-  object GuardianPatron extends Benefit {
+  object GuardianPatron extends ProductRatePlanChargeProductType {
     override val id = "Guardian Patron"
   }
 
-  object Digipack extends Benefit {
+  object Digipack extends ProductRatePlanChargeProductType {
     override val id = "Digital Pack"
   }
 
-  object SupporterPlus extends Benefit {
+  object SupporterPlus extends ProductRatePlanChargeProductType {
     override val id = "Supporter Plus"
   }
 
-  object Weekly extends Benefit {
+  object Weekly extends ProductRatePlanChargeProductType {
     override val id = "Guardian Weekly"
   }
 
@@ -205,7 +205,7 @@ object Benefit {
     override val dayOfTheWeekIndex = 7
   }
 
-  object Adjustment extends Benefit {
+  object Adjustment extends ProductRatePlanChargeProductType {
     override val id = "Adjustment"
   }
 

@@ -22,15 +22,15 @@ case class Subscription(
     casActivationDate: Option[DateTime],
     promoCode: Option[PromoCode],
     isCancelled: Boolean,
-    lowLevelPlans: List[SubscriptionZuoraPlan],
+    ratePlans: List[RatePlan],
     readerType: ReaderType,
     gifteeIdentityId: Option[String],
     autoRenew: Boolean,
 ) {
 
-  val firstPaymentDate: LocalDate = (acceptanceDate :: lowLevelPlans.map(_.start)).min
+  val firstPaymentDate: LocalDate = (acceptanceDate :: ratePlans.map(_.start)).min
 
-  def plan(catalog: Catalog): SubscriptionZuoraPlan =
+  def plan(catalog: Catalog): RatePlan =
     GetCurrentPlans.currentPlans(this, LocalDate.now, catalog).fold(error => throw new RuntimeException(error), _.head)
 
 }
@@ -45,16 +45,16 @@ with the newest plan for upgrade and cancel scenarios, so in this case the most 
  */
 object GetCurrentPlans {
 
-  def bestCancelledPlan(sub: Subscription): Option[SubscriptionZuoraPlan] =
+  def bestCancelledPlan(sub: Subscription): Option[RatePlan] =
     if (sub.isCancelled && sub.termEndDate.isBefore(LocalDate.now()))
-      sub.lowLevelPlans.sortBy(_.totalChargesMinorUnit).reverse.headOption
+      sub.ratePlans.sortBy(_.totalChargesMinorUnit).reverse.headOption
     else None
 
-  case class DiscardedPlan(plan: SubscriptionZuoraPlan, why: String)
+  case class DiscardedPlan(plan: RatePlan, why: String)
 
-  def currentPlans(sub: Subscription, date: LocalDate, catalog: Catalog): String \/ NonEmptyList[SubscriptionZuoraPlan] = {
+  def currentPlans(sub: Subscription, date: LocalDate, catalog: Catalog): String \/ NonEmptyList[RatePlan] = {
 
-    val currentPlans = sub.lowLevelPlans.sortBy(_.totalChargesMinorUnit).reverse.map { plan =>
+    val currentPlans = sub.ratePlans.sortBy(_.totalChargesMinorUnit).reverse.map { plan =>
       val product = plan.product(catalog)
       // If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
       val dateToCheck = if (sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date

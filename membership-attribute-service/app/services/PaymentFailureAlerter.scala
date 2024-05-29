@@ -55,9 +55,9 @@ object PaymentFailureAlerter extends SafeLogging {
       }
 
       def getProductDescription(subscription: Subscription) =
-        if (subscription.lowLevelPlans.head.product(catalog) == Membership) {
+        if (subscription.ratePlans.head.product(catalog) == Membership) {
           s"${subscription.plan(catalog).productName} membership"
-        } else if (subscription.lowLevelPlans.head.product(catalog) == Contribution) {
+        } else if (subscription.ratePlans.head.product(catalog) == Contribution) {
           "contribution"
         } else {
           subscription.plan(catalog).productName

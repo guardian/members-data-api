@@ -82,23 +82,23 @@ class GuardianPatronService(
         casActivationDate = None,
         promoCode = None,
         isCancelled = subscription.isCancelled,
-        lowLevelPlans = List(
-          SubscriptionZuoraPlan(
+        ratePlans = List(
+          RatePlan(
             id = RatePlanId("guardian_patron_unused"), // only used for contribution amount change
             productRatePlanId = Catalog.guardianPatronProductRatePlanId,
             productName = "Guardian Patron",
             lastChangeType = None,
             features = Nil,
-            charges = NonEmptyList(
-              ZuoraCharge(
-                SubscriptionRatePlanChargeId(""), // only used for update contribution amount
-                ProductRatePlanChargeId(""), // benefit is only used for paper days (was Benefit.GuardianPatron)
-                PricingSummary(Map(subscription.plan.currency -> price)),
-                Some(billingPeriodFromInterval(subscription.plan.interval)),
-                None, // only used for fixed period e.g. GW 6 for 6
-                SubscriptionEnd,
-                None, // only used for fixed periods
-                None, // only used for fixed periods
+            ratePlanCharges = NonEmptyList(
+              RatePlanCharge(
+                id = SubscriptionRatePlanChargeId(""), // only used for update contribution amount
+                productRatePlanChargeId = ProductRatePlanChargeId(""), // benefit is only used for paper days (was Benefit.GuardianPatron)
+                pricing = PricingSummary(Map(subscription.plan.currency -> price)),
+                zBillingPeriod = Some(billingPeriodFromInterval(subscription.plan.interval)),
+                specificBillingPeriod = None, // only used for fixed period e.g. GW 6 for 6
+                endDateCondition = SubscriptionEnd,
+                upToPeriods = None, // only used for fixed periods
+                upToPeriodsType = None, // only used for fixed periods
               ),
             ),
             chargedThroughDate = Some(subscription.currentPeriodEnd),

@@ -6,7 +6,7 @@ import com.gu.memsub.subsv2.Catalog.CatalogMap
 
 object Catalog {
 
-  type CatalogMap = Map[ProductRatePlanId, CatalogZuoraPlan]
+  type CatalogMap = Map[ProductRatePlanId, ProductRatePlan]
 
   // dummy ids for stripe (non zuora) products
   val guardianPatronProductRatePlanId: ProductRatePlanId = ProductRatePlanId("guardian_patron")

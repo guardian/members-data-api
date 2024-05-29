@@ -1,6 +1,6 @@
 package models
 import com.gu.i18n.Country
-import com.gu.memsub.Benefit.PaperDay
+import com.gu.memsub.ProductRatePlanChargeProductType.PaperDay
 import com.gu.memsub._
 import com.gu.memsub.subsv2._
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -97,18 +97,18 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      def externalisePlanName(plan: SubscriptionZuoraPlan): Option[String] = plan.product(catalog) match {
+      def externalisePlanName(plan: RatePlan): Option[String] = plan.product(catalog) match {
         case _: Product.Weekly => if (plan.name(catalog).contains("Six for Six")) Some("currently on '6 for 6'") else None
         case _: Product.Paper => Some(plan.name(catalog).replace("+", " plus Digital Subscription"))
         case _ => None
       }
 
-      def maybePaperDaysOfWeek(plan: SubscriptionZuoraPlan) = {
+      def maybePaperDaysOfWeek(plan: RatePlan) = {
         val dayNames = for {
-          charge <- plan.charges.list.toList
+          charge <- plan.ratePlanCharges.list.toList
             .filterNot(_.pricing.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
           catalogZuoraPlan <- catalog.catalogMap.get(plan.productRatePlanId)
-          dayName <- catalogZuoraPlan.benefits
+          dayName <- catalogZuoraPlan.productRatePlanCharges
             .get(charge.productRatePlanChargeId)
             .collect { case benefit: PaperDay => DayOfWeek.of(benefit.dayOfTheWeekIndex).getDisplayName(TextStyle.FULL, Locale.ENGLISH) }
         } yield dayName
@@ -116,7 +116,7 @@ object AccountDetails {
         if (dayNames.nonEmpty) Json.obj("daysOfWeek" -> dayNames) else Json.obj()
       }
 
-      def jsonifyPlan(plan: SubscriptionZuoraPlan) = Json.obj(
+      def jsonifyPlan(plan: RatePlan) = Json.obj(
         "name" -> externalisePlanName(plan),
         "start" -> plan.start,
         "end" -> plan.end,
@@ -130,7 +130,7 @@ object AccountDetails {
         "features" -> plan.features.map(_.featureCode).mkString(","),
       ) ++ maybePaperDaysOfWeek(plan)
 
-      val sortedPlans = subscription.lowLevelPlans.sortBy(_.start.toDate)
+      val sortedPlans = subscription.ratePlans.sortBy(_.start.toDate)
       val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
       val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
 

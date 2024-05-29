@@ -5,7 +5,7 @@ import com.amazonaws.services.s3.model.GetObjectRequest
 import com.gu.aws.AwsS3
 import com.gu.config.SubsV2ProductIds
 import com.gu.config.SubsV2ProductIds.ProductIds
-import com.gu.memsub.Benefit
+import com.gu.memsub.ProductRatePlanChargeProductType
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId}
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.CatJsonReads._
@@ -47,7 +47,7 @@ object CatalogService extends SafeLogging {
 
       val failableCatalog = for {
         catalog <- failableJsCatalog
-        plans <- Json.fromJson[List[CatalogZuoraPlan]](catalog)(catalogZuoraPlanListReads).asEither.toDisjunction.leftMap(_.toString)
+        plans <- Json.fromJson[List[ProductRatePlan]](catalog)(productsReads).asEither.toDisjunction.leftMap(_.toString)
       } yield plans.map(catalogZuoraPlan => catalogZuoraPlan.id -> catalogZuoraPlan).toMap
 
       val catalogMap = failableCatalog
@@ -59,12 +59,14 @@ object CatalogService extends SafeLogging {
       Catalog(catalogMap ++ patronPlans, productIds)
     }
 
-  private val patronPlans = Map[ProductRatePlanId, CatalogZuoraPlan](
-    Catalog.guardianPatronProductRatePlanId -> CatalogZuoraPlan(
+  private val patronPlans = Map[ProductRatePlanId, ProductRatePlan](
+    Catalog.guardianPatronProductRatePlanId -> ProductRatePlan(
       Catalog.guardianPatronProductRatePlanId,
       "Guardian Patron", // was subscription.plan.id but isn't used for patron
       SubsV2ProductIds.guardianPatronProductId,
-      Map[ProductRatePlanChargeId, Benefit](Catalog.guardianPatronProductRatePlanChargeId -> Benefit.GuardianPatron),
+      Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType](
+        Catalog.guardianPatronProductRatePlanChargeId -> ProductRatePlanChargeProductType.GuardianPatron,
+      ),
       Some(ProductType("Membership")), // not used for patron - only used for payment related emails
     ),
   )
