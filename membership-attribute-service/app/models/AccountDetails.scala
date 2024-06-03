@@ -99,6 +99,7 @@ object AccountDetails {
       def externalisePlanName(plan: RatePlan): Option[String] = plan.product match {
         case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
         case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
+        case _: Product.SupporterPlus => if (plan.name.contains("Guardian Weekly")) Some("Supporter Plus with Guardian Weekly") else None
         case _ => None
       }
 
@@ -232,15 +233,13 @@ object CancelledSubscription {
         Json.obj(
           "mmaCategory" -> mmaCategoryFrom(plan.product),
           "tier" -> plan.productName,
-          "subscription" -> (
-            Json.obj(
-              "subscriptionId" -> subscription.name.get,
-              "cancellationEffectiveDate" -> subscription.termEndDate,
-              "start" -> subscription.acceptanceDate,
-              "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
-              "readerType" -> subscription.readerType.value,
-              "accountId" -> subscription.accountId.get,
-            )
+          "subscription" -> Json.obj(
+            "subscriptionId" -> subscription.name.get,
+            "cancellationEffectiveDate" -> subscription.termEndDate,
+            "start" -> subscription.acceptanceDate,
+            "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
+            "readerType" -> subscription.readerType.value,
+            "accountId" -> subscription.accountId.get,
           ),
         )
       }
