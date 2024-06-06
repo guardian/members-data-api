@@ -47,8 +47,8 @@ object FeastApp {
       else
         RegularSubscription,
     )
-  def getFeastAndroidOfferTags(attributes: Attributes): Option[String] =
+  def getFeastAndroidOfferTags(attributes: Attributes): Option[List[String]] =
     if (shouldShowSubscriptionOptions(attributes) && shouldGetFreeTrial(attributes))
-      Some(AndroidOfferTags.ExtendedTrial)
+      Some(List(AndroidOfferTags.ExtendedTrial))
     else None
 }
