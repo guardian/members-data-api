@@ -2,7 +2,7 @@ package models
 
 import com.github.nscala_time.time.OrderingImplicits._
 import json._
-import models.FeastApp.getFeastIosSubscriptionGroup
+import models.FeastApp.{getFeastAndroidOfferTags, getFeastIosSubscriptionGroup}
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.functional.syntax._
@@ -107,6 +107,7 @@ object Attributes {
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
     .addNullableField("feastIosSubscriptionGroup", getFeastIosSubscriptionGroup)
+    .addNullableField("feastAndroidOfferTags", getFeastAndroidOfferTags)
     .addField("contentAccess", _.contentAccess)
 }
 

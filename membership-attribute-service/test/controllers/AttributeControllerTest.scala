@@ -423,6 +423,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "userId": "$userWithRecurringContributionUserId",
              |  "showSupportMessaging": false,
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
              |  "recurringContributionPaymentPlan":"Monthly Contribution",
              |  "recurringContributionAcquisitionDate":"$dateBeforeFeastLaunch",
              |  "contentAccess": {
@@ -454,6 +455,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "liveAppSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,
@@ -483,6 +485,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "userId": "$userWithNewspaperUserId",
              |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
              |  "showSupportMessaging": false,
              |  "contentAccess": {
              |    "member": false,
@@ -544,6 +547,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
              |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,

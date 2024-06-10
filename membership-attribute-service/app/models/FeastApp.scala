@@ -14,6 +14,11 @@ object FeastApp {
     val RegularSubscription = "21396030"
   }
 
+  object AndroidOfferTags {
+    // Offer tags are the Android equivalent of iOS subscription groups - used by the app to work out which offer to show to the user
+    val ExtendedTrial = "initial_supporter_launch_offer"
+  }
+
   private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(FeastIosLaunchDate)
 
   def shouldGetFeastAccess(attributes: Attributes): Boolean =
@@ -42,4 +47,8 @@ object FeastApp {
       else
         RegularSubscription,
     )
+  def getFeastAndroidOfferTags(attributes: Attributes): Option[List[String]] =
+    if (shouldShowSubscriptionOptions(attributes) && shouldGetFreeTrial(attributes))
+      Some(List(AndroidOfferTags.ExtendedTrial))
+    else None
 }
