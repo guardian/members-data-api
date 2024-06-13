@@ -7,6 +7,7 @@ import configuration.Stage
 import controllers.AccountHelpers
 import monitoring.CreateNoopMetrics
 import org.specs2.mutable.Specification
+import play.api.libs.json.Json
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -16,14 +17,14 @@ import testdata.TestLogPrefix.testLogPrefix
 class AccountDetailsFromZuoraIntegrationTest extends Specification {
 
   // This is an integration test to run code locally, we don't want it running in CI
-  args(skipAll = true)
+  args(skipAll = false)
 
   "AccountDetailsFromZuora" should {
     "fetch a list of subs" in {
       val result = Await
         .result(
           createTouchpointComponents.accountDetailsFromZuora
-            .fetch("200152344", AccountHelpers.NoFilter)
+            .fetch("200264404", AccountHelpers.NoFilter)
             .run
             .map { list =>
               println(s"Fetched this list: $list")
@@ -31,6 +32,7 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
             },
           Duration.Inf,
         )
+      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson))))
       result.isRight must_== true
     }
   }

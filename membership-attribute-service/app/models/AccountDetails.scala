@@ -1,7 +1,7 @@
 package models
 import com.gu.i18n.Country
+import com.gu.memsub._
 import com.gu.memsub.subsv2._
-import com.gu.memsub.{Subscription, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
@@ -99,7 +99,6 @@ object AccountDetails {
       def externalisePlanName(plan: RatePlan): Option[String] = plan.product match {
         case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
         case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
-        case _: Product.SupporterPlus => if (plan.name.contains("Guardian Weekly")) Some("Supporter Plus with Guardian Weekly") else None
         case _ => None
       }
 
@@ -217,6 +216,7 @@ object AccountDetails {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
     case _: Product.SupporterPlus => "recurringSupport"
+    case _: Product.TierThree => "recurringSupport"
     case _: Product.GuardianPatron => "subscriptions"
     case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"

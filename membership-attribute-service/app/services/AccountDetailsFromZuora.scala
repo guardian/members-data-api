@@ -210,6 +210,7 @@ class AccountDetailsFromZuora(
       case _: Product.Membership => requestedProductType == "Membership"
       case _: Product.ZDigipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription
       case _: Product.SupporterPlus => requestedProductType == "SupporterPlus" || requestedProductTypeIsContentSubscription
+      case _: Product.TierThree => requestedProductType == "TierThree" || requestedProductTypeIsContentSubscription
       case _ => requestedProductType == product.name // fallback
     }
   }
