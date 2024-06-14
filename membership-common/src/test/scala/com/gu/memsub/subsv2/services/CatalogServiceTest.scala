@@ -25,10 +25,11 @@ class CatalogServiceTest extends Specification {
       val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")))
       val supporterPlus = cats(ProductRatePlanId("8ad08e1a8586721801858805663f6fab"))
       val supporterPlusMonth = cats(ProductRatePlanId("8ad08cbd8586721c01858804e3275376"))
-      val supporterPluses = cats.collect { case (_, plan) if plan.productId == ids.supporterPlus && plan.status == Status.Legacy => }.toList
-      supporterPluses.size must beEqualTo(2)
-      supporterPlus.charges.head.billingPeriod must beEqualTo(Some(ZYear))
-      supporterPlusMonth.charges.head.billingPeriod must beEqualTo(Some(ZMonth))
+      supporterPlus.charges.head.billingPeriod must beSome(ZYear)
+      supporterPlusMonth.charges.head.billingPeriod must beSome(ZMonth)
+
+      val tierThree = cats.collect { case (_, plan) if plan.productId == ids.tierThree && plan.status == Status.Current => plan}.toList
+      tierThree.size must beEqualTo(4)
     }
   }
 }

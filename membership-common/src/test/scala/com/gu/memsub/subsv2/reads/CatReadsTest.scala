@@ -69,7 +69,7 @@ class CatReadsTest extends AnyFlatSpec {
             pricing = PricingSummary(
               Map(
                 GBP -> Price(74.4f, GBP),
-                USD -> Price(90f, USD),
+                USD -> Price(99f, USD),
               ),
             ),
             billingPeriod = Some(ZQuarter),
