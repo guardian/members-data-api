@@ -28,7 +28,7 @@ class CatalogServiceTest extends Specification {
       supporterPlus.charges.head.billingPeriod must beSome(ZYear)
       supporterPlusMonth.charges.head.billingPeriod must beSome(ZMonth)
 
-      val tierThree = cats.collect { case (_, plan) if plan.productId == ids.tierThree && plan.status == Status.Current => plan}.toList
+      val tierThree = cats.collect { case (_, plan) if plan.productId == ids.tierThree && plan.status == Status.Current => plan }.toList
       tierThree.size must beEqualTo(4)
     }
   }
