@@ -17,7 +17,7 @@ import testdata.TestLogPrefix.testLogPrefix
 class AccountDetailsFromZuoraIntegrationTest extends Specification {
 
   // This is an integration test to run code locally, we don't want it running in CI
-  args(skipAll = false)
+  args(skipAll = true)
 
   "AccountDetailsFromZuora" should {
     "fetch a list of subs" in {
