@@ -148,7 +148,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
           |        "billingPeriod" : "month"
           |      },
           |      "currentPlans" : [ {
-          |        "name" : "Supporter Plus with Guardian Weekly",
+          |        "name" : null,
           |        "start" : "2024-05-15",
           |        "end" : "2025-05-15",
           |        "shouldBeVisible" : true,
