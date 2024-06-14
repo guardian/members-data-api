@@ -113,20 +113,20 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       )
     }
 
-    "handle a SupporterPlusWithGuardianWeekly subscription" in {
+    "handle a Tier Three subscription" in {
       testMapper(
         Map(
           "PROD" -> List(
-            ratePlanItem("8a1292628f51a923018f52a324e45710"), // Supporter Plus V2 & Guardian Weekly ROW - Annual
-            ratePlanItem("8a1281f38f518d11018f52a599806a65"), // Supporter Plus V2 & Guardian Weekly ROW - Monthly
-            ratePlanItem("8a1282048f518d08018f529ead0f3d91"), // Supporter Plus V2 & Guardian Weekly Domestic - Annual
-            ratePlanItem("8a1288a38f518d01018f529a04443172"), // Supporter Plus V2 & Guardian Weekly Domestic - Monthly
+            ratePlanItem("8a1299788ff2ec100190025fccc32bb1"),
+            ratePlanItem("8a1288a38ff2af980190025b32591ccc"),
+            ratePlanItem("8a128ab18ff2af9301900255d77979ac"),
+            ratePlanItem("8a1299788ff2ec100190024d1e3b1a09"),
           ),
           "CODE" -> List(
-            ratePlanItem("8ad097b48f006681018f05a0496e01f4"), // Supporter Plus V2 & Guardian Weekly ROW - Annual
-            ratePlanItem("8ad097b48f006681018f05a2c0fb0227"), // Supporter Plus V2 & Guardian Weekly ROW - Monthly
-            ratePlanItem("8ad097b48f006681018f059b755e0140"), // Supporter Plus V2 & Guardian Weekly Domestic - Annual
-            ratePlanItem("8ad081dd8ef57784018ef6e159224bfa"), // Supporter Plus V2 & Guardian Weekly Domestic - Monthly
+            ratePlanItem("8ad097b48ff26452019001cebac92376"),
+            ratePlanItem("8ad081dd8ff24a9a019001d95e4e3574"),
+            ratePlanItem("8ad081dd8ff24a9a019001df2ce83657"),
+            ratePlanItem("8ad097b48ff26452019001e65bbf2ca8"),
           ),
         ),
         _ should beSome.which { attributes: Attributes =>
