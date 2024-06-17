@@ -1,7 +1,7 @@
 package models
 import com.gu.i18n.Country
+import com.gu.memsub._
 import com.gu.memsub.subsv2._
-import com.gu.memsub.{Subscription, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
@@ -216,6 +216,7 @@ object AccountDetails {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
     case _: Product.SupporterPlus => "recurringSupport"
+    case _: Product.TierThree => "recurringSupport"
     case _: Product.GuardianPatron => "subscriptions"
     case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"
@@ -232,15 +233,13 @@ object CancelledSubscription {
         Json.obj(
           "mmaCategory" -> mmaCategoryFrom(plan.product),
           "tier" -> plan.productName,
-          "subscription" -> (
-            Json.obj(
-              "subscriptionId" -> subscription.name.get,
-              "cancellationEffectiveDate" -> subscription.termEndDate,
-              "start" -> subscription.acceptanceDate,
-              "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
-              "readerType" -> subscription.readerType.value,
-              "accountId" -> subscription.accountId.get,
-            )
+          "subscription" -> Json.obj(
+            "subscriptionId" -> subscription.name.get,
+            "cancellationEffectiveDate" -> subscription.termEndDate,
+            "start" -> subscription.acceptanceDate,
+            "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
+            "readerType" -> subscription.readerType.value,
+            "accountId" -> subscription.accountId.get,
           ),
         )
       }

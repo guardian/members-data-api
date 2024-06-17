@@ -1,7 +1,7 @@
 package com.gu.memsub.subsv2.reads
 import com.gu.Diff
 import com.gu.i18n.Currency._
-import com.gu.memsub.Benefit.Weekly
+import com.gu.memsub.Benefit.{SupporterPlus, Weekly}
 import com.gu.memsub.Subscription.{ProductId, ProductRatePlanChargeId, ProductRatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.memsub._
 import com.gu.memsub.subsv2.FrontendId.{OneYear, ThreeMonths}
@@ -69,7 +69,7 @@ class CatReadsTest extends AnyFlatSpec {
             pricing = PricingSummary(
               Map(
                 GBP -> Price(74.4f, GBP),
-                USD -> Price(90f, USD),
+                USD -> Price(99f, USD),
               ),
             ),
             billingPeriod = Some(ZQuarter),
@@ -86,6 +86,59 @@ class CatReadsTest extends AnyFlatSpec {
         status = Status.Current,
         frontendId = Some(ThreeMonths),
         productTypeOption = Some("Guardian Weekly"),
+      ),
+    )
+
+    Diff.assertEquals(expected, result)
+
+  }
+
+  it should "Read the Tier Three Domestic Monthly plan from the catalog" in {
+    val result = plans.find(_.id.get == "8ad097b48ff26452019001cebac92376")
+    val expected = Some(
+      CatalogZuoraPlan(
+        id = ProductRatePlanId("8ad097b48ff26452019001cebac92376"),
+        name = "Supporter Plus & Guardian Weekly Domestic - Monthly",
+        description = "",
+        productId = ProductId("8ad097b48ff26452019001c67ad32035"),
+        saving = None,
+        charges = List(
+          ZuoraCharge.apply(
+            productRatePlanChargeId = ProductRatePlanChargeId("8ad097b48ff26452019001d46f8824e2"),
+            pricing = PricingSummary(
+              Map(
+                GBP -> Price(15.0f, GBP),
+              ),
+            ),
+            billingPeriod = Some(ZMonth),
+            specificBillingPeriod = None,
+            model = "FlatFee",
+            name = "Guardian Weekly",
+            `type` = "Recurring",
+            endDateCondition = SubscriptionEnd,
+            upToPeriods = None,
+            upToPeriodsType = None,
+          ),
+          ZuoraCharge.apply(
+            ProductRatePlanChargeId("8ad097b48ff26452019001d78ee325d1"),
+            PricingSummary(Map(GBP -> Price(10.0f, GBP))),
+            Some(ZMonth),
+            None,
+            "FlatFee",
+            "Supporter Plus",
+            "Recurring",
+            SubscriptionEnd,
+            None,
+            None,
+          ),
+        ),
+        benefits = Map(
+          ProductRatePlanChargeId("8ad097b48ff26452019001d46f8824e2") -> Weekly,
+          ProductRatePlanChargeId("8ad097b48ff26452019001d78ee325d1") -> SupporterPlus,
+        ),
+        status = Status.Current,
+        frontendId = None,
+        productTypeOption = Some("Tier Three"),
       ),
     )
 

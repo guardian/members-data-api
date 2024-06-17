@@ -15,6 +15,7 @@ object SubsV2ProductIds {
     digitalVoucher = ProductId(config.getString("subscriptions.digitalVoucher")),
     digipack = ProductId(config.getString("subscriptions.digipack")),
     supporterPlus = ProductId(config.getString("subscriptions.supporterPlus")),
+    tierThree = ProductId(config.getString("subscriptions.tierThree")),
     supporter = ProductId(config.getString("membership.supporter")),
     partner = ProductId(config.getString("membership.partner")),
     patron = ProductId(config.getString("membership.patron")),
