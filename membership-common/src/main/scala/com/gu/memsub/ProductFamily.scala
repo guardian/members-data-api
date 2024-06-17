@@ -212,7 +212,7 @@ object Benefit {
     override val isPhysical: Boolean = true
   }
 
-  object TierThree extends PaidMemberTier {
+  object TierThree extends Benefit {
     override val id = "Tier Three"
     override val isPhysical: Boolean = true
   }
