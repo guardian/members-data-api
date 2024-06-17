@@ -53,7 +53,7 @@ object SupporterRatePlanToAttributesMapper {
       SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val supporterPlusV2Transformer: AttributeTransformer = supporterPlusTransformer
-  val supporterPlusWithGuardianWeeklyTransformer: AttributeTransformer =
+  val tierThreeTransformer: AttributeTransformer =
     (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
       attributes.copy(
         SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
@@ -99,11 +99,11 @@ object SupporterRatePlanToAttributesMapper {
       "8a128ed885fc6ded01860228f77e3d5a",
     ) -> supporterPlusV2Transformer,
     List(
-      "8a1292628f51a923018f52a324e45710", // Supporter Plus V2 & Guardian Weekly ROW - Annual
-      "8a1281f38f518d11018f52a599806a65", // Supporter Plus V2 & Guardian Weekly ROW - Monthly
-      "8a1282048f518d08018f529ead0f3d91", // Supporter Plus V2 & Guardian Weekly Domestic - Annual
-      "8a1288a38f518d01018f529a04443172", // Supporter Plus V2 & Guardian Weekly Domestic - Monthly
-    ) -> supporterPlusWithGuardianWeeklyTransformer,
+      "8a1299788ff2ec100190025fccc32bb1",
+      "8a1288a38ff2af980190025b32591ccc",
+      "8a128ab18ff2af9301900255d77979ac",
+      "8a1299788ff2ec100190024d1e3b1a09",
+    ) -> tierThreeTransformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
       "2c92a0fb4edd70c8014edeaa4e972204",
@@ -224,11 +224,11 @@ object SupporterRatePlanToAttributesMapper {
       "8ad08e1a8586721801858805663f6fab",
     ) -> supporterPlusV2Transformer,
     List(
-      "8ad097b48f006681018f05a0496e01f4", // Supporter Plus V2 & Guardian Weekly ROW - Annual
-      "8ad097b48f006681018f05a2c0fb0227", // Supporter Plus V2 & Guardian Weekly ROW - Monthly
-      "8ad097b48f006681018f059b755e0140", // Supporter Plus V2 & Guardian Weekly Domestic - Annual
-      "8ad081dd8ef57784018ef6e159224bfa", // Supporter Plus V2 & Guardian Weekly Domestic - Monthly
-    ) -> supporterPlusWithGuardianWeeklyTransformer,
+      "8ad097b48ff26452019001cebac92376",
+      "8ad081dd8ff24a9a019001d95e4e3574",
+      "8ad081dd8ff24a9a019001df2ce83657",
+      "8ad097b48ff26452019001e65bbf2ca8",
+    ) -> tierThreeTransformer,
     List(
       "2c92c0f84bbfec8b014bc655f4852d9d",
       "2c92c0f94bbffaaa014bc6a4212e205b",

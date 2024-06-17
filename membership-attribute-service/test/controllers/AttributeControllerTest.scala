@@ -41,7 +41,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithNewspaperPlusUserId = "6"
   private val userWithGuardianWeeklyUserId = "7"
   private val unvalidatedEmailUserId = "8"
-  private val userWithSupporterPlusWithGuardianWeeklyId = "9"
+  private val userWithTierThreeId = "9"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
@@ -74,8 +74,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
 
-  private val supporterPlusWithGuardianWeeklyAttributes = Attributes(
-    UserId = userWithSupporterPlusWithGuardianWeeklyId,
+  private val tierThreeAttributes = Attributes(
+    UserId = userWithTierThreeId,
     SupporterPlusExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
     GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
@@ -88,7 +88,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val newspaperCookie = Cookie("newspaper", "true")
   private val newspaperPlusCookie = Cookie("newspaperPlus", "true")
   private val guardianWeeklyCookie = Cookie("guardianWeekly", "true")
-  private val supporterPlusWithGuardianWeeklyCookie = Cookie("supporterPlusWithGuardianWeekly", "true")
+  private val tierThreeCookie = Cookie("tierThree", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@thegulocal.com",
     identityId = validUserId,
@@ -134,9 +134,9 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     authTime = None,
   )
 
-  private val userWithSupporterPlusWithGuardianWeekly = UserFromToken(
-    primaryEmailAddress = "SupporterPlusWithGuardianWeekly@thegulocal.com",
-    identityId = userWithSupporterPlusWithGuardianWeeklyId,
+  private val userWithTierThree = UserFromToken(
+    primaryEmailAddress = "TierThree@thegulocal.com",
+    identityId = userWithTierThreeId,
     authTime = None,
   )
 
@@ -175,7 +175,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == newspaperCookie => Future.successful(Right(userWithNewspaper))
         case Some(c) if c == newspaperPlusCookie => Future.successful(Right(userWithNewspaperPlus))
         case Some(c) if c == guardianWeeklyCookie => Future.successful(Right(userWithGuardianWeekly))
-        case Some(c) if c == supporterPlusWithGuardianWeeklyCookie => Future.successful(Right(userWithSupporterPlusWithGuardianWeekly))
+        case Some(c) if c == tierThreeCookie => Future.successful(Right(userWithTierThree))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -263,8 +263,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(newspaperPlusAttributes))
         } else if (identityId == userWithGuardianWeeklyUserId) {
           ("Zuora", Some(guardianWeeklyOnlyAttributes))
-        } else if (identityId == userWithSupporterPlusWithGuardianWeeklyId) {
-          ("Zuora", Some(supporterPlusWithGuardianWeeklyAttributes))
+        } else if (identityId == userWithTierThreeId) {
+          ("Zuora", Some(tierThreeAttributes))
         } else
           ("Zuora", None)
       }
@@ -564,8 +564,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
     }
 
-    "return the correct attributes for Supporter Plus With Guardian Weekly subscribers" in {
-      val req = FakeRequest().withCookies(supporterPlusWithGuardianWeeklyCookie)
+    "return the correct attributes for Tier Three subscribers" in {
+      val req = FakeRequest().withCookies(tierThreeCookie)
       val result = controller.attributes(req)
 
       status(result) shouldEqual OK
@@ -574,7 +574,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       jsonBody shouldEqual
         Json.parse(s"""
              |{
-             |  "userId": "$userWithSupporterPlusWithGuardianWeeklyId",
+             |  "userId": "$userWithTierThreeId",
              |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
              |  "contentAccess": {
@@ -589,7 +589,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "guardianPatron": false
              |  }
              |}""".stripMargin)
-      verifyIdentityHeadersSet(result, userWithSupporterPlusWithGuardianWeeklyId)
+      verifyIdentityHeadersSet(result, userWithTierThreeId)
 
     }
 
