@@ -26,6 +26,7 @@ case object StripeAUPaymentIntentsMembershipGateway extends PaymentGateway {
 case object GoCardless extends PaymentGateway {
   val gatewayName = "GoCardless"
 }
+// Temporarily here to enable deseerialisation until it's fully deprovisioned.
 case object GoCardlessZuoraInstance extends PaymentGateway {
   val gatewayName = "GoCardless - Zuora Instance"
 }

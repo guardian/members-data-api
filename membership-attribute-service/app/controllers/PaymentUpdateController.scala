@@ -7,7 +7,7 @@ import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentM
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
-import com.gu.zuora.api.GoCardlessZuoraInstance
+import com.gu.zuora.api.GoCardless
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.{readSelf, updateSelf}
@@ -169,7 +169,7 @@ class PaymentUpdateController(
           createPaymentMethod = CreatePaymentMethod(
             accountId = subscription.accountId,
             paymentMethod = bankTransferPaymentMethod,
-            paymentGateway = GoCardlessZuoraInstance,
+            paymentGateway = GoCardless,
             billtoContact = billToContact,
             invoiceTemplateOverride = None,
           )
