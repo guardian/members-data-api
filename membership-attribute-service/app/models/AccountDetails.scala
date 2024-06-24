@@ -164,12 +164,12 @@ object AccountDetails {
             "end" -> endDate,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
+            "potentialCancellationDate" -> paymentDetails.nextInvoiceDate,
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
             "anniversaryDate" -> anniversary(startDate),
             "cancelledAt" -> paymentDetails.pendingCancellation,
-            "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
             "autoRenew" -> isAutoRenew,
