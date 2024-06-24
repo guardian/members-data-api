@@ -16,6 +16,7 @@ case class PaymentDetails(
     nextPaymentPrice: Option[Int],
     lastPaymentDate: Option[LocalDate],
     nextPaymentDate: Option[LocalDate],
+    nextInvoiceDate: Option[LocalDate],
     remainingTrialLength: Int,
     pendingCancellation: Boolean,
     paymentMethod: Option[PaymentMethod],
@@ -26,10 +27,11 @@ object PaymentDetails {
   case class Payment(price: Price, date: LocalDate)
   implicit def dateToDateTime(date: LocalDate): DateTime = date.toDateTimeAtStartOfDay()
 
-  def apply(
+  def fromSubAndPaymentData(
       sub: Subscription,
       paymentMethod: Option[PaymentMethod],
       nextPayment: Option[Payment],
+      nextInvoiceDate: Option[LocalDate],
       lastPaymentDate: Option[LocalDate],
   ): PaymentDetails = {
 
@@ -45,6 +47,7 @@ object PaymentDetails {
       nextPaymentPrice = nextPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue),
       lastPaymentDate = lastPaymentDate,
       nextPaymentDate = nextPayment.map(_.date),
+      nextInvoiceDate = nextInvoiceDate,
       termEndDate = sub.termEndDate,
       paymentMethod = paymentMethod,
       plan = PersonalPlan.paid(sub),

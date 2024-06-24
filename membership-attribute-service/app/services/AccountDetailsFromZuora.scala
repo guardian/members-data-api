@@ -67,7 +67,7 @@ class AccountDetailsFromZuora(
         isAutoRenew = isAutoRenew,
         alertText = alertText,
         accountId = accountSummary.id.get,
-        effectiveCancellationDate,
+        cancellationEffectiveDate = effectiveCancellationDate,
       )
     }
   }
