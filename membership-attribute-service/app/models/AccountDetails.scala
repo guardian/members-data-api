@@ -164,12 +164,13 @@ object AccountDetails {
             "end" -> endDate,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
+            "potentialCancellationDate" -> paymentDetails.nextInvoiceDate,
+            "inDiscountPeriod" -> JsBoolean(!paymentDetails.nextPaymentDate.forall(paymentDetails.nextInvoiceDate.contains)),// temp field until we fetch the actual discount details
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
             "anniversaryDate" -> anniversary(startDate),
             "cancelledAt" -> paymentDetails.pendingCancellation,
-            "subscriberId" -> paymentDetails.subscriberId, // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
             "autoRenew" -> isAutoRenew,
@@ -216,6 +217,7 @@ object AccountDetails {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
     case _: Product.ZDigipack => "subscriptions"
     case _: Product.SupporterPlus => "recurringSupport"
+    case _: Product.TierThree => "recurringSupport"
     case _: Product.GuardianPatron => "subscriptions"
     case _: Product.Contribution => "recurringSupport"
     case _: Product.Membership => "membership"
@@ -232,15 +234,13 @@ object CancelledSubscription {
         Json.obj(
           "mmaCategory" -> mmaCategoryFrom(plan.product(catalog)),
           "tier" -> plan.productName,
-          "subscription" -> (
-            Json.obj(
-              "subscriptionId" -> subscription.name.get,
-              "cancellationEffectiveDate" -> subscription.termEndDate,
-              "start" -> subscription.acceptanceDate,
-              "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
-              "readerType" -> subscription.readerType.value,
-              "accountId" -> subscription.accountId.get,
-            )
+          "subscription" -> Json.obj(
+            "subscriptionId" -> subscription.name.get,
+            "cancellationEffectiveDate" -> subscription.termEndDate,
+            "start" -> subscription.acceptanceDate,
+            "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
+            "readerType" -> subscription.readerType.value,
+            "accountId" -> subscription.accountId.get,
           ),
         )
       }

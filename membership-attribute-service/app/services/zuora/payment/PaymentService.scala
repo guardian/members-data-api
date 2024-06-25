@@ -37,14 +37,15 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
 
     for {
       account <- zuoraService.getAccount(sub.accountId)
-      eventualMaybeBill = getNextBill(sub.id, account, 15).withLogging(s"next bill for $sub")
+      eventualBills = getNextBill(sub.id, account, 15).withLogging(s"next bill for $sub")
       eventualMaybePaymentMethod = getPaymentMethod(account.defaultPaymentMethodId, defaultMandateIdIfApplicable) // kick off async
-      maybeBill <- eventualMaybeBill
+      bills <- eventualBills
       maybePaymentMethod <- eventualMaybePaymentMethod
       lpd <- eventualMaybeLastPaymentDate
     } yield {
-      val maybePayment = maybeBill.map(bill => Payment(Price(bill.amount, currency), bill.date))
-      PaymentDetails(sub, maybePaymentMethod, maybePayment, lpd, catalog)
+      val maybePayment = bills.find(_.amount > 0).map(bill => Payment(Price(bill.amount, currency), bill.date))
+      val maybeFirstInvoiceDate = bills.headOption.map(_.date)
+      PaymentDetails.fromSubAndPaymentData(sub, maybePaymentMethod, maybePayment, maybeFirstInvoiceDate, lpd, catalog)
     }
   }
 
@@ -83,17 +84,16 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
       case _ => None
     }
 
-  private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[Option[Bill]] =
+  private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[List[Bill]] =
     for {
       previewInvoiceItems <- zuoraService.previewInvoices(subId, numberOfBills)
     } yield for {
-      billingSched <- BillingSchedule.fromPreviewInvoiceItems(previewInvoiceItems)
+      billingSched <- BillingSchedule.fromPreviewInvoiceItems(previewInvoiceItems).toList
       bill <- billingSched
         .withCreditBalanceApplied(account.creditBalance)
         .invoices
         .list
-        .find(_.amount > 0)
-        .toOption
+        .toList
     } yield bill
 
   def getPaymentMethod(maybePaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit

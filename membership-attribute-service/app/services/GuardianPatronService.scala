@@ -119,6 +119,7 @@ class GuardianPatronService(
         nextPaymentPrice = Some(subscription.plan.amount),
         lastPaymentDate = Some(subscription.currentPeriodStart),
         nextPaymentDate = subscription.nextPaymentDate,
+        nextInvoiceDate = subscription.nextPaymentDate,
         remainingTrialLength = 0,
         pendingCancellation = subscription.isPastDue,
         paymentMethod = paymentDetails.cardStripeList.data.headOption.map(card =>

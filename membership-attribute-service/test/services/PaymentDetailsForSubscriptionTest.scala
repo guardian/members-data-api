@@ -40,6 +40,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
             nextPaymentPrice = None,
             lastPaymentDate = None,
             nextPaymentDate = None,
+            nextInvoiceDate = None,
             termEndDate = digipackGift.termEndDate,
             paymentMethod = None,
             plan = PersonalPlan(
@@ -57,7 +58,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
       val contact = TestContact(randomId("identityId"))
       val paymentService = mock[PaymentService]
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails(digipackGift, None, None, None)
+      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipackGift, None, None, None, None)
 
       paymentService.paymentDetails(
         any[Subscription],
@@ -73,7 +74,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
       val contact = TestContact(randomId("identityId"))
       val paymentService = mock[PaymentService]
       val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails(digipack, None, None, None)
+      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipack, None, None, None, None)
 
       paymentService.paymentDetails(
         any[Subscription](),

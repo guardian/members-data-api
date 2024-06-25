@@ -26,6 +26,9 @@ object Product {
   case object SupporterPlus extends ContentSubscription {
     val name = "supporterPlus"
   }
+  case object TierThree extends ContentSubscription {
+    val name = "tierThree"
+  }
   case object Digipack extends ContentSubscription {
     val name = "digitalpack"
   }
@@ -63,6 +66,7 @@ object Product {
   def fromId(id: String): Option[Product] = id match {
     case Digipack.name => Some(Digipack)
     case SupporterPlus.name => Some(SupporterPlus)
+    case TierThree.name => Some(TierThree)
     case Membership.name => Some(Membership)
     case Delivery.name => Some(Delivery)
     case NationalDelivery.name => Some(NationalDelivery)
@@ -80,6 +84,7 @@ object Product {
   type GuardianPatron = GuardianPatron.type
   type ZDigipack = Digipack.type
   type SupporterPlus = SupporterPlus.type
+  type TierThree = TierThree.type
   type Delivery = Delivery.type
   type NationalDelivery = NationalDelivery.type
   type Voucher = Voucher.type
@@ -107,7 +112,8 @@ object ProductRatePlanChargeProductType {
       (id == Digipack.id).option(Digipack) orElse
       (id == Adjustment.id).option(Adjustment) orElse
       (id == Contributor.id).option(Contributor) orElse
-      (id == Weekly.id).option(Weekly)
+      (id == Weekly.id).option(Weekly) orElse
+      (id == TierThree.id).option(TierThree)
 
   sealed trait MemberTier extends ProductRatePlanChargeProductType
   sealed trait PaidMemberTier extends MemberTier
@@ -168,6 +174,11 @@ object ProductRatePlanChargeProductType {
 
   object Weekly extends ProductRatePlanChargeProductType {
     override val id = "Guardian Weekly"
+  }
+
+  object TierThree extends Benefit {
+    override val id = "Tier Three"
+    override val isPhysical: Boolean = true
   }
 
   object MondayPaper extends PaperDay {

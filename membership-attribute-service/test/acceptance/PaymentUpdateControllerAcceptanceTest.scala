@@ -9,7 +9,7 @@ import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
 import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
 import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan}
 import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.api.{GoCardlessZuoraInstance, PaymentGateway}
+import com.gu.zuora.api.{GoCardlessGateway, PaymentGateway}
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Results.UpdateResult
@@ -178,7 +178,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       val createPaymentMethod = CreatePaymentMethod(
         accountId = subscription.accountId,
         paymentMethod = bankTransferPaymentMethod,
-        paymentGateway = GoCardlessZuoraInstance,
+        paymentGateway = GoCardlessGateway,
         billtoContact = queriesContact,
         invoiceTemplateOverride = None,
       )

@@ -10,6 +10,7 @@ class SelfServiceCancellationTest extends Specification {
     Membership,
     Contribution,
     SupporterPlus,
+    TierThree,
     Voucher,
     Delivery,
     DigitalVoucher,
@@ -36,9 +37,15 @@ class SelfServiceCancellationTest extends Specification {
       }.toList
     }
 
-    "disallow cancellation for all products except Membership, Contribution, Digipack and Supporter Plus in the UK" in {
+    "allow cancellation for Tier Three in all countries" in {
+      allCountries.map { country =>
+        SelfServiceCancellation(TierThree, Some(country)).isAllowed shouldEqual true
+      }.toList
+    }
+
+    "disallow cancellation for all products except Membership, Contribution, Digipack, Tier Three and Supporter Plus in the UK" in {
       allProducts
-        .diff(Set(Membership, Contribution, SupporterPlus, Digipack))
+        .diff(Set(Membership, Contribution, SupporterPlus, Digipack, TierThree))
         .map { product =>
           SelfServiceCancellation(product, Some(UK)).isAllowed shouldEqual false
         }

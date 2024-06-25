@@ -38,6 +38,7 @@ class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalo
     nextPaymentPrice = None,
     lastPaymentDate = None,
     nextPaymentDate = None,
+    nextInvoiceDate = None,
     termEndDate = giftSubscription.termEndDate,
     paymentMethod = None,
     plan = PersonalPlan(
