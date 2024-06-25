@@ -51,7 +51,7 @@ object Trace {
 }
 
 class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: SimpleClient[M], soap: SoapClient[M]) extends SafeLogging {
-  type EitherTM[A] = EitherT[String, M, A]
+  private type EitherTM[A] = EitherT[String, M, A]
 
   /** Time by which Bill Run should have run and completed. Usually starts around 5AM and takes 1 hour.
     */
@@ -89,14 +89,14 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
 
   def current(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
     for {
-      subJsonsEither <- jsonSubscriptionsFromContact(contact)
+      subscriptionsEither <- getSubscriptionsFromContact(contact)
       catalog <- futureCatalog
     } yield {
-      val highLevelSubscriptions = for {
-        subJsons <- subJsonsEither.withLogging("sub service - get for contact")
-        subscriptions <- getCurrentSubscriptions(catalog)(subJsons).withLogging("sub transform for json")
-      } yield subscriptions
-      highLevelSubscriptions.toEither match {
+      val currentSubscriptions = for {
+        subscriptions <- subscriptionsEither.withLogging("sub service - get for contact")
+        currentSubscriptions <- getCurrentSubscriptions(catalog, subscriptions).withLogging("get best plan")
+      } yield currentSubscriptions
+      currentSubscriptions.toEither match {
         case Left(error) =>
           logger.warn(s"Error from sub service for contact $contact: $error")
           List.empty // returns an empty list if there's an error
@@ -106,18 +106,18 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
 
   def since(onOrAfter: LocalDate)(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
     for {
-      subJsonsEither <- jsonSubscriptionsFromContact(contact)
+      subscriptionsEither <- getSubscriptionsFromContact(contact)
     } yield {
-      val highLevelSubscriptions = for {
-        subscriptions <- subJsonsEither.withLogging("sub service - get for contact")
+      val subscriptionsStillInTerm = for {
+        subscriptions <- subscriptionsEither.withLogging("sub service - get for contact")
       } yield subscriptions.filter { sub =>
         !sub.termEndDate.isBefore(onOrAfter)
       }
-      highLevelSubscriptions.toEither match {
+      subscriptionsStillInTerm.toEither match {
         case Left(error) =>
           logger.warn(s"Error from sub service for contact $contact: $error")
           List.empty // returns an empty list if there's an error
-        case Right(nel) => nel.toList
+        case Right(nel) => nel
       }
     }
 
@@ -127,7 +127,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
       lastNMonths: Int = 3, // cancelled in the last N months
   )(implicit logPrefix: LogPrefix): M[String \/ List[Subscription]] =
     (for {
-      subscriptions <- EitherT(jsonSubscriptionsFromContact(contact))
+      subscriptions <- EitherT(getSubscriptionsFromContact(contact))
     } yield subscriptions.filter { sub =>
       sub.isCancelled &&
       (sub.termEndDate isAfter today.minusMonths(lastNMonths)) &&
@@ -138,28 +138,28 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
       accountId: AccountId,
   )(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
     for {
-      subJsonsEither <- jsonSubscriptionsFromAccount(accountId)
+      subscriptionsEither <- getSubscriptionsFromAccount(accountId)
       catalog <- futureCatalog
     } yield {
-      subJsonsEither.rightMap { subJsons =>
-        getCurrentSubscriptions(catalog)(subJsons).toList.flatMap(_.list.toList)
+      subscriptionsEither.rightMap { subscriptions =>
+        getCurrentSubscriptions(catalog, subscriptions).toList.flatMap(_.list.toList)
       }
     }
 
-  private def getCurrentSubscriptions(catalog: Catalog)(subs: List[Subscription]): Disjunction[String, NonEmptyList[Subscription]] =
+  private def getCurrentSubscriptions(catalog: Catalog, subs: List[Subscription]): Disjunction[String, NonEmptyList[Subscription]] =
     Sequence(subs.map { sub =>
       GetCurrentPlans.currentPlans(sub, LocalDate.now, catalog).map(_ => sub)
     })
 
-  private def jsonSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
+  private def getSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
     (for {
       account <- ListT[EitherTM, AccountId](
         EitherT[String, M, IList[AccountId]](soap.getAccountIds(contact).map(l => \/.r[String](IList.fromSeq(l)))),
       )
-      subJson <- ListT[EitherTM, Subscription](EitherT(jsonSubscriptionsFromAccount(account)).map(IList.fromSeq))
-    } yield subJson).toList.run
+      subscription <- ListT[EitherTM, Subscription](EitherT(getSubscriptionsFromAccount(account)).map(IList.fromSeq))
+    } yield subscription).toList.run
 
-  private def jsonSubscriptionsFromAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
+  private def getSubscriptionsFromAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
     rest.get[List[Subscription]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads, implicitly)
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
