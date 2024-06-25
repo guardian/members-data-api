@@ -165,7 +165,6 @@ object AccountDetails {
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
             "potentialCancellationDate" -> paymentDetails.nextInvoiceDate,
-            "inDiscountPeriod" -> JsBoolean(!paymentDetails.nextPaymentDate.forall(paymentDetails.nextInvoiceDate.contains)),// temp field until we fetch the actual discount details
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
