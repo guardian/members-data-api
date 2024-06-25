@@ -1,36 +1,17 @@
 package com.gu.memsub.subsv2.reads
 
-import com.gu.memsub._
-import play.api.libs.json.{Reads, _}
-
+import org.joda.time.LocalDate
+import play.api.libs.json._
 import scalaz.std.list._
-import scalaz.std.option._
 import scalaz.syntax.std.list._
 import scalaz.syntax.traverse._
-import scalaz.{Applicative, Failure, NonEmptyList, Success, ValidationNel}
+import scalaz.{Applicative, NonEmptyList}
 
 object CommonReads {
 
   val dateFormat = "yyyy-MM-dd"
-  implicit val dateTimeReads = JodaReads.jodaDateReads(dateFormat)
-  implicit val dateTimeWrites = JodaWrites.jodaDateWrites(dateFormat)
-  implicit val localReads = JodaReads.jodaLocalDateReads(dateFormat)
-  implicit val localWrites = JodaWrites.jodaLocalDateWrites(dateFormat)
-
-  implicit class JsResultOption[A](opt: Option[A]) {
-    def toJsSuccess(error: String) = opt match {
-      case Some(a) => JsSuccess(a)
-      case _ => JsError(error)
-    }
-  }
-
-  // since we don't have a stack to trace, we need to make our own
-  implicit class TraceableValidation[T](t: ValidationNel[String, T]) {
-    def withTrace(message: String): ValidationNel[String, T] = t match {
-      case Failure(e: NonEmptyList[String]) => Failure(e.map(error => s"$message: $error"))
-      case right => right
-    }
-  }
+  implicit val localReads: Reads[LocalDate] = JodaReads.jodaLocalDateReads(dateFormat)
+  implicit val localWrites: Writes[LocalDate] = JodaWrites.jodaLocalDateWrites(dateFormat)
 
   /** play provides its own applicative instance in play.api.libs.functional.syntax where you use "and" instead of |@| but that is FAR TOO READABLE TO
     * BE TRUSTED. more seriously you need an applicative instance to convert a List[JsResult[A]] to a JsResult[List[A]] and so we might as well be
@@ -47,37 +28,8 @@ object CommonReads {
     }
   }
 
-  implicit class FailureAggregatingOrElse[X](validationNel: ValidationNel[String, X]) {
-    def orElse2[A >: X, Y <: A](fallback: ValidationNel[String, Y]): ValidationNel[String, A] = {
-      validationNel match {
-        case Failure(firstFailures) =>
-          fallback
-            .leftMap(moreFailures => NonEmptyList.fromSeq[String](firstFailures.head, firstFailures.tail.toList ++ moreFailures.list.toList))
-            .map(identity[A])
-        case Success(_) => validationNel.map(identity[A])
-      }
-    }
-  }
-
-  implicit val pricingSummaryReads = new Reads[PricingSummary] {
-    override def reads(json: JsValue): JsResult[PricingSummary] = {
-
-      // for subscriptions our pricing summary is a string i.e. 10GBP, for the catalog its an array
-      val normalisedPricingList = json.validate[List[String]] orElse json.validate[String].map(List(_))
-
-      val parsedPrices = normalisedPricingList.flatMap { priceStrings =>
-        priceStrings
-          .map(PriceParser.parse)
-          .sequence[Option, Price]
-          .toJsSuccess(s"Failed to parse $normalisedPricingList")
-      }
-
-      parsedPrices.map(priceList => priceList.map(p => p.currency -> p).toMap).map(PricingSummary(_))
-    }
-  }
-
   // this reader reads a list but only throws an error if everything failed
-  implicit def niceListReads[A: Reads]: Reads[List[A]] = new Reads[List[A]] {
+  def niceListReads[A: Reads]: Reads[List[A]] = new Reads[List[A]] {
     override def reads(json: JsValue): JsResult[List[A]] = json match {
       case JsArray(items) =>
         items.map(_.validate[A]).partition(_.isSuccess) match {
@@ -89,7 +41,7 @@ object CommonReads {
     }
   }
 
-  implicit def nelReads[A](implicit r: Reads[List[A]]): Reads[NonEmptyList[A]] =
+  def nelReads[A](implicit r: Reads[List[A]]): Reads[NonEmptyList[A]] =
     (json: JsValue) => {
       val jsResult = r.reads(json)
       val errors = jsResult.asEither.left.toOption.mkString

@@ -1,7 +1,7 @@
 package components
 
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.memsub.subsv2.Catalog
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.zuora.ZuoraSoapService
 import com.typesafe.config.Config
 import configuration.Stage
@@ -22,7 +22,7 @@ class TouchpointBackends(
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[Future[CatalogMap]] = None,
+    catalogServiceOverride: Option[Future[Catalog]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,
