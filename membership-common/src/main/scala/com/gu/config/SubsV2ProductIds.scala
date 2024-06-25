@@ -7,9 +7,9 @@ object SubsV2ProductIds {
 
   val guardianPatronProductId: ProductId = ProductId("guardian_patron")
 
-  type ProductIds = Map[ProductId, Product]
+  type ProductMap = Map[ProductId, Product]
 
-  def load(config: com.typesafe.config.Config): ProductIds = Map[ProductId, Product](
+  def load(config: com.typesafe.config.Config): ProductMap = Map[ProductId, Product](
     ProductId(config.getString("subscriptions.voucher")) -> Voucher,
     ProductId(config.getString("subscriptions.digitalVoucher")) -> DigitalVoucher,
     ProductId(config.getString("subscriptions.delivery")) -> Delivery,

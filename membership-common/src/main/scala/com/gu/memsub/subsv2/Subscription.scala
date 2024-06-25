@@ -77,12 +77,7 @@ object GetCurrentPlans {
       val digipackGiftEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a digipack gift plan which has ended").wrapNel)(_)
       if (product == Product.Contribution)
         contributorPlanCancelled(_ => !sub.isCancelled && !plan.lastChangeType.contains("Remove"))
-      else if (
-        product == Product.Digipack && plan.billingPeriod
-          .leftMap(e => throw new RuntimeException("no billing period: " + e))
-          .toOption
-          .get == OneTimeChargeBillingPeriod
-      )
+      else if (product == Product.Digipack && plan.billingPeriod.toOption.contains(OneTimeChargeBillingPeriod))
         digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
       else
         paidPlanEnded(_ => plan.end >= dateToCheck)

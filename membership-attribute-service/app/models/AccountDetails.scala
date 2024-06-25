@@ -107,7 +107,7 @@ object AccountDetails {
         val dayNames = for {
           charge <- plan.ratePlanCharges.list.toList
             .filterNot(_.pricing.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
-          catalogZuoraPlan <- catalog.catalogMap.get(plan.productRatePlanId)
+          catalogZuoraPlan <- catalog.productRatePlans.get(plan.productRatePlanId)
           dayName <- catalogZuoraPlan.productRatePlanCharges
             .get(charge.productRatePlanChargeId)
             .collect { case benefit: PaperDay => DayOfWeek.of(benefit.dayOfTheWeekIndex).getDisplayName(TextStyle.FULL, Locale.ENGLISH) }

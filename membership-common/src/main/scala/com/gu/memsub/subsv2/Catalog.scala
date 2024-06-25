@@ -1,12 +1,12 @@
 package com.gu.memsub.subsv2
 
-import com.gu.config.SubsV2ProductIds.ProductIds
+import com.gu.config.SubsV2ProductIds.ProductMap
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId}
-import com.gu.memsub.subsv2.Catalog.CatalogMap
+import com.gu.memsub.subsv2.Catalog.ProductRatePlanMap
 
 object Catalog {
 
-  type CatalogMap = Map[ProductRatePlanId, ProductRatePlan]
+  type ProductRatePlanMap = Map[ProductRatePlanId, ProductRatePlan]
 
   // dummy ids for stripe (non zuora) products
   val guardianPatronProductRatePlanId: ProductRatePlanId = ProductRatePlanId("guardian_patron")
@@ -14,4 +14,4 @@ object Catalog {
 
 }
 
-case class Catalog(catalogMap: CatalogMap, productIds: ProductIds)
+case class Catalog(productRatePlans: ProductRatePlanMap, products: ProductMap)

@@ -197,18 +197,18 @@ case class RatePlan(
     }
   }
 
-  private def getCatalogZuoraPlan(catalog: Catalog) = {
-    catalog.catalogMap(productRatePlanId)
+  private def productRatePlan(catalog: Catalog) = {
+    catalog.productRatePlans(productRatePlanId)
   }
 
   def product(catalog: Catalog): Product =
-    catalog.productIds(getCatalogZuoraPlan(catalog).productId)
+    catalog.products(productRatePlan(catalog).productId)
 
   def name(catalog: Catalog): String =
-    getCatalogZuoraPlan(catalog).name
+    productRatePlan(catalog).name
 
   def productType(catalog: Catalog): ProductType =
-    getCatalogZuoraPlan(catalog).productType
+    productRatePlan(catalog).productType
 
 }
 

@@ -176,9 +176,8 @@ object ProductRatePlanChargeProductType {
     override val id = "Guardian Weekly"
   }
 
-  object TierThree extends Benefit {
+  object TierThree extends ProductRatePlanChargeProductType {
     override val id = "Tier Three"
-    override val isPhysical: Boolean = true
   }
 
   object MondayPaper extends PaperDay {

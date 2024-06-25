@@ -280,9 +280,9 @@ class AccountController(
             case period: BillingPeriod.OneOffPeriod => Left(s"period $period was not recurring for contribution update")
           })
           applyFromDate = contributionPlan.chargedThroughDate.getOrElse(contributionPlan.start)
-          currency = contributionPlan.ratePlanCharges.head.pricing.prices.head.currency
+          currency = contributionPlan.chargesPrice.prices.head.currency
           currencyGlyph = currency.glyph
-          oldPrice = contributionPlan.totalChargesMinorUnit.toDouble / 100
+          oldPrice = contributionPlan.chargesPrice.prices.head.amount
           reasonForChange =
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
           result <- SimpleEitherT(
