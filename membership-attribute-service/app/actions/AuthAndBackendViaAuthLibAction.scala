@@ -2,7 +2,7 @@ package actions
 
 import com.gu.identity.auth.AccessScope
 import components.TouchpointBackends
-import filters.IsTestUser
+import filters.TestUserChecker
 import play.api.mvc.{ActionRefiner, Request, Result, Results}
 import services.AuthenticationFailure
 
@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class AuthAndBackendViaAuthLibAction(
     touchpointBackends: TouchpointBackends,
     requiredScopes: List[AccessScope],
-    isTestUser: IsTestUser,
+    testUserChecker: TestUserChecker,
 )(implicit
     ex: ExecutionContext,
 ) extends ActionRefiner[Request, AuthenticatedUserAndBackendRequest] {
@@ -22,7 +22,7 @@ class AuthAndBackendViaAuthLibAction(
       case Left(AuthenticationFailure.Unauthorised) => Left(Results.Unauthorized)
       case Left(AuthenticationFailure.Forbidden) => Left(Results.Forbidden)
       case Right(authenticatedUser) =>
-        val backendConf = if (isTestUser(authenticatedUser.username)) {
+        val backendConf = if (testUserChecker.isTestUser(authenticatedUser.primaryEmailAddress)(authenticatedUser.logPrefix)) {
           touchpointBackends.test
         } else {
           touchpointBackends.normal
