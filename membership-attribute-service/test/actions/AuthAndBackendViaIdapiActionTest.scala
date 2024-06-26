@@ -2,7 +2,7 @@ package actions
 
 import com.gu.identity.auth.OktaUserCredentials
 import components.{TouchpointBackends, TouchpointComponents}
-import filters.IsTestUser
+import filters.TestUserChecker
 import models.AccessScope.readSelf
 import models.{ApiErrors, UserFromToken}
 import org.mockito.IdiomaticMockito
@@ -34,7 +34,7 @@ class AuthAndBackendViaIdapiActionTest extends Specification with IdiomaticMocki
       when(user.username).thenReturn(None)
       when(user.authTime).thenReturn(Some(authenticatedTime))
 
-      val isTestUser = mock[IsTestUser]
+      val isTestUser = mock[TestUserChecker]
 
       val authService = mock[IdentityAuthService]
       when(authService.userAndCredentials(request, requiredScopes))
@@ -65,7 +65,7 @@ class AuthAndBackendViaIdapiActionTest extends Specification with IdiomaticMocki
     "fail with a 401 when call to identityAuthService fails with a 401" in {
       val request = FakeRequest()
 
-      val isTestUser = mock[IsTestUser]
+      val isTestUser = mock[TestUserChecker]
 
       val authService = mock[IdentityAuthService]
       when(authService.userAndCredentials(request, requiredScopes))
@@ -87,7 +87,7 @@ class AuthAndBackendViaIdapiActionTest extends Specification with IdiomaticMocki
     "fail with a 403 when call to identityAuthService fails with a 403" in {
       val request = FakeRequest()
 
-      val isTestUser = mock[IsTestUser]
+      val isTestUser = mock[TestUserChecker]
 
       val authService = mock[IdentityAuthService]
       when(authService.userAndCredentials(request, requiredScopes))
