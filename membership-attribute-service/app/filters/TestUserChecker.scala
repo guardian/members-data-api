@@ -6,18 +6,11 @@ import com.gu.monitoring.SafeLogging
 
 class TestUserChecker(testUsernames: TestUsernames) extends SafeLogging {
   def isTestUser(primaryEmailAddress: String)(implicit logPrefix: LogPrefix): Boolean = {
-    val maybeValidTestUser = for {
-      localPart <- primaryEmailAddress.split('@').headOption
-      possibleTestUsername <- localPart.split('+').toList match {
-        case _ :: subAddress :: _ => Some(subAddress)
-        case noPlus :: Nil => Some(noPlus)
-        case _ => None // invalid email address - no @ sign
-      }
-    } yield testUsernames.isValid(possibleTestUsername)
-    if (maybeValidTestUser.contains(true)) {
+    val isTestUser = testUsernames.isValidEmail(primaryEmailAddress)
+    if (isTestUser) {
       logger.info(primaryEmailAddress + " is a test user")
     }
-    maybeValidTestUser.getOrElse(false)
+    isTestUser
   }
 
 }
