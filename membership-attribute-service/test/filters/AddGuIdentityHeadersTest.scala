@@ -63,7 +63,7 @@ class AddGuIdentityHeadersTest extends Specification with IdiomaticMockito {
 
     "add headers for test user " in {
       val (_, addGuIdentityHeaders) = setup
-      val testUsername = testUsernames.generateEmail("test.user@thegulocal.com")
+      val testUsername = testUsernames.generateEmail(Some("test.user@thegulocal.com"))
       val testUser = user.copy(primaryEmailAddress = testUsername.email)
       val actualResult = addGuIdentityHeaders.fromUser(resultWithoutIdentityHeaders, testUser)
       assertHeadersSet(actualResult, testUser = true)
@@ -78,7 +78,7 @@ class AddGuIdentityHeadersTest extends Specification with IdiomaticMockito {
     }
 
     "detect test users" in {
-      val testUsername = testUsernames.generateEmail("test.user@thegulocal.com")
+      val testUsername = testUsernames.generateEmail(Some("test.user@thegulocal.com"))
       val isTestUser = new TestUserChecker(testUsernames)
       isTestUser.isTestUser(testUsername.email) should beTrue
     }
