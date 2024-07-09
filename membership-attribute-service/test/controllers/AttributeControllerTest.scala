@@ -484,15 +484,13 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |{
              |  "userId": "$userWithNewspaperUserId",
              |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
              |  "showSupportMessaging": false,
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,
              |    "recurringContributor": false,
              |    "supporterPlus" : false,
-             |    "feast": false,
+             |    "feast": true,
              |    "digitalPack": true,
              |    "paperSubscriber": true,
              |    "guardianWeeklySubscriber": false,
