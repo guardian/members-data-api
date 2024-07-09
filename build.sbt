@@ -4,6 +4,7 @@ import scala.util.Try
 
 val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
+ThisBuild / resolvers ++= Resolver.sonatypeOssRepos("releases") // libraries that haven't yet synced to maven central
 
 def commitId(): String =
   try { "git rev-parse HEAD".!!.trim }

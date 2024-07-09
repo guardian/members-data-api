@@ -85,9 +85,9 @@ class MyComponents(context: Context)
     patronsStripeServiceOverride,
     chooseStripeOverride,
   )
-  private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
-  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
-  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, isTestUser)
+  private val testUserChecker = new TestUserChecker(CreateTestUsernames.from(config))
+  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, testUserChecker)
+  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, testUserChecker)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(
       environment,

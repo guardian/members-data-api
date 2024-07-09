@@ -9,7 +9,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.typesafe.config.ConfigFactory
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.{CreateTestUsernames, Stage}
-import filters.{AddGuIdentityHeaders, IsTestUser}
+import filters.{AddGuIdentityHeaders, TestUserChecker}
 import models.{Attributes, FeastApp, MobileSubscriptionStatus, UserFromToken}
 import monitoring.CreateNoopMetrics
 import org.joda.time.{DateTime, LocalDate}
@@ -216,9 +216,9 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val stubParser = Helpers.stubBodyParser(AnyContent("test"))
   private val ex = scala.concurrent.ExecutionContext.global
   private val testUsers = CreateTestUsernames.from(config)
-  private val isTestUser = new IsTestUser(testUsers)
+  private val testUserChecker = new TestUserChecker(testUsers)
   private val commonActions =
-    new CommonActions(touchpointBackends, stubParser, isTestUser)(scala.concurrent.ExecutionContext.global, materializer) {
+    new CommonActions(touchpointBackends, stubParser, testUserChecker)(scala.concurrent.ExecutionContext.global, materializer) {
       override def AuthorizeForScopes(requiredScopes: List[AccessScope]) = NoCacheAction andThen FakeAuthAndBackendViaAuthLibAction
       override def AuthorizeForRecentLogin(howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn, requiredScopes: List[AccessScope]) =
         NoCacheAction andThen FakeAuthAndBackendViaIdapiAction
@@ -236,7 +236,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
 
   }
 
-  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchpointBackends.normal.identityAuthService, isTestUser)
+  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchpointBackends.normal.identityAuthService, testUserChecker)
 
   private val controller =
     new AttributeController(
