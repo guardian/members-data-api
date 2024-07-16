@@ -15,6 +15,7 @@ object TestCatalog {
   val supporterPrpId = ProductRatePlanId("2c92c0f84bbfeca5014bc0c5a793241d")
   val contributorPrpId = ProductRatePlanId("asdfasdf")
   val supporterPlusPrpId = ProductRatePlanId("8ad08cbd8586721c01858804e3275376")
+  val tierThreePrpId = ProductRatePlanId("prpIDtierThree")
   val digipackPrpId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591")
   val gw6for6PrpId = ProductRatePlanId("2c92c0f965f212210165f69b94c92d66")
   val homeDeliveryPrpId = ProductRatePlanId("homedelPRPid")
@@ -25,6 +26,8 @@ object TestCatalog {
     val contributorChargeId = ProductRatePlanChargeId("foo")
     val supporterPlusChargeId: ProductRatePlanChargeId = ProductRatePlanChargeId("8ad08cbd8586721c01858804e3715378")
     val sPluscontributionChargeId: ProductRatePlanChargeId = ProductRatePlanChargeId("asdasdasdcon")
+    val tierThreeDigitalId = ProductRatePlanChargeId("tierthreedigiPRPCid")
+    val tierThreeGWId = ProductRatePlanChargeId("tierthreeGWprpcID")
   }
   import ProductRatePlanChargeIds._
 
@@ -59,6 +62,16 @@ object TestCatalog {
       Map(
         supporterPlusChargeId -> SupporterPlus,
         sPluscontributionChargeId -> Contributor,
+      ),
+      Some(ProductType("type")),
+    ),
+    tierThreePrpId -> ProductRatePlan(
+      supporterPlusPrpId,
+      "Supporter Plus",
+      idForProduct(Product.SupporterPlus),
+      Map(
+        tierThreeDigitalId -> SupporterPlus,
+        tierThreeGWId -> Weekly,
       ),
       Some(ProductType("type")),
     ),

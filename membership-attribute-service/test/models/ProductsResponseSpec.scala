@@ -4,7 +4,7 @@ import com.gu.i18n.Currency.GBP
 import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.ReaderType.Direct
 import com.gu.memsub.subsv2.services.TestCatalog
-import com.gu.memsub.subsv2.services.TestCatalog.catalog
+import com.gu.memsub.subsv2.services.TestCatalog.{ProductRatePlanChargeIds, catalog}
 import com.gu.memsub.subsv2.{RatePlan, RatePlanCharge, Subscription, SubscriptionEnd, ZMonth}
 import com.gu.memsub.{PaymentCard, PaymentCardDetails, Price, PricingSummary}
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -39,7 +39,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
           ratePlans = List(
             RatePlan(
               id = RatePlanId("8ad09be48f7af173018f7bd22db4268e"),
-              productRatePlanId = TestCatalog.supporterPlusPrpId,
+              productRatePlanId = TestCatalog.tierThreePrpId,
               productName = "Supporter Plus",
               lastChangeType = None,
               features = List(),
@@ -47,7 +47,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
               ratePlanCharges = NonEmptyList(
                 RatePlanCharge(
                   SubscriptionRatePlanChargeId("lklklk"),
-                  ProductRatePlanChargeId("asdasddd"),
+                  ProductRatePlanChargeIds.tierThreeDigitalId,
                   PricingSummary(Map(GBP -> Price(10.0f, GBP))),
                   Some(ZMonth),
                   None,
@@ -57,7 +57,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
                 ),
                 RatePlanCharge(
                   SubscriptionRatePlanChargeId("sdfff"),
-                  ProductRatePlanChargeId("werwer"),
+                  ProductRatePlanChargeIds.tierThreeGWId,
                   PricingSummary(Map(GBP -> Price(15.0f, GBP))),
                   Some(ZMonth),
                   None,
