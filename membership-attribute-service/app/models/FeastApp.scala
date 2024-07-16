@@ -26,7 +26,8 @@ object FeastApp {
       attributes.isPatronTier ||
       attributes.isGuardianPatron ||
       attributes.digitalSubscriberHasActivePlan ||
-      attributes.isSupporterPlus
+      attributes.isSupporterPlus ||
+      attributes.isPaperSubscriber
 
   private def isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes: Attributes) =
     attributes.isRecurringContributor && attributes.RecurringContributionAcquisitionDate.exists(isBeforeFeastLaunch)
@@ -35,8 +36,7 @@ object FeastApp {
     isRecurringContributorWhoSubscribedBeforeFeastLaunch(attributes) ||
       attributes.isPremiumLiveAppSubscriber ||
       attributes.isGuardianWeeklySubscriber ||
-      attributes.isSupporterTier ||
-      attributes.isPaperSubscriber
+      attributes.isSupporterTier
 
   private def shouldShowSubscriptionOptions(attributes: Attributes) = !shouldGetFeastAccess(attributes)
 
