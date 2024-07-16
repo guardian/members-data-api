@@ -184,7 +184,9 @@ case class RatePlan(
       .toList
       .reduce((f1, f2) =>
         PricingSummary(
-          f1.underlying.keySet.intersect(f2.underlying.keySet).map(c => c -> Price(f1.underlying(c).amount + f2.underlying(c).amount, c)).toMap,
+          f1.underlying.keySet.intersect(f2.underlying.keySet).map { currency =>
+            currency -> f1.underlying(currency).+(f2.underlying(currency))
+          }.toMap,
         ),
       )
 

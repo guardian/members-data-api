@@ -104,14 +104,16 @@ object AccountDetails {
       }
 
       def maybePaperDaysOfWeek(plan: RatePlan) = {
-        val dayNames = for {
+        val dayIndexes = for {
           charge <- plan.ratePlanCharges.list.toList
             .filterNot(_.pricing.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
           catalogZuoraPlan <- catalog.productRatePlans.get(plan.productRatePlanId)
           dayName <- catalogZuoraPlan.productRatePlanCharges
             .get(charge.productRatePlanChargeId)
-            .collect { case benefit: PaperDay => DayOfWeek.of(benefit.dayOfTheWeekIndex).getDisplayName(TextStyle.FULL, Locale.ENGLISH) }
+            .collect { case benefit: PaperDay => benefit.dayOfTheWeekIndex }
         } yield dayName
+
+        val dayNames = dayIndexes.sorted.map(DayOfWeek.of(_).getDisplayName(TextStyle.FULL, Locale.ENGLISH))
 
         if (dayNames.nonEmpty) Json.obj("daysOfWeek" -> dayNames) else Json.obj()
       }
@@ -123,7 +125,7 @@ object AccountDetails {
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
         "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30))),
         "chargedThrough" -> plan.chargedThroughDate,
-        "price" -> plan.chargesPrice.prices.head.amount * 100,
+        "price" -> (plan.chargesPrice.prices.head.amount * 100).toInt,
         "currency" -> plan.chargesPrice.prices.head.currency.glyph,
         "currencyISO" -> plan.chargesPrice.prices.head.currency.iso,
         "billingPeriod" -> plan.billingPeriod.leftMap(e => throw new RuntimeException("no billing period: " + e)).toOption.get.noun,
@@ -175,7 +177,7 @@ object AccountDetails {
             "autoRenew" -> isAutoRenew,
             "plan" -> Json.obj( // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
               "name" -> paymentDetails.plan.name,
-              "price" -> paymentDetails.plan.price.amount * 100,
+              "price" -> (paymentDetails.plan.price.amount * 100).toInt,
               "currency" -> paymentDetails.plan.price.currency.glyph,
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "billingPeriod" -> paymentDetails.plan.interval.mkString,
