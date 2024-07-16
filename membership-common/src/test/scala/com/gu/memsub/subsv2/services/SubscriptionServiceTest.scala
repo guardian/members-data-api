@@ -5,111 +5,28 @@ import com.github.nscala_time.time.Imports.LocalTime
 import com.gu.i18n.Currency.{EUR, GBP}
 import com.gu.lib.DateDSL._
 import com.gu.memsub
-import com.gu.memsub.Benefit._
 import com.gu.memsub.Subscription.{Id => _, _}
-import com.gu.memsub.subsv2.Fixtures._
 import com.gu.memsub.subsv2._
 import com.gu.memsub.{Subscription => _, _}
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.salesforce.ContactId
-import com.gu.zuora.{SoapClient, ZuoraRestConfig}
 import com.gu.zuora.rest.SimpleClient
+import com.gu.zuora.{SoapClient, ZuoraRestConfig}
 import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
-import utils.Resource
 import scalaz.Id._
 import scalaz.{-\/, NonEmptyList, \/, \/-}
+import utils.Resource
 import utils.TestLogPrefix.testLogPrefix
 
 /** This test just tests plumbing really but at least it is /possible/ to test plumbing
   */
 class SubscriptionServiceTest extends Specification {
 
-  val digipackAnnualPrpId = ProductRatePlanId("2c92c0f94bbffaaa014bc6a4212e205b")
-  val partnerPrpId = ProductRatePlanId("2c92c0f84c510081014c569327003593")
-  val supporterPlusPrpId = ProductRatePlanId("8ad08cbd8586721c01858804e3275376")
-  val digipackPrpId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591")
-  val gw6for6PrpId = ProductRatePlanId("2c92c0f965f212210165f69b94c92d66")
-  val gw = ProductRatePlanId("2c92c0f965dc30640165f150c0956859")
-  val now = 27 Sep 2016
-
-  val cat = Map[ProductRatePlanId, CatalogZuoraPlan](
-    digipackAnnualPrpId -> CatalogZuoraPlan(
-      digipackAnnualPrpId,
-      "foo",
-      "",
-      productIds.digipack,
-      None,
-      List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f94bbffaaa014bc6a4213e205d") -> Digipack),
-      Status.Current,
-      None,
-      Some("type"),
-    ),
-    partnerPrpId -> CatalogZuoraPlan(
-      partnerPrpId,
-      "Partner",
-      "",
-      productIds.partner,
-      None,
-      List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f84c510081014c569327593595") -> Partner),
-      Status.Current,
-      None,
-      Some("type"),
-    ),
-    supporterPlusPrpId -> CatalogZuoraPlan(
-      supporterPlusPrpId,
-      "Supporter Plus",
-      "",
-      productIds.supporter,
-      None,
-      List.empty,
-      Map(ProductRatePlanChargeId("8ad08cbd8586721c01858804e3715378") -> SupporterPlus),
-      Status.Current,
-      None,
-      Some("type"),
-    ),
-    digipackPrpId -> CatalogZuoraPlan(
-      digipackPrpId,
-      "Digipack",
-      "",
-      productIds.digipack,
-      None,
-      List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f94f2acf73014f2c91940a166d") -> Digipack),
-      Status.Current,
-      None,
-      Some("type"),
-    ),
-    gw6for6PrpId -> CatalogZuoraPlan(
-      gw6for6PrpId,
-      "GW Oct 18 - Six for Six - Domestic",
-      "",
-      productIds.weeklyDomestic,
-      None,
-      List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f865f204440165f69f407d66f1") -> Weekly),
-      Status.Current,
-      None,
-      Some("type"),
-    ),
-    gw -> CatalogZuoraPlan(
-      gw,
-      "GW Oct 18 - Quarterly - Domestic",
-      "",
-      productIds.weeklyDomestic,
-      None,
-      List.empty,
-      Map(ProductRatePlanChargeId("2c92c0f865d273010165f16ada0a4346") -> Weekly),
-      Status.Current,
-      None,
-      Some("type"),
-    ),
-  )
+  import TestCatalog._
 
   def jsonResponse(path: String)(req: Request) =
     new Response.Builder()
@@ -144,95 +61,100 @@ class SubscriptionServiceTest extends Specification {
   }
 
   val rc = new SimpleClient[Id](ZuoraRestConfig("TESTS", "https://localhost", "foo", "bar"), subscriptions)
-  private val service = new SubscriptionService[Id](Fixtures.productIds, cat, rc, soapClient)
+  private val service = new SubscriptionService[Id](catalog, rc, soapClient)
 
   "Current Plan" should {
 
-    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): RatePlan =
+    def contributorPlan(startDate: LocalDate, endDate: LocalDate, lastChangeType: Option[String] = None): RatePlan = {
       RatePlan(
         RatePlanId("idContributor"),
-        ProductRatePlanId("prpi"),
-        "Contributor",
-        "desc",
+        contributorPrpId,
         "Contributor",
         lastChangeType,
-        "Contribution",
-        Product.Contribution,
         List.empty,
-        RatePlanCharge(
-          Contributor,
-          BillingPeriod.Month,
-          PricingSummary(Map(GBP -> Price(5.0f, GBP))),
-          ProductRatePlanChargeId("foo"),
-          SubscriptionRatePlanChargeId("noo"),
-        ),
         None,
+        NonEmptyList(
+          RatePlanCharge(
+            SubscriptionRatePlanChargeId("noo"),
+            ProductRatePlanChargeIds.contributorChargeId,
+            PricingSummary(Map(GBP -> Price(5.0f, GBP))),
+            Some(ZMonth),
+            None,
+            SubscriptionEnd,
+            None,
+            None,
+          ),
+        ),
         startDate,
         endDate,
       )
+    }
     def partnerPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
       RatePlan(
         RatePlanId("idPartner"),
-        ProductRatePlanId("prpi"),
-        "Partner",
-        "desc",
+        partnerPrpId,
         "Partner",
         None,
-        "Membership",
-        Product.Membership,
         List.empty,
-        RatePlanCharge(
-          Partner,
-          BillingPeriod.Year,
-          PricingSummary(Map(GBP -> Price(149.0f, GBP))),
-          ProductRatePlanChargeId("foo"),
-          SubscriptionRatePlanChargeId("noo"),
-        ),
         None,
+        NonEmptyList(
+          RatePlanCharge(
+            SubscriptionRatePlanChargeId("noo"),
+            ProductRatePlanChargeId("foo"),
+            PricingSummary(Map(GBP -> Price(149.0f, GBP))),
+            Some(ZYear),
+            None,
+            SubscriptionEnd,
+            None,
+            None,
+          ),
+        ),
         startDate,
         endDate,
       )
     def supporterPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
       RatePlan(
         RatePlanId("idSupporter"),
-        ProductRatePlanId("prpi"),
-        "Supporter",
-        "desc",
+        supporterPrpId,
         "Supporter",
         None,
-        "Membership",
-        Product.Membership,
         List.empty,
-        RatePlanCharge(
-          Supporter,
-          BillingPeriod.Year,
-          PricingSummary(Map(GBP -> Price(49.0f, GBP))),
-          ProductRatePlanChargeId("bar"),
-          SubscriptionRatePlanChargeId("nar"),
-        ),
         None,
+        NonEmptyList(
+          RatePlanCharge(
+            SubscriptionRatePlanChargeId("nar"),
+            ProductRatePlanChargeId("bar"),
+            PricingSummary(Map(GBP -> Price(49.0f, GBP))),
+            Some(ZYear),
+            None,
+            SubscriptionEnd,
+            None,
+            None,
+          ),
+        ),
         startDate,
         endDate,
       )
     def digipackPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
       RatePlan(
         RatePlanId("idDigipack"),
-        ProductRatePlanId("prpi"),
-        "Digipack",
-        "desc",
+        digipackAnnualPrpId,
         "Digital Pack",
         None,
-        "Digital Pack",
-        Product.Digipack,
         List.empty,
-        RatePlanCharge(
-          Digipack,
-          BillingPeriod.Year,
-          PricingSummary(Map(GBP -> Price(119.90f, GBP))),
-          ProductRatePlanChargeId("baz"),
-          SubscriptionRatePlanChargeId("naz"),
-        ),
         None,
+        NonEmptyList(
+          RatePlanCharge(
+            SubscriptionRatePlanChargeId("naz"),
+            ProductRatePlanChargeId("baz"),
+            PricingSummary(Map(GBP -> Price(119.90f, GBP))),
+            Some(ZYear),
+            None,
+            SubscriptionEnd,
+            None,
+            None,
+          ),
+        ),
         startDate,
         endDate,
       )
@@ -240,22 +162,23 @@ class SubscriptionServiceTest extends Specification {
     def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
       RatePlan(
         id = RatePlanId("idSupporterPlus"),
-        productRatePlanId = ProductRatePlanId("prpi"),
-        name = "SupporterPlus",
-        description = "desc",
+        productRatePlanId = supporterPlusPrpId,
         productName = "Supporter Plus",
         lastChangeType = Some("Add"),
-        productType = "Supporter Plus",
-        product = Product.SupporterPlus,
         features = List.empty,
-        charges = RatePlanCharge(
-          SupporterPlus,
-          BillingPeriod.Year,
-          PricingSummary(Map(GBP -> Price(119.90f, GBP))),
-          ProductRatePlanChargeId("baz"),
-          SubscriptionRatePlanChargeId("naz"),
+        ratePlanCharges = NonEmptyList(
+          RatePlanCharge(
+            SubscriptionRatePlanChargeId("naz"),
+            ProductRatePlanChargeId("baz"),
+            PricingSummary(Map(GBP -> Price(119.90f, GBP))),
+            Some(ZYear),
+            None,
+            SubscriptionEnd,
+            None,
+            None,
+          ),
         ),
-        chargedThrough = None,
+        chargedThroughDate = None,
         start = startDate,
         end = endDate,
       )
@@ -273,7 +196,7 @@ class SubscriptionServiceTest extends Specification {
         casActivationDate = None,
         promoCode = None,
         isCancelled = isCancelled,
-        plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
+        ratePlans = plans.list.toList,
         readerType = ReaderType.Direct,
         gifteeIdentityId = None,
         autoRenew = true,
@@ -288,7 +211,8 @@ class SubscriptionServiceTest extends Specification {
         switchedSupporterPlusPlan(referenceDate, referenceDate + 1.year),
       )
       val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate)
+      val result = GetCurrentPlans
+        .currentPlans(subs, referenceDate, catalog)
         .map(listOfPlans =>
           listOfPlans.size == 1 &&
             listOfPlans.head.productName == "Supporter Plus",
@@ -299,35 +223,35 @@ class SubscriptionServiceTest extends Specification {
     "tell you that you aren't a contributor immediately after your sub has been cancelled" in {
       val plans = NonEmptyList(contributorPlan(referenceDate, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = true)(plans)
-      val result = GetCurrentPlans(subs, referenceDate).leftMap(_.contains("cancelled"))
+      val result = GetCurrentPlans.currentPlans(subs, referenceDate, catalog).leftMap(_.contains("cancelled"))
       result mustEqual -\/(true)
     }
 
     "tell you a upgraded plan is current on the change date" in {
       val plans = NonEmptyList(supporterPlan(referenceDate.minusDays(4), referenceDate), partnerPlan(referenceDate, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate).map(_.head.id.get)
+      val result = GetCurrentPlans.currentPlans(subs, referenceDate, catalog).map(_.head.id.get)
       result mustEqual \/-("idPartner")
     }
 
     "tell you you are still a supporter if your subscription is cancelled but it's still before the date" in {
       val plans = NonEmptyList(supporterPlan(referenceDate, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = true)(plans)
-      val result = GetCurrentPlans(subs, referenceDate).map(_.head.id.get)
+      val result = GetCurrentPlans.currentPlans(subs, referenceDate, catalog).map(_.head.id.get)
       result mustEqual \/-("idSupporter")
     }
 
     "tell you you are no longer a supporter if your subscription is after an end date" in {
       val plans = NonEmptyList(supporterPlan(referenceDate - 1.year, referenceDate))
       val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate + 1.day).leftMap(_.contains("ended"))
+      val result = GetCurrentPlans.currentPlans(subs, referenceDate + 1.day, catalog).leftMap(_.contains("ended"))
       result mustEqual -\/(true) // not helpful
     }
 
     "if you've cancelled and then signed up with a different tier, should return the new tier on day 1" in {
       val plans = NonEmptyList(partnerPlan(referenceDate, referenceDate - 1.year), supporterPlan(referenceDate + 1.day, referenceDate + 1.year))
       val subs = toSubscription(isCancelled = false)(plans)
-      val result = GetCurrentPlans(subs, referenceDate + 1.day).map(_.head.id.get)
+      val result = GetCurrentPlans.currentPlans(subs, referenceDate + 1.day, catalog).map(_.head.id.get)
       result mustEqual \/-("idSupporter")
     }
 
@@ -337,7 +261,7 @@ class SubscriptionServiceTest extends Specification {
       val digipackSub = toSubscription(isCancelled = false)(NonEmptyList(digipackPlan(firstPayment, referenceDate + 1.year)))
         .copy(termStartDate = referenceDate, startDate = referenceDate)
 
-      GetCurrentPlans(digipackSub, referenceDate).map(_.head.id.get) mustEqual \/-("idDigipack")
+      GetCurrentPlans.currentPlans(digipackSub, referenceDate, catalog).map(_.head.id.get) mustEqual \/-("idDigipack")
     }
 
   }
@@ -346,22 +270,36 @@ class SubscriptionServiceTest extends Specification {
 
     "Be able to fetch a supporter plus subscription" in {
       val sub = service.get(memsub.Subscription.Name("1234"))
-      sub.map(_.plan) must beSome(
+      sub.map(_.plan(catalog)) must beSome(
         RatePlan(
           RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
           supporterPlusPrpId,
           "Supporter Plus",
-          "",
-          "Supporter Plus",
           None,
-          "type",
-          Product.Membership,
           Nil,
-          SupporterPlusCharges(
-            BillingPeriod.Month,
-            List(PricingSummary(Map(EUR -> Price(10.0f, EUR))), PricingSummary(Map(EUR -> Price(0.0f, EUR)))),
-          ),
           Some(20 Jun 2024),
+          NonEmptyList(
+            RatePlanCharge(
+              SubscriptionRatePlanChargeId("8ad08ae28f9570f0018f9588141d10df"),
+              ProductRatePlanChargeId("8ad08cbd8586721c01858804e3715378"),
+              PricingSummary(Map(EUR -> Price(10.0f, EUR))),
+              Some(ZMonth),
+              None,
+              SubscriptionEnd,
+              None,
+              None,
+            ),
+            RatePlanCharge(
+              SubscriptionRatePlanChargeId("8ad08ae28f9570f0018f9588142410e0"),
+              ProductRatePlanChargeId("8ad09ea0858682bb0185880ac57f4c4c"),
+              PricingSummary(Map(EUR -> Price(0.0f, EUR))),
+              Some(ZMonth),
+              None,
+              SubscriptionEnd,
+              None,
+              None,
+            ),
+          ),
           20 May 2024,
           20 May 2025,
         ),
@@ -392,8 +330,8 @@ class SubscriptionServiceTest extends Specification {
     val referenceDate = 15 Aug 2017
 
     "Allow you to fetch an upgraded subscription" in {
-      service.get(Name("A-S00063478")).map(GetCurrentPlans(_, referenceDate).map(_.head.charges.benefits)) must beSome(
-        \/-(NonEmptyList(Partner)),
+      service.get(Name("A-S00063478")).map(GetCurrentPlans.currentPlans(_, referenceDate, catalog).map(_.map(_.name(catalog)))) must beSome(
+        \/-(NonEmptyList("Partner")),
       )
     }
 

@@ -27,7 +27,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
   "PaymentDetailMapper" should {
     "recognise a giftee's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[PaymentService])
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[PaymentService], Future.successful(catalog))
 
       paymentDetailsForSubscription
         .getPaymentDetails(ContactAndSubscription(contact, digipackGift, true))
@@ -57,12 +57,13 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
     "recognise a gifter's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
       val paymentService = mock[PaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipackGift, None, None, None, None)
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, Future.successful(catalog))
+      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipackGift, None, None, None, None, catalog)
 
       paymentService.paymentDetails(
         any[Subscription],
         any[Option[String]],
+        catalog,
       ) returns Future.successful(expectedPaymentDetails)
 
       paymentDetailsForSubscription
@@ -73,12 +74,13 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
     "recognise a regular digital subscription" in {
       val contact = TestContact(randomId("identityId"))
       val paymentService = mock[PaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipack, None, None, None, None)
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, Future.successful(catalog))
+      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipack, None, None, None, None, catalog)
 
       paymentService.paymentDetails(
         any[Subscription](),
         any[Option[String]](),
+        catalog,
       ) returns Future.successful(expectedPaymentDetails)
 
       paymentDetailsForSubscription

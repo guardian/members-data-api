@@ -5,9 +5,8 @@ import acceptance.data._
 import acceptance.data.stripe.{TestStripeCard, TestStripeCustomer}
 import com.gu.i18n.Country
 import com.gu.memsub.Subscription
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan}
+import com.gu.memsub.subsv2.services.{SubscriptionService, TestCatalog}
+import com.gu.memsub.subsv2.Catalog
 import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.api.{GoCardlessGateway, PaymentGateway}
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
@@ -36,7 +35,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogMap = _
+  var catalogServiceMock: Catalog = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -50,7 +49,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
     contactRepositoryMock = mock[ContactRepository]
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = TestCatalog()
+    catalogServiceMock = TestCatalog.catalog
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
@@ -154,7 +153,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Newspaper - Home Delivery"), Nil),
+        plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.homeDeliveryPrpId)),
       )
 
       subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
@@ -313,7 +312,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       val subscription = TestSubscription(
         name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Digital Pack"), Nil),
+        plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
       )
 
       subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))

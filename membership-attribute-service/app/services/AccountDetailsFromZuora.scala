@@ -134,7 +134,7 @@ class AccountDetailsFromZuora(
           .getPaymentDetails(contactAndSubscription)
           .map(Right(_))
           .recover { case x =>
-            Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
+            Left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.name}. Reason: $x")
           }
 
       val accountSummaryFuture =

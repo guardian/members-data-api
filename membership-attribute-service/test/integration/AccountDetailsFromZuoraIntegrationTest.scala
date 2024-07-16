@@ -1,5 +1,6 @@
 package integration
 
+import com.gu.memsub.subsv2.services.TestCatalog.catalog
 import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import components.TouchpointComponents
@@ -32,7 +33,7 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
             },
           Duration.Inf,
         )
-      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson))))
+      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson(catalog)))))
       result.isRight must_== true
     }
   }
