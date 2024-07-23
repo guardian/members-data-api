@@ -207,7 +207,7 @@ case class RatePlan(
   }
 
   def product(catalog: Catalog): Product =
-    catalog.products(productRatePlan(catalog).productId)
+    catalog.products.getOrElse(productRatePlan(catalog).productId, Product.UnknownProduct)
 
   def name(catalog: Catalog): String =
     productRatePlan(catalog).name

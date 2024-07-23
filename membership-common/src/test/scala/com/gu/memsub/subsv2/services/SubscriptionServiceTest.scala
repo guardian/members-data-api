@@ -7,6 +7,7 @@ import com.gu.lib.DateDSL._
 import com.gu.memsub
 import com.gu.memsub.Subscription.{Id => _, _}
 import com.gu.memsub.subsv2._
+import com.gu.memsub.subsv2.reads.PlanWithCreditsTestData
 import com.gu.memsub.{Subscription => _, _}
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
@@ -51,6 +52,7 @@ class SubscriptionServiceTest extends Specification {
         case "/subscriptions/accounts/foo" => jsonResponse("rest/plans/accounts/SPlus.json")(request)
         case "/subscriptions/accounts/bar" => jsonResponse("rest/plans/accounts/Digi.json")(request)
         case "/subscriptions/1234" => jsonResponse("rest/plans/SPlus.json")(request)
+        case "/subscriptions/credit" => jsonResponse("rest/plans/Credits.json")(request)
         case "/subscriptions/A-S00063478" => jsonResponse("rest/plans/Upgraded.json")(request)
         case "/subscriptions/A-lead-time" => jsonResponse("rest/cancellation/GW-6for6-lead-time.json")(request)
         case "/subscriptions/A-segment-6for6" => jsonResponse("rest/cancellation/GW-6for6-segment-6for6.json")(request)
@@ -306,6 +308,15 @@ class SubscriptionServiceTest extends Specification {
       )
       sub.map(_.name.get) must beSome("A-S00890520")
     }
+
+    "Be able to fetch a subscription with credits" in {
+      val sub = service.get(memsub.Subscription.Name("credit"))
+      sub.map(_.plan(catalog)) must beSome(
+        PlanWithCreditsTestData.mainPlan,
+      )
+      sub.map(_.name.get) must beSome("A-S00897035")
+    }
+
     "Give you back a none in the event of the sub not existing" in {
       service.get(memsub.Subscription.Name("foo")) must beNone
     }

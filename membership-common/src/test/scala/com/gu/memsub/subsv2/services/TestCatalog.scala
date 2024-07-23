@@ -15,11 +15,12 @@ object TestCatalog {
   val supporterPrpId = ProductRatePlanId("2c92c0f84bbfeca5014bc0c5a793241d")
   val contributorPrpId = ProductRatePlanId("asdfasdf")
   val supporterPlusPrpId = ProductRatePlanId("8ad08cbd8586721c01858804e3275376")
-  val tierThreePrpId = ProductRatePlanId("prpIDtierThree")
+  val tierThreePrpId = ProductRatePlanId("8ad097b48ff26452019001cebac92376")
   val digipackPrpId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591")
   val gw6for6PrpId = ProductRatePlanId("2c92c0f965f212210165f69b94c92d66")
   val homeDeliveryPrpId = ProductRatePlanId("homedelPRPid")
   val gw = ProductRatePlanId("2c92c0f965dc30640165f150c0956859")
+  val discountPrpId = ProductRatePlanId("2c92c0f96b03800b016b081fc04f1ba2")
   val now = 27 Sep 2016
 
   object ProductRatePlanChargeIds {
@@ -109,6 +110,13 @@ object TestCatalog {
       idForProduct(Product.Contribution),
       Map(contributorChargeId -> Contributor),
       Some(ProductType("type")),
+    ),
+    discountPrpId -> ProductRatePlan(
+      discountPrpId,
+      "Discounts",
+      idForProduct(Product.Discounts),
+      Map(), // there are actually loads of discounts in the catalog
+      Some(ProductType("dddd")),
     ),
     Catalog.guardianPatronProductRatePlanId -> ProductRatePlan(
       Catalog.guardianPatronProductRatePlanId,

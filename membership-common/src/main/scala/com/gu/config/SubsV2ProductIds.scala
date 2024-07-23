@@ -26,6 +26,7 @@ object SubsV2ProductIds {
     ProductId(config.getString("membership.partner")) -> Membership,
     ProductId(config.getString("membership.patron")) -> Membership,
     ProductId(config.getString("contributions.contributor")) -> Contribution,
+    ProductId(config.getString("discounts")) -> Discounts,
     guardianPatronProductId -> GuardianPatron,
   )
 

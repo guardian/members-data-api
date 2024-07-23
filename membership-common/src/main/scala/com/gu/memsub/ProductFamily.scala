@@ -17,6 +17,10 @@ object Product {
   sealed trait Paper extends ContentSubscription
   sealed trait Weekly extends Paper
 
+  case object UnknownProduct extends Product {
+    val name = "UNKNOWN_PRODUCT"
+  }
+
   case object Membership extends Product {
     val name = "membership"
   }
@@ -61,6 +65,9 @@ object Product {
   }
   case object Contribution extends Product {
     val name = "contribution"
+  }
+  case object Discounts extends Product {
+    val name = "discounts"
   }
 
   def fromId(id: String): Option[Product] = id match {
