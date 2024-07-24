@@ -2,10 +2,12 @@ package com.gu.memsub.subsv2.reads
 
 import com.gu.i18n.Currency._
 import com.gu.lib.DateDSL._
+import com.gu.memsub.BillingPeriod.Month
 import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.memsub.subsv2.ReaderType.Patron
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
+import com.gu.memsub.subsv2.services.TestCatalog.catalogProd
 import com.gu.memsub.{subsv2, _}
 import org.specs2.mutable.Specification
 import scalaz.NonEmptyList
@@ -52,6 +54,15 @@ class SubReadsTest extends Specification {
       val actualPlans = Resource.getJson("rest/plans/Credits.json").validate[Subscription](subscriptionReads).get.ratePlans
 
       actualPlans must containTheSameElementsAs(PlanWithCreditsTestData.allRatePlans)
+    }
+
+    "read an echo legacy monthly subscription" in {
+      // there are 5 active Quarterly which won't be readable
+      val actualSubscription = Resource.getJson("rest/plans/EchoLegacy.json").validate[Subscription](subscriptionReads).get
+
+      actualSubscription.name.get mustEqual ("A-S00ECHO")
+      actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Delivery
+      actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
     }
 
     "parse Patron reader type correctly from subscription" in {

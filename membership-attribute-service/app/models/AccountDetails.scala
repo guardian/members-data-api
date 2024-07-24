@@ -128,7 +128,10 @@ object AccountDetails {
         "price" -> (plan.chargesPrice.prices.head.amount * 100).toInt,
         "currency" -> plan.chargesPrice.prices.head.currency.glyph,
         "currencyISO" -> plan.chargesPrice.prices.head.currency.iso,
-        "billingPeriod" -> plan.billingPeriod.leftMap(e => throw new RuntimeException("no billing period: " + e)).toOption.get.noun,
+        "billingPeriod" -> (plan.billingPeriod
+          .leftMap(e => logger.warn("unknown billing period: " + e))
+          .map(_.noun)
+          .getOrElse("unknown_billing_period"): String),
         "features" -> plan.features.map(_.featureCode).mkString(","),
       ) ++ maybePaperDaysOfWeek(plan)
 

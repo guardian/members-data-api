@@ -1,6 +1,8 @@
 package com.gu.services.model
 import com.gu.memsub.subsv2.{Catalog, Subscription}
 import com.gu.memsub.{PaymentMethod, Price}
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import org.joda.time.{DateTime, Days, LocalDate}
 
@@ -22,7 +24,7 @@ case class PaymentDetails(
     plan: PersonalPlan,
 )
 
-object PaymentDetails {
+object PaymentDetails extends SafeLogging {
   case class Payment(price: Price, date: LocalDate)
   implicit def dateToDateTime(date: LocalDate): DateTime = date.toDateTimeAtStartOfDay()
 
@@ -33,7 +35,7 @@ object PaymentDetails {
       nextInvoiceDate: Option[LocalDate],
       lastPaymentDate: Option[LocalDate],
       catalog: Catalog,
-  ): PaymentDetails = {
+  )(implicit logPrefix: LogPrefix): PaymentDetails = {
 
     val firstPaymentDate = sub.firstPaymentDate
     val timeUntilPaying = Days.daysBetween(new LocalDate(DateTime.now()), new LocalDate(firstPaymentDate)).getDays
@@ -54,7 +56,7 @@ object PaymentDetails {
       plan = PersonalPlan(
         name = plan.productName,
         price = plan.chargesPrice.prices.head,
-        interval = plan.billingPeriod.leftMap(e => throw new RuntimeException("no billing period: " + e)).toOption.get.noun,
+        interval = plan.billingPeriod.leftMap(e => logger.warn("unknown billing period: " + e)).map(_.noun).getOrElse("unknown_billing_period"),
       ),
       subscriberId = sub.name.get,
       remainingTrialLength = timeUntilPaying,

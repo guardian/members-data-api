@@ -7,8 +7,19 @@ import com.gu.memsub.Subscription.{ProductId, ProductRatePlanChargeId, ProductRa
 import com.gu.memsub.subsv2.Fixtures.productIds
 import com.gu.memsub.subsv2.{Catalog, ProductRatePlan, ProductType}
 import com.gu.memsub.{Product, ProductRatePlanChargeProductType, Subscription => _}
+import com.typesafe.config.ConfigFactory
+import utils.TestLogPrefix.testLogPrefix
 
 object TestCatalog {
+
+  val catalogProd = {
+
+    val dev = ConfigFactory.parseResources("touchpoint.PROD.conf")
+    val ids = SubsV2ProductIds.load(dev.getConfig("touchpoint.backend.environments.PROD.zuora.productIds"))
+    val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/CatalogProd.json")), ids)
+
+    cats
+  }
 
   val digipackAnnualPrpId = ProductRatePlanId("2c92c0f94bbffaaa014bc6a4212e205b")
   val partnerPrpId = ProductRatePlanId("2c92c0f84c510081014c569327003593")
