@@ -9,6 +9,7 @@ import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
 import com.gu.memsub.subsv2.services.TestCatalog.catalogProd
 import com.gu.memsub.{subsv2, _}
+import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import scalaz.NonEmptyList
 import utils.Resource
@@ -65,6 +66,18 @@ class SubReadsTest extends Specification {
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
     }
 
+    "read a voucher subscription with a fixed recurring discount" in {
+
+      val actualSubscription = Resource.getJson("rest/plans/WithRecurringFixedDiscount.json").validate[Subscription](subscriptionReads).get
+
+      actualSubscription.name.get mustEqual ("A-S00FIXEDDISC")
+      actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Voucher
+      actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
+      actualSubscription.ratePlans.filter(_.end.isAfter(LocalDate.parse("2024-07-24"))) must containTheSameElementsAs(
+        List(FixedDiscountRecurringTestData.mainPlan, FixedDiscountRecurringTestData.discount),
+      )
+    }
+
     "parse Patron reader type correctly from subscription" in {
       val json = Resource.getJson("rest/PatronReaderType.json")
       val subscription =
@@ -74,6 +87,127 @@ class SubReadsTest extends Specification {
     }
   }
 }
+
+object FixedDiscountRecurringTestData {
+
+  val mainPlan: RatePlan = RatePlan(
+    RatePlanId("withdiscountrateplanid2"),
+    ProductRatePlanId("2c92a0ff56fe33f50157040bbdcf3ae4"),
+    "Newspaper Voucher",
+    Some("Add"),
+    List(),
+    Some(LocalDate.parse("2024-08-23")),
+    NonEmptyList(
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0ff56fe33f5015709cce7ad1aea"),
+        PricingSummary(Map(GBP -> Price(8.42f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0ff56fe33f5015709c80af30495"),
+        PricingSummary(Map(GBP -> Price(11.45f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0ff56fe33f0015709cac4561bf3"),
+        PricingSummary(Map(GBP -> Price(8.42f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0fd56fe270b015709cc16f92645"),
+        PricingSummary(Map(GBP -> Price(8.42f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0fd56fe270b015709c90c291c49"),
+        PricingSummary(Map(GBP -> Price(8.42f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0fd56fe26b6015709ca144a646a"),
+        PricingSummary(Map(GBP -> Price(8.42f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0fd56fe26b60157042fcd462666"),
+        PricingSummary(Map(GBP -> Price(11.44f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0fc56fe26ba01570418eddd26e1"),
+        PricingSummary(Map(GBP -> Price(2.0f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+    ),
+    LocalDate.parse("2024-02-23"),
+    LocalDate.parse("2024-09-23"),
+  )
+
+  val discount = RatePlan(
+    RatePlanId("withdiscountrateplanid5"),
+    ProductRatePlanId("2c92a0ff5e09bd67015e0a93efe86d2e"),
+    "Discounts",
+    Some("Add"),
+    List(),
+    Some(LocalDate.parse("2024-08-23")),
+    NonEmptyList(
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
+        ProductRatePlanChargeId("2c92a0ff5e09bd67015e0a93f0026d34"),
+        PricingSummary(Map(GBP -> Price(-4.34f, GBP))),
+        Some(ZMonth),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+    ),
+    LocalDate.parse("2017-08-23"),
+    LocalDate.parse("2024-09-23"),
+  )
+
+}
+
 object PlanWithCreditsTestData {
 
   private val gwCharge = RatePlanCharge(

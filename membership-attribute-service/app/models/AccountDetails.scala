@@ -135,17 +135,12 @@ object AccountDetails {
         "features" -> plan.features.map(_.featureCode).mkString(","),
       ) ++ maybePaperDaysOfWeek(plan)
 
-      val sortedPlans = subscription.ratePlans.sortBy(_.start.toDate)
-      val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
-      val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
-
-      val startDate: LocalDate = sortedPlans.headOption.map(_.start).getOrElse(paymentDetails.customerAcceptanceDate)
-      val endDate: LocalDate = sortedPlans.headOption.map(_.end).getOrElse(paymentDetails.termEndDate)
-
-      if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
+      val subscriptionData = new FilterPlans(subscription, catalog)
 
       val selfServiceCancellation = SelfServiceCancellation(product, billingCountry)
 
+      val start = subscriptionData.startDate.getOrElse(paymentDetails.customerAcceptanceDate)
+      val end = subscriptionData.endDate.getOrElse(paymentDetails.termEndDate)
       Json.obj(
         "mmaCategory" -> mmaCategory,
         "tier" -> paymentDetails.plan.name,
@@ -165,15 +160,15 @@ object AccountDetails {
             "contactId" -> accountDetails.contactId,
             "deliveryAddress" -> accountDetails.deliveryAddress,
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
-            "start" -> startDate,
-            "end" -> endDate,
+            "start" -> start,
+            "end" -> end,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
             "potentialCancellationDate" -> paymentDetails.nextInvoiceDate,
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
-            "anniversaryDate" -> anniversary(startDate),
+            "anniversaryDate" -> anniversary(start),
             "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
@@ -185,8 +180,8 @@ object AccountDetails {
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "billingPeriod" -> paymentDetails.plan.interval.mkString,
             ),
-            "currentPlans" -> currentPlans.map(jsonifyPlan),
-            "futurePlans" -> futurePlans.map(jsonifyPlan),
+            "currentPlans" -> subscriptionData.currentPlans.map(jsonifyPlan),
+            "futurePlans" -> subscriptionData.futurePlans.map(jsonifyPlan),
             "readerType" -> accountDetails.subscription.readerType.value,
             "accountId" -> accountDetails.accountId,
             "cancellationEffectiveDate" -> cancellationEffectiveDate,
@@ -227,6 +222,28 @@ object AccountDetails {
     case _: Product.Membership => "membership"
     case _ => product.name // fallback
   }
+}
+
+class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val logPrefix: LogPrefix) extends SafeLogging {
+
+  private val sortedPlans = subscription.ratePlans
+    .filter(_.product(catalog) match {
+      case _: Product.ContentSubscription => true
+      case Product.UnknownProduct => false
+      case Product.Membership => true
+      case Product.GuardianPatron => true
+      case Product.Contribution => true
+      case Product.Discounts => false
+    })
+    .sortBy(_.start.toDate)
+  val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
+  val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.start.isAfter(now))
+
+  val startDate: Option[LocalDate] = sortedPlans.headOption.map(_.start)
+  val endDate: Option[LocalDate] = sortedPlans.headOption.map(_.end)
+
+  if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
+
 }
 
 object CancelledSubscription {

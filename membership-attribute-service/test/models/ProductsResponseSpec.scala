@@ -7,7 +7,6 @@ import com.gu.memsub.subsv2.services.TestCatalog
 import com.gu.memsub.subsv2.services.TestCatalog.{ProductRatePlanChargeIds, catalog}
 import com.gu.memsub.subsv2.{RatePlan, RatePlanCharge, Subscription, SubscriptionEnd, ZMonth}
 import com.gu.memsub.{PaymentCard, PaymentCardDetails, Price, PricingSummary}
-import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
@@ -15,6 +14,7 @@ import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
 import scalaz.NonEmptyList
+import utils.TestLogPrefix.testLogPrefix
 
 class ProductsResponseSpec extends Specification with SafeLogging {
 
@@ -184,7 +184,6 @@ class ProductsResponseSpec extends Specification with SafeLogging {
           |  } ]
           }""".stripMargin)
       val user = UserFromToken("test@thegulocal.com", "12345", None, None, None, None, None)
-      implicit val logPrefix: LogPrefix = LogPrefix("testLogPrefix")
       val productsResponseWrites = new ProductsResponseWrites(catalog)
       import productsResponseWrites.writes
       val productsResponseJson = Json.toJson(productsResponseWrites.from(user, List(accountDetails)))
