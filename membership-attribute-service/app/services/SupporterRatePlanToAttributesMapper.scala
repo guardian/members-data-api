@@ -34,7 +34,10 @@ class SupporterRatePlanToAttributesMapper(stage: Stage) extends SafeLogging {
       .map(transformer => transformer.transform(_, ratePlanItem))
 
   private def logUnsupportedRatePlanId(ratePlanItem: DynamoSupporterRatePlanItem)(implicit logPrefix: LogPrefix): Option[Nothing] = {
-    logger.error(scrub"Unsupported product rate plan id: ${ratePlanItem.productRatePlanId}")
+    // this staff check is needed to tidy up the logs because we have not yet cancelled the staff in zuora
+    val staffPROD = "2c92a0f949efde7c0149f1f18162178e"
+    if (ratePlanItem.productRatePlanId != staffPROD)
+      logger.error(scrub"Unsupported product rate plan id: ${ratePlanItem.productRatePlanId}")
     None
   }
 
