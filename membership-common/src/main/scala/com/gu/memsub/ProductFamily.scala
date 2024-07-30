@@ -2,34 +2,6 @@ package com.gu.memsub
 import scalaz.syntax.std.option._
 import scalaz.syntax.std.boolean._
 
-sealed trait ProductFamily {
-  val id: String
-}
-
-object ProductFamily {
-
-  def fromId(id: String): Option[ProductFamily] = id match {
-    case Subscriptions.id => Some(Subscriptions)
-    case Membership.id => Some(Membership)
-    case Contributions.id => Some(Contributions)
-    case _ => None
-  }
-
-  type Subscriptions = Subscriptions.type
-  type Membership = Membership.type
-  type Contributions = Contributions.type
-}
-
-case object Subscriptions extends ProductFamily {
-  override val id = "digitalpack"
-}
-case object Membership extends ProductFamily {
-  override val id = "membership"
-}
-case object Contributions extends ProductFamily {
-  override val id = "contributions"
-}
-
 /** This is an enumeration of the products we have in Zuora, where products contain multiple rate plans
   *
   * We need this in our model of a plan as paper delivery / paper voucher plans have exactly the same structure but are nested under different zuora
@@ -44,6 +16,10 @@ object Product {
 
   sealed trait Paper extends ContentSubscription
   sealed trait Weekly extends Paper
+
+  case object UnknownProduct extends Product {
+    val name = "UNKNOWN_PRODUCT"
+  }
 
   case object Membership extends Product {
     val name = "membership"
@@ -90,6 +66,9 @@ object Product {
   case object Contribution extends Product {
     val name = "contribution"
   }
+  case object Discounts extends Product {
+    val name = "discounts"
+  }
 
   def fromId(id: String): Option[Product] = id match {
     case Digipack.name => Some(Digipack)
@@ -125,15 +104,15 @@ object Product {
   type Contribution = Contribution.type
 }
 
-sealed trait Benefit {
+// Benefit is the catalog charge level ProductType__c
+sealed trait ProductRatePlanChargeProductType {
   val id: String
-  val isPhysical: Boolean // i.e. needs delivery address
-  override def toString = s"$id (isPhysical? = $isPhysical)"
+  override def toString = s"benefit $id"
 }
 
-object Benefit {
+object ProductRatePlanChargeProductType {
 
-  def fromId(id: String): Option[Benefit] =
+  def fromId(id: String): Option[ProductRatePlanChargeProductType] =
     PaperDay.fromId(id) orElse
       PaidMemberTier.fromId(id) orElse
       (id == SupporterPlus.id).option(SupporterPlus) orElse
@@ -143,12 +122,9 @@ object Benefit {
       (id == Weekly.id).option(Weekly) orElse
       (id == TierThree.id).option(TierThree)
 
-  sealed trait MemberTier extends Benefit
-  sealed trait PaidMemberTier extends MemberTier {
-    override val isPhysical: Boolean = true
-  }
-  sealed trait PaperDay extends Benefit {
-    override val isPhysical: Boolean = true
+  sealed trait MemberTier extends ProductRatePlanChargeProductType
+  sealed trait PaidMemberTier extends MemberTier
+  sealed trait PaperDay extends ProductRatePlanChargeProductType {
     val dayOfTheWeekIndex: Int
   }
 
@@ -174,9 +150,8 @@ object Benefit {
     }
   }
 
-  object Contributor extends Benefit {
+  object Contributor extends ProductRatePlanChargeProductType {
     override val id = "Contributor"
-    override val isPhysical: Boolean = false
   }
 
   object Supporter extends PaidMemberTier {
@@ -192,29 +167,24 @@ object Benefit {
   }
 
   // This is the new non-membership version of a patron
-  object GuardianPatron extends Benefit {
+  object GuardianPatron extends ProductRatePlanChargeProductType {
     override val id = "Guardian Patron"
-    override val isPhysical = false // not sure if this should actually be true
   }
 
-  object Digipack extends Benefit {
+  object Digipack extends ProductRatePlanChargeProductType {
     override val id = "Digital Pack"
-    override val isPhysical: Boolean = false
   }
 
-  object SupporterPlus extends Benefit {
+  object SupporterPlus extends ProductRatePlanChargeProductType {
     override val id = "Supporter Plus"
-    override val isPhysical: Boolean = false
   }
 
-  object Weekly extends Benefit {
+  object Weekly extends ProductRatePlanChargeProductType {
     override val id = "Guardian Weekly"
-    override val isPhysical: Boolean = true
   }
 
-  object TierThree extends Benefit {
+  object TierThree extends ProductRatePlanChargeProductType {
     override val id = "Tier Three"
-    override val isPhysical: Boolean = true
   }
 
   object MondayPaper extends PaperDay {
@@ -252,9 +222,8 @@ object Benefit {
     override val dayOfTheWeekIndex = 7
   }
 
-  object Adjustment extends Benefit {
+  object Adjustment extends ProductRatePlanChargeProductType {
     override val id = "Adjustment"
-    override val isPhysical: Boolean = false
   }
 
 }

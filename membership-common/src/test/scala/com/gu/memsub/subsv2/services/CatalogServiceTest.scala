@@ -1,8 +1,6 @@
 package com.gu.memsub.subsv2.services
 import com.gu.config.SubsV2ProductIds
-import com.gu.memsub.Status
 import com.gu.memsub.Subscription.ProductRatePlanId
-import com.gu.memsub.subsv2.{ZMonth, ZYear}
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.zuora.ZuoraRestConfig
@@ -21,14 +19,17 @@ class CatalogServiceTest extends Specification {
 
     "Read a catalog in CODE with the config product IDs" in {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
-      val ids = SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
-      val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")))
-      val supporterPlus = cats(ProductRatePlanId("8ad08e1a8586721801858805663f6fab"))
-      val supporterPlusMonth = cats(ProductRatePlanId("8ad08cbd8586721c01858804e3275376"))
-      supporterPlus.charges.head.billingPeriod must beEqualTo(Some(ZYear))
-      supporterPlusMonth.charges.head.billingPeriod must beEqualTo(Some(ZMonth))
+      val ids = SubsV2ProductIds.load(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
+      val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), ids)
+      val supporterPlus = cats.productRatePlans(ProductRatePlanId("8ad08e1a8586721801858805663f6fab"))
+      val supporterPlusMonth = cats.productRatePlans(ProductRatePlanId("8ad08cbd8586721c01858804e3275376"))
+      supporterPlus.productType.productTypeString must beEqualTo("Supporter Plus")
+      supporterPlus.name must beEqualTo("Supporter Plus V2 - Annual")
+      supporterPlusMonth.productType.productTypeString must beEqualTo("Supporter Plus")
+      supporterPlusMonth.name must beEqualTo("Supporter Plus V2 - Monthly")
 
-      val tierThree = cats.collect { case (_, plan) if plan.productId == ids.tierThree && plan.status == Status.Current => plan }.toList
+      val tierThreeProductId = ids.find(_._2 == com.gu.memsub.Product.TierThree).get._1 // TODO might need to do this better
+      val tierThree = cats.productRatePlans.collect { case (_, plan) if plan.productId == tierThreeProductId => plan }.toList
       tierThree.size must beEqualTo(4)
     }
   }

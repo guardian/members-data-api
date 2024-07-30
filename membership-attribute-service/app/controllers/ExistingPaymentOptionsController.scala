@@ -7,10 +7,8 @@ import com.gu.i18n.Currency
 import com.gu.identity.SignedInRecently
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub._
-import com.gu.memsub.subsv2.reads.ChargeListReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.Subscription
 import com.gu.memsub.subsv2.services.SubscriptionService
-import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import components.TouchpointComponents
@@ -110,7 +108,7 @@ class ExistingPaymentOptionsController(
           }
 
         logger.info(s"Attempting to retrieve existing payment options for identity user: ${maybeUserId.mkString}")
-        (for {
+        val futureEitherListExistingPaymentOption = (for {
           groupedSubsList <- ListTEither.fromEitherT(
             allSubscriptionsSince(eligibilityDate, maybeUserId, tp.contactRepository, tp.subscriptionService).map(_.toList),
           )
@@ -129,14 +127,20 @@ class ExistingPaymentOptionsController(
           if paymentMethodStillValid(paymentMethodOption) &&
             paymentMethodHasNoFailures(paymentMethodOption) &&
             paymentMethodIsActive(paymentMethodOption)
-        } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map(_.toEither).map {
-          case Right(existingPaymentOptions) =>
-            logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
-            Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson)))
-          case Left(message) =>
-            logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
-            InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
-        }
+        } yield ExistingPaymentOption(isSignedInRecently, objectAccount, paymentMethodOption, subscriptions)).run.run.map(_.toEither)
+
+        for {
+          catalog <- tp.futureCatalog
+          result <- futureEitherListExistingPaymentOption.map {
+            case Right(existingPaymentOptions) =>
+              logger.info(s"Successfully retrieved eligible existing payment options for identity user: ${maybeUserId.mkString}")
+              Ok(Json.toJson(consolidatePaymentMethod(existingPaymentOptions.toList).map(_.toJson(catalog))))
+            case Left(message) =>
+              logger.warn(s"Unable to retrieve eligible existing payment options for identity user ${maybeUserId.mkString} due to $message")
+              InternalServerError("Failed to retrieve eligible existing payment options due to an internal error")
+          }
+        } yield result
+
       }
     }
 }

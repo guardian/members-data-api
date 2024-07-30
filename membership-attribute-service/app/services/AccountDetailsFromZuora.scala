@@ -2,7 +2,7 @@ package services
 
 import com.gu.memsub.Product
 import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.Subscription
+import com.gu.memsub.subsv2.{Catalog, Subscription}
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.Contact
@@ -31,6 +31,7 @@ class AccountDetailsFromZuora(
     subscriptionService: SubscriptionService[Future],
     chooseStripe: ChooseStripe,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
+    futureCatalog: Future[Catalog],
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
@@ -44,12 +45,13 @@ class AccountDetailsFromZuora(
       logPrefix: LogPrefix,
   ): ListT[SimpleEitherT, AccountDetails] = {
     for {
+      catalog <- ListTEither.singleRightT(futureCatalog)
       contactAndSubscription <- allCurrentSubscriptions(userId, filter)
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
       country = accountSummary.billToContact.country
       stripePublicKey = chooseStripe.publicKeyForCountry(country)
-      alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod))
+      alertText <- ListTEither.singleRightT(alertText(accountSummary, contactAndSubscription.subscription, getPaymentMethod, catalog))
       isAutoRenew = contactAndSubscription.subscription.autoRenew
     } yield {
       AccountDetails(
@@ -84,6 +86,7 @@ class AccountDetailsFromZuora(
   private def applyFilter(
       filter: OptionalSubscriptionsFilter,
       contactAndSubscriptions: List[ContactAndSubscription],
+      catalog: Catalog,
   ): List[ContactAndSubscription] = {
     filter match {
       case FilterBySubName(subscriptionName) =>
@@ -91,7 +94,7 @@ class AccountDetailsFromZuora(
       case FilterByProductType(productType) =>
         contactAndSubscriptions.filter(contactAndSubscription =>
           productIsInstanceOfProductType(
-            contactAndSubscription.subscription.plan.product,
+            contactAndSubscription.subscription.plan(catalog).product(catalog),
             productType,
           ),
         )
@@ -106,7 +109,8 @@ class AccountDetailsFromZuora(
     for {
       nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
-      filtered = applyFilter(filter, contactAndSubscriptions)
+      catalog <- SimpleEitherT.rightT(futureCatalog)
+      filtered = applyFilter(filter, contactAndSubscriptions, catalog)
     } yield filtered
   }
 
@@ -130,7 +134,7 @@ class AccountDetailsFromZuora(
           .getPaymentDetails(contactAndSubscription)
           .map(Right(_))
           .recover { case x =>
-            Left(s"error retrieving payment details for subscription: freeOrPaidSub.name. Reason: $x")
+            Left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.name}. Reason: $x")
           }
 
       val accountSummaryFuture =

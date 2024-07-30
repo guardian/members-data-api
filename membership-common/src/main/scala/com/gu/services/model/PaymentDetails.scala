@@ -1,9 +1,10 @@
 package com.gu.services.model
-import com.gu.memsub.subsv2.{Subscription, RatePlan}
-import com.gu.memsub.{BillingPeriod, PaymentMethod, Price}
+import com.gu.memsub.subsv2.{Catalog, Subscription}
+import com.gu.memsub.{PaymentMethod, Price}
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import org.joda.time.{DateTime, Days, LocalDate}
-import com.github.nscala_time.time.Imports._
 
 import scala.language.implicitConversions
 
@@ -23,7 +24,7 @@ case class PaymentDetails(
     plan: PersonalPlan,
 )
 
-object PaymentDetails {
+object PaymentDetails extends SafeLogging {
   case class Payment(price: Price, date: LocalDate)
   implicit def dateToDateTime(date: LocalDate): DateTime = date.toDateTimeAtStartOfDay()
 
@@ -33,16 +34,18 @@ object PaymentDetails {
       nextPayment: Option[Payment],
       nextInvoiceDate: Option[LocalDate],
       lastPaymentDate: Option[LocalDate],
-  ): PaymentDetails = {
+      catalog: Catalog,
+  )(implicit logPrefix: LogPrefix): PaymentDetails = {
 
     val firstPaymentDate = sub.firstPaymentDate
     val timeUntilPaying = Days.daysBetween(new LocalDate(DateTime.now()), new LocalDate(firstPaymentDate)).getDays
     import scala.math.BigDecimal.RoundingMode._
 
+    val plan = sub.plan(catalog)
     PaymentDetails(
       pendingCancellation = sub.isCancelled,
       startDate = sub.startDate,
-      chargedThroughDate = sub.plan.chargedThrough,
+      chargedThroughDate = plan.chargedThroughDate,
       customerAcceptanceDate = sub.acceptanceDate,
       nextPaymentPrice = nextPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue),
       lastPaymentDate = lastPaymentDate,
@@ -50,7 +53,11 @@ object PaymentDetails {
       nextInvoiceDate = nextInvoiceDate,
       termEndDate = sub.termEndDate,
       paymentMethod = paymentMethod,
-      plan = PersonalPlan.paid(sub),
+      plan = PersonalPlan(
+        name = plan.productName,
+        price = plan.chargesPrice.prices.head,
+        interval = plan.billingPeriod.leftMap(e => logger.warn("unknown billing period: " + e)).map(_.noun).getOrElse("unknown_billing_period"),
+      ),
       subscriberId = sub.name.get,
       remainingTrialLength = timeUntilPaying,
     )
@@ -58,12 +65,4 @@ object PaymentDetails {
 
   case class PersonalPlan(name: String, price: Price, interval: String)
 
-  object PersonalPlan {
-    def paid(subscription: Subscription): PersonalPlan = PersonalPlan(
-      name = subscription.plan.productName,
-      price = subscription.plan.charges.price.prices.head,
-      interval = subscription.plan.charges.billingPeriod.noun,
-    )
-
-  }
 }

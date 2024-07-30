@@ -3,8 +3,8 @@ package services.zuora.payment
 import com.gu.memsub.BillingSchedule.Bill
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.LogImplicit._
-import com.gu.memsub.subsv2.Subscription
-import com.gu.memsub.{BillingSchedule, Subscription => _, _}
+import com.gu.memsub.subsv2.{Catalog, Subscription}
+import com.gu.memsub.{Subscription => _, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
@@ -25,8 +25,9 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
   def paymentDetails(
       sub: Subscription,
       defaultMandateIdIfApplicable: Option[String] = None,
+      catalog: Catalog,
   )(implicit logPrefix: LogPrefix): Future[PaymentDetails] = {
-    val currency = sub.plan.charges.currencies.head
+    val currency = sub.plan(catalog).chargesPrice.currencies.head
     // I am not convinced this function is very safe, hence the option
     val eventualMaybeLastPaymentDate = zuoraService
       .getPaymentSummary(sub.name, currency)
@@ -44,7 +45,7 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
     } yield {
       val maybePayment = bills.find(_.amount > 0).map(bill => Payment(Price(bill.amount, currency), bill.date))
       val maybeFirstInvoiceDate = bills.headOption.map(_.date)
-      PaymentDetails.fromSubAndPaymentData(sub, maybePaymentMethod, maybePayment, maybeFirstInvoiceDate, lpd)
+      PaymentDetails.fromSubAndPaymentData(sub, maybePaymentMethod, maybePayment, maybeFirstInvoiceDate, lpd, catalog)
     }
   }
 

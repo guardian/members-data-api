@@ -2,13 +2,12 @@ package testdata
 
 import com.github.nscala_time.time.Implicits._
 import com.gu.i18n.Currency.GBP
-import com.gu.memsub.Benefit._
-import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, _}
+import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.ReaderType.Gift
 import com.gu.memsub.subsv2._
+import com.gu.memsub.subsv2.services.TestCatalog
 import com.gu.memsub.{Subscription => _, _}
 import org.joda.time.LocalDate
-
 import scalaz.NonEmptyList
 
 trait SubscriptionTestData {
@@ -18,59 +17,68 @@ trait SubscriptionTestData {
   def supporterPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
       RatePlanId("idSupporter"),
-      ProductRatePlanId("prpi"),
-      "Supporter",
-      "desc",
+      TestCatalog.supporterPrpId,
       "Supporter",
       None,
-      "Membership",
-      Product.Membership,
       List.empty,
-      RatePlanCharge(
-        Supporter,
-        BillingPeriod.Year,
-        PricingSummary(Map(GBP -> Price(49.0f, GBP))),
-        ProductRatePlanChargeId("bar"),
-        SubscriptionRatePlanChargeId("nar"),
-      ),
       None,
+      NonEmptyList(
+        RatePlanCharge(
+          SubscriptionRatePlanChargeId("nar"),
+          ProductRatePlanChargeId("bar"),
+          PricingSummary(Map(GBP -> Price(49.0f, GBP))),
+          Some(ZYear),
+          None,
+          SubscriptionEnd,
+          None,
+          None,
+        ),
+      ),
       startDate,
       endDate,
     )
   def digipackPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
       RatePlanId("idDigipack"),
-      ProductRatePlanId("prpi"),
-      "Digipack",
-      "desc",
+      TestCatalog.digipackPrpId,
       "Digital Pack",
       None,
-      "Digital Pack",
-      Product.Digipack,
       List.empty,
-      RatePlanCharge(
-        Digipack,
-        BillingPeriod.Year,
-        PricingSummary(Map(GBP -> Price(119.90f, GBP))),
-        ProductRatePlanChargeId("baz"),
-        SubscriptionRatePlanChargeId("naz"),
-      ),
       None,
+      NonEmptyList(
+        RatePlanCharge(
+          SubscriptionRatePlanChargeId("naz"),
+          ProductRatePlanChargeId("baz"),
+          PricingSummary(Map(GBP -> Price(119.90f, GBP))),
+          Some(ZYear),
+          None,
+          SubscriptionEnd,
+          None,
+          None,
+        ),
+      ),
       startDate,
       endDate,
     )
   def paperPlan(startDate: LocalDate, endDate: LocalDate): RatePlan = RatePlan(
     RatePlanId("idPaperPlan"),
-    ProductRatePlanId("prpi"),
-    "Sunday",
-    "desc",
+    TestCatalog.homeDeliveryPrpId,
     "Sunday",
     None,
-    "Newspaper - Home Delivery",
-    Product.Delivery,
     List.empty,
-    PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, None),
     None,
+    NonEmptyList(
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("sunpaper_rpcid"),
+        ProductRatePlanChargeId("sunPaper_prpcid"),
+        PricingSummary(Map(GBP -> Price(5.07f, GBP))),
+        Some(ZQuarter),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+    ),
     startDate,
     endDate,
   )
@@ -78,58 +86,77 @@ trait SubscriptionTestData {
     RatePlanId("idPaperPlusPlan"),
     ProductRatePlanId("prpi"),
     "Sunday+",
-    "desc",
-    "Sunday+",
     None,
-    "Newspaper - Home Delivery",
-    Product.Delivery,
     List.empty,
-    PaperCharges(Seq((SundayPaper, PricingSummary(Map(GBP -> Price(5.07f, GBP))))).toMap, Some(PricingSummary(Map(GBP -> Price(119.90f, GBP))))),
     None,
+    NonEmptyList(
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("digi_rpcid"),
+        ProductRatePlanChargeId("digi_prpcid"),
+        PricingSummary(Map(GBP -> Price(5.07f, GBP))),
+        Some(ZQuarter),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+      RatePlanCharge(
+        SubscriptionRatePlanChargeId("sunpaper_rpcid"),
+        ProductRatePlanChargeId("sunPaper_prpcid"),
+        PricingSummary(Map(GBP -> Price(119.90f, GBP))),
+        Some(ZQuarter),
+        None,
+        SubscriptionEnd,
+        None,
+        None,
+      ),
+    ),
     startDate,
     endDate,
   )
   def contributorPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
       RatePlanId("idContributor"),
-      ProductRatePlanId("prpi"),
-      "Monthly Contribution",
-      "desc",
+      TestCatalog.contributorPrpId,
       "Monthly Contribution",
       None,
-      "Contribution",
-      Product.Contribution,
       List.empty,
-      RatePlanCharge(
-        Contributor,
-        BillingPeriod.Month,
-        PricingSummary(Map(GBP -> Price(5.0f, GBP))),
-        ProductRatePlanChargeId("bar"),
-        SubscriptionRatePlanChargeId("nar"),
-      ),
       None,
+      NonEmptyList(
+        RatePlanCharge(
+          SubscriptionRatePlanChargeId("nar"),
+          ProductRatePlanChargeId("bar"),
+          PricingSummary(Map(GBP -> Price(5.0f, GBP))),
+          Some(ZMonth),
+          None,
+          SubscriptionEnd,
+          None,
+          None,
+        ),
+      ),
       startDate,
       endDate,
     )
   def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
       RatePlanId("idGuardianWeeklyPlan"),
-      ProductRatePlanId("prpi"),
-      "Guardian Weekly",
-      "desc",
+      TestCatalog.gw,
       "Guardian Weekly",
       None,
-      "Guardian Weekly",
-      Product.WeeklyDomestic,
       List.empty,
-      RatePlanCharge(
-        Weekly,
-        BillingPeriod.Quarter,
-        PricingSummary(Map(GBP -> Price(37.50f, GBP))),
-        ProductRatePlanChargeId("bar"),
-        SubscriptionRatePlanChargeId("nar"),
-      ),
       None,
+      NonEmptyList(
+        RatePlanCharge(
+          SubscriptionRatePlanChargeId("nar"),
+          ProductRatePlanChargeId("bar"),
+          PricingSummary(Map(GBP -> Price(37.50f, GBP))),
+          Some(ZQuarter),
+          None,
+          SubscriptionEnd,
+          None,
+          None,
+        ),
+      ),
       startDate,
       endDate,
     )
@@ -137,22 +164,23 @@ trait SubscriptionTestData {
   def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
       RatePlanId("idSupporterPlusPlan"),
-      ProductRatePlanId("prpi"),
-      "Supporter Plus",
-      "desc",
+      TestCatalog.supporterPlusPrpId,
       "Supporter Plus",
       None,
-      "Supporter Plus",
-      Product.SupporterPlus,
       List.empty,
-      RatePlanCharge(
-        Benefit.SupporterPlus,
-        BillingPeriod.Month,
-        PricingSummary(Map(GBP -> Price(10.0f, GBP))),
-        ProductRatePlanChargeId("bar"),
-        SubscriptionRatePlanChargeId("nar"),
-      ),
       None,
+      NonEmptyList(
+        RatePlanCharge(
+          SubscriptionRatePlanChargeId("nar"),
+          ProductRatePlanChargeId("bar"),
+          PricingSummary(Map(GBP -> Price(10.0f, GBP))),
+          Some(ZMonth),
+          None,
+          SubscriptionEnd,
+          None,
+          None,
+        ),
+      ),
       startDate,
       endDate,
     )
@@ -169,7 +197,7 @@ trait SubscriptionTestData {
       casActivationDate = None,
       promoCode = None,
       isCancelled = isCancelled,
-      plans = CovariantNonEmptyList(plans.head, plans.tail.toList),
+      ratePlans = plans.list.toList,
       readerType = ReaderType.Direct,
       gifteeIdentityId = None,
       autoRenew = true,
@@ -187,4 +215,6 @@ trait SubscriptionTestData {
   val expiredMembership = toSubscription(false)(NonEmptyList(supporterPlan(referenceDate - 2.year, referenceDate - 1.year)))
   val contributor = toSubscription(false)(NonEmptyList(contributorPlan(referenceDate, referenceDate + 1.month)))
   val supporterPlus = toSubscription(false)(NonEmptyList(supporterPlusPlan(referenceDate, referenceDate + 1.month)))
+
+  val catalog = TestCatalog.catalog
 }

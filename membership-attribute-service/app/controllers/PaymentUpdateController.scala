@@ -2,7 +2,7 @@ package controllers
 
 import actions.{CommonActions, Return401IfNotSignedInRecently}
 import com.gu.memsub
-import com.gu.memsub.subsv2.RatePlan
+import com.gu.memsub.subsv2.ProductType
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, GoCardless, PaymentMethod}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
@@ -67,7 +67,9 @@ class PaymentUpdateController(
           updateResult <- services
             .setPaymentCard(stripePublicKey)
             .setPaymentCard(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
-          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card, subscription.plan)
+          catalog <- SimpleEitherT.rightT(services.futureCatalog)
+          productType = subscription.plan(catalog).productType(catalog)
+          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card, productType)
         } yield updateResult match {
           case success: CardUpdateSuccess => {
             logger.info(s"Successfully updated card for identity user: $user")
@@ -90,9 +92,9 @@ class PaymentUpdateController(
       emailAddress: String,
       contact: Contact,
       paymentMethod: PaymentType,
-      plan: RatePlan,
+      productType: ProductType,
   )(implicit logPrefix: LogPrefix): SimpleEitherT[Unit] =
-    SimpleEitherT.rightT(sendEmail.send(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, plan)))
+    SimpleEitherT.rightT(sendEmail.send(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, productType)))
 
   private def checkDirectDebitUpdateResult(
       userId: String,
@@ -185,7 +187,9 @@ class PaymentUpdateController(
           freshDefaultPaymentMethodOption <- SimpleEitherT(
             annotateFailableFuture(services.paymentService.getPaymentMethod(freshAccount.defaultPaymentMethodId), "get fresh default payment method"),
           )
-          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit, subscription.plan)
+          catalog <- SimpleEitherT.rightT(services.futureCatalog)
+          productType = subscription.plan(catalog).productType(catalog)
+          _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit, productType)
         } yield checkDirectDebitUpdateResult(userId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run
           .map(_.toEither)
           .map {

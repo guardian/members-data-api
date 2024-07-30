@@ -1,22 +1,19 @@
 package services
 
-import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
 import _root_.services.stripe.BasicStripeService
 import com.github.nscala_time.time.Imports.DateTimeFormat
-import com.gu.memsub.BillingPeriod.{Month, RecurringPeriod, Year}
-import com.gu.memsub.Product.GuardianPatron
 import com.gu.memsub.Subscription._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.ReaderType.Direct
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlanCharge, Subscription, RatePlan}
+import com.gu.memsub.subsv2.{Subscription, _}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
 import monitoring.CreateMetrics
-import scalaz.EitherT
 import scalaz.std.scalaFuture._
+import scalaz.{EitherT, NonEmptyList}
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -48,7 +45,7 @@ class GuardianPatronService(
   }
 
   private def isGuardianPatronProduct(item: DynamoSupporterRatePlanItem) =
-    item.productRatePlanId == guardianPatronProductRatePlanId
+    item.productRatePlanId == Catalog.guardianPatronProductRatePlanId.get
 
   private def fetchAccountDetailsFromStripe(subscriptionId: String)(implicit logPrefix: LogPrefix): Future[AccountDetails] =
     metrics.measureDuration("fetchAccountDetailsFromStripe") {
@@ -58,9 +55,9 @@ class GuardianPatronService(
       } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, stripePatronsPublicKey)
     }
 
-  private def billingPeriodFromInterval(interval: String): RecurringPeriod = interval match {
-    case "year" => Year
-    case _ => Month
+  private def billingPeriodFromInterval(interval: String): ZBillingPeriod = interval match {
+    case "year" => ZYear
+    case _ => ZMonth
   }
 
   private def accountDetailsFromStripeSubscription(
@@ -85,29 +82,29 @@ class GuardianPatronService(
         casActivationDate = None,
         promoCode = None,
         isCancelled = subscription.isCancelled,
-        plans = CovariantNonEmptyList(
+        ratePlans = List(
           RatePlan(
-            id = RatePlanId(guardianPatronProductRatePlanId),
-            productRatePlanId = ProductRatePlanId(guardianPatronProductRatePlanId),
-            name = subscription.plan.id,
-            description = "Guardian Patron",
+            id = RatePlanId("guardian_patron_unused"), // only used for contribution amount change
+            productRatePlanId = Catalog.guardianPatronProductRatePlanId,
             productName = "Guardian Patron",
             lastChangeType = None,
-            productType = "Membership",
-            product = GuardianPatron,
             features = Nil,
-            charges = RatePlanCharge(
-              benefit = Benefit.GuardianPatron,
-              billingPeriod = billingPeriodFromInterval(subscription.plan.interval),
-              price = PricingSummary(Map(subscription.plan.currency -> price)),
-              chargeId = ProductRatePlanChargeId(""),
-              subRatePlanChargeId = SubscriptionRatePlanChargeId(""),
+            ratePlanCharges = NonEmptyList(
+              RatePlanCharge(
+                id = SubscriptionRatePlanChargeId(""), // only used for update contribution amount
+                productRatePlanChargeId = ProductRatePlanChargeId(""), // benefit is only used for paper days (was Benefit.GuardianPatron)
+                pricing = PricingSummary(Map(subscription.plan.currency -> price)),
+                zBillingPeriod = Some(billingPeriodFromInterval(subscription.plan.interval)),
+                specificBillingPeriod = None, // only used for fixed period e.g. GW 6 for 6
+                endDateCondition = SubscriptionEnd,
+                upToPeriods = None, // only used for fixed periods
+                upToPeriodsType = None, // only used for fixed periods
+              ),
             ),
-            chargedThrough = Some(subscription.currentPeriodEnd),
+            chargedThroughDate = Some(subscription.currentPeriodEnd),
             start = subscription.currentPeriodStart,
             end = subscription.currentPeriodEnd,
           ),
-          tail = Nil,
         ),
         readerType = Direct,
         gifteeIdentityId = None,

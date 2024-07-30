@@ -1,25 +1,11 @@
 package com.gu.memsub.subsv2
-import com.gu.i18n.Currency
-import Currency.GBP
-import com.gu.memsub.Subscription.{
-  ProductId,
-  ProductRatePlanChargeId,
-  ProductRatePlanId,
-  RatePlanId,
-  SubscriptionRatePlanChargeId,
-  Feature => SubsFeature,
-}
-
-import scalaz.NonEmptyList
+import com.gu.memsub.BillingPeriod._
+import com.gu.memsub.Subscription._
 import com.gu.memsub._
 import com.gu.zuora.rest.Feature
-
-import scalaz.syntax.semigroup._
-import PricingSummary._
 import org.joda.time.LocalDate
 import play.api.libs.json._
-
-import Benefit._
+import scalaz.{NonEmptyList, Validation}
 
 trait ZuoraEnum {
   def id: String
@@ -53,7 +39,7 @@ case object OneTime extends EndDateCondition {
 }
 
 object EndDateCondition {
-  val values = Seq(SubscriptionEnd, FixedPeriod, SpecificEndDate, OneTime)
+  val values: Seq[EndDateCondition] = Seq(SubscriptionEnd, FixedPeriod, SpecificEndDate, OneTime)
   implicit val reads: Reads[EndDateCondition] = ZuoraEnum.getReads(values, "invalid end date condition value")
 }
 
@@ -95,7 +81,7 @@ case object ZThreeYears extends ZBillingPeriod {
 }
 
 object ZBillingPeriod {
-  val values = Seq(ZYear, ZTwoYears, ZThreeYears, ZMonth, ZQuarter, ZSemiAnnual, ZSpecificMonths, ZWeek, ZSpecificWeeks)
+  val values: Seq[ZBillingPeriod] = Seq(ZYear, ZTwoYears, ZThreeYears, ZMonth, ZQuarter, ZSemiAnnual, ZSpecificMonths, ZWeek, ZSpecificWeeks)
   implicit val reads: Reads[ZBillingPeriod] = ZuoraEnum.getReads(values, "invalid billing period value")
 }
 
@@ -122,178 +108,126 @@ case object Years extends UpToPeriodsType {
 }
 
 object UpToPeriodsType {
-  val values = Seq(BillingPeriods, Days, Weeks, Months, Years)
+  val values: Seq[UpToPeriodsType] = Seq(BillingPeriods, Days, Weeks, Months, Years)
   implicit val reads: Reads[UpToPeriodsType] = ZuoraEnum.getReads(values, "invalid up to periods type value")
 }
 
 /** Low level model of a Zuora rate plan charge
   */
-case class ZuoraCharge(
+case class RatePlanCharge(
     id: SubscriptionRatePlanChargeId,
     productRatePlanChargeId: ProductRatePlanChargeId,
     pricing: PricingSummary,
-    billingPeriod: Option[ZBillingPeriod],
+    zBillingPeriod: Option[ZBillingPeriod],
     specificBillingPeriod: Option[Int] = None,
-    model: String,
-    name: String,
-    `type`: String,
     endDateCondition: EndDateCondition,
     upToPeriods: Option[Int],
     upToPeriodsType: Option[UpToPeriodsType],
-)
+) {
 
-object ZuoraCharge {
-  def apply(
-      productRatePlanChargeId: ProductRatePlanChargeId,
-      pricing: PricingSummary,
-      billingPeriod: Option[ZBillingPeriod],
-      specificBillingPeriod: Option[Int],
-      model: String,
-      name: String,
-      `type`: String,
-      endDateCondition: EndDateCondition,
-      upToPeriods: Option[Int],
-      upToPeriodsType: Option[UpToPeriodsType],
-  ): ZuoraCharge = ZuoraCharge(
-    SubscriptionRatePlanChargeId(""),
-    productRatePlanChargeId,
-    pricing,
-    billingPeriod,
-    specificBillingPeriod,
-    model,
-    name,
-    `type`,
-    endDateCondition,
-    upToPeriods,
-    upToPeriodsType,
-  )
+  def billingPeriod: Validation[String, BillingPeriod] =
+    (endDateCondition, zBillingPeriod) match {
+      case (FixedPeriod, Some(ZSpecificWeeks))
+          if specificBillingPeriod.exists(numberOfWeeks => numberOfWeeks == 6 || numberOfWeeks == 7) &&
+            upToPeriods.contains(1) &&
+            upToPeriodsType.contains(BillingPeriods) =>
+        Validation.success[String, BillingPeriod](SixWeeks)
+      case (FixedPeriod, Some(zPeriod))
+          if upToPeriods.contains(1) &&
+            upToPeriodsType.contains(BillingPeriods) =>
+        zPeriod match {
+          case ZYear => Validation.success[String, BillingPeriod](OneYear)
+          case ZQuarter => Validation.success[String, BillingPeriod](ThreeMonths)
+          case ZTwoYears => Validation.success[String, BillingPeriod](TwoYears)
+          case ZThreeYears => Validation.success[String, BillingPeriod](ThreeYears)
+          case ZSemiAnnual => Validation.success[String, BillingPeriod](SixMonths)
+          case _ => Validation.f[BillingPeriod](s"zuora fixed period was $zPeriod")
+        }
+      case (SubscriptionEnd, Some(zPeriod)) =>
+        zPeriod match {
+          case ZMonth => Validation.success[String, BillingPeriod](Month)
+          case ZQuarter => Validation.success[String, BillingPeriod](Quarter)
+          case ZYear => Validation.success[String, BillingPeriod](Year)
+          case ZSemiAnnual => Validation.success[String, BillingPeriod](SixMonthsRecurring)
+          case _ => Validation.f[BillingPeriod](s"zuora recurring period was $zPeriod")
+        }
+      case (OneTime, None) => Validation.success[String, BillingPeriod](OneTimeChargeBillingPeriod) // This represents a one time rate plan charge
+      case _ =>
+        Validation.f[BillingPeriod](
+          s"period =${zBillingPeriod} specificBillingPeriod=${specificBillingPeriod} uptoPeriodsType=${upToPeriodsType}, uptoPeriods=${upToPeriods}",
+        )
+    }
+
 }
 
 /** Low level model of a rate plan, as it appears on a subscription in Zuora
   */
-case class SubscriptionZuoraPlan(
+case class RatePlan(
     id: RatePlanId,
     productRatePlanId: ProductRatePlanId,
     productName: String,
     lastChangeType: Option[String],
     features: List[Feature],
     chargedThroughDate: Option[LocalDate],
-    charges: NonEmptyList[ZuoraCharge],
+    ratePlanCharges: NonEmptyList[RatePlanCharge],
     start: LocalDate,
     end: LocalDate,
 ) {
-  def price = charges.list.toList.flatMap { charge =>
-    charge.pricing.prices.map(_.amount)
-  }.sum
+
+  def totalChargesMinorUnit: Int =
+    ratePlanCharges.map(c => (c.pricing.prices.head.amount * 100).toInt).list.toList.sum
+
+  def chargesPrice: PricingSummary =
+    ratePlanCharges
+      .map(_.pricing)
+      .list
+      .toList
+      .reduce((f1, f2) =>
+        PricingSummary(
+          f1.underlying.keySet
+            .intersect(f2.underlying.keySet)
+            .map { currency =>
+              currency -> f1.underlying(currency).+(f2.underlying(currency))
+            }
+            .toMap,
+        ),
+      )
+
+  def billingPeriod: Validation[String, BillingPeriod] = {
+    val billingPeriods = ratePlanCharges.list.toList.map(c => c.billingPeriod).distinct
+    billingPeriods match {
+      case Nil => Validation.f[BillingPeriod]("No billing period found")
+      case b :: Nil => b
+      case _ => Validation.f[BillingPeriod]("Too many billing periods found")
+    }
+  }
+
+  private def productRatePlan(catalog: Catalog) = {
+    catalog.productRatePlans(productRatePlanId)
+  }
+
+  def product(catalog: Catalog): Product =
+    catalog.products.getOrElse(productRatePlan(catalog).productId, Product.UnknownProduct)
+
+  def name(catalog: Catalog): String =
+    productRatePlan(catalog).name
+
+  def productType(catalog: Catalog): ProductType =
+    productRatePlan(catalog).productType
+
 }
 
 /** Low level model of a product rate plan, as it appears in the Zuora product catalog
   */
-case class CatalogZuoraPlan(
+case class ProductRatePlan(
     id: ProductRatePlanId,
     name: String,
-    description: String,
     productId: ProductId,
-    saving: Option[String],
-    charges: List[ZuoraCharge],
-    benefits: Map[ProductRatePlanChargeId, Benefit],
-    status: Status,
-    frontendId: Option[FrontendId],
-    private val productTypeOption: Option[String],
+    productRatePlanCharges: Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType],
+    private val productTypeOption: Option[ProductType],
 ) {
-  lazy val productType = productTypeOption.getOrElse(throw new RuntimeException("Product type is undefined for plan: " + name))
+  lazy val productType: ProductType = productTypeOption.getOrElse(throw new RuntimeException("Product type is undefined for plan: " + name))
 }
 
-sealed trait FrontendId {
-  def name: String
-}
-object FrontendId {
-
-  case object OneYear extends FrontendId { val name = "OneYear" }
-  case object ThreeMonths extends FrontendId { val name = "ThreeMonths" }
-  case object Monthly extends FrontendId { val name = "Monthly" }
-  case object Quarterly extends FrontendId { val name = "Quarterly" }
-  case object Yearly extends FrontendId { val name = "Yearly" }
-  case object Introductory extends FrontendId { val name = "Introductory" }
-  case object SixWeeks extends FrontendId { val name = "SixWeeks" }
-
-  val all = List(OneYear, ThreeMonths, Monthly, Quarterly, Yearly, Introductory, SixWeeks)
-
-  def get(jsonString: String): Option[FrontendId] =
-    all.find(_.name == jsonString)
-
-}
-
-case class Catalog(
-    map: Map[ProductRatePlanId, CatalogZuoraPlan],
-)
-
-/** A higher level representation of a number of Zuora rate plan charges
-  */
-sealed trait RatePlanChargeList {
-  def benefits: NonEmptyList[Benefit]
-  def currencies: Set[Currency] = price.currencies
-  def billingPeriod: BillingPeriod
-  def price: PricingSummary
-  def subRatePlanChargeId: SubscriptionRatePlanChargeId
-}
-
-/** Same as above but we must have exactly one charge, giving us exactly one benefit This is used for supporter, partner, patron and digital pack subs
-  */
-case class RatePlanCharge[+B <: Benefit, +BP <: BillingPeriod](
-    benefit: B,
-    billingPeriod: BP,
-    price: PricingSummary,
-    chargeId: ProductRatePlanChargeId,
-    subRatePlanChargeId: SubscriptionRatePlanChargeId,
-) extends RatePlanChargeList {
-  def benefits = NonEmptyList(benefit)
-}
-
-/** Paper plans will have lots of rate plan charges, but the general structure of them is that they'll give you the paper on a bunch of days, and if
-  * you're on a plus plan you'll have a digipack
-  */
-case class PaperCharges(dayPrices: Map[PaperDay, PricingSummary], digipack: Option[PricingSummary]) extends RatePlanChargeList {
-  def benefits = NonEmptyList.fromSeq[Benefit](dayPrices.keys.head, dayPrices.keys.tail.toSeq ++ digipack.map(_ => Digipack))
-  def price: PricingSummary = (dayPrices.values.toSeq ++ digipack.toSeq).reduce(_ |+| _)
-  override def billingPeriod: BillingPeriod = BillingPeriod.Month
-  def chargedDays = dayPrices.filterNot(_._2.isFree).keySet // Non-subscribed-to papers are priced as Zero on multi-day subs
-  val subRatePlanChargeId = SubscriptionRatePlanChargeId("")
-}
-
-/** Supporter Plus V2 has two rate plan charges, one for the subscription element and one for the additional contribution.
-  */
-case class SupporterPlusCharges(billingPeriod: BillingPeriod, pricingSummaries: List[PricingSummary]) extends RatePlanChargeList {
-
-  val subRatePlanChargeId = SubscriptionRatePlanChargeId("")
-  override def price: PricingSummary = pricingSummaries.reduce(_ |+| _)
-  override def benefits: NonEmptyList[Benefit] = NonEmptyList(SupporterPlus)
-}
-
-case class RatePlan(
-    id: RatePlanId,
-    productRatePlanId: ProductRatePlanId,
-    name: String,
-    description: String,
-    productName: String,
-    lastChangeType: Option[String],
-    productType: String,
-    product: Product,
-    features: List[SubsFeature],
-    charges: RatePlanChargeList,
-    chargedThrough: Option[
-      LocalDate,
-    ], // this is None if the sub hasn't been billed yet (on a free trial) or if you have been billed it is the date at which you'll next be billed
-    start: LocalDate,
-    end: LocalDate,
-)
-
-case class ProductRatePlan[+P <: Product, +C <: RatePlanChargeList, +S <: Status](
-    id: ProductRatePlanId,
-    product: P,
-    name: String,
-    description: String,
-    saving: Option[Int],
-    charges: C,
-    s: S,
-)
+// ProductType is the catalog product level ProductType__c
+case class ProductType(productTypeString: String) extends AnyVal

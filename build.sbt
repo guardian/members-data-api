@@ -92,6 +92,6 @@ val api = Project("membership-attribute-service", file("membership-attribute-ser
     addCommandAlias("batch-load", "runMain BatchLoader"),
     addCommandAlias("play-artifact", "riffRaffNotifyTeamcity"),
   )
-  .dependsOn(`membership-common`)
+  .dependsOn(`membership-common` % "test->test;compile->compile")
 
 val root = project.in(file(".")).aggregate(api)

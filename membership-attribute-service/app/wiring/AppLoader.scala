@@ -2,8 +2,8 @@ package wiring
 
 import actions.CommonActions
 import ch.qos.logback.classic.LoggerContext
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
-import com.gu.memsub.subsv2.services.{CatalogService, SubscriptionService}
+import com.gu.memsub.subsv2.Catalog
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.monitoring.SafeLoggerImpl
 import com.gu.zuora.ZuoraSoapService
 import components.TouchpointBackends
@@ -64,7 +64,7 @@ class MyComponents(context: Context)
   lazy val contactRepositoryOverride: Option[ContactRepository] = None
   lazy val subscriptionServiceOverride: Option[SubscriptionService[Future]] = None
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
-  lazy val catalogServiceOverride: Option[Future[CatalogMap]] = None
+  lazy val catalogServiceOverride: Option[Future[Catalog]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
   lazy val chooseStripeOverride: Option[ChooseStripe] = None

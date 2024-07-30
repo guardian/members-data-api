@@ -1,19 +1,20 @@
 package models
 
 import com.gu.i18n.Currency.GBP
-import com.gu.memsub.BillingPeriod.Month
-import com.gu.memsub.Product.SupporterPlus
 import com.gu.memsub.Subscription._
 import com.gu.memsub.subsv2.ReaderType.Direct
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, RatePlan, Subscription, SupporterPlusCharges}
+import com.gu.memsub.subsv2.services.TestCatalog
+import com.gu.memsub.subsv2.services.TestCatalog.{ProductRatePlanChargeIds, catalog}
+import com.gu.memsub.subsv2.{RatePlan, RatePlanCharge, Subscription, SubscriptionEnd, ZMonth}
 import com.gu.memsub.{PaymentCard, PaymentCardDetails, Price, PricingSummary}
-import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
+import scalaz.NonEmptyList
+import utils.TestLogPrefix.testLogPrefix
 
 class ProductsResponseSpec extends Specification with SafeLogging {
 
@@ -35,24 +36,39 @@ class ProductsResponseSpec extends Specification with SafeLogging {
           casActivationDate = None,
           promoCode = None,
           isCancelled = false,
-          plans = CovariantNonEmptyList(
+          ratePlans = List(
             RatePlan(
               id = RatePlanId("8ad09be48f7af173018f7bd22db4268e"),
-              productRatePlanId = ProductRatePlanId("8ad081dd8ef57784018ef6e159224bfa"),
-              name = "Supporter Plus V2 & Guardian Weekly Domestic - Monthly",
-              description = "",
+              productRatePlanId = TestCatalog.tierThreePrpId,
               productName = "Supporter Plus",
               lastChangeType = None,
-              productType = "Supporter Plus",
-              product = SupporterPlus,
               features = List(),
-              charges =
-                SupporterPlusCharges(Month, List(PricingSummary(Map(GBP -> Price(10.0f, GBP))), PricingSummary(Map(GBP -> Price(15.0f, GBP))))),
-              chargedThrough = Some(LocalDate.parse("2024-06-15")),
+              chargedThroughDate = Some(LocalDate.parse("2024-06-15")),
+              ratePlanCharges = NonEmptyList(
+                RatePlanCharge(
+                  SubscriptionRatePlanChargeId("lklklk"),
+                  ProductRatePlanChargeIds.tierThreeDigitalId,
+                  PricingSummary(Map(GBP -> Price(10.0f, GBP))),
+                  Some(ZMonth),
+                  None,
+                  SubscriptionEnd,
+                  None,
+                  None,
+                ),
+                RatePlanCharge(
+                  SubscriptionRatePlanChargeId("sdfff"),
+                  ProductRatePlanChargeIds.tierThreeGWId,
+                  PricingSummary(Map(GBP -> Price(15.0f, GBP))),
+                  Some(ZMonth),
+                  None,
+                  SubscriptionEnd,
+                  None,
+                  None,
+                ),
+              ),
               start = LocalDate.parse("2024-05-15"),
               end = LocalDate.parse("2025-05-15"),
             ),
-            List(),
           ),
           readerType = Direct,
           gifteeIdentityId = None,
@@ -168,8 +184,9 @@ class ProductsResponseSpec extends Specification with SafeLogging {
           |  } ]
           }""".stripMargin)
       val user = UserFromToken("test@thegulocal.com", "12345", None, None, None, None, None)
-      implicit val logPrefix: LogPrefix = LogPrefix("testLogPrefix")
-      val productsResponseJson = Json.toJson(ProductsResponse.from(user, List(accountDetails)))
+      val productsResponseWrites = new ProductsResponseWrites(catalog)
+      import productsResponseWrites.writes
+      val productsResponseJson = Json.toJson(productsResponseWrites.from(user, List(accountDetails)))
       productsResponseJson mustEqual expectedResponse
     }
   }

@@ -1,5 +1,6 @@
 package models
 import com.gu.i18n.Country
+import com.gu.memsub.ProductRatePlanChargeProductType.PaperDay
 import com.gu.memsub._
 import com.gu.memsub.subsv2._
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -38,9 +39,9 @@ object AccountDetails {
 
     import accountDetails._
 
-    def toJson(implicit logPrefix: LogPrefix): JsObject = {
+    def toJson(catalog: Catalog)(implicit logPrefix: LogPrefix): JsObject = {
 
-      val product = accountDetails.subscription.plan.product
+      val product = accountDetails.subscription.plan(catalog).product(catalog)
 
       val mmaCategory = mmaCategoryFrom(product)
 
@@ -96,10 +97,25 @@ object AccountDetails {
         case _ => Json.obj()
       }
 
-      def externalisePlanName(plan: RatePlan): Option[String] = plan.product match {
-        case _: Product.Weekly => if (plan.name.contains("Six for Six")) Some("currently on '6 for 6'") else None
-        case _: Product.Paper => Some(plan.name.replace("+", " plus Digital Subscription"))
+      def externalisePlanName(plan: RatePlan): Option[String] = plan.product(catalog) match {
+        case _: Product.Weekly => if (plan.name(catalog).contains("Six for Six")) Some("currently on '6 for 6'") else None
+        case _: Product.Paper => Some(plan.name(catalog).replace("+", " plus Digital Subscription"))
         case _ => None
+      }
+
+      def maybePaperDaysOfWeek(plan: RatePlan) = {
+        val dayIndexes = for {
+          charge <- plan.ratePlanCharges.list.toList
+            .filterNot(_.pricing.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
+          catalogZuoraPlan <- catalog.productRatePlans.get(plan.productRatePlanId)
+          dayName <- catalogZuoraPlan.productRatePlanCharges
+            .get(charge.productRatePlanChargeId)
+            .collect { case benefit: PaperDay => benefit.dayOfTheWeekIndex }
+        } yield dayName
+
+        val dayNames = dayIndexes.sorted.map(DayOfWeek.of(_).getDisplayName(TextStyle.FULL, Locale.ENGLISH))
+
+        if (dayNames.nonEmpty) Json.obj("daysOfWeek" -> dayNames) else Json.obj()
       }
 
       def jsonifyPlan(plan: RatePlan) = Json.obj(
@@ -108,39 +124,23 @@ object AccountDetails {
         "end" -> plan.end,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
         "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30))),
-        "chargedThrough" -> plan.chargedThrough,
-        "price" -> plan.charges.price.prices.head.amount * 100,
-        "currency" -> plan.charges.price.prices.head.currency.glyph,
-        "currencyISO" -> plan.charges.price.prices.head.currency.iso,
-        "billingPeriod" -> plan.charges.billingPeriod.noun,
-        "features" -> plan.features.map(_.code.get).mkString(","),
-      ) ++ (plan.charges match {
-        case paperCharges: PaperCharges =>
-          Json.obj(
-            "daysOfWeek" ->
-              paperCharges.dayPrices
-                .filterNot(_._2.isFree) // note 'Echo Legacy' rate plan has all days of week but some are zero price, this filters those out
-                .keys
-                .toList
-                .map(_.dayOfTheWeekIndex)
-                .sorted
-                .map(DayOfWeek.of)
-                .map(_.getDisplayName(TextStyle.FULL, Locale.ENGLISH)),
-          )
-        case _ => Json.obj()
-      })
+        "chargedThrough" -> plan.chargedThroughDate,
+        "price" -> (plan.chargesPrice.prices.head.amount * 100).toInt,
+        "currency" -> plan.chargesPrice.prices.head.currency.glyph,
+        "currencyISO" -> plan.chargesPrice.prices.head.currency.iso,
+        "billingPeriod" -> (plan.billingPeriod
+          .leftMap(e => logger.warn("unknown billing period: " + e))
+          .map(_.noun)
+          .getOrElse("unknown_billing_period"): String),
+        "features" -> plan.features.map(_.featureCode).mkString(","),
+      ) ++ maybePaperDaysOfWeek(plan)
 
-      val sortedPlans = subscription.plans.list.sortBy(_.start.toDate)
-      val currentPlans = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
-      val futurePlans = sortedPlans.filter(plan => plan.start.isAfter(now))
-
-      val startDate: LocalDate = sortedPlans.headOption.map(_.start).getOrElse(paymentDetails.customerAcceptanceDate)
-      val endDate: LocalDate = sortedPlans.headOption.map(_.end).getOrElse(paymentDetails.termEndDate)
-
-      if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
+      val subscriptionData = new FilterPlans(subscription, catalog)
 
       val selfServiceCancellation = SelfServiceCancellation(product, billingCountry)
 
+      val start = subscriptionData.startDate.getOrElse(paymentDetails.customerAcceptanceDate)
+      val end = subscriptionData.endDate.getOrElse(paymentDetails.termEndDate)
       Json.obj(
         "mmaCategory" -> mmaCategory,
         "tier" -> paymentDetails.plan.name,
@@ -160,28 +160,28 @@ object AccountDetails {
             "contactId" -> accountDetails.contactId,
             "deliveryAddress" -> accountDetails.deliveryAddress,
             "safeToUpdatePaymentMethod" -> safeToUpdatePaymentMethod,
-            "start" -> startDate,
-            "end" -> endDate,
+            "start" -> start,
+            "end" -> end,
             "nextPaymentPrice" -> paymentDetails.nextPaymentPrice,
             "nextPaymentDate" -> paymentDetails.nextPaymentDate,
             "potentialCancellationDate" -> paymentDetails.nextInvoiceDate,
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
-            "anniversaryDate" -> anniversary(startDate),
+            "anniversaryDate" -> anniversary(start),
             "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
             "autoRenew" -> isAutoRenew,
             "plan" -> Json.obj( // TODO remove once nothing is using this key (same time as removing old deprecated endpoints)
               "name" -> paymentDetails.plan.name,
-              "price" -> paymentDetails.plan.price.amount * 100,
+              "price" -> (paymentDetails.plan.price.amount * 100).toInt,
               "currency" -> paymentDetails.plan.price.currency.glyph,
               "currencyISO" -> paymentDetails.plan.price.currency.iso,
               "billingPeriod" -> paymentDetails.plan.interval.mkString,
             ),
-            "currentPlans" -> currentPlans.map(jsonifyPlan),
-            "futurePlans" -> futurePlans.map(jsonifyPlan),
+            "currentPlans" -> subscriptionData.currentPlans.map(jsonifyPlan),
+            "futurePlans" -> subscriptionData.futurePlans.map(jsonifyPlan),
             "readerType" -> accountDetails.subscription.readerType.value,
             "accountId" -> accountDetails.accountId,
             "cancellationEffectiveDate" -> cancellationEffectiveDate,
@@ -224,14 +224,36 @@ object AccountDetails {
   }
 }
 
+class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val logPrefix: LogPrefix) extends SafeLogging {
+
+  private val sortedPlans = subscription.ratePlans
+    .filter(_.product(catalog) match {
+      case _: Product.ContentSubscription => true
+      case Product.UnknownProduct => false
+      case Product.Membership => true
+      case Product.GuardianPatron => true
+      case Product.Contribution => true
+      case Product.Discounts => false
+    })
+    .sortBy(_.start.toDate)
+  val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
+  val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.start.isAfter(now))
+
+  val startDate: Option[LocalDate] = sortedPlans.headOption.map(_.start)
+  val endDate: Option[LocalDate] = sortedPlans.headOption.map(_.end)
+
+  if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
+
+}
+
 object CancelledSubscription {
   import AccountDetails._
-  def apply(subscription: Subscription): JsObject = {
+  def apply(subscription: Subscription, catalog: Catalog): JsObject = {
     GetCurrentPlans
       .bestCancelledPlan(subscription)
       .map { plan =>
         Json.obj(
-          "mmaCategory" -> mmaCategoryFrom(plan.product),
+          "mmaCategory" -> mmaCategoryFrom(plan.product(catalog)),
           "tier" -> plan.productName,
           "subscription" -> Json.obj(
             "subscriptionId" -> subscription.name.get,

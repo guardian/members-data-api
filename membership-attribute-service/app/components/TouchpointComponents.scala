@@ -5,7 +5,7 @@ import com.gu.config
 import com.gu.identity.IdapiService
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
-import com.gu.memsub.subsv2.services.SubscriptionService.CatalogMap
+import com.gu.memsub.subsv2.Catalog
 import com.gu.memsub.subsv2.services.{CatalogService, FetchCatalog, SubscriptionService}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.{SafeLogging, ZuoraMetrics}
@@ -47,7 +47,7 @@ class TouchpointComponents(
     contactRepositoryOverride: Option[ContactRepository] = None,
     subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
-    catalogServiceOverride: Option[Future[CatalogMap]] = None,
+    catalogServiceOverride: Option[Future[Catalog]] = None,
     zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,
@@ -60,7 +60,7 @@ class TouchpointComponents(
 
   lazy val supporterProductDataTable = environmentConfig.getString("supporter-product-data.table")
 
-  lazy val productIds = config.SubsV2ProductIds(environmentConfig.getConfig("zuora.productIds"))
+  lazy val productIds = config.SubsV2ProductIds.load(environmentConfig.getConfig("zuora.productIds"))
 
   lazy val backendConfig = TouchpointBackendConfig.byEnv(stage.value, touchpointConfig)
 
@@ -122,9 +122,9 @@ class TouchpointComponents(
   }
 
   lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
-  lazy val futureCatalog: Future[CatalogMap] = catalogServiceOverride.getOrElse(
+  lazy val futureCatalog: Future[Catalog] = catalogServiceOverride.getOrElse(
     CatalogService
-      .read(FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix))
+      .read(FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix), productIds)
       .recover { case error =>
         logger.errorNoPrefix(scrub"Failed to load the product catalog from Zuora due to: $error")
         throw error
@@ -132,7 +132,7 @@ class TouchpointComponents(
   )
 
   lazy val subscriptionService: SubscriptionService[Future] = {
-    lazy val zuoraSubscriptionService = new SubscriptionService(productIds, futureCatalog, zuoraRestClient, zuoraSoapService)
+    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog, zuoraRestClient, zuoraSoapService)
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }
@@ -167,7 +167,7 @@ class TouchpointComponents(
     ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership),
   )
 
-  lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
+  lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, futureCatalog)
 
   lazy val accountDetailsFromZuora: AccountDetailsFromZuora =
     new AccountDetailsFromZuora(
@@ -177,6 +177,7 @@ class TouchpointComponents(
       subscriptionService,
       chooseStripe,
       paymentDetailsForSubscription,
+      futureCatalog,
     )
 
   def setPaymentCard(stripePublicKey: String): SetPaymentCard = {

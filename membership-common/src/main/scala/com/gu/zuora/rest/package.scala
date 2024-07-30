@@ -17,7 +17,6 @@ package object rest {
   case object Cancelled extends SubscriptionStatus
   case object Expired extends SubscriptionStatus
 
-  case class ZuoraPaymentMethod(defaultPaymentMethod: String, tokenId: String, secondTokenId: String)
   case class Feature(id: String, featureCode: String)
   case class ZuoraResponse(success: Boolean, error: Option[String] = None)
   implicit val zuoraResponseReads: Reads[ZuoraResponse] = (
