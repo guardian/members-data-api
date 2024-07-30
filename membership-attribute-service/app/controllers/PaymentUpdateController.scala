@@ -97,7 +97,6 @@ class PaymentUpdateController(
     SimpleEitherT.rightT(sendEmail.send(paymentMethodChangedEmail(emailAddress, contact, paymentMethod, productType)))
 
   private def checkDirectDebitUpdateResult(
-      userId: String,
       freshDefaultPaymentMethodOption: Option[PaymentMethod],
       bankAccountName: String,
       bankAccountNumber: String,
@@ -107,7 +106,7 @@ class PaymentUpdateController(
         if bankAccountName == dd.accountName &&
           dd.accountNumber.length > 3 && bankAccountNumber.endsWith(dd.accountNumber.substring(dd.accountNumber.length - 3)) &&
           bankSortCode == dd.sortCode =>
-      logger.info(s"Successfully updated direct debit for identity user: $userId")
+      logger.info(s"Successfully updated direct debit")
       Ok(
         Json.obj(
           "accountName" -> dd.accountName,
@@ -116,11 +115,13 @@ class PaymentUpdateController(
         ),
       )
     case Some(_) =>
-      logger.error(scrub"New payment method for user $userId, does not match the posted Direct Debit details")
+      logger.error(
+        scrub"New payment method $freshDefaultPaymentMethodOption, does not match the posted Direct Debit details $bankSortCode $bankAccountNumber $bankAccountName",
+      )
       InternalServerError("")
     case None =>
       logger.error(
-        scrub"default-payment-method-lost: Default payment method for user $userId, was set to nothing, when attempting to update Direct Debit details",
+        scrub"default-payment-method-lost: Default payment method was set to nothing, when attempting to update Direct Debit details",
       )
       InternalServerError("")
   }
@@ -143,12 +144,12 @@ class PaymentUpdateController(
         val user = request.user
         val userId = user.identityId
 
-        logger.info(s"Attempting to update direct debit for $userId")
+        logger.info(s"Attempting to update direct debit")
 
         (for {
           directDebitDetails <- SimpleEitherT.fromEither(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request"))
           (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
-          contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user $userId"))))
+          contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user for $userId"))))
           subscription <- SimpleEitherT(
             services.subscriptionService
               .current(contact)
@@ -190,11 +191,11 @@ class PaymentUpdateController(
           catalog <- SimpleEitherT.rightT(services.futureCatalog)
           productType = subscription.plan(catalog).productType(catalog)
           _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, DirectDebit, productType)
-        } yield checkDirectDebitUpdateResult(userId, freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run
+        } yield checkDirectDebitUpdateResult(freshDefaultPaymentMethodOption, bankAccountName, bankAccountNumber, bankSortCode)).run
           .map(_.toEither)
           .map {
             case Left(message) =>
-              logger.error(scrub"Failed to update direct debit for user $userId, due to $message")
+              logger.error(scrub"Failed to update direct debit due to $message")
               InternalServerError("")
             case Right(result) => result
           }
