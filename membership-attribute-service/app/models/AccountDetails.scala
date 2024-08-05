@@ -214,13 +214,13 @@ object AccountDetails {
   }
   def mmaCategoryFrom(product: Product): String = product match {
     case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
-    case _: Product.ZDigipack => "subscriptions"
-    case _: Product.SupporterPlus => "recurringSupport"
-    case _: Product.TierThree => "recurringSupport"
-    case _: Product.GuardianPatron => "subscriptions"
-    case _: Product.Contribution => "recurringSupport"
-    case _: Product.Membership => "membership"
-    case _ => product.name // fallback
+    case Product.Digipack => "subscriptions"
+    case Product.SupporterPlus => "recurringSupport"
+    case Product.TierThree => "recurringSupport"
+    case Product.GuardianPatron => "subscriptions"
+    case Product.Contribution => "recurringSupport"
+    case Product.Membership => "membership"
+    case _ => "subscriptions" // fallback - passing undefined value breaks manage
   }
 }
 

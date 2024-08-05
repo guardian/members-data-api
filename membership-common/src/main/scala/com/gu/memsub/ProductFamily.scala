@@ -87,21 +87,6 @@ object Product {
     case _ => None
   }
 
-  type Membership = Membership.type
-  type GuardianPatron = GuardianPatron.type
-  type ZDigipack = Digipack.type
-  type SupporterPlus = SupporterPlus.type
-  type TierThree = TierThree.type
-  type Delivery = Delivery.type
-  type NationalDelivery = NationalDelivery.type
-  type Voucher = Voucher.type
-  type DigitalVoucher = DigitalVoucher.type
-  type WeeklyZoneA = WeeklyZoneA.type
-  type WeeklyZoneB = WeeklyZoneB.type
-  type WeeklyZoneC = WeeklyZoneC.type
-  type WeeklyDomestic = WeeklyDomestic.type
-  type WeeklyRestOfWorld = WeeklyRestOfWorld.type
-  type Contribution = Contribution.type
 }
 
 // Benefit is the catalog charge level ProductType__c

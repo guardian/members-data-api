@@ -200,18 +200,17 @@ class AccountController(
         for {
           catalog <- request.touchpoint.futureCatalog
           result <- paymentDetails(userId, filter, request.touchpoint).toEither
-            .map {
-              case Right(subscriptionList) =>
-                logger.info(s"Successfully retrieved payment details result for identity user: $userId")
-                val productsResponseWrites = new ProductsResponseWrites(catalog)
-                val response = productsResponseWrites.from(user, subscriptionList)
-                import productsResponseWrites.writes
-                Ok(Json.toJson(response))
-              case Left(message) =>
-                logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
-                InternalServerError("Failed to retrieve payment details due to an internal error")
-            }
-        } yield result
+        } yield result match {
+          case Right(subscriptionList) =>
+            logger.info(s"Successfully retrieved payment details result for identity user: $userId")
+            val productsResponseWrites = new ProductsResponseWrites(catalog)
+            val response = productsResponseWrites.from(user, subscriptionList)
+            import productsResponseWrites.writes
+            Ok(Json.toJson(response))
+          case Left(message) =>
+            logger.warn(s"Unable to retrieve payment details result for identity user $userId due to $message")
+            InternalServerError("Failed to retrieve payment details due to an internal error")
+        }
 
       }
     }
