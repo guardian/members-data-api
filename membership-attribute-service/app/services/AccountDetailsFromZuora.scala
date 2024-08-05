@@ -110,7 +110,15 @@ class AccountDetailsFromZuora(
       nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
       catalog <- SimpleEitherT.rightT(futureCatalog)
-      filtered = applyFilter(filter, contactAndSubscriptions, catalog)
+      subsWithRecognisedProducts = contactAndSubscriptions.filter(_.subscription.plan(catalog).product(catalog) match {
+        case _: Product.ContentSubscription => true
+        case Product.UnknownProduct => false
+        case Product.Membership => true
+        case Product.GuardianPatron => true
+        case Product.Contribution => true
+        case Product.Discounts => false
+      })
+      filtered = applyFilter(filter, subsWithRecognisedProducts, catalog)
     } yield filtered
   }
 
@@ -203,18 +211,18 @@ class AccountDetailsFromZuora(
     product match {
       // this ordering prevents Weekly subs from coming back when Paper is requested (which is different from the type hierarchy where Weekly extends Paper)
       case _: Product.Weekly => requestedProductType == "Weekly" || requestedProductTypeIsContentSubscription
-      case _: Product.Voucher => requestedProductType == "Voucher" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
-      case _: Product.DigitalVoucher =>
+      case Product.Voucher => requestedProductType == "Voucher" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
+      case Product.DigitalVoucher =>
         requestedProductType == "DigitalVoucher" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
-      case _: Product.Delivery =>
+      case Product.Delivery =>
         requestedProductType == "HomeDelivery" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
-      case _: Product.NationalDelivery =>
+      case Product.NationalDelivery =>
         requestedProductType == "HomeDelivery" || requestedProductType == "Paper" || requestedProductTypeIsContentSubscription
-      case _: Product.Contribution => requestedProductType == "Contribution"
-      case _: Product.Membership => requestedProductType == "Membership"
-      case _: Product.ZDigipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription
-      case _: Product.SupporterPlus => requestedProductType == "SupporterPlus" || requestedProductTypeIsContentSubscription
-      case _: Product.TierThree => requestedProductType == "TierThree" || requestedProductTypeIsContentSubscription
+      case Product.Contribution => requestedProductType == "Contribution"
+      case Product.Membership => requestedProductType == "Membership"
+      case Product.Digipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription
+      case Product.SupporterPlus => requestedProductType == "SupporterPlus" || requestedProductTypeIsContentSubscription
+      case Product.TierThree => requestedProductType == "TierThree" || requestedProductTypeIsContentSubscription
       case _ => requestedProductType == product.name // fallback
     }
   }

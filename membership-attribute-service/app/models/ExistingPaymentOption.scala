@@ -22,8 +22,8 @@ object ExistingPaymentOption {
 
     private def getSubscriptionFriendlyName(plan: RatePlan, catalog: Catalog): String = plan.product(catalog) match {
       case _: Product.Weekly => "Guardian Weekly"
-      case _: Product.Membership => plan.productName + " Membership"
-      case _: Product.Contribution => plan.name(catalog)
+      case Product.Membership => plan.productName + " Membership"
+      case Product.Contribution => plan.name(catalog)
       case _ => plan.productName // Newspaper & Digipack
     }
 
