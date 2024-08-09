@@ -10,22 +10,26 @@ import scala.concurrent.ExecutionContext
 case class StripePublicKey(key: String)
 
 object ChooseStripe {
-  def createFor(ukStripeConfig: StripeServiceConfig, auServiceConfig: StripeServiceConfig)(implicit
+  def createFor(ukStripeConfig: StripeServiceConfig, auServiceConfig: StripeServiceConfig, usServiceConfig: StripeServiceConfig)(implicit
       ec: ExecutionContext,
   ): ChooseStripe = {
     val ukStripePublicKey: StripePublicKey = StripePublicKey(ukStripeConfig.credentials.publicKey)
     val auStripePublicKey: StripePublicKey = StripePublicKey(auServiceConfig.credentials.publicKey)
+    val usStripePublicKey: StripePublicKey = StripePublicKey(usServiceConfig.credentials.publicKey)
 
     val ukStripeService: StripeService = createStripeServiceFor(ukStripeConfig)
     val auStripeService: StripeService = createStripeServiceFor(auServiceConfig)
+    val usStripeService: StripeService = createStripeServiceFor(usServiceConfig)
 
     val stripePublicKeyByCountry: Map[Country, StripePublicKey] = Map(
       Country.UK -> ukStripePublicKey,
       Country.Australia -> auStripePublicKey,
+      Country.US -> usStripePublicKey,
     )
     val stripeServicesByPublicKey: Map[StripePublicKey, StripeService] = Map(
       ukStripePublicKey -> ukStripeService,
       auStripePublicKey -> auStripeService,
+      usStripePublicKey -> usStripeService,
     )
     new ChooseStripe(stripePublicKeyByCountry, ukStripePublicKey, stripeServicesByPublicKey)
   }
