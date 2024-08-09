@@ -6,7 +6,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.{Catalog, Subscription}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
-import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
+import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway, StripeUSMembershipGateway}
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import scalaz.syntax.std.boolean._
@@ -96,7 +96,8 @@ object PaymentFailureAlerter extends SafeLogging {
 
     val stillFreshInDays = 27
     def recentEnough(lastInvoiceDateTime: DateTime) = lastInvoiceDateTime.plusDays(stillFreshInDays).isAfterNow
-    val isActionablePaymentGateway = account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway)
+    val isActionablePaymentGateway =
+      account.PaymentGateway.exists(gw => gw == StripeUKMembershipGateway || gw == StripeAUMembershipGateway || gw == StripeUSMembershipGateway)
 
     def hasFailureForCreditCardPaymentMethod(paymentMethodId: PaymentMethodId): Future[Either[String, Boolean]] = {
       val eventualPaymentMethod: Future[Either[String, PaymentMethodResponse]] = paymentMethodGetter(paymentMethodId)

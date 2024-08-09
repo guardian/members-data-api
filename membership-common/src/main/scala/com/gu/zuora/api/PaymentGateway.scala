@@ -23,6 +23,14 @@ case object StripeAUPaymentIntentsMembershipGateway extends PaymentGateway {
   val gatewayName = "Stripe PaymentIntents GNM Membership AUS"
   override val forCountry = Some(Country.Australia)
 }
+case object StripeUSMembershipGateway extends PaymentGateway {
+  val gatewayName = "Stripe Gateway GNM Membership USA"
+  override val forCountry = Some(Country.US)
+}
+case object StripeUSPaymentIntentsMembershipGateway extends PaymentGateway {
+  val gatewayName = "Stripe PaymentIntents GNM Membership USA"
+  override val forCountry = Some(Country.US)
+}
 case object GoCardlessGateway extends PaymentGateway {
   val gatewayName = "GoCardless"
 }
@@ -38,8 +46,10 @@ object PaymentGateway {
   private val gatewaysByName = Set(
     StripeUKMembershipGateway,
     StripeAUMembershipGateway,
+    StripeUSMembershipGateway,
     StripeUKPaymentIntentsMembershipGateway,
     StripeAUPaymentIntentsMembershipGateway,
+    StripeUSPaymentIntentsMembershipGateway,
     GoCardlessGateway,
     GoCardlessZuoraInstance,
     PayPal,
@@ -48,8 +58,14 @@ object PaymentGateway {
 }
 
 object RegionalStripeGateways {
-  def getGatewayForCountry(country: Country): PaymentGateway =
-    if (country == Country.Australia) StripeAUMembershipGateway else StripeUKMembershipGateway
-  def getPaymentIntentsGatewayForCountry(country: Country): PaymentGateway =
-    if (country == Country.Australia) StripeAUPaymentIntentsMembershipGateway else StripeUKPaymentIntentsMembershipGateway
+  def getGatewayForCountry(country: Country): PaymentGateway = country match {
+    case Country.Australia => StripeAUMembershipGateway
+    case Country.US => StripeUSMembershipGateway
+    case _ => StripeUKMembershipGateway
+  }
+  def getPaymentIntentsGatewayForCountry(country: Country): PaymentGateway = country match {
+    case Country.Australia => StripeAUPaymentIntentsMembershipGateway
+    case Country.US => StripeUSPaymentIntentsMembershipGateway
+    case _ => StripeUKPaymentIntentsMembershipGateway
+  }
 }
