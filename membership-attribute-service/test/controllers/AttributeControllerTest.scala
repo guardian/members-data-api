@@ -32,7 +32,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   implicit val as: ActorSystem = ActorSystem("test")
 
   private val dateTimeInTheFuture = DateTime.now().plusDays(1)
-  private val dateBeforeFeastLaunch = FeastApp.FeastIosLaunchDate.minusDays(1)
+  private val dateBeforeFeastLaunch = FeastApp.FeastFullLaunchDate.minusDays(1)
   private val validUserId = "1"
   private val userWithoutAttributesUserId = "2"
   private val userWithRecurringContributionUserId = "3"

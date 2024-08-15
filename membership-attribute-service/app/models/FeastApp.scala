@@ -6,7 +6,7 @@ import scalaz.Scalaz.ToBooleanOpsFromBoolean
 
 object FeastApp {
 
-  val FeastIosLaunchDate = LocalDate.parse("2024-04-01")
+  val FeastFullLaunchDate = LocalDate.parse("2024-07-10")
 
   object IosSubscriptionGroupIds {
     // Subscription group ids are used by the app to tell the app store which subscription option to show to the user
@@ -19,7 +19,7 @@ object FeastApp {
     val ExtendedTrial = "initial_supporter_launch_offer"
   }
 
-  private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(FeastIosLaunchDate)
+  private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(FeastFullLaunchDate)
 
   def shouldGetFeastAccess(attributes: Attributes): Boolean =
     attributes.isPartnerTier ||
