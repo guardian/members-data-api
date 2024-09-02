@@ -329,7 +329,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       val paymentGateway = mock[PaymentGateway]
       ukStripeServiceMock.paymentIntentsGateway returns paymentGateway
 
-      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None)(any) returns
+      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) returns
         Future.successful(UpdateResult(randomId("updateId")))
 
       val account = TestQueriesAccount()
@@ -362,7 +362,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) was called
       ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId")(any) was called
       ukStripeServiceMock.paymentIntentsGateway was called
-      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway, None)(any) was called
+      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) was called
       sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
