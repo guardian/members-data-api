@@ -6,7 +6,7 @@ import com.gu.memsub.promo.PromoCode
 import com.gu.memsub.subsv2.ReaderType
 import com.gu.memsub.{Address, FullName, NormalisedTelephoneNumber, SupplierCode}
 import com.gu.salesforce.ContactId
-import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
+import com.gu.zuora.api.{PaymentGateway}
 import com.gu.zuora.soap.models.Queries.Contact
 import org.joda.time.LocalDate
 import scalaz.NonEmptyList
@@ -19,7 +19,6 @@ object Commands {
       currency: Currency,
       autopay: Boolean,
       paymentGateway: PaymentGateway,
-      invoiceTemplate: Option[InvoiceTemplate] = None,
   )
 
   sealed trait PaymentMethod
@@ -117,7 +116,6 @@ object Commands {
       paymentMethod: PaymentMethod,
       paymentGateway: PaymentGateway,
       billtoContact: Contact,
-      invoiceTemplateOverride: Option[InvoiceTemplate],
   )
 
   case class SoldToContact(
