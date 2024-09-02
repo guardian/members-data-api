@@ -178,7 +178,6 @@ class SubscribeTest extends Specification with XmlMatchers {
             <ns2:sfContactId__c>123</ns2:sfContactId__c>
             <ns2:IdentityId__c>12345</ns2:IdentityId__c>
             <ns2:PaymentGateway>Stripe Gateway 1</ns2:PaymentGateway>
-            <ns2:InvoiceTemplateId>abc123abc123</ns2:InvoiceTemplateId>
           </ns1:Account>
           <ns1:BillToContact xsi:type="ns2:Contact">
             <ns2:FirstName>Bob</ns2:FirstName>
