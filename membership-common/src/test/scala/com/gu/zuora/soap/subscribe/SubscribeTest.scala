@@ -5,7 +5,7 @@ import com.gu.i18n.Currency.GBP
 import com.gu.memsub.subsv2.ReaderType.{Direct, Gift}
 import com.gu.memsub.{Address, FullName, NormalisedTelephoneNumber}
 import com.gu.salesforce.ContactId
-import com.gu.zuora.api.{InvoiceTemplate, StripeUKMembershipGateway}
+import com.gu.zuora.api.{StripeUKMembershipGateway}
 import com.gu.zuora.soap.models.Commands._
 import com.gu.zuora.soap.writers.Command._
 import com.gu.zuora.soap.writers.XmlWriter
@@ -126,7 +126,6 @@ class SubscribeTest extends Specification with XmlMatchers {
         GBP,
         autopay = true,
         paymentGateway = StripeUKMembershipGateway,
-        invoiceTemplate = Some(InvoiceTemplate("abc123abc123", Country.Australia)),
       )
 
       val rpc = RatePlan("123", None)
@@ -179,7 +178,6 @@ class SubscribeTest extends Specification with XmlMatchers {
             <ns2:sfContactId__c>123</ns2:sfContactId__c>
             <ns2:IdentityId__c>12345</ns2:IdentityId__c>
             <ns2:PaymentGateway>Stripe Gateway 1</ns2:PaymentGateway>
-            <ns2:InvoiceTemplateId>abc123abc123</ns2:InvoiceTemplateId>
           </ns1:Account>
           <ns1:BillToContact xsi:type="ns2:Contact">
             <ns2:FirstName>Bob</ns2:FirstName>

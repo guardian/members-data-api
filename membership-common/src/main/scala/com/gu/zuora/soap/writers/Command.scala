@@ -14,8 +14,6 @@ object Command {
   }
 
   implicit val accountWrites: XmlWriter[Account] = write[Account] { t =>
-    val invoiceTemplateId = t.invoiceTemplate.map(template => <ns2:InvoiceTemplateId>{template.id}</ns2:InvoiceTemplateId>) getOrElse NodeSeq.Empty
-
     <ns1:Account xsi:type="ns2:Account">
       <ns2:AutoPay>{t.autopay}</ns2:AutoPay>
       <ns2:BcdSettingOption>AutoSet</ns2:BcdSettingOption>
@@ -28,7 +26,6 @@ object Command {
       <ns2:sfContactId__c>{t.contactId.salesforceContactId}</ns2:sfContactId__c>
       <ns2:IdentityId__c>{t.identityId}</ns2:IdentityId__c>
       <ns2:PaymentGateway>{t.paymentGateway.gatewayName}</ns2:PaymentGateway>
-      {invoiceTemplateId}
     </ns1:Account>
   }
 

@@ -6,7 +6,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.okhttp.RequestRunners._
 import com.gu.stripe.Stripe.Deserializer._
 import com.gu.stripe.Stripe._
-import com.gu.zuora.api.{InvoiceTemplate, InvoiceTemplates, PaymentGateway, RegionalStripeGateways}
+import com.gu.zuora.api.{PaymentGateway, RegionalStripeGateways}
 import com.typesafe.config.Config
 import okhttp3.Request
 import scalaz.syntax.std.boolean._
@@ -36,7 +36,6 @@ case class StripeServiceConfig(
     envName: String,
     credentials: StripeCredentials,
     stripeAccountCountry: Country,
-    invoiceTemplateOverride: Option[InvoiceTemplate],
     version: Option[String],
 )
 
@@ -46,7 +45,6 @@ object StripeServiceConfig {
       environmentName,
       StripeCredentials.fromConfig(config, variant),
       stripeAccountCountry,
-      InvoiceTemplates.fromConfig(config.getConfig("zuora.invoiceTemplateIds")).find(_.country == stripeAccountCountry),
       stripeVersion(config, variant),
     )
 
@@ -61,7 +59,6 @@ class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(im
   val publicKey: String = apiConfig.credentials.publicKey
   val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
   val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
-  val invoiceTemplateOverride: Option[InvoiceTemplate] = apiConfig.invoiceTemplateOverride
 
   override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {
     req.addHeader("Authorization", s"Bearer ${apiConfig.credentials.secretKey}")

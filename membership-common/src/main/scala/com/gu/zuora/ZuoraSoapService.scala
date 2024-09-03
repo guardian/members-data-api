@@ -7,7 +7,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
-import com.gu.zuora.api.{InvoiceTemplate, PaymentGateway}
+import com.gu.zuora.api.{PaymentGateway}
 import com.gu.zuora.soap.Readers._
 import com.gu.zuora.soap._
 import com.gu.zuora.soap.actions.{Action, XmlWriterAction}
@@ -78,7 +78,6 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
       accountId: AccountId,
       paymentMethodId: String,
       paymentGateway: PaymentGateway,
-      invoiceTemplateOverride: Option[InvoiceTemplate],
   )(implicit logPrefix: LogPrefix) = {
     soapClient.authenticatedRequest(
       action = UpdateAccountPayment(
@@ -86,7 +85,6 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
         defaultPaymentMethodId = SetTo(paymentMethodId),
         paymentGatewayName = paymentGateway.gatewayName,
         autoPay = Some(true),
-        maybeInvoiceTemplateId = invoiceTemplateOverride.map(_.id),
       ),
     )
   }
@@ -99,7 +97,6 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
         defaultPaymentMethodId = Clear,
         paymentGatewayName = paymentGateway.gatewayName,
         autoPay = Some(false),
-        maybeInvoiceTemplateId = None,
       ),
     )
   }
@@ -111,14 +108,13 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
       command.paymentGateway,
     ) // We need to set gateway correctly because it must match with the payment method we'll create below
     createMethodResult <- soapClient.authenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
-    result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway, command.invoiceTemplateOverride)
+    result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway)
   } yield result
 
   def createCreditCardPaymentMethod(
       accountId: AccountId,
       stripeCustomer: Stripe.Customer,
       paymentGateway: PaymentGateway,
-      invoiceTemplateOverride: Option[InvoiceTemplate],
   )(implicit logPrefix: LogPrefix): Future[UpdateResult] = {
     val card = stripeCustomer.card
     for {
@@ -138,7 +134,7 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
           cardType = card.`type`,
         ),
       )
-      result <- setDefaultPaymentMethod(accountId, paymentMethod.id, paymentGateway, invoiceTemplateOverride)
+      result <- setDefaultPaymentMethod(accountId, paymentMethod.id, paymentGateway)
     } yield result
   }
 

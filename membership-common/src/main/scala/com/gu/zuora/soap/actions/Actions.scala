@@ -122,7 +122,6 @@ object Actions {
       defaultPaymentMethodId: ZuoraNullableId,
       paymentGatewayName: String,
       autoPay: Option[Boolean],
-      maybeInvoiceTemplateId: Option[String],
   ) extends Action[UpdateResult] {
 
     override def additionalLogInfo = Map(
@@ -130,7 +129,6 @@ object Actions {
       "DefaultPaymentMethodId" -> defaultPaymentMethodId.toString,
       "PaymentGateway" -> paymentGatewayName,
       "AutoPay" -> autoPay.toString,
-      "InvoiceTemplateOverride" -> maybeInvoiceTemplateId.mkString,
     )
 
     // We use two different vals here because order matters in the xml and zuora requires the clearing and settings lines to be in different places
@@ -141,15 +139,12 @@ object Actions {
 
     val autoPayLine = autoPay.map(ap => <ns2:AutoPay>{ap}</ns2:AutoPay>).getOrElse(NodeSeq.Empty)
 
-    val invoiceTemplateLine = maybeInvoiceTemplateId.map(id => <ns2:InvoiceTemplateId>{id}</ns2:InvoiceTemplateId>).getOrElse(NodeSeq.Empty)
-
     val body =
       <ns1:update>
         <ns1:zObjects xsi:type="ns2:Account">
           {clearPaymentMethodLine}
           <ns2:Id>{accountId}</ns2:Id>
           {setPaymentMethodLine}
-          {invoiceTemplateLine}
           {autoPayLine}
           <ns2:PaymentGateway>{paymentGatewayName}</ns2:PaymentGateway>
         </ns1:zObjects>

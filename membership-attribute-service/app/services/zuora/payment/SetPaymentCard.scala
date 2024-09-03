@@ -38,7 +38,7 @@ class SetPaymentCard(zuoraService: ZuoraSoapService, stripeServiceEither: Either
     (for {
       customer <- createCustomerFunction(stripeCardIdentifier)
       _ <- zuoraService
-        .createCreditCardPaymentMethod(accountId, customer, stripeService.paymentIntentsGateway, stripeService.invoiceTemplateOverride)
+        .createCreditCardPaymentMethod(accountId, customer, stripeService.paymentIntentsGateway)
     } yield {
       CardUpdateSuccess(
         PaymentCard(

@@ -174,7 +174,6 @@ class PaymentUpdateController(
             paymentMethod = bankTransferPaymentMethod,
             paymentGateway = GoCardlessGateway,
             billtoContact = billToContact,
-            invoiceTemplateOverride = None,
           )
           _ <- SimpleEitherT(
             annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
