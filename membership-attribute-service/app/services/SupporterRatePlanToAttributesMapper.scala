@@ -106,6 +106,10 @@ object SupporterRatePlanToAttributesMapper {
       "8a1288a38ff2af980190025b32591ccc",
       "8a128ab18ff2af9301900255d77979ac",
       "8a1299788ff2ec100190024d1e3b1a09",
+      "8a129c2591f06a5d0191fa2edb383026",
+      "8a12891291f04b9d0191fa2ffbe10975",
+      "8a128dfb91f04b9a0191fa30ae2e1b7e",
+      "8a128dfb91f04b9a0191fa315d091c51",
     ) -> tierThreeTransformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
@@ -231,6 +235,10 @@ object SupporterRatePlanToAttributesMapper {
       "8ad081dd8ff24a9a019001d95e4e3574",
       "8ad081dd8ff24a9a019001df2ce83657",
       "8ad097b48ff26452019001e65bbf2ca8",
+      "8ad097b491daf9180191e0cdf34e185e",
+      "8ad097b491daf9180191e0cdba5f183c",
+      "8ad097b491daf9180191e0cd58e5180b",
+      "8ad081dd91dae1d30191e0ce082d18d3",
     ) -> tierThreeTransformer,
     List(
       "2c92c0f84bbfec8b014bc655f4852d9d",
