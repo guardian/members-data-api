@@ -61,7 +61,7 @@ class SubReadsTest extends Specification {
       // there are 5 active Quarterly which won't be readable
       val actualSubscription = Resource.getJson("rest/plans/EchoLegacy.json").validate[Subscription](subscriptionReads).get
 
-      actualSubscription.name.get mustEqual ("A-S00ECHO")
+      actualSubscription.name.get mustEqual "A-S00ECHO"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Delivery
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
     }
@@ -70,7 +70,7 @@ class SubReadsTest extends Specification {
 
       val actualSubscription = Resource.getJson("rest/plans/WithRecurringFixedDiscount.json").validate[Subscription](subscriptionReads).get
 
-      actualSubscription.name.get mustEqual ("A-S00FIXEDDISC")
+      actualSubscription.name.get mustEqual "A-S00FIXEDDISC"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Voucher
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
       actualSubscription.ratePlans.filter(_.end.isAfter(LocalDate.parse("2024-07-24"))) must containTheSameElementsAs(
@@ -96,7 +96,7 @@ object FixedDiscountRecurringTestData {
     "Newspaper Voucher",
     Some("Add"),
     List(),
-    Some(LocalDate.parse("2024-08-23")),
+    Some(LocalDate.parse("2099-08-23")),
     NonEmptyList(
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -180,7 +180,7 @@ object FixedDiscountRecurringTestData {
       ),
     ),
     LocalDate.parse("2024-02-23"),
-    LocalDate.parse("2024-09-23"),
+    LocalDate.parse("2099-09-23"),
   )
 
   val discount = RatePlan(
@@ -189,7 +189,7 @@ object FixedDiscountRecurringTestData {
     "Discounts",
     Some("Add"),
     List(),
-    Some(LocalDate.parse("2024-08-23")),
+    Some(LocalDate.parse("2099-08-23")),
     NonEmptyList(
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -203,7 +203,7 @@ object FixedDiscountRecurringTestData {
       ),
     ),
     LocalDate.parse("2017-08-23"),
-    LocalDate.parse("2024-09-23"),
+    LocalDate.parse("2099-09-23"),
   )
 
 }
