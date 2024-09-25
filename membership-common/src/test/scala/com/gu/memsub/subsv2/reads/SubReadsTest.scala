@@ -63,7 +63,7 @@ class SubReadsTest extends Specification {
 
       actualSubscription.name.get mustEqual "A-S00ECHO"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Delivery
-      actualSubscription.plan(catalogProd).billingPeriod.toEither must beRight(Month)
+      actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
     }
 
     "read a voucher subscription with a fixed recurring discount" in {
@@ -72,7 +72,7 @@ class SubReadsTest extends Specification {
 
       actualSubscription.name.get mustEqual "A-S00FIXEDDISC"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Voucher
-      actualSubscription.plan(catalogProd).billingPeriod.toEither must beRight(Month)
+      actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
       actualSubscription.ratePlans.filter(_.end.isAfter(LocalDate.parse("2024-07-24"))) must containTheSameElementsAs(
         List(FixedDiscountRecurringTestData.mainPlan, FixedDiscountRecurringTestData.discount),
       )
