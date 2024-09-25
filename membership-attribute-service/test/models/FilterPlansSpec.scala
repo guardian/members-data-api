@@ -11,7 +11,7 @@ import utils.TestLogPrefix.testLogPrefix
 
 class FilterPlansSpec extends Specification with SafeLogging {
 
-  "subscription response plan fitlering" should {
+  "subscription response plan filtering" should {
     "handle a fixed discount" in {
       val actualSubscription = Resource.getJson("rest/plans/WithRecurringFixedDiscount.json").validate[Subscription](subscriptionReads).get
 
