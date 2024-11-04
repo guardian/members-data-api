@@ -12,6 +12,8 @@ Parameters:
     AllowedValues:
     - t4g.small
     ConstraintDescription: must be a valid EC2 instance type.
+  MetadataOptions:
+    HttpTokens: required
   VpcId:
     Description: ID of the VPC onto which to launch the application
     Type: AWS::EC2::VPC::Id
