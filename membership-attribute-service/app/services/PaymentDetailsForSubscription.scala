@@ -33,8 +33,8 @@ class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalo
   private def giftPaymentDetailsFor(giftSubscription: Subscription, catalog: Catalog): PaymentDetails = PaymentDetails(
     pendingCancellation = giftSubscription.isCancelled,
     chargedThroughDate = None,
-    startDate = giftSubscription.startDate,
-    customerAcceptanceDate = giftSubscription.startDate,
+    startDate = giftSubscription.contractEffectiveDate,
+    customerAcceptanceDate = giftSubscription.contractEffectiveDate,
     nextPaymentPrice = None,
     lastPaymentDate = None,
     nextPaymentDate = None,
@@ -46,7 +46,7 @@ class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalo
       price = Price(0f, giftSubscription.plan(catalog).chargesPrice.currencies.head),
       interval = BillingPeriod.Year.noun,
     ),
-    subscriberId = giftSubscription.name.get,
+    subscriberId = giftSubscription.subscriptionNumber.get,
     remainingTrialLength = 0,
   )
 }

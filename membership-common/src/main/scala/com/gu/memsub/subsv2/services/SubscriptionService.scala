@@ -205,7 +205,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
                   else
                     \/.r[String](Some(endOfLastInvoicePeriod))
                 case None =>
-                  if (paidPlan.start.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
+                  if (paidPlan.effectiveStartDate.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
                     \/.l[Option[LocalDate]](s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
                   else
                     \/.l[Option[LocalDate]](s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")

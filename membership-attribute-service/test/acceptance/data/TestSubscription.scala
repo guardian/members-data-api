@@ -13,14 +13,10 @@ object TestSubscription {
       accountId: memsub.Subscription.AccountId = memsub.Subscription.AccountId(randomId("accountId")),
       startDate: LocalDate = LocalDate.now().minusDays(7),
       acceptanceDate: LocalDate = LocalDate.now().plusDays(2),
-      termStartDate: LocalDate = LocalDate.now().minusDays(5),
       termEndDate: LocalDate = LocalDate.now().plusDays(12).plusYears(1),
-      casActivationDate: Option[DateTime] = None,
-      promoCode: Option[PromoCode] = None,
       isCancelled: Boolean = false,
       plans: List[RatePlan] = List(TestPaidSubscriptionPlan()),
       readerType: ReaderType = ReaderType.Direct,
-      gifteeIdentityId: Option[String] = None,
       autoRenew: Boolean = false,
   ): Subscription =
     Subscription(
@@ -29,14 +25,10 @@ object TestSubscription {
       accountId,
       startDate,
       acceptanceDate,
-      termStartDate,
       termEndDate,
-      casActivationDate,
-      promoCode,
       isCancelled,
       plans,
       readerType,
-      gifteeIdentityId,
       autoRenew,
     )
 }

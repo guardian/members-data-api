@@ -42,7 +42,7 @@ object AccountHelpers {
       messageSuffix: String,
       subscriptions: List[Subscription],
   ): Either[String, Subscription] =
-    subscriptions.find(_.name == subscriptionName).toRight(s"$subscriptionName was not a subscription for $messageSuffix")
+    subscriptions.find(_.subscriptionNumber == subscriptionName).toRight(s"$subscriptionName was not a subscription for $messageSuffix")
 
   def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String)(implicit
       executionContext: ExecutionContext,
@@ -113,7 +113,7 @@ class AccountController(
               .map(subs => subscriptionSelector(subscriptionName, s"Salesforce user $contact", subs)),
           ).leftMap(CancelError(_, 404))
           accountId <-
-            (if (subscription.name == subscriptionName)
+            (if (subscription.subscriptionNumber == subscriptionName)
                SimpleEitherT.right(subscription.accountId)
              else
                SimpleEitherT.left(s"$subscriptionName does not belong to $identityId"))
@@ -278,7 +278,7 @@ class AccountController(
             case period: RecurringPeriod => Right(period)
             case period: BillingPeriod.OneOffPeriod => Left(s"period $period was not recurring for contribution update")
           })
-          applyFromDate = contributionPlan.chargedThroughDate.getOrElse(contributionPlan.start)
+          applyFromDate = contributionPlan.chargedThroughDate.getOrElse(contributionPlan.effectiveStartDate)
           currency = contributionPlan.chargesPrice.prices.head.currency
           currencyGlyph = currency.glyph
           oldPrice = contributionPlan.chargesPrice.prices.head.amount
@@ -286,7 +286,7 @@ class AccountController(
             s"User updated contribution via self-service MMA. Amount changed from $currencyGlyph$oldPrice to $currencyGlyph$newPrice effective from $applyFromDate"
           result <- SimpleEitherT(
             services.zuoraRestService.updateChargeAmount(
-              subscription.name,
+              subscription.subscriptionNumber,
               contributionPlan.ratePlanCharges.head.id,
               contributionPlan.id,
               newPrice.toDouble,

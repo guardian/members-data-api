@@ -1,6 +1,5 @@
 package com.gu.memsub.subsv2.reads
 
-import com.github.nscala_time.time.Imports._
 import com.gu.memsub
 import com.gu.memsub.Subscription._
 import com.gu.memsub.promo.PromoCode
@@ -61,38 +60,21 @@ object SubJsonReads {
       (__ \ "specificBillingPeriod").readNullable[Int] and
       (__ \ "endDateCondition").read[EndDateCondition] and
       (__ \ "upToPeriods").readNullable[Int] and
-      (__ \ "upToPeriodsType").readNullable[UpToPeriodsType]
+      (__ \ "upToPeriodsType").readNullable[UpToPeriodsType] and
+      (__ \ "chargedThroughDate").readNullable[LocalDate] and
+      (__ \ "effectiveStartDate").read[LocalDate] and
+      (__ \ "effectiveEndDate").read[LocalDate]
   )(RatePlanCharge.apply _)
 
   private val ratePlanReads: Reads[RatePlan] = new Reads[RatePlan] {
-    override def reads(json: JsValue): JsResult[RatePlan] = {
-
-      // our common zuora plan has effective dates on the plan, but we have them on the charge.
-      val dates = (json \ "ratePlanCharges").toOption
-        .collect { case JsArray(chs) =>
-          chs.map(c =>
-            ((c \ "effectiveStartDate").validate[LocalDate].withTrace("effectiveStartDate") |@|
-              (c \ "effectiveEndDate").validate[LocalDate].withTrace("effectiveEndDate") |@|
-              (c \ "chargedThroughDate").validateOpt[LocalDate].withTrace("chargedThroughDate")).tupled,
-          )
-        }
-        .toSeq
-        .flatten
-        .toList
-        .sequence[JsResult, (LocalDate, LocalDate, Option[LocalDate])]
-
-      (
-        (json \ "id").validate[String].map(RatePlanId) |@|
-          (json \ "productRatePlanId").validate[String].map(ProductRatePlanId) |@|
-          (json \ "productName").validate[String] |@|
-          (json \ "lastChangeType").validateOpt[String] |@|
-          (json \ "subscriptionProductFeatures").validate[List[RestFeature]] |@|
-          dates.map(_.map(_._3).sorted.reduceOption(_ orElse _).flatten) |@|
-          (json \ "ratePlanCharges").validate[NonEmptyList[RatePlanCharge]](nelReads(niceListReads(ratePlanChargeReads))) |@|
-          dates.flatMap(_.map(_._1).sorted.headOption.fold[JsResult[LocalDate]](JsError("Missing start"))(JsSuccess(_))) |@|
-          dates.flatMap(_.map(_._2).sorted.headOption.fold[JsResult[LocalDate]](JsError("Missing end"))(JsSuccess(_)))
-      )(RatePlan).withTrace("low-level-plan")
-    }
+    override def reads(json: JsValue): JsResult[RatePlan] = (
+      (json \ "id").validate[String].map(RatePlanId) |@|
+        (json \ "productRatePlanId").validate[String].map(ProductRatePlanId) |@|
+        (json \ "productName").validate[String] |@|
+        (json \ "lastChangeType").validateOpt[String] |@|
+        (json \ "subscriptionProductFeatures").validate[List[RestFeature]] |@|
+        (json \ "ratePlanCharges").validate[NonEmptyList[RatePlanCharge]](nelReads(niceListReads(ratePlanChargeReads)))
+    )(RatePlan).withTrace("low-level-plan")
   }
 
   val multiSubJsonReads: Reads[List[Subscription]] = new Reads[List[Subscription]] {
@@ -114,14 +96,10 @@ object SubJsonReads {
               (__ \ "accountId").read[String].map(memsub.Subscription.AccountId) and
               (__ \ "contractEffectiveDate").read[LocalDate] and
               (__ \ "customerAcceptanceDate").read[LocalDate] and
-              (__ \ "termStartDate").read[LocalDate] and
               (__ \ "termEndDate").read[LocalDate] and
-              (__ \ "ActivationDate__c").readNullable[DateTime](lenientDateTimeReader) and
-              (__ \ "PromotionCode__c").readNullable[String].map(_.map(PromoCode)) and
               (__ \ "status").read[String].map(_ == "Cancelled") and
               (__ \ "ratePlans").read[List[RatePlan]](niceListReads(ratePlanReads)) and
               (__ \ "ReaderType__c").readNullable[String].map(ReaderType.apply) and
-              (__ \ "GifteeIdentityId__c").readNullable[String] and
               (__ \ "autoRenew").read[Boolean]
           )(memsub.subsv2.Subscription.apply _).reads(o)
         case e => JsError(s"Needed a JsObject, got ${e.getClass.getSimpleName}")

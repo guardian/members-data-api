@@ -21,7 +21,6 @@ trait SubscriptionTestData {
       "Supporter",
       None,
       List.empty,
-      None,
       NonEmptyList(
         RatePlanCharge(
           SubscriptionRatePlanChargeId("nar"),
@@ -32,10 +31,11 @@ trait SubscriptionTestData {
           SubscriptionEnd,
           None,
           None,
+          None,
+          startDate,
+          endDate,
         ),
       ),
-      startDate,
-      endDate,
     )
   def digipackPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
@@ -44,7 +44,6 @@ trait SubscriptionTestData {
       "Digital Pack",
       None,
       List.empty,
-      None,
       NonEmptyList(
         RatePlanCharge(
           SubscriptionRatePlanChargeId("naz"),
@@ -55,10 +54,11 @@ trait SubscriptionTestData {
           SubscriptionEnd,
           None,
           None,
+          None,
+          startDate,
+          endDate,
         ),
       ),
-      startDate,
-      endDate,
     )
   def paperPlan(startDate: LocalDate, endDate: LocalDate): RatePlan = RatePlan(
     RatePlanId("idPaperPlan"),
@@ -66,7 +66,6 @@ trait SubscriptionTestData {
     "Sunday",
     None,
     List.empty,
-    None,
     NonEmptyList(
       RatePlanCharge(
         SubscriptionRatePlanChargeId("sunpaper_rpcid"),
@@ -77,10 +76,11 @@ trait SubscriptionTestData {
         SubscriptionEnd,
         None,
         None,
+        None,
+        startDate,
+        endDate,
       ),
     ),
-    startDate,
-    endDate,
   )
   def paperPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan = RatePlan(
     RatePlanId("idPaperPlusPlan"),
@@ -88,7 +88,6 @@ trait SubscriptionTestData {
     "Sunday+",
     None,
     List.empty,
-    None,
     NonEmptyList(
       RatePlanCharge(
         SubscriptionRatePlanChargeId("digi_rpcid"),
@@ -99,6 +98,9 @@ trait SubscriptionTestData {
         SubscriptionEnd,
         None,
         None,
+        None,
+        startDate,
+        endDate,
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("sunpaper_rpcid"),
@@ -109,10 +111,11 @@ trait SubscriptionTestData {
         SubscriptionEnd,
         None,
         None,
+        None,
+        startDate,
+        endDate,
       ),
     ),
-    startDate,
-    endDate,
   )
   def contributorPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
@@ -121,7 +124,6 @@ trait SubscriptionTestData {
       "Monthly Contribution",
       None,
       List.empty,
-      None,
       NonEmptyList(
         RatePlanCharge(
           SubscriptionRatePlanChargeId("nar"),
@@ -132,10 +134,11 @@ trait SubscriptionTestData {
           SubscriptionEnd,
           None,
           None,
+          None,
+          startDate,
+          endDate,
         ),
       ),
-      startDate,
-      endDate,
     )
   def guardianWeeklyPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
     RatePlan(
@@ -144,7 +147,6 @@ trait SubscriptionTestData {
       "Guardian Weekly",
       None,
       List.empty,
-      None,
       NonEmptyList(
         RatePlanCharge(
           SubscriptionRatePlanChargeId("nar"),
@@ -155,10 +157,11 @@ trait SubscriptionTestData {
           SubscriptionEnd,
           None,
           None,
+          None,
+          startDate,
+          endDate,
         ),
       ),
-      startDate,
-      endDate,
     )
 
   def supporterPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
@@ -168,7 +171,6 @@ trait SubscriptionTestData {
       "Supporter Plus",
       None,
       List.empty,
-      None,
       NonEmptyList(
         RatePlanCharge(
           SubscriptionRatePlanChargeId("nar"),
@@ -179,34 +181,31 @@ trait SubscriptionTestData {
           SubscriptionEnd,
           None,
           None,
+          None,
+          startDate,
+          endDate,
         ),
       ),
-      startDate,
-      endDate,
     )
 
   def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[RatePlan]): Subscription = {
     Subscription(
       id = Id(plans.head.id.get),
-      name = Name("AS-123123"),
+      subscriptionNumber = Name("AS-123123"),
       accountId = AccountId("accountId"),
-      startDate = plans.head.start,
-      acceptanceDate = plans.head.start,
-      termStartDate = plans.head.start,
-      termEndDate = plans.head.start + 1.year,
-      casActivationDate = None,
-      promoCode = None,
+      contractEffectiveDate = plans.head.effectiveStartDate,
+      customerAcceptanceDate = plans.head.effectiveStartDate,
+      termEndDate = plans.head.effectiveStartDate + 1.year,
       isCancelled = isCancelled,
       ratePlans = plans.list.toList,
       readerType = ReaderType.Direct,
-      gifteeIdentityId = None,
       autoRenew = true,
     )
   }
 
   val digipack = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
   val digipackGift = toSubscription(false)(NonEmptyList(digipackPlan(referenceDate, referenceDate + 1.year)))
-    .copy(readerType = Gift, gifteeIdentityId = Some("12345"))
+    .copy(readerType = Gift)
   val guardianWeekly = toSubscription(false)(NonEmptyList(guardianWeeklyPlan(referenceDate, referenceDate + 1.year)))
   val sunday = toSubscription(false)(NonEmptyList(paperPlan(referenceDate, referenceDate + 1.year)))
   val sundayPlus = toSubscription(false)(NonEmptyList(paperPlusPlan(referenceDate, referenceDate + 1.year)))

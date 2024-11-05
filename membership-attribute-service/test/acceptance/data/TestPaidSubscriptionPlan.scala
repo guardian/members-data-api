@@ -15,18 +15,12 @@ object TestPaidSubscriptionPlan {
       lastChangeType: Option[String] = None,
       features: List[Feature] = Nil,
       charges: NonEmptyList[RatePlanCharge] = NonEmptyList(TestSingleCharge()),
-      chargedThrough: Option[LocalDate] = None, // this is None if the sub hasn't been billed yet (on a free trial)
-      start: LocalDate = LocalDate.now().minusDays(13),
-      end: LocalDate = LocalDate.now().minusDays(13).plusYears(1),
   ): RatePlan = RatePlan(
     id: RatePlanId,
     productRatePlanId,
     productName,
     lastChangeType,
     features,
-    chargedThrough,
     charges,
-    start,
-    end: LocalDate,
   )
 }

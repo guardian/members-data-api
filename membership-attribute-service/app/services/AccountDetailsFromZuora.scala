@@ -90,7 +90,7 @@ class AccountDetailsFromZuora(
   ): List[ContactAndSubscription] = {
     filter match {
       case FilterBySubName(subscriptionName) =>
-        contactAndSubscriptions.find(_.subscription.name == subscriptionName).toList
+        contactAndSubscriptions.find(_.subscription.subscriptionNumber == subscriptionName).toList
       case FilterByProductType(productType) =>
         contactAndSubscriptions.filter(contactAndSubscription =>
           productIsInstanceOfProductType(
@@ -142,7 +142,7 @@ class AccountDetailsFromZuora(
           .getPaymentDetails(contactAndSubscription)
           .map(Right(_))
           .recover { case x =>
-            Left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.name}. Reason: $x")
+            Left(s"error retrieving payment details for subscription: ${contactAndSubscription.subscription.subscriptionNumber}. Reason: $x")
           }
 
       val accountSummaryFuture =
@@ -151,18 +151,18 @@ class AccountDetailsFromZuora(
           .map(_.toEither)
           .recover { case x =>
             Left(
-              s"error receiving account summary for subscription: ${contactAndSubscription.subscription.name} " +
+              s"error receiving account summary for subscription: ${contactAndSubscription.subscription.subscriptionNumber} " +
                 s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
             )
           }
 
       val effectiveCancellationDateFuture =
         zuoraRestService
-          .getCancellationEffectiveDate(contactAndSubscription.subscription.name)
+          .getCancellationEffectiveDate(contactAndSubscription.subscription.subscriptionNumber)
           .map(_.toEither)
           .recover { case x =>
             Left(
-              s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.name} " +
+              s"Failed to fetch effective cancellation date: ${contactAndSubscription.subscription.subscriptionNumber} " +
                 s"with account id ${contactAndSubscription.subscription.accountId}. Reason: $x",
             )
           }
@@ -197,7 +197,7 @@ class AccountDetailsFromZuora(
       val subscriptionName = Name(giftRecord.Name)
       // If the current user is both the gifter and the giftee we will have already retrieved their
       // subscription so we can reuse it and avoid a call to Zuora
-      val matchingSubscription: Option[ContactAndSubscription] = nonGiftSubs.find(_.subscription.name == subscriptionName)
+      val matchingSubscription: Option[ContactAndSubscription] = nonGiftSubs.find(_.subscription.subscriptionNumber == subscriptionName)
       matchingSubscription
         .map(contactAndSubscription => Future.successful(Some(contactAndSubscription.subscription)))
         .getOrElse(subscriptionService.get(subscriptionName, isActiveToday = false))

@@ -27,14 +27,11 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         deliveryAddress = Some(DeliveryAddress(Some("A"), Some("A"), Some("A"), None, Some("SE1 4PU"), Some("United Kingdom"), None, None)),
         subscription = Subscription(
           id = Id("8ad09be48f7af173018f7bd22da22685"),
-          name = Name("A-S00889289"),
+          subscriptionNumber = Name("A-S00889289"),
           accountId = AccountId("8ad09be48f7af173018f7bd22d3e2670"),
-          startDate = LocalDate.parse("2024-05-15"),
-          acceptanceDate = LocalDate.parse("2024-05-15"),
-          termStartDate = LocalDate.parse("2024-05-15"),
+          contractEffectiveDate = LocalDate.parse("2024-05-15"),
+          customerAcceptanceDate = LocalDate.parse("2024-05-15"),
           termEndDate = LocalDate.parse("2024-05-15"),
-          casActivationDate = None,
-          promoCode = None,
           isCancelled = false,
           ratePlans = List(
             RatePlan(
@@ -43,7 +40,6 @@ class ProductsResponseSpec extends Specification with SafeLogging {
               productName = "Supporter Plus",
               lastChangeType = None,
               features = List(),
-              chargedThroughDate = Some(LocalDate.parse("2024-06-15")),
               ratePlanCharges = NonEmptyList(
                 RatePlanCharge(
                   SubscriptionRatePlanChargeId("lklklk"),
@@ -54,6 +50,9 @@ class ProductsResponseSpec extends Specification with SafeLogging {
                   SubscriptionEnd,
                   None,
                   None,
+                  chargedThroughDate = Some(LocalDate.parse("2024-06-15")),
+                  effectiveStartDate = LocalDate.parse("2024-05-15"),
+                  effectiveEndDate = LocalDate.parse("2025-05-15"),
                 ),
                 RatePlanCharge(
                   SubscriptionRatePlanChargeId("sdfff"),
@@ -64,14 +63,14 @@ class ProductsResponseSpec extends Specification with SafeLogging {
                   SubscriptionEnd,
                   None,
                   None,
+                  chargedThroughDate = Some(LocalDate.parse("2024-06-15")),
+                  effectiveStartDate = LocalDate.parse("2024-05-15"),
+                  effectiveEndDate = LocalDate.parse("2025-05-15"),
                 ),
               ),
-              start = LocalDate.parse("2024-05-15"),
-              end = LocalDate.parse("2025-05-15"),
             ),
           ),
           readerType = Direct,
-          gifteeIdentityId = None,
           autoRenew = true,
         ),
         paymentDetails = PaymentDetails(

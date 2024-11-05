@@ -28,7 +28,6 @@ class SubReadsTest extends Specification {
           productName = "Digital Pack",
           lastChangeType = None,
           features = List.empty,
-          chargedThroughDate = None,
           ratePlanCharges = NonEmptyList(
             RatePlanCharge(
               id = SubscriptionRatePlanChargeId("2c92c0f957220b5d01573252b3c67c72"),
@@ -42,10 +41,11 @@ class SubReadsTest extends Specification {
               endDateCondition = SubscriptionEnd,
               upToPeriods = None,
               upToPeriodsType = None,
+              chargedThroughDate = None,
+              effectiveStartDate = 2 Oct 2016,
+              effectiveEndDate = 16 Sep 2017,
             ),
           ),
-          start = 2 Oct 2016,
-          end = 16 Sep 2017,
         ),
       )
     }
@@ -61,7 +61,7 @@ class SubReadsTest extends Specification {
       // there are 5 active Quarterly which won't be readable
       val actualSubscription = Resource.getJson("rest/plans/EchoLegacy.json").validate[Subscription](subscriptionReads).get
 
-      actualSubscription.name.get mustEqual "A-S00ECHO"
+      actualSubscription.subscriptionNumber.get mustEqual "A-S00ECHO"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Delivery
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
     }
@@ -70,10 +70,10 @@ class SubReadsTest extends Specification {
 
       val actualSubscription = Resource.getJson("rest/plans/WithRecurringFixedDiscount.json").validate[Subscription](subscriptionReads).get
 
-      actualSubscription.name.get mustEqual "A-S00FIXEDDISC"
+      actualSubscription.subscriptionNumber.get mustEqual "A-S00FIXEDDISC"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Voucher
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
-      actualSubscription.ratePlans.filter(_.end.isAfter(LocalDate.parse("2024-07-24"))) must containTheSameElementsAs(
+      actualSubscription.ratePlans.filter(_.effectiveEndDate.isAfter(LocalDate.parse("2024-07-24"))) must containTheSameElementsAs(
         List(FixedDiscountRecurringTestData.mainPlan, FixedDiscountRecurringTestData.discount),
       )
     }
@@ -96,7 +96,6 @@ object FixedDiscountRecurringTestData {
     "Newspaper Voucher",
     Some("Add"),
     List(),
-    Some(LocalDate.parse("2099-08-23")),
     NonEmptyList(
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -107,6 +106,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -117,6 +119,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -127,6 +132,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -137,6 +145,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -147,6 +158,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -157,6 +171,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -167,6 +184,9 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -177,10 +197,11 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2024-02-23"),
+        LocalDate.parse("2099-09-23"),
       ),
     ),
-    LocalDate.parse("2024-02-23"),
-    LocalDate.parse("2099-09-23"),
   )
 
   val discount = RatePlan(
@@ -189,7 +210,6 @@ object FixedDiscountRecurringTestData {
     "Discounts",
     Some("Add"),
     List(),
-    Some(LocalDate.parse("2099-08-23")),
     NonEmptyList(
       RatePlanCharge(
         SubscriptionRatePlanChargeId("withdiscountrateplanchargeid1"),
@@ -200,10 +220,11 @@ object FixedDiscountRecurringTestData {
         SubscriptionEnd,
         None,
         None,
+        Some(LocalDate.parse("2099-08-23")),
+        LocalDate.parse("2017-08-23"),
+        LocalDate.parse("2099-09-23"),
       ),
     ),
-    LocalDate.parse("2017-08-23"),
-    LocalDate.parse("2099-09-23"),
   )
 
 }
@@ -218,6 +239,9 @@ object PlanWithCreditsTestData {
     endDateCondition = SubscriptionEnd,
     upToPeriods = None,
     upToPeriodsType = None,
+    chargedThroughDate = Some(28 Jul 2024),
+    effectiveStartDate = 28 Jun 2024,
+    effectiveEndDate = 13 Jun 2025,
   )
   private val sPlusCharge = RatePlanCharge(
     id = SubscriptionRatePlanChargeId("8ad093fb90a5fb8c0190bdfd67d862b0"),
@@ -227,6 +251,9 @@ object PlanWithCreditsTestData {
     endDateCondition = SubscriptionEnd,
     upToPeriods = None,
     upToPeriodsType = None,
+    chargedThroughDate = Some(28 Jul 2024),
+    effectiveStartDate = 28 Jun 2024,
+    effectiveEndDate = 13 Jun 2025,
   )
   val mainPlan = subsv2.RatePlan(
     id = RatePlanId("8ad093fb90a5fb8c0190bdfd67d662ac"),
@@ -234,10 +261,7 @@ object PlanWithCreditsTestData {
     productName = "Tier Three",
     lastChangeType = None,
     features = List.empty,
-    chargedThroughDate = Some(28 Jul 2024),
     ratePlanCharges = NonEmptyList(gwCharge, sPlusCharge),
-    start = 28 Jun 2024,
-    end = 13 Jun 2025,
   )
   private val holCharge = RatePlanCharge(
     id = SubscriptionRatePlanChargeId("8ad093fb90a5fb8c0190bdfd67d362a9"),
@@ -247,6 +271,9 @@ object PlanWithCreditsTestData {
     endDateCondition = OneTime,
     upToPeriods = None,
     upToPeriodsType = None,
+    chargedThroughDate = None,
+    effectiveStartDate = 28 Jul 2024,
+    effectiveEndDate = 29 Jul 2024,
   )
   private val discountPlan = subsv2.RatePlan(
     id = RatePlanId("8ad093fb90a5fb8c0190bdfd67d062a7"),
@@ -254,10 +281,7 @@ object PlanWithCreditsTestData {
     productName = "Discounts",
     lastChangeType = Some("Add"),
     features = List.empty,
-    chargedThroughDate = None,
     ratePlanCharges = NonEmptyList(holCharge),
-    start = 28 Jul 2024,
-    end = 29 Jul 2024,
   )
 
   val allRatePlans = List(mainPlan, discountPlan)

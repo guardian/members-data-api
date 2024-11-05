@@ -35,8 +35,8 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
           details mustEqual PaymentDetails(
             pendingCancellation = false,
             chargedThroughDate = None,
-            startDate = digipackGift.startDate,
-            customerAcceptanceDate = digipackGift.startDate,
+            startDate = digipackGift.contractEffectiveDate,
+            customerAcceptanceDate = digipackGift.contractEffectiveDate,
             nextPaymentPrice = None,
             lastPaymentDate = None,
             nextPaymentDate = None,
