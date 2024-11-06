@@ -58,7 +58,7 @@ object PaymentDetails extends SafeLogging {
         price = plan.chargesPrice.prices.head,
         interval = plan.billingPeriod.leftMap(e => logger.warn("unknown billing period: " + e)).map(_.noun).getOrElse("unknown_billing_period"),
       ),
-      subscriberId = sub.subscriptionNumber.get,
+      subscriberId = sub.subscriptionNumber.getNumber,
       remainingTrialLength = timeUntilPaying,
     )
   }

@@ -1,7 +1,7 @@
 package com.gu.memsub
 
 object Subscription {
-  case class Name(get: String) extends AnyVal
+  case class SubscriptionNumber(getNumber: String) extends AnyVal
   case class Id(get: String) extends AnyVal
   case class AccountId(get: String) extends AnyVal
   case class AccountNumber(get: String) extends AnyVal

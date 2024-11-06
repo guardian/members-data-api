@@ -73,7 +73,7 @@ class GuardianPatronService(
       deliveryAddress = None,
       subscription = Subscription(
         id = Id(subscription.id),
-        subscriptionNumber = Name(subscription.id),
+        subscriptionNumber = SubscriptionNumber(subscription.id),
         accountId = AccountId(subscription.customer.id),
         contractEffectiveDate = subscription.created,
         customerAcceptanceDate = subscription.created,

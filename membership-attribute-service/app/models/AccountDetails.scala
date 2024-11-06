@@ -256,7 +256,7 @@ object CancelledSubscription {
           "mmaCategory" -> mmaCategoryFrom(plan.product(catalog)),
           "tier" -> plan.productName,
           "subscription" -> Json.obj(
-            "subscriptionId" -> subscription.subscriptionNumber.get,
+            "subscriptionId" -> subscription.subscriptionNumber.getNumber,
             "cancellationEffectiveDate" -> subscription.termEndDate,
             "start" -> subscription.customerAcceptanceDate,
             "end" -> Seq(subscription.termEndDate, subscription.customerAcceptanceDate).max,

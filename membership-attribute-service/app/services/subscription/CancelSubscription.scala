@@ -1,7 +1,7 @@
 package services.subscription
 
 import com.gu.memsub
-import com.gu.memsub.Subscription.Name
+import com.gu.memsub.Subscription.SubscriptionNumber
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.monitoring.SafeLogger.LogPrefix
 import models.ApiError
@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class CancelSubscription(subscriptionService: SubscriptionService[Future], zuoraRestService: ZuoraRestService)(implicit m: Monad[Future]) {
   def cancel(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       cancellationEffectiveDate: Option[LocalDate],
       reason: String,
       accountId: memsub.Subscription.AccountId,
@@ -23,10 +23,10 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): EitherT[ApiError, Future, Option[LocalDate]] =
     (for {
       _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
-      _ <- EitherT(zuoraRestService.updateCancellationReason(subscriptionName, reason)).leftMap(message =>
+      _ <- EitherT(zuoraRestService.updateCancellationReason(subscriptionNumber, reason)).leftMap(message =>
         s"Failed to update cancellation reason: $message",
       )
-      _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionName, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
+      _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
         s"Failed to execute Zuora cancellation proper: $message",
       )
     } yield cancellationEffectiveDate).leftMap(ApiError(_, "", 500))

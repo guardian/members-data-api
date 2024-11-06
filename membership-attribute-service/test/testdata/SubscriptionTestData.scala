@@ -191,7 +191,7 @@ trait SubscriptionTestData {
   def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[RatePlan]): Subscription = {
     Subscription(
       id = Id(plans.head.id.get),
-      subscriptionNumber = Name("AS-123123"),
+      subscriptionNumber = SubscriptionNumber("AS-123123"),
       accountId = AccountId("accountId"),
       contractEffectiveDate = plans.head.effectiveStartDate,
       customerAcceptanceDate = plans.head.effectiveStartDate,

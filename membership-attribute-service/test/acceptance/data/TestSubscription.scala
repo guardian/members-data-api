@@ -9,7 +9,7 @@ import org.joda.time.{DateTime, LocalDate}
 object TestSubscription {
   def apply(
       id: memsub.Subscription.Id = memsub.Subscription.Id(randomId("subscriptionId")),
-      name: memsub.Subscription.Name = memsub.Subscription.Name(randomId("subscriptionName")),
+      subscriptionNumber: memsub.Subscription.SubscriptionNumber = memsub.Subscription.SubscriptionNumber(randomId("subscriptionName")),
       accountId: memsub.Subscription.AccountId = memsub.Subscription.AccountId(randomId("accountId")),
       startDate: LocalDate = LocalDate.now().minusDays(7),
       acceptanceDate: LocalDate = LocalDate.now().plusDays(2),
@@ -21,7 +21,7 @@ object TestSubscription {
   ): Subscription =
     Subscription(
       id: memsub.Subscription.Id,
-      name,
+      subscriptionNumber,
       accountId,
       startDate,
       acceptanceDate,

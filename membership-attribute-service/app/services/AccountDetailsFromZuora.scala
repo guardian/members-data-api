@@ -1,7 +1,7 @@
 package services
 
 import com.gu.memsub.Product
-import com.gu.memsub.Subscription.Name
+import com.gu.memsub.Subscription.SubscriptionNumber
 import com.gu.memsub.subsv2.{Catalog, Subscription}
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -194,13 +194,13 @@ class AccountDetailsFromZuora(
       nonGiftSubs: List[ContactAndSubscription],
   )(implicit logPrefix: LogPrefix): SimpleEitherT[List[Subscription]] = {
     val all = giftRecords.map { giftRecord =>
-      val subscriptionName = Name(giftRecord.Name)
+      val subscriptionNumber = SubscriptionNumber(giftRecord.Name)
       // If the current user is both the gifter and the giftee we will have already retrieved their
       // subscription so we can reuse it and avoid a call to Zuora
-      val matchingSubscription: Option[ContactAndSubscription] = nonGiftSubs.find(_.subscription.subscriptionNumber == subscriptionName)
+      val matchingSubscription: Option[ContactAndSubscription] = nonGiftSubs.find(_.subscription.subscriptionNumber == subscriptionNumber)
       matchingSubscription
         .map(contactAndSubscription => Future.successful(Some(contactAndSubscription.subscription)))
-        .getOrElse(subscriptionService.get(subscriptionName, isActiveToday = false))
+        .getOrElse(subscriptionService.get(subscriptionNumber, isActiveToday = false))
     }
     val result: Future[List[Subscription]] = Future.sequence(all).map(_.flatten)
     SimpleEitherT.rightT(result) // failures turn to None, and are logged, so just ignore them

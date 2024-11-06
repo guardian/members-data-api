@@ -33,16 +33,16 @@ import scala.concurrent.{ExecutionContext, Future}
 object AccountHelpers {
 
   sealed trait OptionalSubscriptionsFilter
-  case class FilterBySubName(subscriptionName: memsub.Subscription.Name) extends OptionalSubscriptionsFilter
+  case class FilterBySubName(subscriptionNumber: memsub.Subscription.SubscriptionNumber) extends OptionalSubscriptionsFilter
   case class FilterByProductType(productType: String) extends OptionalSubscriptionsFilter
   case object NoFilter extends OptionalSubscriptionsFilter
 
   def subscriptionSelector(
-      subscriptionName: memsub.Subscription.Name,
+      subscriptionNumber: memsub.Subscription.SubscriptionNumber,
       messageSuffix: String,
       subscriptions: List[Subscription],
   ): Either[String, Subscription] =
-    subscriptions.find(_.subscriptionNumber == subscriptionName).toRight(s"$subscriptionName was not a subscription for $messageSuffix")
+    subscriptions.find(_.subscriptionNumber == subscriptionNumber).toRight(s"$subscriptionNumber was not a subscription for $messageSuffix")
 
   def annotateFailableFuture[SuccessValue](failableFuture: Future[SuccessValue], action: String)(implicit
       executionContext: ExecutionContext,
@@ -92,7 +92,7 @@ class AccountController(
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/cancel/:subscriptionName") {
         val services = request.touchpoint
-        val subscriptionName = memsub.Subscription.Name(subscriptionNameString)
+        val subscriptionNumber = memsub.Subscription.SubscriptionNumber(subscriptionNameString)
         val cancelForm = Form {
           single("reason" -> nonEmptyText)
         }
@@ -110,17 +110,17 @@ class AccountController(
           subscription <- SimpleEitherT(
             services.subscriptionService
               .current(contact)
-              .map(subs => subscriptionSelector(subscriptionName, s"Salesforce user $contact", subs)),
+              .map(subs => subscriptionSelector(subscriptionNumber, s"Salesforce user $contact", subs)),
           ).leftMap(CancelError(_, 404))
           accountId <-
-            (if (subscription.subscriptionNumber == subscriptionName)
+            (if (subscription.subscriptionNumber == subscriptionNumber)
                SimpleEitherT.right(subscription.accountId)
              else
-               SimpleEitherT.left(s"$subscriptionName does not belong to $identityId"))
+               SimpleEitherT.left(s"$subscriptionNumber does not belong to $identityId"))
               .leftMap(CancelError(_, 503))
-          cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate(subscriptionName).leftMap(CancelError(_, 500))
+          cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate(subscriptionNumber).leftMap(CancelError(_, 500))
           _ <- services.cancelSubscription.cancel(
-            subscriptionName,
+            subscriptionNumber,
             cancellationEffectiveDate,
             cancellationReason,
             accountId,
@@ -139,7 +139,7 @@ class AccountController(
             logger.error(scrub"Failed to cancel subscription for user $identityId because $apiError")
             apiError
           case Right(cancellationEffectiveDate) =>
-            logger.info(s"Successfully cancelled subscription $subscriptionName owned by $identityId")
+            logger.info(s"Successfully cancelled subscription $subscriptionNumber owned by $identityId")
             Ok(Json.toJson(CancellationEffectiveDate(cancellationEffectiveDate)))
         }
       }
@@ -154,7 +154,7 @@ class AccountController(
 
         (for {
           cancellationEffectiveDate <- services.subscriptionService
-            .decideCancellationEffectiveDate(memsub.Subscription.Name(subscriptionName))
+            .decideCancellationEffectiveDate(memsub.Subscription.SubscriptionNumber(subscriptionName))
             .leftMap(error => ApiError("Failed to determine effectiveCancellationDate", error, 500))
           result = cancellationEffectiveDate.getOrElse("now").toString
         } yield result).run.map(_.toEither).map {
@@ -265,7 +265,7 @@ class AccountController(
           subscription <- SimpleEitherT(
             services.subscriptionService
               .current(contact)
-              .map(subs => subscriptionSelector(memsub.Subscription.Name(subscriptionName), s"the sfUser $contact", subs)),
+              .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           catalog <- SimpleEitherT.rightT(services.futureCatalog)
           contributionPlan = subscription.plan(catalog)
@@ -338,7 +338,7 @@ class AccountController(
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
       import request.logPrefix
       metrics.measureDuration("POST /user-attributes/me/update-cancellation-reason/:subscriptionName") {
-        val subName = memsub.Subscription.Name(subscriptionName)
+        val subName = memsub.Subscription.SubscriptionNumber(subscriptionName)
         val services = request.touchpoint
         val cancelForm = Form {
           single("reason" -> nonEmptyText)
@@ -369,7 +369,7 @@ class AccountController(
     )
   def paymentDetailsSpecificSub(subscriptionName: String): Action[AnyContent] =
     anyPaymentDetails(
-      FilterBySubName(memsub.Subscription.Name(subscriptionName)),
+      FilterBySubName(memsub.Subscription.SubscriptionNumber(subscriptionName)),
       "GET /user-attributes/me/mma/:subscriptionName",
     )
 }

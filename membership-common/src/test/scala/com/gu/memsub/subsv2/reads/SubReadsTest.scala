@@ -61,7 +61,7 @@ class SubReadsTest extends Specification {
       // there are 5 active Quarterly which won't be readable
       val actualSubscription = Resource.getJson("rest/plans/EchoLegacy.json").validate[Subscription](subscriptionReads).get
 
-      actualSubscription.subscriptionNumber.get mustEqual "A-S00ECHO"
+      actualSubscription.subscriptionNumber.getNumber mustEqual "A-S00ECHO"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Delivery
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
     }
@@ -70,7 +70,7 @@ class SubReadsTest extends Specification {
 
       val actualSubscription = Resource.getJson("rest/plans/WithRecurringFixedDiscount.json").validate[Subscription](subscriptionReads).get
 
-      actualSubscription.subscriptionNumber.get mustEqual "A-S00FIXEDDISC"
+      actualSubscription.subscriptionNumber.getNumber mustEqual "A-S00FIXEDDISC"
       actualSubscription.plan(catalogProd).product(catalogProd) mustEqual Product.Voucher
       actualSubscription.plan(catalogProd).billingPeriod.toEither mustEqual Right(Month)
       actualSubscription.ratePlans.filter(_.effectiveEndDate.isAfter(LocalDate.parse("2024-07-24"))) must containTheSameElementsAs(

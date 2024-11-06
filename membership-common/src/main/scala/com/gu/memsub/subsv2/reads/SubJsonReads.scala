@@ -92,7 +92,7 @@ object SubJsonReads {
         case o: JsObject =>
           (
             (__ \ "id").read[String].map(memsub.Subscription.Id) and
-              (__ \ "subscriptionNumber").read[String].map(memsub.Subscription.Name) and
+              (__ \ "subscriptionNumber").read[String].map(memsub.Subscription.SubscriptionNumber) and
               (__ \ "accountId").read[String].map(memsub.Subscription.AccountId) and
               (__ \ "contractEffectiveDate").read[LocalDate] and
               (__ \ "customerAcceptanceDate").read[LocalDate] and

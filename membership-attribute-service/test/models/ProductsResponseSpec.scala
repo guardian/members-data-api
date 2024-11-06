@@ -27,7 +27,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         deliveryAddress = Some(DeliveryAddress(Some("A"), Some("A"), Some("A"), None, Some("SE1 4PU"), Some("United Kingdom"), None, None)),
         subscription = Subscription(
           id = Id("8ad09be48f7af173018f7bd22da22685"),
-          subscriptionNumber = Name("A-S00889289"),
+          subscriptionNumber = SubscriptionNumber("A-S00889289"),
           accountId = AccountId("8ad09be48f7af173018f7bd22d3e2670"),
           contractEffectiveDate = LocalDate.parse("2024-05-15"),
           customerAcceptanceDate = LocalDate.parse("2024-05-15"),

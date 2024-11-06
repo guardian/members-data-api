@@ -4,7 +4,7 @@ import acceptance.data._
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
 import com.gu.i18n.Currency
 import com.gu.memsub.Subscription
-import com.gu.memsub.Subscription.{Name, ProductRatePlanId}
+import com.gu.memsub.Subscription.{SubscriptionNumber, ProductRatePlanId}
 import com.gu.memsub.subsv2.{Catalog, RatePlanCharge}
 import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.services.TestCatalog
@@ -145,7 +145,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       )
 
       val nonGiftSubscription = TestSubscription(
-        name = Subscription.Name(supporterPlusSubscriptionName),
+        subscriptionNumber = Subscription.SubscriptionNumber(supporterPlusSubscriptionName),
         plans = List(
           TestPaidSubscriptionPlan(
             productRatePlanId = TestCatalog.supporterPlusPrpId,
@@ -163,12 +163,12 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val giftSubscriptionFromSubscriptionService = TestSubscription(
         id = Subscription.Id(giftSubscription.Id),
-        name = Subscription.Name(giftSubscription.Name),
+        subscriptionNumber = Subscription.SubscriptionNumber(giftSubscription.Name),
         plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
       )
       val giftSubscriptionAccountId = giftSubscriptionFromSubscriptionService.accountId
 
-      subscriptionServiceMock.get(Subscription.Name(giftSubscription.Name), false)(any) returns Future.successful(
+      subscriptionServiceMock.get(Subscription.SubscriptionNumber(giftSubscription.Name), false)(any) returns Future.successful(
         Some(giftSubscriptionFromSubscriptionService),
       )
 
@@ -218,7 +218,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       supporterProductDataServiceMock.getSupporterRatePlanItems("200067388")(any[LogPrefix]) was called
       subscriptionServiceMock.current(contact)(any) was called
       zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388")(any) was called
-      subscriptionServiceMock.get(Subscription.Name(giftSubscription.Name), isActiveToday = false)(any) was called
+      subscriptionServiceMock.get(Subscription.SubscriptionNumber(giftSubscription.Name), isActiveToday = false)(any) was called
 
       zuoraRestServiceMock.getAccount(giftSubscriptionAccountId)(any) was called
       zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
@@ -258,14 +258,15 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       (supporterPlusProduct \ "tier").as[String] shouldEqual nonGiftSubscription.ratePlans.head.productName
       (supporterPlusProduct \ "isPaidTier").as[Boolean] shouldEqual true
       (supporterPlusProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
-      (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.subscriptionNumber.get
+      (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.subscriptionNumber.getNumber
       (supporterPlusProduct \ "subscription" \ "accountId").as[String] shouldEqual nonGiftSubscription.accountId.get
       (supporterPlusProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual nonGiftSubscription.plan(catalog).productName
 
       (digiGiftProduct \ "tier").as[String] shouldEqual giftSubscriptionFromSubscriptionService.ratePlans.head.productName
       (digiGiftProduct \ "isPaidTier").as[Boolean] shouldEqual false
       (digiGiftProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
-      (digiGiftProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.subscriptionNumber.get
+      (digiGiftProduct \ "subscription" \ "subscriptionId")
+        .as[String] shouldEqual giftSubscriptionFromSubscriptionService.subscriptionNumber.getNumber
       (digiGiftProduct \ "subscription" \ "accountId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.accountId.get
       (digiGiftProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual giftSubscriptionFromSubscriptionService.plan(catalog).productName
 
@@ -335,7 +336,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         charges = NonEmptyList(charge),
       )
       val subscription = TestSubscription(
-        name = Subscription.Name(subscriptionId),
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
         plans = List(plan),
       )
 
@@ -438,7 +439,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
-        name = Subscription.Name(subscriptionId),
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
         plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
         termEndDate = new LocalDate(2024, 4, 12),
       )
@@ -447,7 +448,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val cancellationEffectiveDate = new LocalDate(2024, 4, 5)
       subscriptionServiceMock
-        .decideCancellationEffectiveDate(Name(subscriptionId), any, any)(any) returns SimpleEitherT
+        .decideCancellationEffectiveDate(SubscriptionNumber(subscriptionId), any, any)(any) returns SimpleEitherT
         .right(Some(cancellationEffectiveDate))
 
       subscriptionServiceMock
@@ -457,9 +458,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) returns unit()
 
-      zuoraRestServiceMock.updateCancellationReason(Name(subscriptionId), "My reason")(any) returns unit()
+      zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) returns unit()
 
-      zuoraRestServiceMock.cancelSubscription(Name(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
+      zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
         any,
         any,
       ) returns unit()
@@ -483,11 +484,14 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       identityMockClientAndServer.verify(identityRequest)
       subscriptionServiceMock.current(contact)(any) was called
 
-      subscriptionServiceMock.decideCancellationEffectiveDate(Name(subscriptionId), any, any)(any) was called
+      subscriptionServiceMock.decideCancellationEffectiveDate(SubscriptionNumber(subscriptionId), any, any)(any) was called
       subscriptionServiceMock.subscriptionsForAccountId(subscription.accountId)(any) was called
       zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) was called
-      zuoraRestServiceMock.updateCancellationReason(Name(subscriptionId), "My reason")(any) was called
-      zuoraRestServiceMock.cancelSubscription(Name(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(any, any) was called
+      zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) was called
+      zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
+        any,
+        any,
+      ) was called
 
       sendEmailMock.send(emailData)(any) was called
 

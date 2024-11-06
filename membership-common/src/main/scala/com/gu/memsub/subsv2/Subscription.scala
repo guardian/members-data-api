@@ -13,7 +13,7 @@ import scalaz.{NonEmptyList, Validation, \/}
 
 case class Subscription(
     id: memsub.Subscription.Id,
-    subscriptionNumber: memsub.Subscription.Name,
+    subscriptionNumber: memsub.Subscription.SubscriptionNumber,
     accountId: memsub.Subscription.AccountId,
     contractEffectiveDate: LocalDate,
     customerAcceptanceDate: LocalDate,

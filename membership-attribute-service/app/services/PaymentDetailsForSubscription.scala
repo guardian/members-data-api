@@ -46,7 +46,7 @@ class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalo
       price = Price(0f, giftSubscription.plan(catalog).chargesPrice.currencies.head),
       interval = BillingPeriod.Year.noun,
     ),
-    subscriberId = giftSubscription.subscriptionNumber.get,
+    subscriberId = giftSubscription.subscriptionNumber.getNumber,
     remainingTrialLength = 0,
   )
 }
