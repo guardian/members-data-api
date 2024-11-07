@@ -61,7 +61,7 @@ class PaymentUpdateController(
           subscription <- EitherT.fromEither(
             services.subscriptionService
               .current(contact)
-              .map(subs => subscriptionSelector(memsub.Subscription.Name(subscriptionName), s"the sfUser $contact", subs)),
+              .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           (stripeCardIdentifier, stripePublicKey) = stripeDetails
           updateResult <- services
@@ -153,7 +153,7 @@ class PaymentUpdateController(
           subscription <- SimpleEitherT(
             services.subscriptionService
               .current(contact)
-              .map(subs => subscriptionSelector(memsub.Subscription.Name(subscriptionName), s"the sfUser $contact", subs)),
+              .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           account <- SimpleEitherT(
             annotateFailableFuture(services.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),

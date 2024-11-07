@@ -30,7 +30,7 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
     val currency = sub.plan(catalog).chargesPrice.currencies.head
     // I am not convinced this function is very safe, hence the option
     val eventualMaybeLastPaymentDate = zuoraService
-      .getPaymentSummary(sub.name, currency)
+      .getPaymentSummary(sub.subscriptionNumber, currency)
       .map(_.current.serviceStartDate.some)
       .recover { case _ => None }
     eventualMaybeLastPaymentDate.withLogging(s"lastPaymentDate for $sub")

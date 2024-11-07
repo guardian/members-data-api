@@ -1,7 +1,7 @@
 package services.zuora.rest
 
 import com.gu.i18n.{Country, Currency, Title}
-import com.gu.memsub.Subscription.{AccountId, AccountNumber, Name, RatePlanId, SubscriptionRatePlanChargeId}
+import com.gu.memsub.Subscription.{AccountId, AccountNumber, SubscriptionNumber, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.memsub.subsv2.reads.CommonReads._
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.ContactId
@@ -410,19 +410,21 @@ trait ZuoraRestService {
   def getPaymentMethod(paymentMethodId: String)(implicit logPrefix: LogPrefix): Future[String \/ PaymentMethodResponse]
 
   def cancelSubscription(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       termEndDate: LocalDate,
       maybeChargedThroughDate: Option[
         LocalDate,
       ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
   )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ Unit]
 
-  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String)(implicit logPrefix: LogPrefix): Future[String \/ Unit]
+  def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ Unit]
 
   def disableAutoPay(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ Unit]
 
   def updateChargeAmount(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       ratePlanChargeId: SubscriptionRatePlanChargeId,
       ratePlanId: RatePlanId,
       amount: Double,
@@ -430,5 +432,5 @@ trait ZuoraRestService {
       applyFromDate: LocalDate,
   )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[\/[String, Unit]]
 
-  def getCancellationEffectiveDate(name: Name)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]]
+  def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]]
 }

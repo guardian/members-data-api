@@ -7,6 +7,8 @@ import org.joda.time.LocalDate
 import play.api.libs.json._
 import scalaz.{NonEmptyList, Validation}
 
+import com.github.nscala_time.time.Imports._
+
 trait ZuoraEnum {
   def id: String
 }
@@ -123,6 +125,9 @@ case class RatePlanCharge(
     endDateCondition: EndDateCondition,
     upToPeriods: Option[Int],
     upToPeriodsType: Option[UpToPeriodsType],
+    chargedThroughDate: Option[LocalDate],
+    effectiveStartDate: LocalDate,
+    effectiveEndDate: LocalDate,
 ) {
 
   def billingPeriod: Validation[String, BillingPeriod] =
@@ -168,11 +173,15 @@ case class RatePlan(
     productName: String,
     lastChangeType: Option[String],
     features: List[Feature],
-    chargedThroughDate: Option[LocalDate],
     ratePlanCharges: NonEmptyList[RatePlanCharge],
-    start: LocalDate,
-    end: LocalDate,
 ) {
+
+  def chargedThroughDate: Option[LocalDate] =
+    ratePlanCharges.map(_.chargedThroughDate).list.toList.max // None is less than Some
+  def effectiveStartDate: LocalDate =
+    ratePlanCharges.map(_.effectiveStartDate).list.toList.min
+  def effectiveEndDate: LocalDate =
+    ratePlanCharges.map(_.effectiveEndDate).list.toList.min
 
   def totalChargesMinorUnit: Int =
     ratePlanCharges.map(c => (c.pricing.prices.head.amount * 100).toInt).list.toList.sum

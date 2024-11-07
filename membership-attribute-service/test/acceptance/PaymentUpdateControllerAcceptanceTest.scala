@@ -152,7 +152,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
-        name = Subscription.Name(subscriptionId),
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
         plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.homeDeliveryPrpId)),
       )
 
@@ -310,7 +310,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
-        name = Subscription.Name(subscriptionId),
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
         plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
       )
 
