@@ -226,6 +226,8 @@ Resources:
       - Ref: SecurityGroupForPostgres
       InstanceType:
         Ref: InstanceType
+      MetadataOptions:
+        HttpTokens: required
       AssociatePublicIpAddress: 'False'
       IamInstanceProfile:
         Ref: InstanceProfile
