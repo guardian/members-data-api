@@ -7,7 +7,7 @@ object Dependencies {
   val awsClientV2Version = "2.24.10"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.15"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.24"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.10.2"
   val postgres = "org.postgresql" % "postgresql" % "42.7.2"
   val jdbc = PlayImport.jdbc
@@ -27,8 +27,8 @@ object Dependencies {
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
 
-  val jacksonVersion = "2.14.2"
-  val jacksonDatabindVersion = "2.14.2"
+  val jacksonVersion = "2.15.0"
+  val jacksonDatabindVersion = "2.15.0"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
