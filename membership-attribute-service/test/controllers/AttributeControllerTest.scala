@@ -42,6 +42,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val userWithGuardianWeeklyUserId = "7"
   private val unvalidatedEmailUserId = "8"
   private val userWithTierThreeId = "9"
+  private val userWithGuardianLightUserId = "10"
 
   private val testAttributes = Attributes(
     UserId = validUserId,
@@ -52,6 +53,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     PaperSubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
     GuardianWeeklySubscriptionExpiryDate = Some(new LocalDate(2099, 1, 1)),
     SupporterPlusExpiryDate = Some(new LocalDate(2024, 1, 1)),
+    GuardianLightExpiryDate = Some(new LocalDate(2024, 1, 1)),
     RecurringContributionAcquisitionDate = Some(dateBeforeFeastLaunch),
   )
   private val recurringContributionOnlyAttributes = Attributes(
@@ -80,6 +82,11 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
 
+  private val guardianLightAttributes = Attributes(
+    UserId = userWithGuardianLightUserId,
+    GuardianLightExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+  )
+
   private val validUserCookie = Cookie("validUser", "true")
   private val validUnvalidatedEmailCookie = Cookie("unvalidatedEmailUser", "true")
   private val userWithoutAttributesCookie = Cookie("invalidUser", "true")
@@ -89,6 +96,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val newspaperPlusCookie = Cookie("newspaperPlus", "true")
   private val guardianWeeklyCookie = Cookie("guardianWeekly", "true")
   private val tierThreeCookie = Cookie("tierThree", "true")
+  private val guardianLightCookie = Cookie("guardianLight", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@thegulocal.com",
     identityId = validUserId,
@@ -140,6 +148,12 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     authTime = None,
   )
 
+  private val userWithGuardianLight = UserFromToken(
+    primaryEmailAddress = "GuardianLight@thegulocal.com",
+    identityId = userWithGuardianLightUserId,
+    authTime = None,
+  )
+
   private val guardianEmployeeUser = UserFromToken(
     primaryEmailAddress = "foo@guardian.co.uk",
     identityId = "1234321",
@@ -176,6 +190,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == newspaperPlusCookie => Future.successful(Right(userWithNewspaperPlus))
         case Some(c) if c == guardianWeeklyCookie => Future.successful(Right(userWithGuardianWeekly))
         case Some(c) if c == tierThreeCookie => Future.successful(Right(userWithTierThree))
+        case Some(c) if c == guardianLightCookie => Future.successful(Right(userWithGuardianLight))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -265,6 +280,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
           ("Zuora", Some(guardianWeeklyOnlyAttributes))
         } else if (identityId == userWithTierThreeId) {
           ("Zuora", Some(tierThreeAttributes))
+        } else if (identityId == userWithGuardianLightUserId) {
+          ("Zuora", Some(guardianLightAttributes))
         } else
           ("Zuora", None)
       }
@@ -330,6 +347,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                    |   "digitalSubscriptionExpiryDate":"2100-01-01",
                    |   "paperSubscriptionExpiryDate":"2099-01-01",
                    |   "guardianWeeklyExpiryDate":"2099-01-01",
+                   |   "guardianLightExpiryDate":"2024-01-01",
                    |   "recurringContributionAcquisitionDate":"$dateBeforeFeastLaunch",
                    |   "showSupportMessaging": false,
                    |   "contentAccess": {
@@ -341,7 +359,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                    |     "digitalPack": true,
                    |     "paperSubscriber": true,
                    |     "guardianWeeklySubscriber": true,
-                   |     "guardianPatron": false
+                   |     "guardianPatron": false,
+                   |     "guardianLight":false
                    |   }
                    | }
                  """.stripMargin)
@@ -405,7 +424,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                      |    "digitalPack": false,
                      |    "paperSubscriber": false,
                      |    "guardianWeeklySubscriber": false,
-                     |    "guardianPatron": false
+                     |    "guardianPatron": false,
+                     |    "guardianLight":false
                      |  }
                      |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithoutAttributesUserId)
@@ -435,7 +455,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "digitalPack": false,
              |    "paperSubscriber": false,
              |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false
+             |    "guardianPatron": false,
+             |    "guardianLight": false
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithRecurringContributionUserId)
@@ -465,7 +486,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "digitalPack": false,
              |    "paperSubscriber": false,
              |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false
+             |    "guardianPatron": false,
+             |    "guardianLight": false
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithLiveAppUserId)
@@ -494,7 +516,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "digitalPack": true,
              |    "paperSubscriber": true,
              |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false
+             |    "guardianPatron": false,
+             |    "guardianLight":false
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithNewspaperUserId)
@@ -524,7 +547,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                       |    "digitalPack": true,
                       |    "paperSubscriber": true,
                       |    "guardianWeeklySubscriber": false,
-                      |    "guardianPatron": false
+                      |    "guardianPatron": false,
+                      |    "guardianLight":false
                       |  }
                       |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithNewspaperPlusUserId)
@@ -555,7 +579,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "digitalPack": false,
              |    "paperSubscriber": false,
              |    "guardianWeeklySubscriber": true,
-             |    "guardianPatron": false
+             |    "guardianPatron": false,
+             |    "guardianLight":false
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithGuardianWeeklyUserId)
@@ -584,10 +609,41 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |    "digitalPack": true,
              |    "paperSubscriber": false,
              |    "guardianWeeklySubscriber": true,
-             |    "guardianPatron": false
+             |    "guardianPatron": false,
+             |    "guardianLight":false
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithTierThreeId)
+
+    }
+
+    "return the correct Guardian Light attributes for Guardian Light subscribers" in {
+      val req = FakeRequest().withCookies(guardianLightCookie)
+      val result = controller.attributes(req)
+
+      status(result) shouldEqual OK
+      val jsonBody = contentAsJson(result)
+      jsonBody shouldEqual
+        Json.parse(s"""
+             |{
+             |  "userId": "$userWithGuardianLightUserId",
+             |  "guardianLightExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+             |  "showSupportMessaging": true,
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.RegularSubscription}",
+             |  "contentAccess": {
+             |    "member": false,
+             |    "paidMember": false,
+             |    "recurringContributor": false,
+             |    "supporterPlus" : false,
+             |    "feast": false,
+             |    "digitalPack": false,
+             |    "paperSubscriber": false,
+             |    "guardianWeeklySubscriber": false,
+             |    "guardianPatron": false,
+             |    "guardianLight": true
+             |  }
+             |}""".stripMargin)
+      verifyIdentityHeadersSet(result, userWithGuardianLightUserId)
 
     }
 
@@ -672,6 +728,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       contentAsJson(controller.attributes(req)) shouldEqual
         Json.toJson(testAttributes.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
     }
+    
   }
 
   override def afterAll(): Unit = as.terminate()

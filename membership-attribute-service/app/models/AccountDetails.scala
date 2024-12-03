@@ -217,6 +217,7 @@ object AccountDetails {
     case Product.Digipack => "subscriptions"
     case Product.SupporterPlus => "recurringSupport"
     case Product.TierThree => "recurringSupport"
+    case Product.GuardianLight => "subscriptions"
     case Product.GuardianPatron => "subscriptions"
     case Product.Contribution => "recurringSupport"
     case Product.Membership => "membership"

@@ -21,6 +21,7 @@ case class ContentAccess(
     paperSubscriber: Boolean,
     guardianWeeklySubscriber: Boolean,
     guardianPatron: Boolean,
+    guardianLight: Boolean,
 )
 
 object ContentAccess {
@@ -42,6 +43,7 @@ case class Attributes(
     GuardianPatronExpiryDate: Option[LocalDate] = None,
     AlertAvailableFor: Option[String] = None,
     RecurringContributionAcquisitionDate: Option[LocalDate] = None,
+    GuardianLightExpiryDate: Option[LocalDate] = None,
 ) {
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
@@ -58,6 +60,7 @@ case class Attributes(
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
+  lazy val isGuardianLight = GuardianLightExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(
     member = isPaidTier,
@@ -69,6 +72,7 @@ case class Attributes(
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
     feast = FeastApp.shouldGetFeastAccess(this),
+    guardianLight = isGuardianLight,
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
@@ -102,7 +106,8 @@ object Attributes {
       (__ \ "liveAppSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianPatronExpiryDate").writeNullable[LocalDate] and
       (__ \ "alertAvailableFor").writeNullable[String] and
-      (__ \ "recurringContributionAcquisitionDate").writeNullable[LocalDate]
+      (__ \ "recurringContributionAcquisitionDate").writeNullable[LocalDate] and
+      (__ \ "guardianLightExpiryDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)

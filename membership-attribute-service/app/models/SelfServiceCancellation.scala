@@ -23,7 +23,7 @@ object SelfServiceCancellation {
 
   def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = {
 
-    if (isOneOf(product, Membership, Contribution, SupporterPlus, Digipack, TierThree)) {
+    if (isOneOf(product, Membership, Contribution, SupporterPlus, Digipack, TierThree, GuardianLight)) {
       SelfServiceCancellation(
         isAllowed = true,
         shouldDisplayEmail = true,
@@ -48,6 +48,7 @@ object SelfServiceCancellation {
         phoneRegionsToDisplay = allPhones,
       )
     }
+    //GuardianLight needed here?
   }
 
   private def isOneOf[T](product: T, products: T*): Boolean = products.toSet.contains(product)
