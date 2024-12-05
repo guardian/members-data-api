@@ -22,7 +22,7 @@ object SelfServiceCancellation {
   private val allPhones = List(ukRowPhone, usaPhone, ausPhone)
 
   def apply(product: Product, billingCountry: Option[Country]): SelfServiceCancellation = {
-
+    //Anything else needed for Guardian Light here?
     if (isOneOf(product, Membership, Contribution, SupporterPlus, Digipack, TierThree, GuardianLight)) {
       SelfServiceCancellation(
         isAllowed = true,
@@ -48,7 +48,6 @@ object SelfServiceCancellation {
         phoneRegionsToDisplay = allPhones,
       )
     }
-    //GuardianLight needed here?
   }
 
   private def isOneOf[T](product: T, products: T*): Boolean = products.toSet.contains(product)
