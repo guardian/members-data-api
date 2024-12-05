@@ -190,5 +190,4 @@ class ProductsResponseSpec extends Specification with SafeLogging {
       productsResponseJson mustEqual expectedResponse
     }
   }
-  //add a test here for Guardian Light?
 }
