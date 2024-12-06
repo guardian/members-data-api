@@ -395,7 +395,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
                      |{
                      |  "userId": "$userWithoutAttributesUserId",
                      |  "showSupportMessaging": true,
-                     |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.RegularSubscription}",
+                     |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+                     |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
                      |  "contentAccess": {
                      |    "member": false,
                      |    "paidMember": false,
@@ -422,8 +423,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |{
              |  "userId": "$userWithRecurringContributionUserId",
              |  "showSupportMessaging": false,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
              |  "recurringContributionPaymentPlan":"Monthly Contribution",
              |  "recurringContributionAcquisitionDate":"$dateBeforeFeastLaunch",
              |  "contentAccess": {
@@ -454,8 +455,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "userId": "$userWithLiveAppUserId",
              |  "liveAppSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,
@@ -544,8 +545,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "userId": "$userWithGuardianWeeklyUserId",
              |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": false,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.ExtendedTrial}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.ExtendedTrial}"],
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,
