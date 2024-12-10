@@ -728,7 +728,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       contentAsJson(controller.attributes(req)) shouldEqual
         Json.toJson(testAttributes.copy(DigitalSubscriptionExpiryDate = digipackAllowEmployeeAccessDateHack))
     }
-    
+
   }
 
   override def afterAll(): Unit = as.terminate()
