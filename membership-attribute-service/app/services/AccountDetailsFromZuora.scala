@@ -117,6 +117,7 @@ class AccountDetailsFromZuora(
         case Product.GuardianPatron => true
         case Product.Contribution => true
         case Product.Discounts => false
+        case Product.GuardianLight => true
       })
       filtered = applyFilter(filter, subsWithRecognisedProducts, catalog)
     } yield filtered
