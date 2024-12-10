@@ -235,6 +235,7 @@ class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val log
       case Product.GuardianPatron => true
       case Product.Contribution => true
       case Product.Discounts => false
+      case Product.GuardianLight => true
     })
     .sortBy(_.start.toDate)
   val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
