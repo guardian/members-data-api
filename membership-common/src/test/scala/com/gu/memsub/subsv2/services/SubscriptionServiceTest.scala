@@ -74,7 +74,6 @@ class SubscriptionServiceTest extends Specification {
         "Contributor",
         lastChangeType,
         List.empty,
-        None,
         NonEmptyList(
           RatePlanCharge(
             SubscriptionRatePlanChargeId("noo"),
@@ -85,10 +84,11 @@ class SubscriptionServiceTest extends Specification {
             SubscriptionEnd,
             None,
             None,
+            None,
+            startDate,
+            endDate,
           ),
         ),
-        startDate,
-        endDate,
       )
     }
     def partnerPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
@@ -98,7 +98,6 @@ class SubscriptionServiceTest extends Specification {
         "Partner",
         None,
         List.empty,
-        None,
         NonEmptyList(
           RatePlanCharge(
             SubscriptionRatePlanChargeId("noo"),
@@ -109,10 +108,11 @@ class SubscriptionServiceTest extends Specification {
             SubscriptionEnd,
             None,
             None,
+            None,
+            startDate,
+            endDate,
           ),
         ),
-        startDate,
-        endDate,
       )
     def supporterPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
       RatePlan(
@@ -121,7 +121,6 @@ class SubscriptionServiceTest extends Specification {
         "Supporter",
         None,
         List.empty,
-        None,
         NonEmptyList(
           RatePlanCharge(
             SubscriptionRatePlanChargeId("nar"),
@@ -132,10 +131,11 @@ class SubscriptionServiceTest extends Specification {
             SubscriptionEnd,
             None,
             None,
+            None,
+            startDate,
+            endDate,
           ),
         ),
-        startDate,
-        endDate,
       )
     def digipackPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
       RatePlan(
@@ -144,7 +144,6 @@ class SubscriptionServiceTest extends Specification {
         "Digital Pack",
         None,
         List.empty,
-        None,
         NonEmptyList(
           RatePlanCharge(
             SubscriptionRatePlanChargeId("naz"),
@@ -155,10 +154,11 @@ class SubscriptionServiceTest extends Specification {
             SubscriptionEnd,
             None,
             None,
+            None,
+            startDate,
+            endDate,
           ),
         ),
-        startDate,
-        endDate,
       )
 
     def switchedSupporterPlusPlan(startDate: LocalDate, endDate: LocalDate): RatePlan =
@@ -178,29 +178,25 @@ class SubscriptionServiceTest extends Specification {
             SubscriptionEnd,
             None,
             None,
+            chargedThroughDate = None,
+            effectiveStartDate = startDate,
+            effectiveEndDate = endDate,
           ),
         ),
-        chargedThroughDate = None,
-        start = startDate,
-        end = endDate,
       )
 
     def toSubscription(isCancelled: Boolean)(plans: NonEmptyList[RatePlan]): Subscription = {
       import com.gu.memsub.Subscription._
       Subscription(
         id = Id(plans.head.id.get),
-        name = Name("AS-123123"),
+        subscriptionNumber = SubscriptionNumber("AS-123123"),
         accountId = AccountId("accountId"),
-        startDate = plans.head.start,
-        acceptanceDate = plans.head.start,
-        termStartDate = plans.head.start,
-        termEndDate = plans.head.start + 1.year,
-        casActivationDate = None,
-        promoCode = None,
+        contractEffectiveDate = plans.head.effectiveStartDate,
+        customerAcceptanceDate = plans.head.effectiveStartDate,
+        termEndDate = plans.head.effectiveStartDate + 1.year,
         isCancelled = isCancelled,
         ratePlans = plans.list.toList,
         readerType = ReaderType.Direct,
-        gifteeIdentityId = None,
         autoRenew = true,
       )
     }
@@ -261,7 +257,7 @@ class SubscriptionServiceTest extends Specification {
 
       val firstPayment = referenceDate + 14.days
       val digipackSub = toSubscription(isCancelled = false)(NonEmptyList(digipackPlan(firstPayment, referenceDate + 1.year)))
-        .copy(termStartDate = referenceDate, startDate = referenceDate)
+        .copy(contractEffectiveDate = referenceDate)
 
       GetCurrentPlans.currentPlans(digipackSub, referenceDate, catalog).map(_.head.id.get) mustEqual \/-("idDigipack")
     }
@@ -271,7 +267,7 @@ class SubscriptionServiceTest extends Specification {
   "Subscription service" should {
 
     "Be able to fetch a supporter plus subscription" in {
-      val sub = service.get(memsub.Subscription.Name("1234"))
+      val sub = service.get(memsub.Subscription.SubscriptionNumber("1234"))
       sub.map(_.plan(catalog)) must beSome(
         RatePlan(
           RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
@@ -279,7 +275,6 @@ class SubscriptionServiceTest extends Specification {
           "Supporter Plus",
           None,
           Nil,
-          Some(20 Jun 2024),
           NonEmptyList(
             RatePlanCharge(
               SubscriptionRatePlanChargeId("8ad08ae28f9570f0018f9588141d10df"),
@@ -290,6 +285,9 @@ class SubscriptionServiceTest extends Specification {
               SubscriptionEnd,
               None,
               None,
+              Some(20 Jun 2024),
+              20 May 2024,
+              20 May 2025,
             ),
             RatePlanCharge(
               SubscriptionRatePlanChargeId("8ad08ae28f9570f0018f9588142410e0"),
@@ -300,25 +298,26 @@ class SubscriptionServiceTest extends Specification {
               SubscriptionEnd,
               None,
               None,
+              Some(20 Jun 2024),
+              20 May 2024,
+              20 May 2025,
             ),
           ),
-          20 May 2024,
-          20 May 2025,
         ),
       )
-      sub.map(_.name.get) must beSome("A-S00890520")
+      sub.map(_.subscriptionNumber.getNumber) must beSome("A-S00890520")
     }
 
     "Be able to fetch a subscription with credits" in {
-      val sub = service.get(memsub.Subscription.Name("credit"))
+      val sub = service.get(memsub.Subscription.SubscriptionNumber("credit"))
       sub.map(_.plan(catalog)) must beSome(
         PlanWithCreditsTestData.mainPlan,
       )
-      sub.map(_.name.get) must beSome("A-S00897035")
+      sub.map(_.subscriptionNumber.getNumber) must beSome("A-S00897035")
     }
 
     "Give you back a none in the event of the sub not existing" in {
-      service.get(memsub.Subscription.Name("foo")) must beNone
+      service.get(memsub.Subscription.SubscriptionNumber("foo")) must beNone
     }
 
     val contact = new ContactId {
@@ -328,7 +327,7 @@ class SubscriptionServiceTest extends Specification {
 
     "Leverage the soap client to fetch subs by contact ID" in {
       val subs = service.current(contact)
-      subs.map(_.name.get).sorted mustEqual List("A-S00890520", "A-S00890521") // from the test resources jsons
+      subs.map(_.subscriptionNumber.getNumber).sorted mustEqual List("A-S00890520", "A-S00890521") // from the test resources jsons
     }
 
     "Be able to fetch subs where term ends after the specified date" in {
@@ -341,23 +340,25 @@ class SubscriptionServiceTest extends Specification {
     val referenceDate = 15 Aug 2017
 
     "Allow you to fetch an upgraded subscription" in {
-      service.get(Name("A-S00063478")).map(GetCurrentPlans.currentPlans(_, referenceDate, catalog).map(_.map(_.name(catalog)))) must beSome(
+      service
+        .get(SubscriptionNumber("A-S00063478"))
+        .map(GetCurrentPlans.currentPlans(_, referenceDate, catalog).map(_.map(_.name(catalog)))) must beSome(
         \/-(NonEmptyList("Partner")),
       )
     }
 
     "Decided cancellation effective date should be None if within lead time period before first fulfilment date" in {
-      service.decideCancellationEffectiveDate(Name("A-lead-time")).run mustEqual \/.right(None)
+      service.decideCancellationEffectiveDate(SubscriptionNumber("A-lead-time")).run mustEqual \/.right(None)
     }
 
     "Deciding cancellation effective date should error because Invoiced period has started today, however Bill Run has not yet completed" in {
       service
-        .decideCancellationEffectiveDate(Name("GW-before-bill-run"), LocalTime.parse("01:00"), LocalDate.parse("2020-10-02"))
+        .decideCancellationEffectiveDate(SubscriptionNumber("GW-before-bill-run"), LocalTime.parse("01:00"), LocalDate.parse("2020-10-02"))
         .run mustEqual \/.left("Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
     }
 
     "Decided cancellation effective date should be end of 6-for-6 invoiced period if user has started 6-for-6" in {
-      service.decideCancellationEffectiveDate(Name("A-segment-6for6"), today = LocalDate.parse("2020-10-02")).run mustEqual \/.right(
+      service.decideCancellationEffectiveDate(SubscriptionNumber("A-segment-6for6"), today = LocalDate.parse("2020-10-02")).run mustEqual \/.right(
         Some(LocalDate.parse("2020-11-13")),
       )
     }
@@ -365,7 +366,7 @@ class SubscriptionServiceTest extends Specification {
     "Deciding cancellation effective date should error because Invoiced period exists, and Bill Run has completed, but today is after end of invoice date" in {
       service
         .decideCancellationEffectiveDate(
-          Name("GW-stale-chargeThroughDate"),
+          SubscriptionNumber("GW-stale-chargeThroughDate"),
           service.BillRunCompletedByTime.plusHours(1),
           LocalDate.parse("2020-06-20").plusDays(1),
         )

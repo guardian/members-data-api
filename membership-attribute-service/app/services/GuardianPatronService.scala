@@ -73,14 +73,11 @@ class GuardianPatronService(
       deliveryAddress = None,
       subscription = Subscription(
         id = Id(subscription.id),
-        name = Name(subscription.id),
+        subscriptionNumber = SubscriptionNumber(subscription.id),
         accountId = AccountId(subscription.customer.id),
-        startDate = subscription.created,
-        acceptanceDate = subscription.created,
-        termStartDate = subscription.currentPeriodStart,
+        contractEffectiveDate = subscription.created,
+        customerAcceptanceDate = subscription.created,
         termEndDate = subscription.currentPeriodEnd,
-        casActivationDate = None,
-        promoCode = None,
         isCancelled = subscription.isCancelled,
         ratePlans = List(
           RatePlan(
@@ -99,15 +96,14 @@ class GuardianPatronService(
                 endDateCondition = SubscriptionEnd,
                 upToPeriods = None, // only used for fixed periods
                 upToPeriodsType = None, // only used for fixed periods
+                chargedThroughDate = Some(subscription.currentPeriodEnd),
+                effectiveStartDate = subscription.currentPeriodStart,
+                effectiveEndDate = subscription.currentPeriodEnd,
               ),
             ),
-            chargedThroughDate = Some(subscription.currentPeriodEnd),
-            start = subscription.currentPeriodStart,
-            end = subscription.currentPeriodEnd,
           ),
         ),
         readerType = Direct,
-        gifteeIdentityId = None,
         autoRenew = true,
       ),
       paymentDetails = PaymentDetails(
