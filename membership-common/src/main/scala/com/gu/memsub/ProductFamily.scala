@@ -33,6 +33,9 @@ object Product {
   case object TierThree extends ContentSubscription {
     val name = "tierThree"
   }
+  case object GuardianLight extends Product {
+    val name = "guardianLight"
+  }
   case object Digipack extends ContentSubscription {
     val name = "digitalpack"
   }
@@ -74,6 +77,7 @@ object Product {
     case Digipack.name => Some(Digipack)
     case SupporterPlus.name => Some(SupporterPlus)
     case TierThree.name => Some(TierThree)
+    case GuardianLight.name => Some(GuardianLight)
     case Membership.name => Some(Membership)
     case Delivery.name => Some(Delivery)
     case NationalDelivery.name => Some(NationalDelivery)
@@ -105,7 +109,8 @@ object ProductRatePlanChargeProductType {
       (id == Adjustment.id).option(Adjustment) orElse
       (id == Contributor.id).option(Contributor) orElse
       (id == Weekly.id).option(Weekly) orElse
-      (id == TierThree.id).option(TierThree)
+      (id == TierThree.id).option(TierThree) orElse
+      (id == GuardianLight.id).option(GuardianLight)
 
   sealed trait MemberTier extends ProductRatePlanChargeProductType
   sealed trait PaidMemberTier extends MemberTier
@@ -170,6 +175,10 @@ object ProductRatePlanChargeProductType {
 
   object TierThree extends ProductRatePlanChargeProductType {
     override val id = "Tier Three"
+  }
+
+  object GuardianLight extends ProductRatePlanChargeProductType {
+    override val id = "Guardian Light"
   }
 
   object MondayPaper extends PaperDay {
