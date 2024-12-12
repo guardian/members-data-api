@@ -227,14 +227,11 @@ class ProductsResponseSpec extends Specification with SafeLogging {
 
       val subscription = Subscription(
         id = Id(subId),
-        name = Name(subNumber),
+        subscriptionNumber = SubscriptionNumber(subNumber),
         accountId = AccountId(accountId),
-        startDate = LocalDate.parse(startDate),
-        acceptanceDate = LocalDate.parse(startDate),
-        termStartDate = LocalDate.parse(startDate),
+        contractEffectiveDate = LocalDate.parse(startDate),
+        customerAcceptanceDate = LocalDate.parse(startDate),
         termEndDate = LocalDate.parse(endDate),
-        casActivationDate = None,
-        promoCode = None,
         isCancelled = false,
         ratePlans = List(
           RatePlan(
@@ -243,7 +240,6 @@ class ProductsResponseSpec extends Specification with SafeLogging {
             productName,
             lastChangeType = None,
             features = List(),
-            chargedThroughDate = Some(LocalDate.parse(nextInvoiceDate)),
             ratePlanCharges = NonEmptyList(
               RatePlanCharge(
                 SubscriptionRatePlanChargeId("lklklk"),
@@ -254,14 +250,14 @@ class ProductsResponseSpec extends Specification with SafeLogging {
                 SubscriptionEnd,
                 None,
                 None,
+                Some(LocalDate.parse(nextInvoiceDate)),
+                LocalDate.parse(startDate),
+                LocalDate.parse(endDate),
               ),
             ),
-            start = LocalDate.parse(startDate),
-            end = LocalDate.parse(endDate),
           ),
         ),
         readerType = Direct,
-        gifteeIdentityId = None,
         autoRenew = true,
       )
 
