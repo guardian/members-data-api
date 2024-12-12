@@ -411,24 +411,24 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       val jsonBody = contentAsJson(result)
       jsonBody shouldEqual
         Json.parse(s"""
-                     |{
-                     |  "userId": "$userWithoutAttributesUserId",
-                     |  "showSupportMessaging": true,
-                     |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
-                     |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
-                     |  "contentAccess": {
-                     |    "member": false,
-                     |    "paidMember": false,
-                     |    "recurringContributor": false,
-                     |    "supporterPlus" : false,
-                     |    "feast": false,
-                     |    "digitalPack": false,
-                     |    "paperSubscriber": false,
-                     |    "guardianWeeklySubscriber": false,
-                     |    "guardianPatron": false,
-                     |    "guardianLight":false
-                     |  }
-                     |}""".stripMargin)
+                       |{
+                       |  "userId": "$userWithoutAttributesUserId",
+                       |  "showSupportMessaging": true,
+                       |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+                       |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
+                       |  "contentAccess": {
+                       |    "member": false,
+                       |    "paidMember": false,
+                       |    "recurringContributor": false,
+                       |    "supporterPlus" : false,
+                       |    "feast": false,
+                       |    "digitalPack": false,
+                       |    "paperSubscriber": false,
+                       |    "guardianWeeklySubscriber": false,
+                       |    "guardianPatron": false,
+                       |    "guardianLight":false
+                       |  }
+                       |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithoutAttributesUserId)
 
     }
@@ -440,26 +440,26 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       val jsonBody = contentAsJson(result)
       jsonBody shouldEqual
         Json.parse(s"""
-             |{
-             |  "userId": "$userWithRecurringContributionUserId",
-             |  "showSupportMessaging": false,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
-             |  "recurringContributionPaymentPlan":"Monthly Contribution",
-             |  "recurringContributionAcquisitionDate":"$dateBeforeFeastLaunch",
-             |  "contentAccess": {
-             |    "member": false,
-             |    "paidMember": false,
-             |    "recurringContributor": true,
-             |    "supporterPlus" : false,
-             |    "feast": false,
-             |    "digitalPack": false,
-             |    "paperSubscriber": false,
-             |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false,
-             |    "guardianLight": false
-             |  }
-             |}""".stripMargin)
+               |{
+               |  "userId": "$userWithRecurringContributionUserId",
+               |  "showSupportMessaging": false,
+               |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+               |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
+               |  "recurringContributionPaymentPlan":"Monthly Contribution",
+               |  "recurringContributionAcquisitionDate":"$dateBeforeFeastLaunch",
+               |  "contentAccess": {
+               |    "member": false,
+               |    "paidMember": false,
+               |    "recurringContributor": true,
+               |    "supporterPlus" : false,
+               |    "feast": false,
+               |    "digitalPack": false,
+               |    "paperSubscriber": false,
+               |    "guardianWeeklySubscriber": false,
+               |    "guardianPatron": false,
+               |    "guardianLight": false
+               |  }
+               |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithRecurringContributionUserId)
 
     }
@@ -472,25 +472,25 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       val jsonBody = contentAsJson(result)
       jsonBody shouldEqual
         Json.parse(s"""
-             |{
-             |  "userId": "$userWithLiveAppUserId",
-             |  "liveAppSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-             |  "showSupportMessaging": false,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
-             |  "contentAccess": {
-             |    "member": false,
-             |    "paidMember": false,
-             |    "recurringContributor": false,
-             |    "supporterPlus" : false,
-             |    "feast": false,
-             |    "digitalPack": false,
-             |    "paperSubscriber": false,
-             |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false,
-             |    "guardianLight": false
-             |  }
-             |}""".stripMargin)
+               |{
+               |  "userId": "$userWithLiveAppUserId",
+               |  "liveAppSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+               |  "showSupportMessaging": false,
+               |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+               |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
+               |  "contentAccess": {
+               |    "member": false,
+               |    "paidMember": false,
+               |    "recurringContributor": false,
+               |    "supporterPlus" : false,
+               |    "feast": false,
+               |    "digitalPack": false,
+               |    "paperSubscriber": false,
+               |    "guardianWeeklySubscriber": false,
+               |    "guardianPatron": false,
+               |    "guardianLight": false
+               |  }
+               |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithLiveAppUserId)
 
     }
@@ -504,23 +504,23 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       println(Json.prettyPrint(jsonBody))
       jsonBody shouldEqual
         Json.parse(s"""
-             |{
-             |  "userId": "$userWithNewspaperUserId",
-             |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-             |  "showSupportMessaging": false,
-             |  "contentAccess": {
-             |    "member": false,
-             |    "paidMember": false,
-             |    "recurringContributor": false,
-             |    "supporterPlus" : false,
-             |    "feast": true,
-             |    "digitalPack": true,
-             |    "paperSubscriber": true,
-             |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false,
-             |    "guardianLight":false
-             |  }
-             |}""".stripMargin)
+               |{
+               |  "userId": "$userWithNewspaperUserId",
+               |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+               |  "showSupportMessaging": false,
+               |  "contentAccess": {
+               |    "member": false,
+               |    "paidMember": false,
+               |    "recurringContributor": false,
+               |    "supporterPlus" : false,
+               |    "feast": true,
+               |    "digitalPack": true,
+               |    "paperSubscriber": true,
+               |    "guardianWeeklySubscriber": false,
+               |    "guardianPatron": false,
+               |    "guardianLight":false
+               |  }
+               |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithNewspaperUserId)
 
     }
@@ -534,24 +534,24 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       println(Json.prettyPrint(jsonBody))
       jsonBody shouldEqual
         Json.parse(s"""
-                      |{
-                      |  "userId": "$userWithNewspaperPlusUserId",
-                      |  "digitalSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-                      |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-                      |  "showSupportMessaging": false,
-                      |  "contentAccess": {
-                      |    "member": false,
-                      |    "paidMember": false,
-                      |    "recurringContributor": false,
-                      |    "supporterPlus" : false,
-                      |    "feast": true,
-                      |    "digitalPack": true,
-                      |    "paperSubscriber": true,
-                      |    "guardianWeeklySubscriber": false,
-                      |    "guardianPatron": false,
-                      |    "guardianLight":false
-                      |  }
-                      |}""".stripMargin)
+                        |{
+                        |  "userId": "$userWithNewspaperPlusUserId",
+                        |  "digitalSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+                        |  "paperSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+                        |  "showSupportMessaging": false,
+                        |  "contentAccess": {
+                        |    "member": false,
+                        |    "paidMember": false,
+                        |    "recurringContributor": false,
+                        |    "supporterPlus" : false,
+                        |    "feast": true,
+                        |    "digitalPack": true,
+                        |    "paperSubscriber": true,
+                        |    "guardianWeeklySubscriber": false,
+                        |    "guardianPatron": false,
+                        |    "guardianLight":false
+                        |  }
+                        |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithNewspaperPlusUserId)
 
     }
@@ -565,25 +565,25 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
       println(Json.prettyPrint(jsonBody))
       jsonBody shouldEqual
         Json.parse(s"""
-             |{
-             |  "userId": "$userWithGuardianWeeklyUserId",
-             |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-             |  "showSupportMessaging": false,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
-             |  "contentAccess": {
-             |    "member": false,
-             |    "paidMember": false,
-             |    "recurringContributor": false,
-             |    "supporterPlus" : false,
-             |    "feast": false,
-             |    "digitalPack": false,
-             |    "paperSubscriber": false,
-             |    "guardianWeeklySubscriber": true,
-             |    "guardianPatron": false,
-             |    "guardianLight":false
-             |  }
-             |}""".stripMargin)
+               |{
+               |  "userId": "$userWithGuardianWeeklyUserId",
+               |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
+               |  "showSupportMessaging": false,
+               |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+               |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
+               |  "contentAccess": {
+               |    "member": false,
+               |    "paidMember": false,
+               |    "recurringContributor": false,
+               |    "supporterPlus" : false,
+               |    "feast": false,
+               |    "digitalPack": false,
+               |    "paperSubscriber": false,
+               |    "guardianWeeklySubscriber": true,
+               |    "guardianPatron": false,
+               |    "guardianLight":false
+               |  }
+               |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithGuardianWeeklyUserId)
 
     }
@@ -630,7 +630,8 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  "userId": "$userWithGuardianLightUserId",
              |  "guardianLightExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
              |  "showSupportMessaging": true,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.RegularSubscription}",
+             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
+             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
              |  "contentAccess": {
              |    "member": false,
              |    "paidMember": false,
