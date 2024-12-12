@@ -86,7 +86,6 @@ case class Attributes(
       || isPaperSubscriber
       || isGuardianWeeklySubscriber
       || isPremiumLiveAppSubscriber
-      || isGuardianPatron
   )
 
 }
