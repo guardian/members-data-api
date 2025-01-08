@@ -44,9 +44,9 @@ object PaymentDetails extends SafeLogging {
     val plan = sub.plan(catalog)
     PaymentDetails(
       pendingCancellation = sub.isCancelled,
-      startDate = sub.startDate,
+      startDate = sub.contractEffectiveDate,
       chargedThroughDate = plan.chargedThroughDate,
-      customerAcceptanceDate = sub.acceptanceDate,
+      customerAcceptanceDate = sub.customerAcceptanceDate,
       nextPaymentPrice = nextPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue),
       lastPaymentDate = lastPaymentDate,
       nextPaymentDate = nextPayment.map(_.date),
@@ -58,7 +58,7 @@ object PaymentDetails extends SafeLogging {
         price = plan.chargesPrice.prices.head,
         interval = plan.billingPeriod.leftMap(e => logger.warn("unknown billing period: " + e)).map(_.noun).getOrElse("unknown_billing_period"),
       ),
-      subscriberId = sub.name.get,
+      subscriberId = sub.subscriptionNumber.getNumber,
       remainingTrialLength = timeUntilPaying,
     )
   }

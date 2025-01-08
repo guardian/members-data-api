@@ -49,7 +49,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
   }
 
   def cancelSubscription(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       termEndDate: LocalDate,
       maybeChargedThroughDate: Option[
         LocalDate,
@@ -66,7 +66,9 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     val extendTermIfNeeded = maybeChargedThroughDate
       .filter(_.isAfter(termEndDate)) // we need to extend the term if they've paid past their term end date, otherwise cancel call will fail
       .map(_ =>
-        EitherT(simpleRest.put[RenewSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}/renew", RenewSubscriptionCommand())),
+        EitherT(
+          simpleRest.put[RenewSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}/renew", RenewSubscriptionCommand()),
+        ),
       )
       .getOrElse(EitherT.right[String, Future, ZuoraResponse](ZuoraResponse(success = true)))
 
@@ -75,19 +77,21 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     val restResponse = for {
       _ <- extendTermIfNeeded
       cancelResponse <- EitherT(
-        simpleRest.put[CancelSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}/cancel", cancelCommand),
+        simpleRest.put[CancelSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}/cancel", cancelCommand),
       )
     } yield cancelResponse
 
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
   }
 
-  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String)(implicit logPrefix: LogPrefix): Future[String \/ Unit] = {
+  def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ Unit] = {
     val future = implicitly[Monad[Future]]
     val restResponse = for {
       restResponse <- EitherT(
         simpleRest.put[UpdateCancellationSubscriptionCommand, ZuoraResponse](
-          s"subscriptions/${subscriptionName.get}",
+          s"subscriptions/${subscriptionNumber.getNumber}",
           UpdateCancellationSubscriptionCommand(cancellationReason = "Customer", userCancellationReason = userCancellationReason),
         ),
       )
@@ -107,7 +111,7 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
   }
 
   def updateChargeAmount(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       ratePlanChargeId: SubscriptionRatePlanChargeId,
       ratePlanId: RatePlanId,
       amount: Double,
@@ -117,16 +121,16 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     val updateCommand =
       UpdateChargeCommand(price = amount, ratePlanChargeId = ratePlanChargeId, ratePlanId = ratePlanId, applyFromDate = applyFromDate, note = reason)
     val restResponse = for {
-      restResponse <- EitherT(simpleRest.put[UpdateChargeCommand, ZuoraResponse](s"subscriptions/${subscriptionName.get}", updateCommand))
+      restResponse <- EitherT(simpleRest.put[UpdateChargeCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}", updateCommand))
     } yield restResponse
 
     unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
   }
 
-  def getCancellationEffectiveDate(name: Name)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {
+  def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {
     (for {
-      amendment <- EitherT(simpleRest.get[Amendment](s"amendments/subscriptions/${name.get}"))
-      cancelledSub <- EitherT(simpleRest.get[CancelledSubscription](s"subscriptions/${name.get}"))
+      amendment <- EitherT(simpleRest.get[Amendment](s"amendments/subscriptions/${subscriptionNumber.getNumber}"))
+      cancelledSub <- EitherT(simpleRest.get[CancelledSubscription](s"subscriptions/${subscriptionNumber.getNumber}"))
     } yield {
       if (amendment.`type`.contains("Cancellation") && cancelledSub.status == "Cancelled")
         Some(cancelledSub.subscriptionEndDate)

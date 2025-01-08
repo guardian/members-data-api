@@ -13,22 +13,18 @@ import scalaz.{NonEmptyList, Validation, \/}
 
 case class Subscription(
     id: memsub.Subscription.Id,
-    name: memsub.Subscription.Name,
+    subscriptionNumber: memsub.Subscription.SubscriptionNumber,
     accountId: memsub.Subscription.AccountId,
-    startDate: LocalDate,
-    acceptanceDate: LocalDate,
-    termStartDate: LocalDate,
+    contractEffectiveDate: LocalDate,
+    customerAcceptanceDate: LocalDate,
     termEndDate: LocalDate,
-    casActivationDate: Option[DateTime],
-    promoCode: Option[PromoCode],
     isCancelled: Boolean,
     ratePlans: List[RatePlan],
     readerType: ReaderType,
-    gifteeIdentityId: Option[String],
     autoRenew: Boolean,
 ) {
 
-  val firstPaymentDate: LocalDate = (acceptanceDate :: ratePlans.map(_.start)).min
+  val firstPaymentDate: LocalDate = (customerAcceptanceDate :: ratePlans.map(_.effectiveStartDate)).min
 
   def plan(catalog: Catalog): RatePlan =
     GetCurrentPlans.currentPlans(this, LocalDate.now, catalog).fold(error => throw new RuntimeException(error), _.head)
@@ -57,7 +53,7 @@ object GetCurrentPlans {
     val currentPlans = sub.ratePlans.sortBy(_.totalChargesMinorUnit).reverse.map { plan =>
       val product = plan.product(catalog)
       // If the sub hasn't been paid yet but has started we should fast-forward to the date of first payment (free trial)
-      val dateToCheck = if (sub.startDate <= date && sub.acceptanceDate > date) sub.acceptanceDate else date
+      val dateToCheck = if (sub.contractEffectiveDate <= date && sub.customerAcceptanceDate > date) sub.customerAcceptanceDate else date
 
       val unvalidated = Validation.s[NonEmptyList[DiscardedPlan]](plan)
       /*
@@ -68,9 +64,9 @@ object GetCurrentPlans {
       val ensureStarted = unvalidated.ensure(DiscardedPlan(plan, s"hasn't started as of $dateToCheck").wrapNel)(_)
       val alreadyStarted =
         if (product == Contribution)
-          ensureStarted(_ => sub.startDate <= date)
+          ensureStarted(_ => sub.contractEffectiveDate <= date)
         else
-          ensureStarted(_.start <= dateToCheck)
+          ensureStarted(_.effectiveStartDate <= dateToCheck)
       val contributorPlanCancelled =
         alreadyStarted.ensure(DiscardedPlan(plan, "has a contributor plan which has been cancelled or removed").wrapNel)(_)
       val paidPlanEnded = alreadyStarted.ensure(DiscardedPlan(plan, "has a paid plan which has ended").wrapNel)(_)
@@ -80,7 +76,7 @@ object GetCurrentPlans {
       else if (product == Product.Digipack && plan.billingPeriod.toOption.contains(OneTimeChargeBillingPeriod))
         digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
       else
-        paidPlanEnded(_ => plan.end >= dateToCheck)
+        paidPlanEnded(_ => plan.effectiveEndDate >= dateToCheck)
     }
 
     Sequence(

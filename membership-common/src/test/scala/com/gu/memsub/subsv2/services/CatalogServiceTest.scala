@@ -31,6 +31,10 @@ class CatalogServiceTest extends Specification {
       val tierThreeProductId = ids.find(_._2 == com.gu.memsub.Product.TierThree).get._1 // TODO might need to do this better
       val tierThree = cats.productRatePlans.collect { case (_, plan) if plan.productId == tierThreeProductId => plan }.toList
       tierThree.size must beEqualTo(4)
+
+      val guardianLight = cats.productRatePlans(ProductRatePlanId("71a1c43a1e192b28f702b3b47113000a"))
+      guardianLight.productType.productTypeString must beEqualTo("Guardian Light")
+      guardianLight.name must beEqualTo("Guardian Light Monthly")
     }
   }
 }

@@ -120,10 +120,10 @@ object AccountDetails {
 
       def jsonifyPlan(plan: RatePlan) = Json.obj(
         "name" -> externalisePlanName(plan),
-        "start" -> plan.start,
-        "end" -> plan.end,
+        "start" -> plan.effectiveStartDate,
+        "end" -> plan.effectiveEndDate,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
-        "shouldBeVisible" -> (subscription.acceptanceDate.isAfter(now) || plan.start.isBefore(now.plusDays(30))),
+        "shouldBeVisible" -> (subscription.customerAcceptanceDate.isAfter(now) || plan.effectiveStartDate.isBefore(now.plusDays(30))),
         "chargedThrough" -> plan.chargedThroughDate,
         "price" -> (plan.chargesPrice.prices.head.amount * 100).toInt,
         "currency" -> plan.chargesPrice.prices.head.currency.glyph,
@@ -217,6 +217,7 @@ object AccountDetails {
     case Product.Digipack => "subscriptions"
     case Product.SupporterPlus => "recurringSupport"
     case Product.TierThree => "recurringSupport"
+    case Product.GuardianLight => "subscriptions"
     case Product.GuardianPatron => "subscriptions"
     case Product.Contribution => "recurringSupport"
     case Product.Membership => "membership"
@@ -234,13 +235,14 @@ class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val log
       case Product.GuardianPatron => true
       case Product.Contribution => true
       case Product.Discounts => false
+      case Product.GuardianLight => true
     })
-    .sortBy(_.start.toDate)
-  val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.start.isAfter(now) && plan.end.isAfter(now))
-  val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.start.isAfter(now))
+    .sortBy(_.effectiveStartDate.toDate)
+  val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.effectiveStartDate.isAfter(now) && plan.effectiveEndDate.isAfter(now))
+  val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.effectiveStartDate.isAfter(now))
 
-  val startDate: Option[LocalDate] = sortedPlans.headOption.map(_.start)
-  val endDate: Option[LocalDate] = sortedPlans.headOption.map(_.end)
+  val startDate: Option[LocalDate] = sortedPlans.headOption.map(_.effectiveStartDate)
+  val endDate: Option[LocalDate] = sortedPlans.headOption.map(_.effectiveEndDate)
 
   if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
@@ -256,10 +258,10 @@ object CancelledSubscription {
           "mmaCategory" -> mmaCategoryFrom(plan.product(catalog)),
           "tier" -> plan.productName,
           "subscription" -> Json.obj(
-            "subscriptionId" -> subscription.name.get,
+            "subscriptionId" -> subscription.subscriptionNumber.getNumber,
             "cancellationEffectiveDate" -> subscription.termEndDate,
-            "start" -> subscription.acceptanceDate,
-            "end" -> Seq(subscription.termEndDate, subscription.acceptanceDate).max,
+            "start" -> subscription.customerAcceptanceDate,
+            "end" -> Seq(subscription.termEndDate, subscription.customerAcceptanceDate).max,
             "readerType" -> subscription.readerType.value,
             "accountId" -> subscription.accountId.get,
           ),

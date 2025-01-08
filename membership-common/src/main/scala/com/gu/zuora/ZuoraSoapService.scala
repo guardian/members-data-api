@@ -138,9 +138,9 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
     } yield result
   }
 
-  def getPaymentSummary(subscriptionNumber: S.Name, accountCurrency: Currency)(implicit logPrefix: LogPrefix): Future[PaymentSummary] =
+  def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit logPrefix: LogPrefix): Future[PaymentSummary] =
     for {
-      invoiceItems <- soapClient.query[SoapQueries.InvoiceItem](SimpleFilter("SubscriptionNumber", subscriptionNumber.get))
+      invoiceItems <- soapClient.query[SoapQueries.InvoiceItem](SimpleFilter("SubscriptionNumber", subscriptionNumber.getNumber))
     } yield {
       val filteredInvoices = latestInvoiceItems(invoiceItems)
       PaymentSummary(filteredInvoices, accountCurrency)

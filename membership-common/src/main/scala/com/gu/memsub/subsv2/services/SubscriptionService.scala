@@ -76,13 +76,15 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
     * @see
     *   https://community.zuora.com/t5/Admin-Settings-Ideas/Get-current-active-subscription-rate-plans/idi-p/19049
     */
-  def get(name: memsub.Subscription.Name, isActiveToday: Boolean = false)(implicit logPrefix: LogPrefix): M[Option[Subscription]] = {
+  def get(subscriptionNumber: memsub.Subscription.SubscriptionNumber, isActiveToday: Boolean = false)(implicit
+      logPrefix: LogPrefix,
+  ): M[Option[Subscription]] = {
 
     val url =
       if (isActiveToday)
-        s"subscriptions/${name.get}?charge-detail=current-segment" // (effectiveStartDate <= today’s date < effectiveEndDate).
+        s"subscriptions/${subscriptionNumber.getNumber}?charge-detail=current-segment" // (effectiveStartDate <= today’s date < effectiveEndDate).
       else
-        s"subscriptions/${name.get}" // FIXME: equivalent to ?charge-detail=last-segment which returns even removed historical charges. We should not have this as default.
+        s"subscriptions/${subscriptionNumber.getNumber}" // FIXME: equivalent to ?charge-detail=last-segment which returns even removed historical charges. We should not have this as default.
 
     rest.get[Subscription](url)(subscriptionReads, logPrefix).map(_.leftMap(_.withLogging("ERROR: get subscription")).toOption)
   }
@@ -180,12 +182,12 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
     *   should not proceed with automatic cancelation
     */
   def decideCancellationEffectiveDate(
-      subscriptionName: memsub.Subscription.Name,
+      subscriptionNumber: memsub.Subscription.SubscriptionNumber,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
   )(implicit logPrefix: LogPrefix): EitherT[String, M, Option[LocalDate]] = {
     EitherT(
-      OptionT(get(subscriptionName, isActiveToday = true)).fold(
+      OptionT(get(subscriptionNumber, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
           val paidPlans =
             zuoraSubscriptionWithCurrentSegment.ratePlans
@@ -205,7 +207,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
                   else
                     \/.r[String](Some(endOfLastInvoicePeriod))
                 case None =>
-                  if (paidPlan.start.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
+                  if (paidPlan.effectiveStartDate.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
                     \/.l[Option[LocalDate]](s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
                   else
                     \/.l[Option[LocalDate]](s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")
