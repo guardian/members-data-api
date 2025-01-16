@@ -63,7 +63,7 @@ class SubscriptionServiceTest extends Specification {
   }
 
   val rc = new SimpleClient[Id](ZuoraRestConfig("TESTS", "https://localhost", "foo", "bar"), subscriptions)
-  private val service = new SubscriptionService[Id](catalog, rc, soapClient)
+  private val service = new SubscriptionService[Id](_ => catalog, rc, soapClient)
 
   "Current Plan" should {
 

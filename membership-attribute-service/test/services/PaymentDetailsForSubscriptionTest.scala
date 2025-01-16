@@ -27,7 +27,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
   "PaymentDetailMapper" should {
     "recognise a giftee's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[PaymentService], Future.successful(catalog))
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[PaymentService], _ => Future.successful(catalog))
 
       paymentDetailsForSubscription
         .getPaymentDetails(ContactAndSubscription(contact, digipackGift, true))
@@ -57,7 +57,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
     "recognise a gifter's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
       val paymentService = mock[PaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, Future.successful(catalog))
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, _ => Future.successful(catalog))
       val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipackGift, None, None, None, None, catalog)
 
       paymentService.paymentDetails(
@@ -74,7 +74,7 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
     "recognise a regular digital subscription" in {
       val contact = TestContact(randomId("identityId"))
       val paymentService = mock[PaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, Future.successful(catalog))
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, _ => Future.successful(catalog))
       val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipack, None, None, None, None, catalog)
 
       paymentService.paymentDetails(

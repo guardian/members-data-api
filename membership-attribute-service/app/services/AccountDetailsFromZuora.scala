@@ -31,7 +31,7 @@ class AccountDetailsFromZuora(
     subscriptionService: SubscriptionService[Future],
     chooseStripe: ChooseStripe,
     paymentDetailsForSubscription: PaymentDetailsForSubscription,
-    futureCatalog: Future[Catalog],
+    futureCatalog: LogPrefix => Future[Catalog],
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
@@ -45,7 +45,7 @@ class AccountDetailsFromZuora(
       logPrefix: LogPrefix,
   ): ListT[SimpleEitherT, AccountDetails] = {
     for {
-      catalog <- ListTEither.singleRightT(futureCatalog)
+      catalog <- ListTEither.singleRightT(futureCatalog(logPrefix))
       contactAndSubscription <- allCurrentSubscriptions(userId, filter)
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
@@ -109,7 +109,7 @@ class AccountDetailsFromZuora(
     for {
       nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
-      catalog <- SimpleEitherT.rightT(futureCatalog)
+      catalog <- SimpleEitherT.rightT(futureCatalog(logPrefix))
       subsWithRecognisedProducts = contactAndSubscriptions.filter(_.subscription.plan(catalog).product(catalog) match {
         case _: Product.ContentSubscription => true
         case Product.UnknownProduct => false

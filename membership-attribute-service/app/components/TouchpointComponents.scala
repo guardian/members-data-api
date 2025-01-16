@@ -19,6 +19,7 @@ import configuration.Stage
 import monitoring.CreateMetrics
 import org.apache.pekko.actor.ActorSystem
 import org.http4s.Uri
+import scalaz.{-\/, \/-}
 import scalaz.std.scalaFuture._
 import services._
 import services.salesforce.{ContactRepository, CreateScalaforce, SimpleContactRepository}
@@ -121,18 +122,27 @@ class TouchpointComponents(
     zuoraRestServiceOverride.getOrElse(simpleClientZuoraRestService)
   }
 
-  lazy val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
-  lazy val futureCatalog: Future[Catalog] = catalogServiceOverride.getOrElse(
-    CatalogService
-      .read(FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix), productIds)
+  private lazy val futureCatalogNoPrefix: Future[Catalog] = {
+    logger.infoNoPrefix(s"Loading catalog in $stage")
+    val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+    catalogServiceOverride.getOrElse(
+      CatalogService
+        .read(FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix), productIds)
+        .flatMap {
+          case -\/(error) => Future.failed(new RuntimeException(error))
+          case \/-(result) => Future.successful(result)
+        },
+    )
+  }
+  def futureCatalog(implicit logPrefix: LogPrefix): Future[Catalog] =
+    futureCatalogNoPrefix
       .recover { case error =>
-        logger.errorNoPrefix(scrub"Failed to load the product catalog from Zuora due to: $error")
+        logger.error(scrub"Failed to load the product catalog from Zuora due to: $error")
         throw error
-      },
-  )
+      }
 
   lazy val subscriptionService: SubscriptionService[Future] = {
-    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog, zuoraRestClient, zuoraSoapService)
+    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog(_), zuoraRestClient, zuoraSoapService)
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }
@@ -167,7 +177,7 @@ class TouchpointComponents(
     ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership),
   )
 
-  lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, futureCatalog)
+  lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, futureCatalog(_))
 
   lazy val accountDetailsFromZuora: AccountDetailsFromZuora =
     new AccountDetailsFromZuora(
@@ -177,7 +187,7 @@ class TouchpointComponents(
       subscriptionService,
       chooseStripe,
       paymentDetailsForSubscription,
-      futureCatalog,
+      futureCatalog(_),
     )
 
   def setPaymentCard(stripePublicKey: String): SetPaymentCard = {

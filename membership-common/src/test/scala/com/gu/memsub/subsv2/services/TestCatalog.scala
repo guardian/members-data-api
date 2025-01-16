@@ -18,7 +18,7 @@ object TestCatalog {
     val ids = SubsV2ProductIds.load(dev.getConfig("touchpoint.backend.environments.PROD.zuora.productIds"))
     val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/CatalogProd.json")), ids)
 
-    cats
+    cats.toOption.get
   }
 
   val digipackAnnualPrpId = ProductRatePlanId("2c92c0f94bbffaaa014bc6a4212e205b")

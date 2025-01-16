@@ -50,7 +50,7 @@ object Trace {
 
 }
 
-class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: SimpleClient[M], soap: SoapClient[M]) extends SafeLogging {
+class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], rest: SimpleClient[M], soap: SoapClient[M]) extends SafeLogging {
   private type EitherTM[A] = EitherT[String, M, A]
 
   /** Time by which Bill Run should have run and completed. Usually starts around 5AM and takes 1 hour.
@@ -92,7 +92,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
   def current(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
     for {
       subscriptionsEither <- getSubscriptionsFromContact(contact)
-      catalog <- futureCatalog
+      catalog <- futureCatalog(logPrefix)
     } yield {
       val currentSubscriptions = for {
         subscriptions <- subscriptionsEither.withLogging("sub service - get for contact")
@@ -141,7 +141,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: => M[Catalog], rest: Simpl
   )(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
     for {
       subscriptionsEither <- getSubscriptionsFromAccount(accountId)
-      catalog <- futureCatalog
+      catalog <- futureCatalog(logPrefix)
     } yield {
       subscriptionsEither.rightMap { subscriptions =>
         getCurrentSubscriptions(catalog, subscriptions).toList.flatMap(_.list.toList)
