@@ -40,7 +40,7 @@ object FetchCatalog {
 
 object CatalogService extends SafeLogging {
 
-  def read[M[_]: Functor](fetchCatalog: M[String \/ JsValue], products: ProductMap): M[Catalog] =
+  def read[M[_]: Functor](fetchCatalog: M[String \/ JsValue], products: ProductMap): M[String \/ Catalog] =
     for {
       failableJsCatalog <- fetchCatalog
     } yield {
@@ -50,13 +50,9 @@ object CatalogService extends SafeLogging {
         plans <- Json.fromJson[List[ProductRatePlan]](catalog)(productsReads).asEither.toDisjunction.leftMap(_.toString)
       } yield plans.map(catalogZuoraPlan => catalogZuoraPlan.id -> catalogZuoraPlan).toMap
 
-      val catalogMap = failableCatalog
-        .leftMap[ProductRatePlanMap](error => {
-          logger.errorNoPrefix(scrub"error: $error"); Map.empty // not sure why we empty-on-failure
-        })
-        .merge
+      failableCatalog.leftMap(error => logger.errorNoPrefix(scrub"Failed to load catalog: $error"))
 
-      Catalog(catalogMap ++ patronPlans, products)
+      failableCatalog.map(catalogMap => Catalog(catalogMap ++ patronPlans, products))
     }
 
   private val patronPlans = Map[ProductRatePlanId, ProductRatePlan](

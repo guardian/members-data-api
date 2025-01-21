@@ -20,7 +20,7 @@ class CatalogServiceTest extends Specification {
     "Read a catalog in CODE with the config product IDs" in {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val ids = SubsV2ProductIds.load(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
-      val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), ids)
+      val cats = CatalogService.read(FetchCatalog.fromZuoraApi(CatalogServiceTest.client("rest/Catalog.json")), ids).toOption.get
       val supporterPlus = cats.productRatePlans(ProductRatePlanId("8ad08e1a8586721801858805663f6fab"))
       val supporterPlusMonth = cats.productRatePlans(ProductRatePlanId("8ad08cbd8586721c01858804e3275376"))
       supporterPlus.productType.productTypeString must beEqualTo("Supporter Plus")

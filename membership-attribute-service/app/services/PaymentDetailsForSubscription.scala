@@ -12,14 +12,14 @@ import services.zuora.payment.PaymentService
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalog: Future[Catalog]) extends SafeLogging {
+class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalog: LogPrefix => Future[Catalog]) extends SafeLogging {
 
   def getPaymentDetails(
       contactAndSubscription: ContactAndSubscription,
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[PaymentDetails] = {
     val subscription = contactAndSubscription.subscription
     for {
-      catalog <- futureCatalog
+      catalog <- futureCatalog(logPrefix)
       paymentDetails <-
         if (contactAndSubscription.isGiftRedemption)
           Future.successful(giftPaymentDetailsFor(subscription, catalog))
