@@ -5,8 +5,6 @@ import org.joda.time.LocalDate
 
 object FeastApp {
 
-  val FeastFullLaunchDate = LocalDate.parse("2024-07-10")
-
   object IosSubscriptionGroupIds {
     // Subscription group ids are used by the app to tell the app store which subscription option to show to the user
     val IntroductoryOffer = "21396030"
@@ -17,11 +15,10 @@ object FeastApp {
     val IntroductoryOffer = "initial_supporter_launch_offer"
   }
 
-  private def isBeforeFeastLaunch(dt: LocalDate): Boolean = dt.isBefore(FeastFullLaunchDate)
-
   def shouldGetFeastAccess(attributes: Attributes): Boolean =
     attributes.isPartnerTier ||
       attributes.isPatronTier ||
+      attributes.isSupporterTier ||
       attributes.isGuardianPatron ||
       attributes.digitalSubscriberHasActivePlan ||
       attributes.isSupporterPlus ||
