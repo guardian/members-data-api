@@ -96,7 +96,6 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val newspaperPlusCookie = Cookie("newspaperPlus", "true")
   private val guardianWeeklyCookie = Cookie("guardianWeekly", "true")
   private val tierThreeCookie = Cookie("tierThree", "true")
-  private val guardianAdLiteCookie = Cookie("guardianAdLite", "true")
   private val validUser = UserFromToken(
     primaryEmailAddress = "test@thegulocal.com",
     identityId = validUserId,
@@ -190,7 +189,6 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         case Some(c) if c == newspaperPlusCookie => Future.successful(Right(userWithNewspaperPlus))
         case Some(c) if c == guardianWeeklyCookie => Future.successful(Right(userWithGuardianWeekly))
         case Some(c) if c == tierThreeCookie => Future.successful(Right(userWithTierThree))
-        case Some(c) if c == guardianAdLiteCookie => Future.successful(Right(userWithGuardianAdLite))
         case Some(c) if c == guardianEmployeeCookie => Future.successful(Right(guardianEmployeeUser))
         case Some(c) if c == guardianEmployeeCookieTheguardian => Future.successful(Right(guardianEmployeeUserTheguardian))
         case Some(c) if c == validEmployeeUserCookie => Future.successful(Right(validEmployeeUser))
@@ -615,37 +613,6 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
              |  }
              |}""".stripMargin)
       verifyIdentityHeadersSet(result, userWithTierThreeId)
-
-    }
-
-    "return the correct Guardian Ad-Lite attributes for Guardian Ad-Lite subscribers" in {
-      val req = FakeRequest().withCookies(guardianAdLiteCookie)
-      val result = controller.attributes(req)
-
-      status(result) shouldEqual OK
-      val jsonBody = contentAsJson(result)
-      jsonBody shouldEqual
-        Json.parse(s"""
-             |{
-             |  "userId": "$userWithGuardianAdLiteUserId",
-             |  "guardianAdLiteExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
-             |  "showSupportMessaging": true,
-             |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
-             |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
-             |  "contentAccess": {
-             |    "member": false,
-             |    "paidMember": false,
-             |    "recurringContributor": false,
-             |    "supporterPlus" : false,
-             |    "feast": false,
-             |    "digitalPack": false,
-             |    "paperSubscriber": false,
-             |    "guardianWeeklySubscriber": false,
-             |    "guardianPatron": false,
-             |    "guardianAdLite": true
-             |  }
-             |}""".stripMargin)
-      verifyIdentityHeadersSet(result, userWithGuardianAdLiteUserId)
 
     }
 
