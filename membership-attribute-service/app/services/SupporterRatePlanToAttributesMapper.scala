@@ -63,10 +63,10 @@ object SupporterRatePlanToAttributesMapper {
         SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
         GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
       )
-  val guardianLightTransformer: AttributeTransformer =
+  val guardianAdLiteTransformer: AttributeTransformer =
     (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
       attributes.copy(
-        GuardianLightExpiryDate = Some(supporterRatePlanItem.termEndDate),
+        GuardianAdLiteExpiryDate = Some(supporterRatePlanItem.termEndDate),
       )
   val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
     attributes.copy(
@@ -117,8 +117,8 @@ object SupporterRatePlanToAttributesMapper {
       "8a128dfb91f04b9a0191fa315d091c51",
     ) -> tierThreeTransformer,
     List(
-      "8a12831492c341730192dd1c39207038",
-    ) -> guardianLightTransformer,
+      "8a1285e294443da501944b04cb692c9e",
+    ) -> guardianAdLiteTransformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
       "2c92a0fb4edd70c8014edeaa4e972204",
@@ -249,8 +249,8 @@ object SupporterRatePlanToAttributesMapper {
       "8ad081dd91dae1d30191e0ce082d18d3",
     ) -> tierThreeTransformer,
     List(
-      "71a1c43a1e192b28f702b3b47113000a",
-    ) -> guardianLightTransformer,
+      "71a1bebf6be9444afad446c5ebaf0019",
+    ) -> guardianAdLiteTransformer,
     List(
       "2c92c0f84bbfec8b014bc655f4852d9d",
       "2c92c0f94bbffaaa014bc6a4212e205b",

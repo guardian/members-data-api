@@ -189,17 +189,17 @@ class ProductsResponseSpec extends Specification with SafeLogging {
       productsResponseJson mustEqual expectedResponse
     }
 
-    "return a descriptive name in the current plan name field for a Guardian Light subscription" in {
+    "return a descriptive name in the current plan name field for a Guardian Ad-Lite subscription" in {
       val startDate = "2024-05-15"
       val endDate = "2025-05-15"
       val nextInvoiceDate = "2024-06-15"
       val email = "test@thegulocal.com"
       val contactId = "003UD00000LtB8QYAV"
-      val productName = "Guardian Light"
+      val productName = "Guardian Ad-Lite"
       val priceInPounds: Float = 2.0f
       val priceInPence: Int = (priceInPounds * 100).toInt
       val accountId = "8ad09e54939569d10193b0556af741ee"
-      val ratePlanId = "71a1c43a1e192b28f702b3b47113000a"
+      val ratePlanId = "71a1bebf6be9444afad446c5ebaf0019"
       val subId = "8ad09be48f7af173018f7bd22da22685"
       val subNumber = "A-S00943727"
       val trialLength = 14
@@ -236,14 +236,14 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         ratePlans = List(
           RatePlan(
             id = RatePlanId(ratePlanId),
-            productRatePlanId = TestCatalog.guardianLightPrpId,
+            productRatePlanId = TestCatalog.guardianAdLitePrpId,
             productName,
             lastChangeType = None,
             features = List(),
             ratePlanCharges = NonEmptyList(
               RatePlanCharge(
                 SubscriptionRatePlanChargeId("lklklk"),
-                ProductRatePlanChargeIds.guardianLightChargeId,
+                ProductRatePlanChargeIds.guardianAdLiteChargeId,
                 PricingSummary(Map(GBP -> Price(priceInPounds, GBP))),
                 Some(ZMonth),
                 None,
