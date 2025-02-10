@@ -41,7 +41,7 @@ object TestCatalog {
     val sPluscontributionChargeId: ProductRatePlanChargeId = ProductRatePlanChargeId("asdasdasdcon")
     val tierThreeDigitalId = ProductRatePlanChargeId("tierthreedigiPRPCid")
     val tierThreeGWId = ProductRatePlanChargeId("tierthreeGWprpcID")
-    val guardianAdLiteChargeId = ProductRatePlanChargeId("8a129b7892c35f170192dd3225572b97")
+    val guardianAdLiteChargeId = ProductRatePlanChargeId("8a1285e294443da501944b04cb9d2ca0")
   }
   import ProductRatePlanChargeIds._
 
