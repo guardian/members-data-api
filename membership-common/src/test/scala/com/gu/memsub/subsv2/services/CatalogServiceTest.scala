@@ -32,7 +32,7 @@ class CatalogServiceTest extends Specification {
       val tierThree = cats.productRatePlans.collect { case (_, plan) if plan.productId == tierThreeProductId => plan }.toList
       tierThree.size must beEqualTo(4)
 
-      val guardianAdLite = cats.productRatePlans(ProductRatePlanId("71a1c43a1e192b28f702b3b47113000a"))
+      val guardianAdLite = cats.productRatePlans(ProductRatePlanId("71a1bebf6be9444afad446c5ebaf0019"))
       guardianAdLite.productType.productTypeString must beEqualTo("Guardian Ad-Lite")
       guardianAdLite.name must beEqualTo("Guardian Ad-Lite Monthly")
     }

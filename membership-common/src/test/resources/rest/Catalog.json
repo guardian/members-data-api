@@ -672,7 +672,7 @@
       "Tier__c": null,
       "productRatePlans": [
           {
-              "id": "71a1c43a1e192b28f702b3b47113000a",
+              "id": "71a1bebf6be9444afad446c5ebaf0019",
               "status": "Active",
               "name": "Guardian Ad-Lite Monthly",
               "description": "",
@@ -691,7 +691,7 @@
               "externallyManagedPlanIds": [],
               "productRatePlanCharges": [
                   {
-                      "id": "71a1c43a10792b28f702b3bf5d380037",
+                      "id": "71a1bebf6be9444afad446c5ec26001a",
                       "name": "Guardian Ad-Lite",
                       "type": "Recurring",
                       "model": "FlatFee",

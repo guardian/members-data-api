@@ -199,7 +199,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
       val priceInPounds: Float = 2.0f
       val priceInPence: Int = (priceInPounds * 100).toInt
       val accountId = "8ad09e54939569d10193b0556af741ee"
-      val ratePlanId = "71a1c43a1e192b28f702b3b47113000a"
+      val ratePlanId = "71a1bebf6be9444afad446c5ebaf0019"
       val subId = "8ad09be48f7af173018f7bd22da22685"
       val subNumber = "A-S00943727"
       val trialLength = 14
