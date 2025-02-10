@@ -92,7 +92,7 @@ object TestCatalog {
     guardianAdLitePrpId -> ProductRatePlan(
       guardianAdLitePrpId,
       "Guardian Ad-Lite",
-      idForProduct(Product.GuardianAdLite),
+      idForProduct(Product.AdLite),
       Map(),
       Some(ProductType("type")),
     ),

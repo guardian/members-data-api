@@ -33,7 +33,7 @@ object Product {
   case object TierThree extends ContentSubscription {
     val name = "tierThree"
   }
-  case object GuardianAdLite extends Product {
+  case object AdLite extends Product {
     val name = "guardianAdLite"
   }
   case object Digipack extends ContentSubscription {
@@ -77,7 +77,7 @@ object Product {
     case Digipack.name => Some(Digipack)
     case SupporterPlus.name => Some(SupporterPlus)
     case TierThree.name => Some(TierThree)
-    case GuardianAdLite.name => Some(GuardianAdLite)
+    case AdLite.name => Some(AdLite)
     case Membership.name => Some(Membership)
     case Delivery.name => Some(Delivery)
     case NationalDelivery.name => Some(NationalDelivery)

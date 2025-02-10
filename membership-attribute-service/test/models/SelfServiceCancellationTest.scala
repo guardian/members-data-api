@@ -11,7 +11,7 @@ class SelfServiceCancellationTest extends Specification {
     Contribution,
     SupporterPlus,
     TierThree,
-    GuardianAdLite,
+    AdLite,
     Voucher,
     Delivery,
     DigitalVoucher,
@@ -46,13 +46,13 @@ class SelfServiceCancellationTest extends Specification {
 
     "allow cancellation for Guardian Ad-Lite in all countries" in {
       allCountries.map { country =>
-        SelfServiceCancellation(GuardianAdLite, Some(country)).isAllowed shouldEqual true
+        SelfServiceCancellation(AdLite, Some(country)).isAllowed shouldEqual true
       }.toList
     }
 
     "disallow cancellation for all products except Membership, Contribution, Digipack, Tier Three, Guardian Ad-Lite and Supporter Plus in the UK" in {
       allProducts
-        .diff(Set(Membership, Contribution, SupporterPlus, Digipack, TierThree, GuardianAdLite))
+        .diff(Set(Membership, Contribution, SupporterPlus, Digipack, TierThree, AdLite))
         .map { product =>
           SelfServiceCancellation(product, Some(UK)).isAllowed shouldEqual false
         }
