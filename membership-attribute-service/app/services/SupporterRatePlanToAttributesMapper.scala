@@ -117,7 +117,7 @@ object SupporterRatePlanToAttributesMapper {
       "8a128dfb91f04b9a0191fa315d091c51",
     ) -> tierThreeTransformer,
     List(
-      "8a12831492c341730192dd1c39207038",
+      "8a1285e294443da501944b04cb692c9e",
     ) -> guardianAdLiteTransformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
