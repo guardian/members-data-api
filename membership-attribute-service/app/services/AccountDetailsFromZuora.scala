@@ -224,7 +224,7 @@ class AccountDetailsFromZuora(
       case Product.Digipack => requestedProductType == "Digipack" || requestedProductTypeIsContentSubscription
       case Product.SupporterPlus => requestedProductType == "SupporterPlus" || requestedProductTypeIsContentSubscription
       case Product.TierThree => requestedProductType == "TierThree" || requestedProductTypeIsContentSubscription
-      case Product.GuardianAdLite => requestedProductType == "GuardianAdLite" || requestedProductTypeIsContentSubscription
+      case Product.GuardianAdLite => requestedProductType == "GuardianAdLite"
       case _ => requestedProductType == product.name // fallback
     }
   }
