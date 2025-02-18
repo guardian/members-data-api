@@ -24,10 +24,11 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
     (for {
       _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
       _ <- reason match {
-        case Some(r) => EitherT(zuoraRestService.updateCancellationReason(subscriptionNumber, r)).leftMap(message =>
-          s"Failed to update cancellation reason: $message",
-        )
-        case None => EitherT.rightT[String,Future,Unit](Future.successful(()))
+        case Some(r) =>
+          EitherT(zuoraRestService.updateCancellationReason(subscriptionNumber, r)).leftMap(message =>
+            s"Failed to update cancellation reason: $message",
+          )
+        case None => EitherT.rightT[String, Future, Unit](Future.successful(()))
       }
       _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
         s"Failed to execute Zuora cancellation proper: $message",
