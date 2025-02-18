@@ -350,7 +350,7 @@ class AccountController(
                 NoContent
             }
           case None =>
-            Future.successful(BadRequest)
+            Future.successful(BadRequest(Json.toJson(badRequest("Malformed request. Expected a valid reason for cancellation."))))
         }
       }
     }
