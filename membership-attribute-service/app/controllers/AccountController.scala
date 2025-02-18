@@ -337,10 +337,10 @@ class AccountController(
           single("reason" -> nonEmptyText)
         }
         val identityId = request.user.identityId
-        val cancellationReasonEither = extractCancellationReason(cancelForm)
+        val cancellationReasonOption = extractCancellationReason(cancelForm)
 
-        cancellationReasonEither match {
-          case Right(cancellationReason) =>
+        cancellationReasonOption match {
+          case Some(cancellationReason) =>
             services.zuoraRestService.updateCancellationReason(subName, cancellationReason).map {
               case -\/(error) =>
                 logger.error(scrub"Failed to update cancellation reason for user $identityId because $error")
@@ -349,8 +349,8 @@ class AccountController(
                 logger.info(s"Successfully updated cancellation reason for subscription $subscriptionName owned by $identityId")
                 NoContent
             }
-          case Left(apiError) =>
-            Future.successful(BadRequest(Json.toJson(apiError)))
+          case None =>
+            Future.successful(BadRequest)
         }
       }
     }
