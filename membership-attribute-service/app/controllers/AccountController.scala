@@ -75,17 +75,10 @@ class AccountController(
 
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
-  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_], logPrefix: LogPrefix): Either[ApiError, String] =
+  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_], logPrefix: LogPrefix): Option[String] =
     cancelForm
       .bindFromRequest()
       .value
-      .map { cancellationReason =>
-        Right(cancellationReason)
-      }
-      .getOrElse {
-        logger.warn("No reason for cancellation was submitted with the request.")
-        Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
-      }
 
   def cancelSubscription(subscriptionNameString: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
@@ -101,7 +94,6 @@ class AccountController(
           SimpleEitherT(future.map(_.toEither.flatMap(_.toRight(errorMessage))))
 
         (for {
-          cancellationReason <- EitherT.fromEither(Future(extractCancellationReason(cancelForm)))
           contact <-
             flatten(
               services.contactRepository.get(identityId),
@@ -119,6 +111,7 @@ class AccountController(
                SimpleEitherT.left(s"$subscriptionNumber does not belong to $identityId"))
               .leftMap(CancelError(_, 503))
           cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate(subscriptionNumber).leftMap(CancelError(_, 500))
+          cancellationReason = extractCancellationReason(cancelForm)
           _ <- services.cancelSubscription.cancel(
             subscriptionNumber,
             cancellationEffectiveDate,
