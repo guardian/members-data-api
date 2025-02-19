@@ -75,17 +75,10 @@ class AccountController(
 
   private def CancelError(details: String, code: Int): ApiError = ApiError("Failed to cancel subscription", details, code)
 
-  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_], logPrefix: LogPrefix): Either[ApiError, String] =
+  def extractCancellationReason(cancelForm: Form[String])(implicit request: play.api.mvc.Request[_], logPrefix: LogPrefix): Option[String] =
     cancelForm
       .bindFromRequest()
       .value
-      .map { cancellationReason =>
-        Right(cancellationReason)
-      }
-      .getOrElse {
-        logger.warn("No reason for cancellation was submitted with the request.")
-        Left(badRequest("Malformed request. Expected a valid reason for cancellation."))
-      }
 
   def cancelSubscription(subscriptionNameString: String): Action[AnyContent] =
     AuthorizeForScopes(requiredScopes = List(readSelf, updateSelf)).async { implicit request =>
@@ -101,7 +94,6 @@ class AccountController(
           SimpleEitherT(future.map(_.toEither.flatMap(_.toRight(errorMessage))))
 
         (for {
-          cancellationReason <- EitherT.fromEither(Future(extractCancellationReason(cancelForm)))
           contact <-
             flatten(
               services.contactRepository.get(identityId),
@@ -119,6 +111,7 @@ class AccountController(
                SimpleEitherT.left(s"$subscriptionNumber does not belong to $identityId"))
               .leftMap(CancelError(_, 503))
           cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate(subscriptionNumber).leftMap(CancelError(_, 500))
+          cancellationReason = extractCancellationReason(cancelForm)
           _ <- services.cancelSubscription.cancel(
             subscriptionNumber,
             cancellationEffectiveDate,
@@ -344,10 +337,10 @@ class AccountController(
           single("reason" -> nonEmptyText)
         }
         val identityId = request.user.identityId
-        val cancellationReasonEither = extractCancellationReason(cancelForm)
+        val cancellationReasonOption = extractCancellationReason(cancelForm)
 
-        cancellationReasonEither match {
-          case Right(cancellationReason) =>
+        cancellationReasonOption match {
+          case Some(cancellationReason) =>
             services.zuoraRestService.updateCancellationReason(subName, cancellationReason).map {
               case -\/(error) =>
                 logger.error(scrub"Failed to update cancellation reason for user $identityId because $error")
@@ -356,8 +349,8 @@ class AccountController(
                 logger.info(s"Successfully updated cancellation reason for subscription $subscriptionName owned by $identityId")
                 NoContent
             }
-          case Left(apiError) =>
-            Future.successful(BadRequest(Json.toJson(apiError)))
+          case None =>
+            Future.successful(BadRequest(Json.toJson(badRequest("Malformed request. Expected a valid reason for cancellation."))))
         }
       }
     }

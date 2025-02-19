@@ -17,15 +17,19 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
   def cancel(
       subscriptionNumber: SubscriptionNumber,
       cancellationEffectiveDate: Option[LocalDate],
-      reason: String,
+      reason: Option[String],
       accountId: memsub.Subscription.AccountId,
       endOfTermDate: LocalDate,
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): EitherT[ApiError, Future, Option[LocalDate]] =
     (for {
       _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
-      _ <- EitherT(zuoraRestService.updateCancellationReason(subscriptionNumber, reason)).leftMap(message =>
-        s"Failed to update cancellation reason: $message",
-      )
+      _ <- reason match {
+        case Some(r) =>
+          EitherT(zuoraRestService.updateCancellationReason(subscriptionNumber, r)).leftMap(message =>
+            s"Failed to update cancellation reason: $message",
+          )
+        case None => EitherT.rightT[String, Future, Unit](Future.successful(()))
+      }
       _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
         s"Failed to execute Zuora cancellation proper: $message",
       )
