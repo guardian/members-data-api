@@ -347,6 +347,11 @@ class SubscriptionServiceTest extends Specification {
       sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jun 2025
     }
 
+    "Leverage the soap client to fetch subs by contact ID" in {
+      val subs = service.recentlyCancelled(contact, 24 Feb 2025, 3)
+      subs.map(_.map(_.subscriptionNumber.getNumber).sorted) mustEqual List("A-S00890520", "A-S00890521") // from the test resources jsons
+    }
+
     val referenceDate = 15 Aug 2017
 
     "Allow you to fetch an upgraded subscription" in {
