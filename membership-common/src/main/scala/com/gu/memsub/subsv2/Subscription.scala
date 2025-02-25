@@ -41,10 +41,14 @@ with the newest plan for upgrade and cancel scenarios, so in this case the most 
  */
 object GetCurrentPlans {
 
-  def bestCancelledPlan(sub: Subscription): Option[RatePlan] =
-    if (sub.isCancelled && sub.termEndDate.isBefore(LocalDate.now()))
+  def bestCancelledPlan(sub: Subscription): Option[RatePlan] = {
+    val today = LocalDate.now()
+    val isAlreadyFinished = sub.termEndDate.isEqual(today) || sub.termEndDate.isBefore(today)
+
+    if (sub.isCancelled && isAlreadyFinished)
       sub.ratePlans.sortBy(_.totalChargesMinorUnit).reverse.headOption
     else None
+  }
 
   case class DiscardedPlan(plan: RatePlan, why: String)
 

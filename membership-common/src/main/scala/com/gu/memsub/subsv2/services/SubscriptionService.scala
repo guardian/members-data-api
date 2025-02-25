@@ -131,9 +131,9 @@ class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], r
     (for {
       subscriptions <- EitherT(getSubscriptionsFromContact(contact))
     } yield subscriptions.filter { sub =>
-      sub.isCancelled &&
-      (sub.termEndDate isAfter today.minusMonths(lastNMonths)) &&
-      (sub.termEndDate isBefore today)
+      val isRecentlyFinished = sub.termEndDate.isAfter(today.minusMonths(lastNMonths))
+      val isAlreadyFinished = sub.termEndDate.isEqual(today) || sub.termEndDate.isBefore(today)
+      sub.isCancelled && isRecentlyFinished && isAlreadyFinished
     }).run
 
   def subscriptionsForAccountId(

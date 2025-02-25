@@ -46,6 +46,7 @@ class SubscriptionServiceTest extends Specification {
       List(
         memsub.Subscription.AccountId("foo"),
         memsub.Subscription.AccountId("bar"),
+        memsub.Subscription.AccountId("adlite-cancelled"),
       )
   }
 
@@ -54,6 +55,7 @@ class SubscriptionServiceTest extends Specification {
       request.url().uri().getPath match {
         case "/subscriptions/accounts/foo" => jsonResponse("rest/plans/accounts/SPlus.json")(request)
         case "/subscriptions/accounts/bar" => jsonResponse("rest/plans/accounts/Digi.json")(request)
+        case "/subscriptions/accounts/adlite-cancelled" => jsonResponse("rest/plans/accounts/adlite-cancelled.json")(request)
         case "/subscriptions/1234" => jsonResponse("rest/plans/SPlus.json")(request)
         case "/subscriptions/credit" => jsonResponse("rest/plans/Credits.json")(request)
         case "/subscriptions/A-S00063478" => jsonResponse("rest/plans/Upgraded.json")(request)
@@ -345,6 +347,21 @@ class SubscriptionServiceTest extends Specification {
       val sinceSubs = service.since(1 Jun 2025)(contact)
       currentSubs mustNotEqual sinceSubs
       sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jun 2025
+    }
+
+    "not fetch subscriptions cancelled tomorrow" in {
+      val subs = service.recentlyCancelled(contact, 23 Feb 2025, 3)
+      subs.map(_.map(_.subscriptionNumber.getNumber).sorted) mustEqual \/-(List()) // from the test resources jsons
+    }
+
+    "fetch subscriptions cancelled today" in {
+      val subs = service.recentlyCancelled(contact, 24 Feb 2025, 3)
+      subs.map(_.map(_.subscriptionNumber.getNumber).sorted) mustEqual \/-(List("A-S00962886")) // from the test resources jsons
+    }
+
+    "fetch recently cancelled subscriptions" in {
+      val subs = service.recentlyCancelled(contact, 25 Feb 2025, 3)
+      subs.map(_.map(_.subscriptionNumber.getNumber).sorted) mustEqual \/-(List("A-S00962886")) // from the test resources jsons
     }
 
     val referenceDate = 15 Aug 2017
