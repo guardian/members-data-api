@@ -230,13 +230,18 @@ class AttributeController(
   def oneOffContributions =
     AuthorizeForScopes(requiredScopes = List(readSelf)).async { implicit request =>
       metrics.measureDuration("GET /user-attributes/me/one-off-contributions") {
+        import request.logPrefix
         val userHasValidatedEmail = request.user.userEmailValidated.getOrElse(false)
 
         val futureResult: Future[Result] =
           if (userHasValidatedEmail) {
             contributionsStoreDatabaseService.getAllContributions(request.user.identityId).map {
-              case Left(err) => Ok(err)
-              case Right(result) => Ok(Json.toJson(result).toString)
+              case Left(err) =>
+                logger.error(scrub"Error accessing contributions store database: $err")
+                InternalServerError("Could not access contributions, check the logs for details")
+              case Right(result) =>
+                logger.info(s"found contributions:\n  ${result.mkString("\n  ")}")
+                Ok(Json.toJson(result).toString)
             }
           } else Future(unauthorized)
 
