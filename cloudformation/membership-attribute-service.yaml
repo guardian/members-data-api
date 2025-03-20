@@ -166,7 +166,8 @@ Resources:
       - LoadBalancerPort: '443'
         InstancePort: '9000'
         Protocol: HTTPS
-        SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+        PolicyNames: 
+        - ELBSecurityPolicy-TLS13-1-2-2021-06
         SSLCertificateId: !Ref ELBSSLCertificate
       ConnectionDrainingPolicy:
         Enabled: 'true'
