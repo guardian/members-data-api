@@ -274,4 +274,10 @@ class AttributeController(
     else
       maybeAttributes
   }
+
+  def isTestUser: Action[AnyContent] =
+    AuthorizeForScopes(List(readSelf)) {
+      NoContent
+    }
+
 }
