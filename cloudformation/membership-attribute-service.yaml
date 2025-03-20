@@ -167,7 +167,7 @@ Resources:
         InstancePort: '9000'
         Protocol: HTTPS
         PolicyNames: 
-        - ELBSecurityPolicy-TLS13-1-2-2021-06
+        - MDAPI-Security-Policy
         SSLCertificateId: !Ref ELBSSLCertificate
       ConnectionDrainingPolicy:
         Enabled: 'true'
@@ -183,6 +183,12 @@ Resources:
         Ref: PublicVpcSubnets
       SecurityGroups:
       - Ref: LoadBalancerSecurityGroup
+      Policies:
+      - PolicyName: MDAPI-Security-Policy
+        PolicyType: SSLNegotiationPolicyType
+        Attributes:
+        - Name: Reference-Security-Policy
+          Value: ELBSecurityPolicy-TLS13-1-2-2021-06
   AutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
