@@ -275,9 +275,11 @@ class AttributeController(
       maybeAttributes
   }
 
-  def isTestUser: Action[AnyContent] =
-    AuthorizeForScopes(List(readSelf)) {
+  def isTestUser: Action[AnyContent] = {
+    val scope = List(readSelf) // this doesn't end in .secure so we won't call through to okta
+    AuthorizeForScopes(scope) {
       NoContent
     }
+  }
 
 }
