@@ -23,6 +23,7 @@ GET         /user-attributes/me/one-off-contributions                           
 
 PUT         /user-attributes/me/delivery-address/:contactId                     controllers.ContactController.updateDeliveryAddress(contactId: String)
 
+GET         /user-attributes/me/is-test-user                                    controllers.AttributeController.isTestUser
 
 # OLD ENDPOINTS below will be phased out as traffic moves over to the new endpoints above
 GET         /user-attributes/me/membership                              controllers.AttributeController.membership
