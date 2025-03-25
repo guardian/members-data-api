@@ -174,7 +174,7 @@ class TouchpointComponents(
     )
 
   lazy val chooseStripe: ChooseStripe = chooseStripeOverride.getOrElse(
-    ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership),
+    ChooseStripe.createFor(backendConfig.stripeUKMembership, backendConfig.stripeAUMembership, backendConfig.stripeTortoiseMediaMembership),
   )
 
   lazy val paymentDetailsForSubscription: PaymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, futureCatalog(_))
