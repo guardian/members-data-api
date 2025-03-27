@@ -177,7 +177,7 @@ class TouchpointComponents(
     ChooseStripe.createFor(
       backendConfig.stripeUKMembership,
       backendConfig.stripeAUMembership,
-      backendConfig.stripeTortoiseMediaMembership,
+      backendConfig.stripeTortoiseMedia,
     ),
   )
 
