@@ -111,7 +111,6 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |    "email" : "test@thegulocal.com"
         |  },
         |  "products" : [ {
-        |    "mmaCategory" : "recurringSupport",
         |    "tier" : "Supporter Plus",
         |    "isPaidTier" : true,
         |    "selfServiceCancellation" : {
@@ -309,7 +308,6 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |  },
         |  "products": [
         |    {
-        |      "mmaCategory": "subscriptions",
         |      "tier": "$productName",
         |      "isPaidTier": true,
         |      "selfServiceCancellation": {

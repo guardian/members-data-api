@@ -43,8 +43,6 @@ object AccountDetails {
 
       val product = accountDetails.subscription.plan(catalog).product(catalog)
 
-      val mmaCategory = mmaCategoryFrom(product)
-
       val paymentMethod = paymentDetails.paymentMethod match {
         case Some(payPal: PayPalMethod) =>
           Json.obj(
@@ -142,8 +140,7 @@ object AccountDetails {
       val start = subscriptionData.startDate.getOrElse(paymentDetails.customerAcceptanceDate)
       val end = subscriptionData.endDate.getOrElse(paymentDetails.termEndDate)
       Json.obj(
-        "mmaCategory" -> mmaCategory,
-        "tier" -> paymentDetails.plan.name,
+        "tier" -> getTier(catalog, subscription.plan(catalog)),
         "isPaidTier" -> (paymentDetails.plan.price.amount > 0f),
         "selfServiceCancellation" -> Json.obj(
           "isAllowed" -> selfServiceCancellation.isAllowed,
@@ -212,17 +209,16 @@ object AccountDetails {
     }
     loop(start)
   }
-  def mmaCategoryFrom(product: Product): String = product match {
-    case _: Product.Paper => "subscriptions" // Paper includes GW 🤦‍
-    case Product.Digipack => "subscriptions"
-    case Product.SupporterPlus => "recurringSupport"
-    case Product.TierThree => "recurringSupport"
-    case Product.AdLite => "subscriptions"
-    case Product.GuardianPatron => "subscriptions"
-    case Product.Contribution => "recurringSupport"
-    case Product.Membership => "membership"
-    case _ => "subscriptions" // fallback - passing undefined value breaks manage
-  }
+
+  def getTier(catalog: Catalog, plan: RatePlan): Json.JsValueWrapper =
+    if (
+      plan.product(catalog) == Product.Delivery &&
+      plan.name(catalog) == "Sunday"
+    )
+      "Newspaper Delivery - Observer"
+    else
+      plan.productName
+
 }
 
 class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val logPrefix: LogPrefix) extends SafeLogging {
@@ -255,8 +251,7 @@ object CancelledSubscription {
       .bestCancelledPlan(subscription)
       .map { plan =>
         Json.obj(
-          "mmaCategory" -> mmaCategoryFrom(plan.product(catalog)),
-          "tier" -> plan.productName,
+          "tier" -> getTier(catalog, plan),
           "subscription" -> Json.obj(
             "subscriptionId" -> subscription.subscriptionNumber.getNumber,
             "cancellationEffectiveDate" -> subscription.termEndDate,
@@ -269,4 +264,5 @@ object CancelledSubscription {
       }
       .getOrElse(Json.obj())
   }
+
 }
