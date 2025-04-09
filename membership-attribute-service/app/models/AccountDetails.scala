@@ -211,13 +211,11 @@ object AccountDetails {
   }
 
   def getTier(catalog: Catalog, plan: RatePlan): Json.JsValueWrapper =
-    if (
-      plan.product(catalog) == Product.Delivery &&
-      plan.name(catalog) == "Sunday"
-    )
-      "Newspaper Delivery - Observer"
-    else
-      plan.productName
+    plan.product(catalog) match {
+      case Product.Delivery if plan.name(catalog) == "Sunday" => "Newspaper Delivery - Observer"
+      case Product.DigitalVoucher if plan.name(catalog) == "Sunday" => "Newspaper Digital Voucher - Observer"
+      case _ => plan.productName
+    }
 
 }
 
