@@ -179,7 +179,6 @@ class PaymentUpdateController(
             case GatewayOwner.TortoiseMedia => GoCardlessTortoiseMediaGateway
             case _ => GoCardlessGateway
           }
-          logger.info(s"Attempting to Update Direct Debit with Gateway: ${paymentGatewayToUse.gatewayName}")
           createPaymentMethod = CreatePaymentMethod(
             accountId = subscription.accountId,
             paymentMethod = bankTransferPaymentMethod,
@@ -187,7 +186,7 @@ class PaymentUpdateController(
             billtoContact = billToContact,
           )
           _ <- SimpleEitherT(
-            annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
+            annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), s"create direct debit payment method using ${paymentGatewayToUse.gatewayName}"),
           )
           freshAccount <- SimpleEitherT(
             annotateFailableFuture(
