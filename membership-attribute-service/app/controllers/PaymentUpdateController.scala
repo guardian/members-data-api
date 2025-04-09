@@ -8,6 +8,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import com.gu.zuora.api.GoCardlessGateway
+import com.gu.zuora.api.GoCardlessTortoiseMediaGateway
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.{readSelf, updateSelf}
@@ -137,6 +138,7 @@ class PaymentUpdateController(
             "accountName" -> nonEmptyText,
             "accountNumber" -> nonEmptyText,
             "sortCode" -> nonEmptyText,
+            "gatewayOwner" -> optional(text),
           )
         }
 
@@ -148,7 +150,7 @@ class PaymentUpdateController(
 
         (for {
           directDebitDetails <- SimpleEitherT.fromEither(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request"))
-          (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
+          (bankAccountName, bankAccountNumber, bankSortCode, paymentGatewayOwner) = directDebitDetails
           contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user for $userId"))))
           subscription <- SimpleEitherT(
             services.subscriptionService
@@ -169,10 +171,15 @@ class PaymentUpdateController(
             lastName = billToContact.lastName,
             countryCode = "GB",
           )
+          paymentGatewayToUse = if (paymentGatewayOwner.equals("tortoise-media")) {
+              GoCardlessTortoiseMediaGateway
+            } else {
+              GoCardlessGateway
+            }
           createPaymentMethod = CreatePaymentMethod(
             accountId = subscription.accountId,
             paymentMethod = bankTransferPaymentMethod,
-            paymentGateway = GoCardlessGateway,
+            paymentGateway = paymentGatewayToUse,
             billtoContact = billToContact,
           )
           _ <- SimpleEitherT(
