@@ -23,6 +23,7 @@ import services.mail.Emails.paymentMethodChangedEmail
 import services.mail.{Card, DirectDebit, PaymentType, SendEmail}
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
+import models.GatewayOwner
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -138,7 +139,10 @@ class PaymentUpdateController(
             "accountName" -> nonEmptyText,
             "accountNumber" -> nonEmptyText,
             "sortCode" -> nonEmptyText,
-            "gatewayOwner" -> optional(text),
+            "gatewayOwner" -> optional(text).transform[Option[GatewayOwner]](
+              _.flatMap(GatewayOwner.fromString),
+              _.map(_.toString)
+            ),
           )
         }
 
@@ -171,12 +175,10 @@ class PaymentUpdateController(
             lastName = billToContact.lastName,
             countryCode = "GB",
           )
-          paymentGatewayToUse =
-            if (paymentGatewayOwner.equals("tortoise-media")) {
-              GoCardlessTortoiseMediaGateway
-            } else {
-              GoCardlessGateway
-            }
+          paymentGatewayToUse = paymentGatewayOwner match {
+            case Some(GatewayOwner.TortoiseMedia) => GoCardlessTortoiseMediaGateway
+            case _ => GoCardlessGateway
+          }
           createPaymentMethod = CreatePaymentMethod(
             accountId = subscription.accountId,
             paymentMethod = bankTransferPaymentMethod,
