@@ -139,9 +139,9 @@ class PaymentUpdateController(
             "accountName" -> nonEmptyText,
             "accountNumber" -> nonEmptyText,
             "sortCode" -> nonEmptyText,
-            "gatewayOwner" -> optional(text).transform[Option[GatewayOwner]](
-              _.flatMap(GatewayOwner.fromString),
-              _.map(_.toString),
+            "gatewayOwner" -> optional(text).transform[GatewayOwner](
+              GatewayOwner.fromString,
+              _.value,
             ),
           )
         }
@@ -176,7 +176,7 @@ class PaymentUpdateController(
             countryCode = "GB",
           )
           paymentGatewayToUse = paymentGatewayOwner match {
-            case Some(GatewayOwner.TortoiseMedia) => GoCardlessTortoiseMediaGateway
+            case GatewayOwner.TortoiseMedia => GoCardlessTortoiseMediaGateway
             case _ => GoCardlessGateway
           }
           createPaymentMethod = CreatePaymentMethod(

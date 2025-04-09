@@ -1,12 +1,14 @@
 package models
 
-sealed trait GatewayOwner
+sealed abstract class GatewayOwner(val value: Option[String])
 object GatewayOwner {
-  case object TortoiseMedia extends GatewayOwner
-  case object Default extends GatewayOwner
+  case object TortoiseMedia extends GatewayOwner(Some("tortoise-media"))
+  case object Default extends GatewayOwner(None)
 
-  def fromString(value: String): Option[GatewayOwner] = value.toLowerCase match {
-    case "tortoise-media" => Some(TortoiseMedia)
-    case _ => Some(Default)
+  def fromString(value: Option[String]): GatewayOwner = {
+    value.map(_.toLowerCase) match {
+      case Some("tortoise-media") => TortoiseMedia
+      case _ => Default
+    }
   }
 }
