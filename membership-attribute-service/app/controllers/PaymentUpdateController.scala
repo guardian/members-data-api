@@ -141,7 +141,7 @@ class PaymentUpdateController(
             "sortCode" -> nonEmptyText,
             "gatewayOwner" -> optional(text).transform[Option[GatewayOwner]](
               _.flatMap(GatewayOwner.fromString),
-              _.map(_.toString)
+              _.map(_.toString),
             ),
           )
         }
