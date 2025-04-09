@@ -186,7 +186,10 @@ class PaymentUpdateController(
             billtoContact = billToContact,
           )
           _ <- SimpleEitherT(
-            annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), s"create direct debit payment method using ${paymentGatewayToUse.gatewayName}"),
+            annotateFailableFuture(
+              services.zuoraSoapService.createPaymentMethod(createPaymentMethod),
+              s"create direct debit payment method using ${paymentGatewayToUse.gatewayName}",
+            ),
           )
           freshAccount <- SimpleEitherT(
             annotateFailableFuture(
