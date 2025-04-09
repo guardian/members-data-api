@@ -179,6 +179,7 @@ class PaymentUpdateController(
             case GatewayOwner.TortoiseMedia => GoCardlessTortoiseMediaGateway
             case _ => GoCardlessGateway
           }
+          logger.info(s"Attempting to Update Direct Debit with Gateway: ${paymentGatewayToUse.gatewayName}")
           createPaymentMethod = CreatePaymentMethod(
             accountId = subscription.accountId,
             paymentMethod = bankTransferPaymentMethod,
