@@ -171,7 +171,8 @@ class PaymentUpdateController(
             lastName = billToContact.lastName,
             countryCode = "GB",
           )
-          paymentGatewayToUse = if (paymentGatewayOwner.equals("tortoise-media")) {
+          paymentGatewayToUse =
+            if (paymentGatewayOwner.equals("tortoise-media")) {
               GoCardlessTortoiseMediaGateway
             } else {
               GoCardlessGateway
