@@ -44,6 +44,7 @@ object PaymentGateway {
     StripeUKPaymentIntentsMembershipGateway,
     StripeAUPaymentIntentsMembershipGateway,
     GoCardlessGateway,
+    GoCardlessTortoiseMediaGateway,
     GoCardlessZuoraInstance,
     PayPal,
   ).map(g => (g.gatewayName, g)).toMap
