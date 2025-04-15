@@ -214,6 +214,7 @@ object AccountDetails {
     plan.product(catalog) match {
       case Product.Delivery if plan.name(catalog) == "Sunday" => "Newspaper Delivery - Observer"
       case Product.DigitalVoucher if plan.name(catalog) == "Sunday" => "Newspaper Digital Voucher - Observer"
+      case Product.Voucher if plan.name(catalog) == "Sunday" => "Newspaper Voucher - Observer"
       case _ => plan.productName
     }
 
