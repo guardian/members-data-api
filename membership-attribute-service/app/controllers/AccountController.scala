@@ -63,6 +63,7 @@ class AccountController(
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
     sendEmail: SendEmail,
     createMetrics: CreateMetrics,
+    isProd: Boolean,
 ) extends BaseController
     with SafeLogging {
 
@@ -196,7 +197,7 @@ class AccountController(
         } yield result match {
           case Right(subscriptionList) =>
             logger.info(s"Successfully retrieved payment details result for identity user: $userId")
-            val productsResponseWrites = new ProductsResponseWrites(catalog)
+            val productsResponseWrites = new ProductsResponseWrites(catalog, isProd)
             val response = productsResponseWrites.from(user, subscriptionList)
             import productsResponseWrites.writes
             Ok(Json.toJson(response))
@@ -234,7 +235,7 @@ class AccountController(
                   contact <- OptionT(EitherT(tp.contactRepository.get(identityId)))
                   subs <- OptionT(EitherT(tp.subscriptionService.recentlyCancelled(contact)).map(Option(_)))
                 } yield {
-                  Ok(Json.toJson(subs.map(CancelledSubscription(_, catalog))))
+                  Ok(Json.toJson(subs.map(new CancelledSubscription(isProd).apply(_, catalog))))
                 }).getOrElse(emptyResponse).leftMap(_ => emptyResponse).merge // we discard errors as this is not critical endpoint
             } yield result
           case None => Future.successful(unauthorized)

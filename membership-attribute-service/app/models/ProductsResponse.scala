@@ -8,9 +8,11 @@ case class UserDetails(firstName: Option[String], lastName: Option[String], emai
 
 case class ProductsResponse(user: UserDetails, products: List[AccountDetails])
 
-class ProductsResponseWrites(catalog: Catalog) {
+class ProductsResponseWrites(catalog: Catalog, isProd: Boolean) {
   implicit val userDetailsWrites: OWrites[UserDetails] = Json.writes[UserDetails]
-  implicit def accountDetailsWrites(implicit logPrefix: LogPrefix): Writes[AccountDetails] = Writes[AccountDetails](_.toJson(catalog))
+  private val accountDetailsWriter = new AccountDetailsWriter(isProd)
+  implicit def accountDetailsWrites(implicit logPrefix: LogPrefix): Writes[AccountDetails] =
+    Writes[AccountDetails](accountDetails => new accountDetailsWriter.WithAccountDetails(accountDetails, catalog).toJson)
   implicit def writes(implicit logPrefix: LogPrefix): OWrites[ProductsResponse] = Json.writes[ProductsResponse]
 
   def from(user: UserFromToken, products: List[AccountDetails]) =

@@ -6,6 +6,7 @@ import com.typesafe.config.ConfigFactory
 import components.TouchpointComponents
 import configuration.Stage
 import controllers.AccountHelpers
+import models.AccountDetailsWriter
 import monitoring.CreateNoopMetrics
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
@@ -33,7 +34,8 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
             },
           Duration.Inf,
         )
-      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson(catalog)))))
+      val accountDetailsWriter = new AccountDetailsWriter(isProd = false)
+      result.map(_.foreach(accountDetails => println(Json.prettyPrint(new accountDetailsWriter.WithAccountDetails(accountDetails, catalog).toJson))))
       result.isRight must_== true
     }
   }

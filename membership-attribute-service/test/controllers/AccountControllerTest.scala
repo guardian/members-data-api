@@ -15,7 +15,8 @@ class AccountControllerTest extends Specification with IdiomaticMockito {
 
     val subName = "s1"
     val commonActions = mock[CommonActions]
-    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"), mock[SendEmail], CreateNoopMetrics)
+    val controller =
+      new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"), mock[SendEmail], CreateNoopMetrics, isProd = false)
     val request = FakeRequest("POST", s"/api/update/amount/contributions/$subName")
 
     "succeed when given value is valid" in {

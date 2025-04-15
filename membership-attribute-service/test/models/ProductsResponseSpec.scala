@@ -182,7 +182,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |  } ]
         }""".stripMargin)
       val user = UserFromToken("test@thegulocal.com", "12345", None, None, None, None, None)
-      val productsResponseWrites = new ProductsResponseWrites(catalog)
+      val productsResponseWrites = new ProductsResponseWrites(catalog, isProd = false)
       import productsResponseWrites.writes
       val productsResponseJson = Json.toJson(productsResponseWrites.from(user, List(accountDetails)))
       productsResponseJson mustEqual expectedResponse
@@ -385,7 +385,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         }""".stripMargin)
 
       val user = UserFromToken(email, identityId, None, None, None, None, None)
-      val productsResponseWrites = new ProductsResponseWrites(catalog)
+      val productsResponseWrites = new ProductsResponseWrites(catalog, isProd = false)
       import productsResponseWrites.writes
       val productsResponseJson = Json.toJson(productsResponseWrites.from(user, List(accountDetails)))
       productsResponseJson mustEqual expectedResponse

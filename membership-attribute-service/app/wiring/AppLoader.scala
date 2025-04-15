@@ -113,7 +113,7 @@ class MyComponents(context: Context)
     new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, createMetrics),
     new ExistingPaymentOptionsController(commonActions, controllerComponents, createMetrics),
-    new AccountController(commonActions, controllerComponents, dbService, sendEmail, createMetrics),
+    new AccountController(commonActions, controllerComponents, dbService, sendEmail, createMetrics, isProd),
     new PaymentUpdateController(commonActions, controllerComponents, sendEmail, createMetrics),
     new ContactController(commonActions, controllerComponents, createMetrics),
   )

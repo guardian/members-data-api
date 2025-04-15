@@ -33,13 +33,13 @@ case class AccountDetails(
     cancellationEffectiveDate: Option[String],
 )
 
-object AccountDetails {
+class AccountDetailsWriter(isProd: Boolean) {
 
-  implicit class ResultLike(accountDetails: AccountDetails) extends SafeLogging {
+  class WithAccountDetails(accountDetails: AccountDetails, catalog: Catalog)(implicit logPrefix: LogPrefix) extends SafeLogging {
 
     import accountDetails._
 
-    def toJson(catalog: Catalog)(implicit logPrefix: LogPrefix): JsObject = {
+    def toJson: JsObject = {
 
       val product = accountDetails.subscription.plan(catalog).product(catalog)
 
@@ -165,7 +165,7 @@ object AccountDetails {
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
-            "anniversaryDate" -> anniversary(start),
+            "anniversaryDate" -> AccountDetailsWriter.anniversary(start),
             "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
@@ -188,6 +188,22 @@ object AccountDetails {
     }
   }
 
+  val allowObserverTierSwitch = !isProd // TODO remove this switch when manage-frontend changed are shipped to PROD
+
+  def getTier(catalog: Catalog, plan: RatePlan): Json.JsValueWrapper = {
+    if (!allowObserverTierSwitch) plan.productName
+    else
+      plan.product(catalog) match {
+        case Product.Delivery if plan.name(catalog) == "Sunday" => "Newspaper Delivery - Observer"
+        case Product.DigitalVoucher if plan.name(catalog) == "Sunday" => "Newspaper Digital Voucher - Observer"
+        case Product.Voucher if plan.name(catalog) == "Sunday" => "Newspaper Voucher - Observer"
+        case _ => plan.productName
+      }
+  }
+
+}
+object AccountDetailsWriter {
+
   /** Note this is a different concept than termEndDate because termEndDate could be many years in the future. termEndDate models when Zuora will
     * renew the subscription whilst anniversary indicates when another year will have passed since user started their subscription.
     *
@@ -209,14 +225,6 @@ object AccountDetails {
     }
     loop(start)
   }
-
-  def getTier(catalog: Catalog, plan: RatePlan): Json.JsValueWrapper =
-    plan.product(catalog) match {
-      case Product.Delivery if plan.name(catalog) == "Sunday" => "Newspaper Delivery - Observer"
-      case Product.DigitalVoucher if plan.name(catalog) == "Sunday" => "Newspaper Digital Voucher - Observer"
-      case Product.Voucher if plan.name(catalog) == "Sunday" => "Newspaper Voucher - Observer"
-      case _ => plan.productName
-    }
 
 }
 
@@ -243,14 +251,14 @@ class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val log
 
 }
 
-object CancelledSubscription {
-  import AccountDetails._
+class CancelledSubscription(isProd: Boolean) {
+
   def apply(subscription: Subscription, catalog: Catalog): JsObject = {
     GetCurrentPlans
       .bestCancelledPlan(subscription)
       .map { plan =>
         Json.obj(
-          "tier" -> getTier(catalog, plan),
+          "tier" -> new AccountDetailsWriter(isProd).getTier(catalog, plan),
           "subscription" -> Json.obj(
             "subscriptionId" -> subscription.subscriptionNumber.getNumber,
             "cancellationEffectiveDate" -> subscription.termEndDate,
