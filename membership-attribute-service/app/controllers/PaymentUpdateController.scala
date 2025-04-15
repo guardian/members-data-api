@@ -8,6 +8,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import com.gu.zuora.api.GoCardlessGateway
+import com.gu.zuora.api.GoCardlessTortoiseMediaGateway
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.{readSelf, updateSelf}
@@ -22,6 +23,7 @@ import services.mail.Emails.paymentMethodChangedEmail
 import services.mail.{Card, DirectDebit, PaymentType, SendEmail}
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
+import models.GatewayOwner
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -137,6 +139,10 @@ class PaymentUpdateController(
             "accountName" -> nonEmptyText,
             "accountNumber" -> nonEmptyText,
             "sortCode" -> nonEmptyText,
+            "gatewayOwner" -> optional(text).transform[GatewayOwner](
+              GatewayOwner.fromString,
+              _.value,
+            ),
           )
         }
 
@@ -148,7 +154,7 @@ class PaymentUpdateController(
 
         (for {
           directDebitDetails <- SimpleEitherT.fromEither(updateForm.bindFromRequest().value.toRight("no direct debit details submitted with request"))
-          (bankAccountName, bankAccountNumber, bankSortCode) = directDebitDetails
+          (bankAccountName, bankAccountNumber, bankSortCode, paymentGatewayOwner) = directDebitDetails
           contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user for $userId"))))
           subscription <- SimpleEitherT(
             services.subscriptionService
@@ -169,14 +175,21 @@ class PaymentUpdateController(
             lastName = billToContact.lastName,
             countryCode = "GB",
           )
+          paymentGatewayToUse = paymentGatewayOwner match {
+            case GatewayOwner.TortoiseMedia => GoCardlessTortoiseMediaGateway
+            case _ => GoCardlessGateway
+          }
           createPaymentMethod = CreatePaymentMethod(
             accountId = subscription.accountId,
             paymentMethod = bankTransferPaymentMethod,
-            paymentGateway = GoCardlessGateway,
+            paymentGateway = paymentGatewayToUse,
             billtoContact = billToContact,
           )
           _ <- SimpleEitherT(
-            annotateFailableFuture(services.zuoraSoapService.createPaymentMethod(createPaymentMethod), "create direct debit payment method"),
+            annotateFailableFuture(
+              services.zuoraSoapService.createPaymentMethod(createPaymentMethod),
+              s"create direct debit payment method using ${paymentGatewayToUse.gatewayName}",
+            ),
           )
           freshAccount <- SimpleEitherT(
             annotateFailableFuture(
