@@ -83,7 +83,7 @@ class GuardianPatronService(
           RatePlan(
             id = RatePlanId("guardian_patron_unused"), // only used for contribution amount change
             productRatePlanId = Catalog.guardianPatronProductRatePlanId,
-            productName = "Guardian Patron",
+            productName = "guardianpatron",
             lastChangeType = None,
             features = Nil,
             ratePlanCharges = NonEmptyList(
