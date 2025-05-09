@@ -117,6 +117,7 @@ object AccountDetails {
       }
 
       def jsonifyPlan(plan: RatePlan) = Json.obj(
+        "tier" -> getTier(catalog, plan),
         "name" -> externalisePlanName(plan),
         "start" -> plan.effectiveStartDate,
         "end" -> plan.effectiveEndDate,

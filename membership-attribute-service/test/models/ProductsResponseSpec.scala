@@ -163,6 +163,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |        "billingPeriod" : "month"
         |      },
         |      "currentPlans" : [ {
+        |        "tier": "Supporter Plus",
         |        "name" : null,
         |        "start" : "2024-05-15",
         |        "end" : "2025-05-15",
@@ -364,6 +365,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |          "billingPeriod": "$month"
         |        },
         |        "currentPlans" : [ {
+        |          "tier": "$productName",
         |          "name" : null,
         |          "start" : "$startDate",
         |          "end" : "$endDate",
