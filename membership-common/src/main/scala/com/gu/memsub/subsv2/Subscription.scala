@@ -81,7 +81,7 @@ object GetCurrentPlans {
         digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
       else
         paidPlanEnded(_ => {
-          val inGracePeriodAndNotCancelled = plan.effectiveEndDate == dateToCheck && !sub.isCancelled
+          val inGracePeriodAndNotCancelled = plan.effectiveEndDate == dateToCheck && !sub.isCancelled && !plan.lastChangeType.contains("Remove")
           plan.effectiveEndDate > dateToCheck || inGracePeriodAndNotCancelled
         })
     }
