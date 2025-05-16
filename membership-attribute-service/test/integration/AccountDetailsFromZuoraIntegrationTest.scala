@@ -1,6 +1,5 @@
 package integration
 
-import com.gu.memsub.subsv2.services.TestCatalog.catalog
 import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import components.TouchpointComponents
@@ -23,18 +22,25 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
 
   "AccountDetailsFromZuora" should {
     "fetch a list of subs" in {
-      val result = Await
-        .result(
-          createTouchpointComponents.accountDetailsFromZuora
-            .fetch("200264404", AccountHelpers.NoFilter)
-            .run
-            .map { list =>
-              println(s"Fetched this list: $list")
-              list
-            },
-          Duration.Inf,
-        )
-      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson(catalog, LocalDate.now)))))
+      val touchpointComponents = createTouchpointComponents
+      val eventualResult = for {
+        catalog <- touchpointComponents.futureCatalog
+        result <- touchpointComponents.accountDetailsFromZuora
+          .fetch("200421949", AccountHelpers.NoFilter)
+          .run
+          .map { list =>
+            println(s"Fetched this list: $list")
+            list
+          }
+      } yield result.map(
+        _.foreach(accountDetails =>
+          println(
+            s"JSON output for ${accountDetails.subscription.subscriptionNumber.getNumber} is:\n" + Json
+              .prettyPrint(accountDetails.toJson(catalog, LocalDate.now)),
+          ),
+        ),
+      )
+      val result = Await.result(eventualResult, Duration.Inf)
       result.isRight must_== true
     }
   }
