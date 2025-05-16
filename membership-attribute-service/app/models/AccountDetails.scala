@@ -8,7 +8,6 @@ import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import json.localDateWrites
 import org.joda.time.LocalDate
-import org.joda.time.LocalDate.now
 import play.api.libs.json._
 
 import java.time.DayOfWeek
@@ -39,9 +38,10 @@ object AccountDetails {
 
     import accountDetails._
 
-    def toJson(catalog: Catalog)(implicit logPrefix: LogPrefix): JsObject = {
+    def toJson(catalog: Catalog, today: LocalDate)(implicit logPrefix: LogPrefix): JsObject = {
 
-      val product = accountDetails.subscription.plan(catalog).product(catalog)
+      val mainPlan = subscription.plan(catalog, today)
+      val product = mainPlan.product(catalog)
 
       val paymentMethod = paymentDetails.paymentMethod match {
         case Some(payPal: PayPalMethod) =>
@@ -122,7 +122,7 @@ object AccountDetails {
         "start" -> plan.effectiveStartDate,
         "end" -> plan.effectiveEndDate,
         // if the customer acceptance date is future dated (e.g. 6for6) then always display, otherwise only show if starting less than 30 days from today
-        "shouldBeVisible" -> (subscription.customerAcceptanceDate.isAfter(now) || plan.effectiveStartDate.isBefore(now.plusDays(30))),
+        "shouldBeVisible" -> (subscription.customerAcceptanceDate.isAfter(today) || plan.effectiveStartDate.isBefore(today.plusDays(30))),
         "chargedThrough" -> plan.chargedThroughDate,
         "price" -> (plan.chargesPrice.prices.head.amount * 100).toInt,
         "currency" -> plan.chargesPrice.prices.head.currency.glyph,
@@ -134,14 +134,14 @@ object AccountDetails {
         "features" -> plan.features.map(_.featureCode).mkString(","),
       ) ++ maybePaperDaysOfWeek(plan)
 
-      val subscriptionData = new FilterPlans(subscription, catalog)
+      val subscriptionData = new FilterPlans(subscription, catalog, today)
 
       val selfServiceCancellation = SelfServiceCancellation(product, billingCountry)
 
       val start = subscriptionData.startDate.getOrElse(paymentDetails.customerAcceptanceDate)
       val end = subscriptionData.endDate.getOrElse(paymentDetails.termEndDate)
       Json.obj(
-        "tier" -> getTier(catalog, subscription.plan(catalog)),
+        "tier" -> getTier(catalog, mainPlan),
         "isPaidTier" -> (paymentDetails.plan.price.amount > 0f),
         "selfServiceCancellation" -> Json.obj(
           "isAllowed" -> selfServiceCancellation.isAllowed,
@@ -166,7 +166,7 @@ object AccountDetails {
             "lastPaymentDate" -> paymentDetails.lastPaymentDate,
             "chargedThroughDate" -> paymentDetails.chargedThroughDate,
             "renewalDate" -> paymentDetails.termEndDate,
-            "anniversaryDate" -> anniversary(start),
+            "anniversaryDate" -> anniversary(start, today),
             "cancelledAt" -> paymentDetails.pendingCancellation,
             "subscriptionId" -> paymentDetails.subscriberId,
             "trialLength" -> paymentDetails.remainingTrialLength,
@@ -201,7 +201,7 @@ object AccountDetails {
     */
   def anniversary(
       start: LocalDate,
-      today: LocalDate = LocalDate.now(),
+      today: LocalDate,
   ): LocalDate = {
     @tailrec def loop(current: LocalDate): LocalDate = {
       val next = current.plusYears(1)
@@ -221,7 +221,7 @@ object AccountDetails {
 
 }
 
-class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val logPrefix: LogPrefix) extends SafeLogging {
+class FilterPlans(subscription: Subscription, catalog: Catalog, today: LocalDate)(implicit val logPrefix: LogPrefix) extends SafeLogging {
 
   private val sortedPlans = subscription.ratePlans
     .filter(_.product(catalog) match {
@@ -234,8 +234,8 @@ class FilterPlans(subscription: Subscription, catalog: Catalog)(implicit val log
       case Product.AdLite => true
     })
     .sortBy(_.effectiveStartDate.toDate)
-  val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.effectiveStartDate.isAfter(now) && plan.effectiveEndDate.isAfter(now))
-  val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.effectiveStartDate.isAfter(now))
+  val currentPlans: List[RatePlan] = sortedPlans.filter(plan => !plan.effectiveStartDate.isAfter(today) && plan.effectiveEndDate.isAfter(today))
+  val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.effectiveStartDate.isAfter(today))
 
   val startDate: Option[LocalDate] = sortedPlans.headOption.map(_.effectiveStartDate)
   val endDate: Option[LocalDate] = sortedPlans.headOption.map(_.effectiveEndDate)
