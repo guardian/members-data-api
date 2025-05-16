@@ -7,6 +7,7 @@ import components.TouchpointComponents
 import configuration.Stage
 import controllers.AccountHelpers
 import monitoring.CreateNoopMetrics
+import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
 
@@ -33,7 +34,7 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
             },
           Duration.Inf,
         )
-      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson(catalog)))))
+      result.map(_.foreach(accountDetails => println(Json.prettyPrint(accountDetails.toJson(catalog, LocalDate.now)))))
       result.isRight must_== true
     }
   }
