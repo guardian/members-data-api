@@ -196,7 +196,7 @@ class AccountController(
         } yield result match {
           case Right(subscriptionList) =>
             logger.info(s"Successfully retrieved payment details result for identity user: $userId")
-            val productsResponseWrites = new ProductsResponseWrites(catalog)
+            val productsResponseWrites = new ProductsResponseWrites(catalog, LocalDate.now)
             val response = productsResponseWrites.from(user, subscriptionList)
             import productsResponseWrites.writes
             Ok(Json.toJson(response))
