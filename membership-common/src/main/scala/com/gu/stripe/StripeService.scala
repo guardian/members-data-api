@@ -13,6 +13,7 @@ import scalaz.syntax.std.boolean._
 import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
+import com.gu.zuora.api.StripeTortoiseMediaPaymentIntentsMembershipGateway
 
 case class StripeCredentials(secretKey: String, publicKey: String)
 
@@ -37,6 +38,7 @@ case class StripeServiceConfig(
     credentials: StripeCredentials,
     stripeAccountCountry: Country,
     version: Option[String],
+    variant: Option[String],
 )
 
 object StripeServiceConfig {
@@ -46,6 +48,7 @@ object StripeServiceConfig {
       StripeCredentials.fromConfig(config, variant),
       stripeAccountCountry,
       stripeVersion(config, variant),
+      Some(variant),
     )
 
   def stripeVersion(config: Config, variant: String = "api"): Option[String] =
@@ -58,7 +61,11 @@ class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(im
   val httpClient: FutureHttpClient = client
   val publicKey: String = apiConfig.credentials.publicKey
   val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
-  val paymentIntentsGateway: PaymentGateway = RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
+  val paymentIntentsGateway: PaymentGateway =
+    apiConfig.variant match {
+      case Some("tortoise-media") => StripeTortoiseMediaPaymentIntentsMembershipGateway
+      case _ => RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
+    }
 
   override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {
     req.addHeader("Authorization", s"Bearer ${apiConfig.credentials.secretKey}")
