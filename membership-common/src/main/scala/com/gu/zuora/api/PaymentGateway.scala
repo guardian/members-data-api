@@ -23,6 +23,9 @@ case object StripeAUPaymentIntentsMembershipGateway extends PaymentGateway {
   val gatewayName = "Stripe PaymentIntents GNM Membership AUS"
   override val forCountry = Some(Country.Australia)
 }
+case object StripeTortoiseMediaPaymentIntentsMembershipGateway extends PaymentGateway {
+  val gatewayName = "Stripe - Observer - Tortoise Media"
+}
 case object GoCardlessGateway extends PaymentGateway {
   val gatewayName = "GoCardless"
 }
@@ -43,6 +46,7 @@ object PaymentGateway {
     StripeAUMembershipGateway,
     StripeUKPaymentIntentsMembershipGateway,
     StripeAUPaymentIntentsMembershipGateway,
+    StripeTortoiseMediaPaymentIntentsMembershipGateway,
     GoCardlessGateway,
     GoCardlessTortoiseMediaGateway,
     GoCardlessZuoraInstance,
