@@ -11,7 +11,6 @@ import com.gu.zuora.api.StripeTortoiseMediaPaymentIntentsMembershipGateway
 class StripeService(
     apiConfig: StripeServiceConfig,
     val basicStripeService: BasicStripeService,
-    val extraConfig: Option[String] = None,
 ) {
   val paymentIntentsGateway: PaymentGateway =
     apiConfig.variant match {
