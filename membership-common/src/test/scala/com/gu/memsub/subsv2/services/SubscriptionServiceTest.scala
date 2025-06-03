@@ -68,7 +68,7 @@ class SubscriptionServiceTest extends Specification {
   }
 
   val rc = new SimpleClient[Id](ZuoraRestConfig("TESTS", "https://localhost", "foo", "bar"), subscriptions)
-  private val service = new SubscriptionService[Id](_ => catalog, rc, soapClient)
+  private val service = new SubscriptionService[Id](_ => catalog, rc, soapClient, () => LocalDate.parse("2025-01-01"))
 
   "Current Plan" should {
 
@@ -280,7 +280,7 @@ class SubscriptionServiceTest extends Specification {
 
     "Be able to fetch a supporter plus subscription" in {
       val sub = service.get(memsub.Subscription.SubscriptionNumber("1234"))
-      sub.map(_.plan(catalog)) must beSome(
+      sub.map(_.plan(catalog, LocalDate.parse("2025-01-01"))) must beSome(
         RatePlan(
           RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
           supporterPlusPrpId,

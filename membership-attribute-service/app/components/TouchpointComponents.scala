@@ -19,6 +19,7 @@ import configuration.Stage
 import monitoring.CreateMetrics
 import org.apache.pekko.actor.ActorSystem
 import org.http4s.Uri
+import org.joda.time.LocalDate
 import scalaz.{-\/, \/-}
 import scalaz.std.scalaFuture._
 import services._
@@ -142,7 +143,7 @@ class TouchpointComponents(
       }
 
   lazy val subscriptionService: SubscriptionService[Future] = {
-    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog(_), zuoraRestClient, zuoraSoapService)
+    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog(_), zuoraRestClient, zuoraSoapService, () => LocalDate.now())
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }
