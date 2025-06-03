@@ -38,7 +38,7 @@ case class StripeServiceConfig(
     credentials: StripeCredentials,
     stripeAccountCountry: Country,
     version: Option[String],
-    variant: Option[String],
+    variant: String,
 )
 
 object StripeServiceConfig {
