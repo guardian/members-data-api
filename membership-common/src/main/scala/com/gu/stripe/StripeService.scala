@@ -56,29 +56,3 @@ object StripeServiceConfig {
   def stripeVersion(config: Config, variant: String = "api"): Option[String] =
     config.hasPath(s"stripe.${variant}.version").option(config.getString(s"stripe.${variant}.version"))
 }
-
-class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(implicit ec: ExecutionContext)
-    extends WebServiceHelper[StripeObject, Stripe.Error] {
-  val wsUrl = "https://api.stripe.com/v1" // Stripe URL is the same in all environments
-  val httpClient: FutureHttpClient = client
-  val publicKey: String = apiConfig.credentials.publicKey
-  val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
-  val paymentIntentsGateway: PaymentGateway =
-    apiConfig.variant match {
-      case "tortoise-media" => StripeTortoiseMediaPaymentIntentsMembershipGateway
-      case "au-membership" => StripeAUPaymentIntentsMembershipGateway
-      case _ => StripeUKPaymentIntentsMembershipGateway
-    }
-
-  override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {
-    req.addHeader("Authorization", s"Bearer ${apiConfig.credentials.secretKey}")
-
-    apiConfig.version match {
-      case Some(version) => {
-        logger.info(s"Making a stripe call with version: $version env: ${apiConfig.envName} country: ${apiConfig.stripeAccountCountry}")
-        req.addHeader("Stripe-Version", version)
-      }
-      case None => req
-    }
-  }
-}
