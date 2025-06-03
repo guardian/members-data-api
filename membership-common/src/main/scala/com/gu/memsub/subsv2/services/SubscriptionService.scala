@@ -89,14 +89,14 @@ class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], r
     rest.get[Subscription](url)(subscriptionReads, logPrefix).map(_.leftMap(_.withLogging("ERROR: get subscription")).toOption)
   }
 
-  def current(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
+  def current(contact: ContactId, today: LocalDate)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
     for {
       subscriptionsEither <- getSubscriptionsFromContact(contact)
       catalog <- futureCatalog(logPrefix)
     } yield {
       val currentSubscriptions = for {
         subscriptions <- subscriptionsEither.withLogging("sub service - get for contact")
-        currentSubscriptions <- getCurrentSubscriptions(catalog, subscriptions).withLogging("get best plan")
+        currentSubscriptions <- getCurrentSubscriptions(catalog, subscriptions, today).withLogging("get best plan")
       } yield currentSubscriptions
       currentSubscriptions.toEither match {
         case Left(error) =>
@@ -138,19 +138,20 @@ class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], r
 
   def subscriptionsForAccountId(
       accountId: AccountId,
+      today: LocalDate,
   )(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
     for {
       subscriptionsEither <- getSubscriptionsFromAccount(accountId)
       catalog <- futureCatalog(logPrefix)
     } yield {
       subscriptionsEither.rightMap { subscriptions =>
-        getCurrentSubscriptions(catalog, subscriptions).toList.flatMap(_.list.toList)
+        getCurrentSubscriptions(catalog, subscriptions, today).toList.flatMap(_.list.toList)
       }
     }
 
-  private def getCurrentSubscriptions(catalog: Catalog, subs: List[Subscription]): Disjunction[String, NonEmptyList[Subscription]] =
+  private def getCurrentSubscriptions(catalog: Catalog, subs: List[Subscription], today: LocalDate): Disjunction[String, NonEmptyList[Subscription]] =
     Sequence(subs.map { sub =>
-      GetCurrentPlans.currentPlans(sub, LocalDate.now, catalog).map(_ => sub)
+      GetCurrentPlans.currentPlans(sub, today, catalog).map(_ => sub)
     })
 
   private def getSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =

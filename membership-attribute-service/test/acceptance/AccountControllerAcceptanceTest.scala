@@ -158,7 +158,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       )
       val nonGiftSubscriptionAccountId = nonGiftSubscription.accountId
 
-      subscriptionServiceMock.current(contact)(any) returns
+      subscriptionServiceMock.current(contact, any)(any) returns
         Future(List(nonGiftSubscription))
 
       val giftSubscriptionFromSubscriptionService = TestSubscription(
@@ -216,7 +216,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       contactRepositoryMock.get("200067388")(any) was called
       supporterProductDataServiceMock.getSupporterRatePlanItems("200067388")(any[LogPrefix]) was called
-      subscriptionServiceMock.current(contact)(any) was called
+      subscriptionServiceMock.current(contact, any)(any) was called
       zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388")(any) was called
       subscriptionServiceMock.get(Subscription.SubscriptionNumber(giftSubscription.Name), isActiveToday = false)(any) was called
 
@@ -340,7 +340,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         plans = List(plan),
       )
 
-      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock.current(contact, any)(any) returns Future(List(subscription))
 
       zuoraRestServiceMock.updateChargeAmount(
         subscription.subscriptionNumber,
@@ -368,7 +368,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) was called
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current(contact)(any) was called
+      subscriptionServiceMock.current(contact, any)(any) was called
       zuoraRestServiceMock.updateChargeAmount(
         subscription.subscriptionNumber,
         charge.id,
@@ -444,7 +444,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         termEndDate = new LocalDate(2024, 4, 12),
       )
 
-      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock.current(contact, any)(any) returns Future(List(subscription))
 
       val cancellationEffectiveDate = new LocalDate(2024, 4, 5)
       subscriptionServiceMock
@@ -452,7 +452,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         .right(Some(cancellationEffectiveDate))
 
       subscriptionServiceMock
-        .subscriptionsForAccountId(subscription.accountId)(any) shouldReturn SimpleEitherT
+        .subscriptionsForAccountId(subscription.accountId, any)(any) shouldReturn SimpleEitherT
         .right(List(subscription))
         .run
 
@@ -482,10 +482,10 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) was called
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current(contact)(any) was called
+      subscriptionServiceMock.current(contact, any)(any) was called
 
       subscriptionServiceMock.decideCancellationEffectiveDate(SubscriptionNumber(subscriptionId), any, any)(any) was called
-      subscriptionServiceMock.subscriptionsForAccountId(subscription.accountId)(any) was called
+      subscriptionServiceMock.subscriptionsForAccountId(subscription.accountId, any)(any) was called
       zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) was called
       zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) was called
       zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(

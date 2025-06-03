@@ -20,9 +20,10 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
       reason: Option[String],
       accountId: memsub.Subscription.AccountId,
       endOfTermDate: LocalDate,
+      today: LocalDate,
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): EitherT[ApiError, Future, Option[LocalDate]] =
     (for {
-      _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
+      _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId, today).leftMap(message => s"Failed to disable AutoPay: $message")
       _ <- reason match {
         case Some(r) =>
           EitherT(zuoraRestService.updateCancellationReason(subscriptionNumber, r)).leftMap(message =>
@@ -41,8 +42,9 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
     */
   def disableAutoPayOnlyIfAccountHasOneSubscription(
       accountId: memsub.Subscription.AccountId,
+      today: LocalDate,
   )(implicit ec: ExecutionContext, logPrefix: LogPrefix): SimpleEitherT[Unit] = {
-    EitherT(subscriptionService.subscriptionsForAccountId(accountId)).flatMap { currentSubscriptions =>
+    EitherT(subscriptionService.subscriptionsForAccountId(accountId, today)).flatMap { currentSubscriptions =>
       if (currentSubscriptions.size <= 1)
         SimpleEitherT(zuoraRestService.disableAutoPay(accountId).map(_.toEither))
       else // do not disable auto pay

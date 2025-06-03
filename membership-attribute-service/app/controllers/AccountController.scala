@@ -90,6 +90,7 @@ class AccountController(
           single("reason" -> nonEmptyText)
         }
         val identityId = request.user.identityId
+        val today = LocalDate.now()
         def flatten[T](future: Future[\/[String, Option[T]]], errorMessage: String): SimpleEitherT[T] =
           SimpleEitherT(future.map(_.toEither.flatMap(_.toRight(errorMessage))))
 
@@ -101,7 +102,7 @@ class AccountController(
             ).leftMap(CancelError(_, 404))
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current(contact)
+              .current(contact, today)
               .map(subs => subscriptionSelector(subscriptionNumber, s"Salesforce user $contact", subs)),
           ).leftMap(CancelError(_, 404))
           accountId <-
@@ -118,6 +119,7 @@ class AccountController(
             cancellationReason,
             accountId,
             subscription.termEndDate,
+            today,
           )
           result = cancellationEffectiveDate.getOrElse("now").toString
           catalog <- EitherT.rightT(services.futureCatalog)
@@ -187,12 +189,13 @@ class AccountController(
       metrics.measureDuration(metricName) {
         val user = request.user
         val userId = user.identityId
+        val today = LocalDate.now()
 
         logger.info(s"Attempting to retrieve payment details for identity user: $userId")
 
         for {
           catalog <- request.touchpoint.futureCatalog
-          result <- paymentDetails(userId, filter, request.touchpoint).toEither
+          result <- paymentDetails(userId, filter, request.touchpoint, today).toEither
         } yield result match {
           case Right(subscriptionList) =>
             logger.info(s"Successfully retrieved payment details result for identity user: $userId")
@@ -212,9 +215,10 @@ class AccountController(
       userId: String,
       filter: OptionalSubscriptionsFilter,
       touchpointComponents: TouchpointComponents,
+      today: LocalDate,
   )(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
     for {
-      fromZuora <- touchpointComponents.accountDetailsFromZuora.fetch(userId, filter)
+      fromZuora <- touchpointComponents.accountDetailsFromZuora.fetch(userId, filter, today)
       fromStripe <- touchpointComponents.guardianPatronService.getGuardianPatronAccountDetails(userId)
     } yield fromZuora ++ fromStripe
   }
@@ -250,6 +254,7 @@ class AccountController(
         val services = request.touchpoint
         val userId = request.user.identityId
         val email = request.user.primaryEmailAddress
+        val today = LocalDate.now()
         logger.info(s"Attempting to update contribution amount for $userId")
         (for {
           newPrice <- SimpleEitherT.fromEither(validateContributionAmountUpdateForm(request))
@@ -257,7 +262,7 @@ class AccountController(
           contact <- SimpleEitherT.fromFutureOption(services.contactRepository.get(user), s"No SF user $user")
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current(contact)
+              .current(contact, today)
               .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           catalog <- SimpleEitherT.rightT(services.futureCatalog)

@@ -11,6 +11,7 @@ import controllers.AccountController
 import controllers.AccountHelpers.{FilterByProductType, FilterBySubName, NoFilter, OptionalSubscriptionsFilter}
 import models.{AccountDetails, ContactAndSubscription, DeliveryAddress}
 import monitoring.CreateMetrics
+import org.joda.time.LocalDate
 import scalaz.ListT
 import scalaz.std.scalaFuture._
 import services.PaymentFailureAlerter.{accountHasMissedPayments, alertText, safeToAllowPaymentUpdate}
@@ -35,18 +36,18 @@ class AccountDetailsFromZuora(
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[AccountController])
 
-  def fetch(userId: String, filter: OptionalSubscriptionsFilter)(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
+  def fetch(userId: String, filter: OptionalSubscriptionsFilter, today: LocalDate)(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
     metrics.measureDurationEither("accountDetailsFromZuora") {
-      SimpleEitherT.fromListT(accountDetailsFromZuoraFor(userId, filter))
+      SimpleEitherT.fromListT(accountDetailsFromZuoraFor(userId, filter, today))
     }
   }
 
-  private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter)(implicit
+  private def accountDetailsFromZuoraFor(userId: String, filter: OptionalSubscriptionsFilter, today: LocalDate)(implicit
       logPrefix: LogPrefix,
   ): ListT[SimpleEitherT, AccountDetails] = {
     for {
       catalog <- ListTEither.singleRightT(futureCatalog(logPrefix))
-      contactAndSubscription <- allCurrentSubscriptions(userId, filter)
+      contactAndSubscription <- allCurrentSubscriptions(userId, filter, today)
       detailsResultsTriple <- ListTEither.single(getAccountDetailsParallel(contactAndSubscription))
       (paymentDetails, accountSummary, effectiveCancellationDate) = detailsResultsTriple
       country = accountSummary.billToContact.country
@@ -77,9 +78,9 @@ class AccountDetailsFromZuora(
   private def getPaymentMethod(id: PaymentMethodId)(implicit logPrefix: LogPrefix): Future[Either[String, ZuoraRestService.PaymentMethodResponse]] =
     zuoraRestService.getPaymentMethod(id.get).map(_.toEither)
 
-  private def nonGiftContactAndSubscriptionsFor(contact: Contact)(implicit logPrefix: LogPrefix): Future[List[ContactAndSubscription]] = {
+  private def nonGiftContactAndSubscriptionsFor(contact: Contact, today: LocalDate)(implicit logPrefix: LogPrefix): Future[List[ContactAndSubscription]] = {
     subscriptionService
-      .current(contact)
+      .current(contact, today)
       .map(_.map(ContactAndSubscription(contact, _, isGiftRedemption = false)))
   }
 
@@ -103,11 +104,11 @@ class AccountDetailsFromZuora(
     }
   }
 
-  private def subscriptionsFor(userId: String, contact: Contact, filter: OptionalSubscriptionsFilter)(implicit
+  private def subscriptionsFor(userId: String, contact: Contact, filter: OptionalSubscriptionsFilter, today: LocalDate)(implicit
       logPrefix: LogPrefix,
   ): SimpleEitherT[List[ContactAndSubscription]] = {
     for {
-      nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact))
+      nonGiftContactAndSubscriptions <- SimpleEitherT.rightT(nonGiftContactAndSubscriptionsFor(contact, today))
       contactAndSubscriptions <- checkForGiftSubscription(userId, nonGiftContactAndSubscriptions, contact)
       catalog <- SimpleEitherT.rightT(futureCatalog(logPrefix))
       subsWithRecognisedProducts = contactAndSubscriptions.filter(_.subscription.plan(catalog).product(catalog) match {
@@ -126,10 +127,11 @@ class AccountDetailsFromZuora(
   private def allCurrentSubscriptions(
       userId: String,
       filter: OptionalSubscriptionsFilter,
+      today: LocalDate,
   )(implicit logPrefix: LogPrefix): ListTEither[ContactAndSubscription] = {
     for {
       contact <- ListTEither.fromFutureOption(contactRepository.get(userId))
-      subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter))
+      subscription <- ListTEither.fromEitherT(subscriptionsFor(userId, contact, filter, today))
     } yield subscription
   }
 

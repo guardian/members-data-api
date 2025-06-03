@@ -26,7 +26,7 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
       val eventualResult = for {
         catalog <- touchpointComponents.futureCatalog
         result <- touchpointComponents.accountDetailsFromZuora
-          .fetch("200421949", AccountHelpers.NoFilter)
+          .fetch("200421949", AccountHelpers.NoFilter, LocalDate.parse("2025-01-01"))
           .run
           .map { list =>
             println(s"Fetched this list: $list")

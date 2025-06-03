@@ -280,7 +280,7 @@ class SubscriptionServiceTest extends Specification {
 
     "Be able to fetch a supporter plus subscription" in {
       val sub = service.get(memsub.Subscription.SubscriptionNumber("1234"))
-      sub.map(_.plan(catalog)) must beSome(
+      sub.map(_.plan(catalog, LocalDate.parse("2025-01-01"))) must beSome(
         RatePlan(
           RatePlanId("8ad08ae28f9570f0018f958813ed10ca"),
           supporterPlusPrpId,
@@ -338,12 +338,12 @@ class SubscriptionServiceTest extends Specification {
     }
 
     "Leverage the soap client to fetch subs by contact ID" in {
-      val subs = service.current(contact)
+      val subs = service.current(contact, LocalDate.parse("2025-01-01"))
       subs.map(_.subscriptionNumber.getNumber).sorted mustEqual List("A-S00890520", "A-S00890521") // from the test resources jsons
     }
 
     "Be able to fetch subs where term ends after the specified date" in {
-      val currentSubs = service.current(contact)
+      val currentSubs = service.current(contact, LocalDate.parse("2025-01-01"))
       val sinceSubs = service.since(1 Jun 2025)(contact)
       currentSubs mustNotEqual sinceSubs
       sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jun 2025

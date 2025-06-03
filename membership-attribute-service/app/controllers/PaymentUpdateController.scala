@@ -24,6 +24,7 @@ import services.mail.{Card, DirectDebit, PaymentType, SendEmail}
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 import models.GatewayOwner
+import org.joda.time.LocalDate
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -54,6 +55,7 @@ class PaymentUpdateController(
         val useStripePaymentMethod = updateForm.isDefined
         val user = request.user
         val userId = user.identityId
+        val today = LocalDate.now()
         logger.info(s"Attempting to update card for $userId")
         (for {
           stripeDetails <- EitherT.fromEither(
@@ -62,7 +64,7 @@ class PaymentUpdateController(
           contact <- EitherT.fromEither(services.contactRepository.get(userId).map(_.toEither).map(_.flatMap(_.toRight(s"no SF user $userId"))))
           subscription <- EitherT.fromEither(
             services.subscriptionService
-              .current(contact)
+              .current(contact, today)
               .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           (stripeCardIdentifier, stripePublicKey) = stripeDetails
@@ -70,7 +72,7 @@ class PaymentUpdateController(
             .setPaymentCard(stripePublicKey)
             .setPaymentCard(useStripePaymentMethod, subscription.accountId, stripeCardIdentifier)
           catalog <- SimpleEitherT.rightT(services.futureCatalog)
-          productType = subscription.plan(catalog).productType(catalog)
+          productType = subscription.plan(catalog, today).productType(catalog)
           _ <- sendPaymentMethodChangedEmail(user.primaryEmailAddress, contact, Card, productType)
         } yield updateResult match {
           case success: CardUpdateSuccess => {
@@ -149,6 +151,7 @@ class PaymentUpdateController(
         val services = request.touchpoint
         val user = request.user
         val userId = user.identityId
+        val today = LocalDate.now()
 
         logger.info(s"Attempting to update direct debit")
 
@@ -158,7 +161,7 @@ class PaymentUpdateController(
           contact <- SimpleEitherT(services.contactRepository.get(userId).map(_.toEither.flatMap(_.toRight(s"no SF user for $userId"))))
           subscription <- SimpleEitherT(
             services.subscriptionService
-              .current(contact)
+              .current(contact, today)
               .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           account <- SimpleEitherT(
