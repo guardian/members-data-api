@@ -297,9 +297,9 @@ class SubscriptionServiceTest extends Specification {
               SubscriptionEnd,
               None,
               None,
-              Some(20 Jun 2025),
+              Some(20 Jun 2024),
+              20 May 2024,
               20 May 2025,
-              20 May 2026,
             ),
             RatePlanCharge(
               SubscriptionRatePlanChargeId("8ad08ae28f9570f0018f9588142410e0"),
@@ -310,9 +310,9 @@ class SubscriptionServiceTest extends Specification {
               SubscriptionEnd,
               None,
               None,
-              Some(20 Jun 2025),
+              Some(20 Jun 2024),
+              20 May 2024,
               20 May 2025,
-              20 May 2026,
             ),
           ),
         ),
@@ -344,7 +344,7 @@ class SubscriptionServiceTest extends Specification {
 
     "Be able to fetch subs where term ends after the specified date" in {
       val currentSubs = service.current(contact)
-      val sinceSubs = service.since(1 Jun 2026)(contact)
+      val sinceSubs = service.since(1 Jun 2025)(contact)
       currentSubs mustNotEqual sinceSubs
       sinceSubs.length mustEqual 0 // because no subscriptions have a term end date AFTER 1 Jun 2025
     }
