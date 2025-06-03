@@ -14,6 +14,8 @@ import scalaz.syntax.std.option._
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.gu.zuora.api.StripeTortoiseMediaPaymentIntentsMembershipGateway
+import com.gu.zuora.api.StripeAUPaymentIntentsMembershipGateway
+import com.gu.zuora.api.StripeUKPaymentIntentsMembershipGateway
 
 case class StripeCredentials(secretKey: String, publicKey: String)
 
@@ -38,7 +40,7 @@ case class StripeServiceConfig(
     credentials: StripeCredentials,
     stripeAccountCountry: Country,
     version: Option[String],
-    variant: Option[String],
+    variant: String,
 )
 
 object StripeServiceConfig {
@@ -48,7 +50,7 @@ object StripeServiceConfig {
       StripeCredentials.fromConfig(config, variant),
       stripeAccountCountry,
       stripeVersion(config, variant),
-      Some(variant),
+      variant,
     )
 
   def stripeVersion(config: Config, variant: String = "api"): Option[String] =
@@ -63,8 +65,9 @@ class StripeService(apiConfig: StripeServiceConfig, client: FutureHttpClient)(im
   val paymentGateway: PaymentGateway = RegionalStripeGateways.getGatewayForCountry(apiConfig.stripeAccountCountry)
   val paymentIntentsGateway: PaymentGateway =
     apiConfig.variant match {
-      case Some("tortoise-media") => StripeTortoiseMediaPaymentIntentsMembershipGateway
-      case _ => RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
+      case "tortoise-media" => StripeTortoiseMediaPaymentIntentsMembershipGateway
+      case "au-membership" => StripeAUPaymentIntentsMembershipGateway
+      case _ => StripeUKPaymentIntentsMembershipGateway
     }
 
   override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {

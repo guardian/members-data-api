@@ -58,6 +58,4 @@ object PaymentGateway {
 object RegionalStripeGateways {
   def getGatewayForCountry(country: Country): PaymentGateway =
     if (country == Country.Australia) StripeAUMembershipGateway else StripeUKMembershipGateway
-  def getPaymentIntentsGatewayForCountry(country: Country): PaymentGateway =
-    if (country == Country.Australia) StripeAUPaymentIntentsMembershipGateway else StripeUKPaymentIntentsMembershipGateway
 }

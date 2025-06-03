@@ -7,6 +7,8 @@ import com.gu.zuora.api.{PaymentGateway, RegionalStripeGateways}
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.gu.zuora.api.StripeTortoiseMediaPaymentIntentsMembershipGateway
+import com.gu.zuora.api.StripeAUPaymentIntentsMembershipGateway
+import com.gu.zuora.api.StripeUKPaymentIntentsMembershipGateway
 
 class StripeService(
     apiConfig: StripeServiceConfig,
@@ -14,8 +16,9 @@ class StripeService(
 ) {
   val paymentIntentsGateway: PaymentGateway =
     apiConfig.variant match {
-      case Some("tortoise-media") => StripeTortoiseMediaPaymentIntentsMembershipGateway
-      case _ => RegionalStripeGateways.getPaymentIntentsGatewayForCountry(apiConfig.stripeAccountCountry)
+      case "tortoise-media" => StripeTortoiseMediaPaymentIntentsMembershipGateway
+      case "au-membership" => StripeAUPaymentIntentsMembershipGateway
+      case _ => StripeUKPaymentIntentsMembershipGateway
     }
 
   def createCustomer(card: String)(implicit logPrefix: LogPrefix): Future[Customer] = basicStripeService.createCustomer(card)
