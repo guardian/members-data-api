@@ -225,7 +225,7 @@
           "effectiveStartDate": "2025-06-28",
           "effectiveEndDate": "2026-06-13",
           "processedThroughDate": "2025-06-28",
-          "chargedThroughDate": "2026-07-28",
+          "chargedThroughDate": "2025-07-28",
           "done": false,
           "triggerDate": null,
           "triggerEvent": "CustomerAcceptance",
