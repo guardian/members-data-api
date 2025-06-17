@@ -224,8 +224,8 @@
           "segment": 1,
           "effectiveStartDate": "2025-06-17",
           "effectiveEndDate": "2026-06-16",
-          "processedThroughDate": "2024-06-28",
-          "chargedThroughDate": "2024-07-28",
+          "processedThroughDate": "2025-06-17",
+          "chargedThroughDate": "2026-06-16",
           "done": false,
           "triggerDate": null,
           "triggerEvent": "CustomerAcceptance",
@@ -293,10 +293,10 @@
           "unusedUnitsCreditRates": null,
           "usageRecordRatingOption": null,
           "segment": 1,
-          "effectiveStartDate": "2024-06-28",
-          "effectiveEndDate": "2025-06-13",
-          "processedThroughDate": "2024-06-28",
-          "chargedThroughDate": "2024-07-28",
+          "effectiveStartDate": "2025-06-17",
+          "effectiveEndDate": "2026-06-16",
+          "processedThroughDate": "2025-06-17",
+          "chargedThroughDate": "2026-06-16",
           "done": false,
           "triggerDate": null,
           "triggerEvent": "CustomerAcceptance",
@@ -329,12 +329,12 @@
   "externallyManagedBy": null,
   "statusHistory": [
     {
-      "startDate": "2024-06-13",
-      "endDate": "2025-06-13",
+      "startDate": "2025-06-17",
+      "endDate": "2026-07-16",
       "status": "Active"
     },
     {
-      "startDate": "2025-06-13",
+      "startDate": "2026-06-17",
       "endDate": null,
       "status": "OutOfTerm"
     }
