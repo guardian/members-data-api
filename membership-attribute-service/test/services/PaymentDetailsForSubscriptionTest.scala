@@ -3,7 +3,7 @@ package services
 import acceptance.data.Randoms.randomId
 import acceptance.data.TestContact
 import com.gu.i18n.Currency.GBP
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Subscription, RatePlan}
 import com.gu.memsub.{BillingPeriod, Price}
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
@@ -14,10 +14,11 @@ import org.mockito.IdiomaticMockito
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import scalaz.\/
-import services.zuora.payment.ZuoraPaymentService
+import services.zuora.payment.PaymentService
 import testdata.SubscriptionTestData
 
 import scala.concurrent.Future
+import testdata.TestLogPrefix.testLogPrefix
 
 class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Specification with SubscriptionTestData with IdiomaticMockito {
 
@@ -26,20 +27,21 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
   "PaymentDetailMapper" should {
     "recognise a giftee's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[ZuoraPaymentService])
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(mock[PaymentService], _ => Future.successful(catalog))
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipackGift, true))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, digipackGift, true))
         .map(details =>
           details mustEqual PaymentDetails(
             pendingCancellation = false,
             chargedThroughDate = None,
-            startDate = digipackGift.startDate,
-            customerAcceptanceDate = digipackGift.startDate,
+            startDate = digipackGift.contractEffectiveDate,
+            customerAcceptanceDate = digipackGift.contractEffectiveDate,
             nextPaymentPrice = None,
             lastPaymentDate = None,
             nextPaymentDate = None,
+            nextInvoiceDate = None,
             termEndDate = digipackGift.termEndDate,
-            pendingAmendment = false,
             paymentMethod = None,
             plan = PersonalPlan(
               name = "Digital Pack",
@@ -54,42 +56,37 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
 
     "recognise a gifter's gift subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[ZuoraPaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails(digipackGift, None, None, None)
+      val paymentService = mock[PaymentService]
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, _ => Future.successful(catalog))
+      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipackGift, None, None, None, None, catalog)
 
       paymentService.paymentDetails(
-        any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]],
+        any[Subscription],
         any[Option[String]],
+        catalog,
       ) returns Future.successful(expectedPaymentDetails)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipack, false))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, digipack, false))
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
     "recognise a regular digital subscription" in {
       val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[ZuoraPaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails(digipack, None, None, None)
+      val paymentService = mock[PaymentService]
+      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService, _ => Future.successful(catalog))
+      val expectedPaymentDetails = PaymentDetails.fromSubAndPaymentData(digipack, None, None, None, None, catalog)
 
       paymentService.paymentDetails(
-        any[Subscription[SubscriptionPlan.Free] \/ Subscription[SubscriptionPlan.Paid]](),
+        any[Subscription](),
         any[Option[String]](),
+        catalog,
       ) returns Future.successful(expectedPaymentDetails)
 
-      paymentDetailsForSubscription(ContactAndSubscription(contact, digipack, false))
+      paymentDetailsForSubscription
+        .getPaymentDetails(ContactAndSubscription(contact, digipack, false))
         .map(details => details mustEqual expectedPaymentDetails)
     }
 
-    "recognise a free subscription" in {
-      val contact = TestContact(randomId("identityId"))
-      val paymentService = mock[ZuoraPaymentService]
-      val paymentDetailsForSubscription = new PaymentDetailsForSubscription(paymentService)
-      val expectedPaymentDetails = PaymentDetails(friend)
-
-      paymentDetailsForSubscription(ContactAndSubscription(contact, friend, false))
-        .map(details => details mustEqual expectedPaymentDetails)
-    }
   }
 }

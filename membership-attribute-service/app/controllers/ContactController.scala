@@ -1,7 +1,8 @@
 package controllers
 
 import actions.{AuthAndBackendRequest, CommonActions, Return401IfNotSignedInRecently}
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import models.AccessScope.updateSelf
 import models.DeliveryAddress
 import monitoring.CreateMetrics
@@ -16,7 +17,7 @@ class ContactController(
     override val controllerComponents: ControllerComponents,
     createMetrics: CreateMetrics,
 ) extends BaseController
-    with LazyLogging {
+    with SafeLogging {
 
   import commonActions._
 
@@ -25,6 +26,7 @@ class ContactController(
 
   def updateDeliveryAddress(contactId: String): Action[AnyContent] =
     AuthorizeForRecentLogin(Return401IfNotSignedInRecently, requiredScopes = List(updateSelf)).async { request =>
+      import request.logPrefix
       metrics.measureDuration("PUT /user-attributes/me/delivery-address/:contactId") {
         logger.info(s"Updating delivery address for contact $contactId")
 
@@ -58,7 +60,7 @@ class ContactController(
   private def isContactOwnedByRequester(
       request: AuthAndBackendRequest[AnyContent],
       contactId: String,
-  ): Future[Boolean] = {
+  )(implicit logPrefix: LogPrefix): Future[Boolean] = {
     val contactRepository = request.touchpoint.contactRepository
     request.redirectAdvice.userId match {
       case Some(userId) =>
@@ -74,7 +76,7 @@ class ContactController(
       contactRepository: ContactRepository,
       contactId: String,
       address: DeliveryAddress,
-  ): Future[Unit] = {
+  )(implicit logPrefix: LogPrefix): Future[Unit] = {
     val contactFields = {
       def contactField(name: String, optValue: Option[String]): Map[String, String] =
         optValue map { value =>

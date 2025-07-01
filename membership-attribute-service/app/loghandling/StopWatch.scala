@@ -1,12 +1,12 @@
 package loghandling
 
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.monitoring.SafeLogging
 
 object StopWatch {
   def apply() = new StopWatch
 }
 
-class StopWatch extends LazyLogging {
+class StopWatch extends SafeLogging {
   private val startTime = System.currentTimeMillis
 
   def elapsed: Long = System.currentTimeMillis - startTime

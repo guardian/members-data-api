@@ -1,14 +1,16 @@
 package com.gu.monitoring
 
-import java.util.concurrent.Future
 import com.amazonaws.handlers.AsyncHandler
 import com.amazonaws.regions.Regions.EU_WEST_1
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient
 import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResult}
 import com.gu.aws.CredentialsProvider
 import com.gu.monitoring.CloudWatch.cloudwatch
+import com.gu.monitoring.SafeLogger.LogPrefix
 
-trait CloudWatch {
+import java.util.concurrent.Future
+
+trait CloudWatch extends SafeLogging {
   val stage: String
   val application: String
   val service: String
@@ -16,19 +18,17 @@ trait CloudWatch {
   lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
   def mandatoryDimensions: Seq[Dimension] = Seq(stageDimension, servicesDimension)
 
-  trait LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] {
+  class LoggingAsyncHandler(implicit logPrefix: LogPrefix) extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] {
     def onError(exception: Exception) {
-      SafeLogger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
+      logger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
     }
     def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult) {
-      SafeLogger.debug("CloudWatch PutMetricDataRequest - success")
+      logger.debug("CloudWatch PutMetricDataRequest - success")
       CloudWatchHealth.hasPushedMetricSuccessfully = true
     }
   }
 
-  object LoggingAsyncHandler extends LoggingAsyncHandler
-
-  def put(name: String, count: Double, extraDimensions: Dimension*): Future[PutMetricDataResult] = {
+  def put(name: String, count: Double, extraDimensions: Dimension*)(implicit logPrefix: LogPrefix): Future[PutMetricDataResult] = {
     val metric =
       new MetricDatum()
         .withValue(count)
@@ -38,10 +38,10 @@ trait CloudWatch {
 
     val request = new PutMetricDataRequest().withNamespace(application).withMetricData(metric)
 
-    cloudwatch.putMetricDataAsync(request, LoggingAsyncHandler)
+    cloudwatch.putMetricDataAsync(request, new LoggingAsyncHandler)
   }
 
-  def put(name: String, count: Double, responseMethod: String) {
+  def put(name: String, count: Double, responseMethod: String)(implicit logPrefix: LogPrefix) {
     put(name, count, new Dimension().withName("ResponseMethod").withValue(responseMethod))
   }
 }

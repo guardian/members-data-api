@@ -2,7 +2,7 @@ package services.mail
 
 import com.gu.i18n.Currency
 import com.gu.memsub.BillingPeriod.RecurringPeriod
-import com.gu.memsub.subsv2.SubscriptionPlan
+import com.gu.memsub.subsv2.ProductType
 import com.gu.salesforce.Contact
 import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
@@ -12,7 +12,7 @@ import java.text.DecimalFormat
 object Emails {
   private val dateFormat = DateTimeFormat.forPattern("d MMMM yyyy")
 
-  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, plan: SubscriptionPlan.AnyPlan): EmailData = {
+  def paymentMethodChangedEmail(emailAddress: String, contact: Contact, paymentMethod: PaymentType, productType: ProductType): EmailData = {
     EmailData(
       emailAddress = emailAddress,
       salesforceContactId = contact.salesforceContactId,
@@ -21,7 +21,7 @@ object Emails {
         "first_name" -> contact.firstName.getOrElse(""),
         "last_name" -> contact.lastName,
         "payment_method" -> paymentMethod.valueForEmail,
-        "product_type" -> plan.productType,
+        "product_type" -> productType.productTypeString,
       ),
     )
   }
@@ -29,7 +29,7 @@ object Emails {
   def subscriptionCancelledEmail(
       emailAddress: String,
       contact: Contact,
-      plan: SubscriptionPlan.AnyPlan,
+      productType: ProductType,
       cancellationEffectiveDate: Option[LocalDate],
   ): EmailData = {
     EmailData(
@@ -38,7 +38,7 @@ object Emails {
       "subscription-cancelled-email",
       Map(
         "last_name" -> contact.lastName,
-        "product_type" -> plan.productType,
+        "product_type" -> productType.productTypeString,
       ) ++ cancellationEffectiveDate.map("cancellation_effective_date" -> dateFormat.print(_)) ++
         contact.firstName.map(firstName => "first_name" -> firstName),
     )

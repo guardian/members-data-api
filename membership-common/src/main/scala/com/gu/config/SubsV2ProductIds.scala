@@ -1,25 +1,34 @@
 package com.gu.config
+import com.gu.memsub.Product
+import com.gu.memsub.Product._
 import com.gu.memsub.Subscription.ProductId
-import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
 
 object SubsV2ProductIds {
-  def apply(config: com.typesafe.config.Config): ProductIds = ProductIds(
-    weeklyZoneA = ProductId(config.getString("subscriptions.weeklyZoneA")),
-    weeklyZoneB = ProductId(config.getString("subscriptions.weeklyZoneB")),
-    weeklyZoneC = ProductId(config.getString("subscriptions.weeklyZoneC")),
-    weeklyDomestic = ProductId(config.getString("subscriptions.weeklyDomestic")),
-    weeklyRestOfWorld = ProductId(config.getString("subscriptions.weeklyRestOfWorld")),
-    delivery = ProductId(config.getString("subscriptions.delivery")),
-    nationalDelivery = ProductId(config.getString("subscriptions.nationalDelivery")),
-    voucher = ProductId(config.getString("subscriptions.voucher")),
-    digitalVoucher = ProductId(config.getString("subscriptions.digitalVoucher")),
-    digipack = ProductId(config.getString("subscriptions.digipack")),
-    supporterPlus = ProductId(config.getString("subscriptions.supporterPlus")),
-    friend = ProductId(config.getString("membership.friend")),
-    supporter = ProductId(config.getString("membership.supporter")),
-    partner = ProductId(config.getString("membership.partner")),
-    patron = ProductId(config.getString("membership.patron")),
-    staff = ProductId(config.getString("membership.staff")),
-    contributor = ProductId(config.getString("contributions.contributor")),
+
+  val guardianPatronProductId: ProductId = ProductId("guardian_patron")
+
+  type ProductMap = Map[ProductId, Product]
+
+  def load(config: com.typesafe.config.Config): ProductMap = Map[ProductId, Product](
+    ProductId(config.getString("subscriptions.voucher")) -> Voucher,
+    ProductId(config.getString("subscriptions.digitalVoucher")) -> DigitalVoucher,
+    ProductId(config.getString("subscriptions.delivery")) -> Delivery,
+    ProductId(config.getString("subscriptions.nationalDelivery")) -> NationalDelivery,
+    ProductId(config.getString("subscriptions.weeklyZoneA")) -> WeeklyZoneA,
+    ProductId(config.getString("subscriptions.weeklyZoneB")) -> WeeklyZoneB,
+    ProductId(config.getString("subscriptions.weeklyZoneC")) -> WeeklyZoneC,
+    ProductId(config.getString("subscriptions.weeklyDomestic")) -> WeeklyDomestic,
+    ProductId(config.getString("subscriptions.weeklyRestOfWorld")) -> WeeklyRestOfWorld,
+    ProductId(config.getString("subscriptions.digipack")) -> Digipack,
+    ProductId(config.getString("subscriptions.supporterPlus")) -> SupporterPlus,
+    ProductId(config.getString("subscriptions.tierThree")) -> TierThree,
+    ProductId(config.getString("subscriptions.guardianAdLite")) -> AdLite,
+    ProductId(config.getString("membership.supporter")) -> Membership,
+    ProductId(config.getString("membership.partner")) -> Membership,
+    ProductId(config.getString("membership.patron")) -> Membership,
+    ProductId(config.getString("contributions.contributor")) -> Contribution,
+    ProductId(config.getString("discounts")) -> Discounts,
+    guardianPatronProductId -> GuardianPatron,
   )
+
 }

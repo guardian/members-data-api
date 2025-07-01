@@ -1,5 +1,6 @@
 package services.salesforce
 
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.{Contact, ContactId}
 import play.api.libs.json._
 import scalaz.\/
@@ -7,15 +8,8 @@ import scalaz.\/
 import scala.concurrent.Future
 
 trait ContactRepository {
-  def upsert(userId: Option[String], values: JsObject): Future[ContactId]
 
-  def updateIdentityId(contact: ContactId, newIdentityId: String): Future[Throwable \/ Unit]
+  def get(identityId: String)(implicit logPrefix: LogPrefix): Future[String \/ Option[Contact]]
 
-  def get(identityId: String): Future[String \/ Option[Contact]]
-
-  def getByContactId(contactId: String): Future[\/[String, Contact]]
-
-  def getByAccountId(accountId: String): Future[String \/ Contact]
-
-  def update(contactId: String, contactFields: Map[String, String]): Future[Unit]
+  def update(contactId: String, contactFields: Map[String, String])(implicit logPrefix: LogPrefix): Future[Unit]
 }

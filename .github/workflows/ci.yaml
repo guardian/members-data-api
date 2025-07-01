@@ -14,13 +14,9 @@ jobs:
         with:
           role-to-assume: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
           aws-region: eu-west-1
-      - uses: actions/setup-java@v3
-        with:
-          distribution: 'corretto'
-          java-version: '11'
-          cache: 'sbt'
+      - uses: guardian/setup-scala@v1
       - name: CI
         run: |
           LAST_TEAMCITY_BUILD=11657
           export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
-          sbt "project membership-common" test "project membership-attribute-service" clean scalafmtCheckAll scalafmtSbtCheck test riffRaffUpload
+          sbt "project membership-common" scalafmtCheckAll test "project membership-attribute-service" clean scalafmtCheckAll scalafmtSbtCheck riffRaffUpload

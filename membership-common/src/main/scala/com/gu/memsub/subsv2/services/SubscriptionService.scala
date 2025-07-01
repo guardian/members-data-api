@@ -1,32 +1,18 @@
 package com.gu.memsub.subsv2.services
 
-import com.github.nscala_time.time.Imports._
 import com.gu.memsub
-import com.gu.memsub.Subscription.{AccountId, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.SubscriptionPlan.{AnyPlan, _}
+import com.gu.memsub.Subscription.AccountId
+import com.gu.memsub.promo.LogImplicit.Loggable
 import com.gu.memsub.subsv2._
-import com.gu.memsub.subsv2.reads.ChargeListReads.ProductIds
-import com.gu.memsub.subsv2.reads.CommonReads._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
-import com.gu.memsub.subsv2.reads.SubPlanReads
-import com.gu.memsub.subsv2.services.SubscriptionService.{CatalogMap, SoapClient}
-import com.gu.memsub.subsv2.services.SubscriptionTransform.getRecentlyCancelledSubscriptions
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
+import com.gu.zuora.SoapClient
 import com.gu.zuora.rest.SimpleClient
-import com.gu.monitoring.SafeLogger
 import org.joda.time.{LocalDate, LocalTime}
-import play.api.libs.json.{Reads => JsReads, _}
-import scala.language.higherKinds
-import scala.util.Try
 import scalaz._
 import scalaz.syntax.all._
-import scalaz.syntax.std.either._
-import scalaz.syntax.std.option._
-
-object SubscriptionService {
-  type SoapClient[M[_]] = ContactId => M[List[memsub.Subscription.AccountId]]
-  type CatalogMap = Map[ProductRatePlanId, CatalogZuoraPlan]
-}
 
 /*
 Sequence turns a list of either into an either of list.  In this case, it does it by putting all the rights into a list and returning
@@ -64,14 +50,9 @@ object Trace {
 
 }
 
-import com.gu.memsub.subsv2.services.Trace.Traceable
-
-class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap], rest: SimpleClient[M], soap: SoapClient[M])(implicit t: Monad[M]) {
-  type EitherTM[A] = EitherT[String, M, A]
-
-  private implicit val idReads = new JsReads[JsValue] {
-    override def reads(json: JsValue): JsResult[JsValue] = JsSuccess(json)
-  }
+class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], rest: SimpleClient[M], soap: SoapClient[M], today: () => LocalDate)
+    extends SafeLogging {
+  private type EitherTM[A] = EitherT[String, M, A]
 
   /** Time by which Bill Run should have run and completed. Usually starts around 5AM and takes 1 hour.
     */
@@ -96,186 +77,93 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
     * @see
     *   https://community.zuora.com/t5/Admin-Settings-Ideas/Get-current-active-subscription-rate-plans/idi-p/19049
     */
-  def get[P <: AnyPlan: SubPlanReads](
-      name: memsub.Subscription.Name,
-      isActiveToday: Boolean = false,
-  ): M[Option[Subscription[P]]] = {
+  def get(subscriptionNumber: memsub.Subscription.SubscriptionNumber, isActiveToday: Boolean = false)(implicit
+      logPrefix: LogPrefix,
+  ): M[Option[Subscription]] = {
 
     val url =
       if (isActiveToday)
-        s"subscriptions/${name.get}?charge-detail=current-segment" // (effectiveStartDate <= today’s date < effectiveEndDate).
+        s"subscriptions/${subscriptionNumber.getNumber}?charge-detail=current-segment" // (effectiveStartDate <= today’s date < effectiveEndDate).
       else
-        s"subscriptions/${name.get}" // FIXME: equivalent to ?charge-detail=last-segment which returns even removed historical charges. We should not have this as default.
+        s"subscriptions/${subscriptionNumber.getNumber}" // FIXME: equivalent to ?charge-detail=last-segment which returns even removed historical charges. We should not have this as default.
 
-    val futureSubJson = rest.get[JsValue](url)(idReads)
-
-    futureSubJson.flatMap { subJson =>
-      futureCatalog.map { catalog =>
-        // FIXME: Why naming indicates multiple subscriptions? There should be only one sub per provided name.
-        val allSubscriptionsForSubscriberName = subJson.flatMap { jsValue =>
-          SubscriptionTransform.getSubscription[P](catalog, pids)(jsValue).withTrace("getAllValidSubscriptionsFromJson")
-        }
-        warnOnMissingChargedThroughDate(allSubscriptionsForSubscriberName)
-        allSubscriptionsForSubscriberName.leftMap(error => SafeLogger.warn(s"Error from sub service for $name: $error")).toOption
-
-      }
-    }
+    rest.get[Subscription](url)(subscriptionReads, logPrefix).map(_.leftMap(_.withLogging("ERROR: get subscription")).toOption)
   }
 
-  /** A paid subscription that is active today should have been invoiced, which means Bill Run should have happened, and so chargedThroughDate should
-    * be populated. If a paid subscription is missing chargeThroughDate also known as End of Last Invoice Period, or day after service period end
-    * date, then the likelihood of bugs increases. For example, holiday credit or cancellation effective date should be applied on End of Last Invoice
-    * Period date, and we have had bugs around both of these functionalities.
-    *
-    * Free trials are an exception, however we might be able to execute real-time Bill Run at point of acquisition with future target date in which
-    * case chargedThroughDate date should again be populated even though payment run has not happened yet. Currently there is assumption in the
-    * codebase if chargedThroughDate does not exist on paid product then it is free trial, however this is not a safe assumption. We should explicitly
-    * be determining free free trial state by perhaps if(sub.startDate <= today && sub.acceptanceDate > today) then free trial.
-    *
-    * This logging side-effect should make more visible in which scenarios we are missing chargedThroughDate.
-    */
-  private def warnOnMissingChargedThroughDate[P <: AnyPlan: SubPlanReads](subscription: String \/ Subscription[P]): Unit =
-    Try { // just to make sure it is not interfering with main business logic
-      subscription.foreach { sub =>
-        sub.plan match {
-          case p: PaidSubscriptionPlan[_, _] if p.chargedThrough.isEmpty =>
-            SafeLogger.warn(s"chargedThroughDate (end of last invoice date) does not exist for ${sub.name}")
-          case _ => // do nothing
-        }
+  def current(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
+    for {
+      subscriptionsEither <- getSubscriptionsFromContact(contact)
+      catalog <- futureCatalog(logPrefix)
+    } yield {
+      val currentSubscriptions = for {
+        subscriptions <- subscriptionsEither.withLogging("sub service - get for contact")
+        currentSubscriptions <- getCurrentSubscriptions(catalog, subscriptions).withLogging("get best plan")
+      } yield currentSubscriptions
+      currentSubscriptions.toEither match {
+        case Left(error) =>
+          logger.warn(s"Error from sub service for contact $contact: $error")
+          List.empty // returns an empty list if there's an error
+        case Right(nel) => nel.toList
       }
     }
 
-  /** Using fromContact above fetch all the subscriptions for a given contact
-    */
-  private def subscriptionsForContact[P <: AnyPlan: SubPlanReads](
-      transform: SubscriptionTransform.TimeRelativeSubTransformer[P],
-  )(contact: ContactId): M[List[Subscription[P]]] = {
-    val subJsonsFuture = jsonSubscriptionsFromContact(contact)
-
-    subJsonsFuture.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        val highLevelSubscriptions = subJsonsEither.map { subJsons =>
-          transform(catalog, pids)(subJsons)
-            .leftMap(e => SafeLogger.warn(s"Error from sub service for contact $contact: $e"))
-            .toList
-            .flatMap(_.list.toList) // returns an empty list if there's an error
-        }
-        highLevelSubscriptions
-          .leftMap(e => SafeLogger.warn(s"Error from sub service for contact $contact: $e"))
-          .toList
-          .flatten // returns an empty list if there's an error
+  def since(onOrAfter: LocalDate)(contact: ContactId)(implicit logPrefix: LogPrefix): M[List[Subscription]] =
+    for {
+      subscriptionsEither <- getSubscriptionsFromContact(contact)
+    } yield {
+      val subscriptionsStillInTerm = for {
+        subscriptions <- subscriptionsEither.withLogging("sub service - get for contact")
+      } yield subscriptions.filter { sub =>
+        !sub.termEndDate.isBefore(onOrAfter)
+      }
+      subscriptionsStillInTerm.toEither match {
+        case Left(error) =>
+          logger.warn(s"Error from sub service for contact $contact: $error")
+          List.empty // returns an empty list if there's an error
+        case Right(nel) => nel
       }
     }
-  }
-
-  def current[P <: AnyPlan: SubPlanReads](contact: ContactId): M[List[Subscription[P]]] =
-    subscriptionsForContact(SubscriptionTransform.getCurrentSubscriptions[P])(contact)
-
-  def since[P <: AnyPlan: SubPlanReads](onOrAfter: LocalDate)(contact: ContactId): M[List[Subscription[P]]] =
-    subscriptionsForContact(SubscriptionTransform.getSubscriptionsActiveOnOrAfter[P](onOrAfter))(contact)
 
   def recentlyCancelled(
       contact: ContactId,
       today: LocalDate = LocalDate.now(),
       lastNMonths: Int = 3, // cancelled in the last N months
-  )(implicit ev: SubPlanReads[AnyPlan]): M[String \/ List[Subscription[AnyPlan]]] = {
+  )(implicit logPrefix: LogPrefix): M[String \/ List[Subscription]] =
     (for {
-      catalog <- EitherT(futureCatalog.map(\/.right[String, CatalogMap]))
-      jsonSubs <- EitherT(jsonSubscriptionsFromContact(contact))
-      subs <- EitherT(Monad[M].pure(getRecentlyCancelledSubscriptions[AnyPlan](today, lastNMonths, catalog, pids, jsonSubs)))
-    } yield subs).run
-  }
+      subscriptions <- EitherT(getSubscriptionsFromContact(contact))
+    } yield subscriptions.filter { sub =>
+      val isRecentlyFinished = sub.termEndDate.isAfter(today.minusMonths(lastNMonths))
+      val isAlreadyFinished = sub.termEndDate.isEqual(today) || sub.termEndDate.isBefore(today)
+      sub.isCancelled && isRecentlyFinished && isAlreadyFinished
+    }).run
 
-  private def jsToSubscription[P <: AnyPlan: SubPlanReads](
-      subJsonsFuture: M[Disjunction[String, List[JsValue]]],
-      errorMsg: String,
-  ): M[List[Subscription[P]]] =
-    subJsonsFuture.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        val highLevelSubscriptions = subJsonsEither.map { subJsons =>
-          SubscriptionTransform
-            .getCurrentSubscriptions[P](catalog, pids)(subJsons)
-            .leftMap(e => SafeLogger.warn(s"${errorMsg}: $e"))
-            .toList
-            .flatMap(_.list.toList) // returns an empty list if there's an error
-        }
-        highLevelSubscriptions.leftMap(e => SafeLogger.warn(s"${errorMsg}: $e")).toList.flatten // returns an empty list if there's an error
+  def subscriptionsForAccountId(
+      accountId: AccountId,
+  )(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
+    for {
+      subscriptionsEither <- getSubscriptionsFromAccount(accountId)
+      catalog <- futureCatalog(logPrefix)
+    } yield {
+      subscriptionsEither.rightMap { subscriptions =>
+        getCurrentSubscriptions(catalog, subscriptions).toList.flatMap(_.list.toList)
       }
     }
 
-  def subscriptionsForAccountId[P <: AnyPlan: SubPlanReads](accountId: AccountId): M[Disjunction[String, List[Subscription[P]]]] = {
-    val subsAsJson = jsonSubscriptionsFromAccount(accountId)
-
-    subsAsJson.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        subJsonsEither.rightMap { subJsons =>
-          SubscriptionTransform.getCurrentSubscriptions[P](catalog, pids)(subJsons).toList.flatMap(_.list.toList)
-        }
-      }
-    }
-  }
-
-  def jsonSubscriptionsFromContact(contact: ContactId): M[Disjunction[String, List[JsValue]]] = {
-    (for {
-      account <- ListT[EitherTM, AccountId](EitherT[String, M, IList[AccountId]](soap.apply(contact).map(l => \/.r[String](IList.fromSeq(l)))))
-      subJson <- ListT[EitherTM, JsValue](EitherT(jsonSubscriptionsFromAccount(account)).map(IList.fromSeq))
-    } yield subJson).toList.run
-  }
-
-  def jsonSubscriptionsFromAccount(accountId: AccountId): M[Disjunction[String, List[JsValue]]] =
-    rest.get[List[JsValue]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads)
-
-  /** find the best current subscription for the salesforce contact TODO get rid of this and use pattern matching instead
-    */
-  def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      contact: ContactId,
-  )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): M[\/[String, Option[Subscription[FALLBACK] \/ Subscription[PREFERRED]]]] = {
-    val futureSubJson = jsonSubscriptionsFromContact(contact)
-    futureSubJson.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        subJsonsEither.leftMap(e => s"Error from sub service for sf contact $contact: $e").map { subJson =>
-          SubscriptionTransform
-            .tryTwoReadersForSubscriptionJson[PREFERRED, FALLBACK](catalog, pids)(subJson)
-            .leftMap(e => SafeLogger.debug(s"Error from tryTwoReadersForSubscriptionJson for sf contact $contact: $e"))
-            .fold(_ => None, Some.apply)
-        }
-      }
-    }
-  }
-
-  def getSubscription(contact: ContactId)(implicit a: SubPlanReads[Contributor]): M[Option[Subscription[Contributor]]] = {
-    val futureSubJson = jsonSubscriptionsFromContact(contact)
-    val onError = s"Error from sub service for sf contact $contact"
-
-    jsToSubscription(futureSubJson, onError).map(_.headOption)
-  }
-
-  /** find the current subscription for the given subscription number TODO get rid of this and use pattern matching instead
-    */
-  def either[FALLBACK <: AnyPlan, PREFERRED <: AnyPlan](
-      name: memsub.Subscription.Name,
-  )(implicit a: SubPlanReads[FALLBACK], b: SubPlanReads[PREFERRED]): M[\/[String, Subscription[FALLBACK] \/ Subscription[PREFERRED]]] = {
-    val futureSubJson = rest.get[JsValue](s"subscriptions/${name.get}")(idReads)
-
-    futureSubJson.flatMap { subJsonsEither =>
-      futureCatalog.map { catalog =>
-        subJsonsEither.leftMap(e => s"Error from sub service for subname $name: $e").flatMap { subJson =>
-          SubscriptionTransform.tryTwoReadersForSubscriptionJson[PREFERRED, FALLBACK](catalog, pids)(List(subJson))
-        }
-      }
-    }
-  }
-
-  // this is a back door to find the subscription discount ids so we can delete when people upgrade
-  // just need the id and prp id
-  def backdoorRatePlanIds(name: com.gu.memsub.Subscription.Name): M[String \/ List[SubIds]] = {
-    val futureSubJson = rest.get[JsValue](s"subscriptions/${name.get}")(idReads)
-
-    futureSubJson.map(_.flatMap { subJson =>
-      SubscriptionTransform.backdoorRatePlanIdsFromJson(subJson)
+  private def getCurrentSubscriptions(catalog: Catalog, subs: List[Subscription]): Disjunction[String, NonEmptyList[Subscription]] =
+    Sequence(subs.map { sub =>
+      GetCurrentPlans.currentPlans(sub, today(), catalog).map(_ => sub)
     })
 
-  }
+  private def getSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
+    (for {
+      account <- ListT[EitherTM, AccountId](
+        EitherT[String, M, IList[AccountId]](soap.getAccountIds(contact).map(l => \/.r[String](IList.fromSeq(l)))),
+      )
+      subscription <- ListT[EitherTM, Subscription](EitherT(getSubscriptionsFromAccount(account)).map(IList.fromSeq))
+    } yield subscription).toList.run
+
+  private def getSubscriptionsFromAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
+    rest.get[List[Subscription]](s"subscriptions/accounts/${accountId.get}")(multiSubJsonReads, implicitly)
 
   /** fetched with /v1/subscription/{key}?charge-detail=current-segment which zeroes out all the non-active charges
     *
@@ -294,23 +182,23 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
     *   Right(None) indicates cancel now, Right(Some("yyyy-mm-dd")) indicates cancel at end of last invoiced period Left indicates error and MMA
     *   should not proceed with automatic cancelation
     */
-  def decideCancellationEffectiveDate[P <: SubscriptionPlan.AnyPlan: SubPlanReads](
-      subscriptionName: memsub.Subscription.Name,
+  def decideCancellationEffectiveDate(
+      subscriptionNumber: memsub.Subscription.SubscriptionNumber,
       wallClockTimeNow: LocalTime = LocalTime.now(),
       today: LocalDate = LocalDate.now(),
-  ): EitherT[String, M, Option[LocalDate]] = {
+  )(implicit logPrefix: LogPrefix): EitherT[String, M, Option[LocalDate]] = {
     EitherT(
-      OptionT(get[P](subscriptionName, isActiveToday = true)).fold(
+      OptionT(get(subscriptionNumber, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
           val paidPlans =
-            zuoraSubscriptionWithCurrentSegment.plans.list.collect { case paidPlan: PaidSubscriptionPlan[_, _] => paidPlan }
+            zuoraSubscriptionWithCurrentSegment.ratePlans
           val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(BillRunCompletedByTime)
 
           paidPlans match {
             case paidPlan1 :: paidPlan2 :: _ => \/.l[Option[LocalDate]]("Failed to determine specific single active paid rate plan charge")
 
             case paidPlan :: Nil => // single rate plan charge identified
-              paidPlan.chargedThrough match {
+              paidPlan.chargedThroughDate match {
                 case Some(endOfLastInvoicePeriod) =>
                   val endOfLastInvoiceDateIsBeforeOrOnToday = endOfLastInvoicePeriod.isBefore(today) || endOfLastInvoicePeriod.isEqual(today)
                   if (endOfLastInvoiceDateIsBeforeOrOnToday && billRunHasAlreadyHappened)
@@ -320,7 +208,7 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
                   else
                     \/.r[String](Some(endOfLastInvoicePeriod))
                 case None =>
-                  if (paidPlan.start.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
+                  if (paidPlan.effectiveStartDate.equals(today) && !billRunHasAlreadyHappened) // effectiveStartDate exists but not chargedThroughDate
                     \/.l[Option[LocalDate]](s"Invoiced period has started today, however Bill Run has not yet completed (it usually runs around 6am)")
                   else
                     \/.l[Option[LocalDate]](s"Unknown reason for missing chargedThroughDate. Investigate ASAP!")
@@ -335,150 +223,3 @@ class SubscriptionService[M[_]](pids: ProductIds, futureCatalog: => M[CatalogMap
   }
 
 }
-
-// this is (all?) the testable stuff without mocking needed
-// we should make the subscription service just getting the json, and then we can have testable pure functions here
-object SubscriptionTransform {
-
-  val subIdsReads: JsReads[SubIds] = new JsReads[SubIds] {
-    override def reads(json: JsValue): JsResult[SubIds] = {
-
-      (
-        (json \ "id").validate[String].map(RatePlanId) |@|
-          (json \ "productRatePlanId").validate[String].map(ProductRatePlanId)
-      )(SubIds)
-    }
-  }
-
-  def backdoorRatePlanIdsFromJson(subJson: JsValue): Disjunction[String, List[SubIds]] = {
-    val ids = (subJson \ "ratePlans").validate[List[SubIds]](niceListReads(subIdsReads)).asEither.disjunction.leftMap(_.toString)
-    // didn't actually check if they're current
-
-    ids.leftMap { error =>
-      SafeLogger.warn(s"Error from sub service for json: $error")
-    }
-
-    ids
-  }
-
-  def tryTwoReadersForSubscriptionJson[PREFERRED <: AnyPlan: SubPlanReads, FALLBACK <: AnyPlan: SubPlanReads](catalog: CatalogMap, pids: ProductIds)(
-      subJsons: List[JsValue],
-  ): \/[String, Disjunction[Subscription[FALLBACK], Subscription[PREFERRED]]] = {
-    val maybePreferred =
-      getCurrentSubscriptions[PREFERRED](catalog, pids)(subJsons).map(_.head /*if more than one current, just pick one (for now!)*/ )
-    lazy val maybeFallback =
-      getCurrentSubscriptions[FALLBACK](catalog, pids)(subJsons).map(_.head /*if more than one current, just pick one (for now!)*/ )
-    maybePreferred match {
-      case \/-(preferredSub) => \/.right(\/-(preferredSub))
-      case -\/(err1) =>
-        maybeFallback match {
-          case \/-(fallbackSub) => \/.right(-\/(fallbackSub))
-          case -\/(err2) => \/.left(s"Error from sub service: $err1\n\n$err2")
-        }
-    }
-  }
-
-  type TimeRelativeSubTransformer[P <: AnyPlan] = (CatalogMap, ProductIds) => List[JsValue] => Disjunction[String, NonEmptyList[Subscription[P]]]
-
-  def getCurrentSubscriptions[P <: AnyPlan: SubPlanReads](catalog: CatalogMap, pids: ProductIds)(
-      subJsons: List[JsValue],
-  ): Disjunction[String, NonEmptyList[Subscription[P]]] = {
-
-    def getFirstCurrentSub[P <: AnyPlan](
-        subs: NonEmptyList[Subscription[P]],
-    ): String \/ NonEmptyList[Subscription[P]] = // just quickly check to find one with a current plan
-      Sequence(
-        subs
-          .map { sub =>
-            Try {
-              sub.plan // just to force a throw if it doesn't have one
-            } match {
-              case scala.util.Success(_) => \/-(sub): \/[String, Subscription[P]]
-              case scala.util.Failure(ex) => -\/(ex.toString): \/[String, Subscription[P]]
-            }
-          }
-          .list
-          .toList,
-      )
-
-    Sequence(subJsons.map { subJson =>
-      getSubscription(catalog, pids)(subJson)
-    }).flatMap(getFirstCurrentSub[P])
-  }
-
-  def getSubscriptionsActiveOnOrAfter[P <: AnyPlan: SubPlanReads](
-      onOrAfter: LocalDate,
-  )(catalog: CatalogMap, pids: ProductIds)(subJsons: List[JsValue]): Disjunction[String, NonEmptyList[Subscription[P]]] =
-    Sequence(subJsons.map(getSubscription[P](catalog, pids)).filter {
-      case \/-(sub) => !sub.termEndDate.isBefore(onOrAfter)
-      case _ => false
-    })
-
-  def getRecentlyCancelledSubscriptions[P <: AnyPlan: SubPlanReads](
-      today: LocalDate,
-      lastNMonths: Int, // cancelled in the last n months
-      catalog: CatalogMap,
-      pids: ProductIds,
-      subJsons: List[JsValue],
-  ): Disjunction[String, List[Subscription[P]]] = {
-    import Scalaz._
-    subJsons
-      .map(getSubscription[P](catalog, pids))
-      .sequence
-      .map {
-        _.filter { sub =>
-          sub.isCancelled &&
-          (sub.termEndDate isAfter today.minusMonths(lastNMonths)) &&
-          (sub.termEndDate isBefore today)
-        }
-      }
-  }
-
-  def getSubscription[P <: AnyPlan: SubPlanReads](
-      catalog: CatalogMap,
-      pids: ProductIds,
-      now: () => LocalDate = LocalDate.now, /*now only needed for pending friend downgrade*/
-  )(subJson: JsValue): Disjunction[String, Subscription[P]] = {
-    val planToSubscriptionFunction =
-      subscriptionReads[P](now()).reads(subJson).asEither.disjunction.leftMap(_.mkString(" ")).withTrace("planToSubscriptionFunction")
-
-    val lowLevelPlans = subJson
-      .validate[List[SubscriptionZuoraPlan]](subZuoraPlanListReads)
-      .asEither
-      .disjunction
-      .leftMap(_.toString)
-      .withTrace("validate-lowLevelPlans")
-    lowLevelPlans.flatMap { lowLevelPlans =>
-      val validHighLevelPlans: String \/ NonEmptyList[P] =
-        Sequence(
-          lowLevelPlans
-            .map {
-              lowLevelPlan =>
-                // get the equivalent plan from the catalog so we can merge them into a standard high level object
-                catalog
-                  .get(lowLevelPlan.productRatePlanId)
-                  .toRightDisjunction(s"No catalog plan - prpId = ${lowLevelPlan.productRatePlanId}")
-                  .flatMap { catalogPlan =>
-                    val maybePlans = implicitly[SubPlanReads[P]].read(pids, lowLevelPlan, catalogPlan)
-                    maybePlans.toDisjunction
-                      .leftMap(
-                        _.list.zipWithIndex
-                          .map { case (err, index) =>
-                            s"  ${index + 1}: $err"
-                          }
-                          .toList
-                          .mkString("\n", "\n", "\n"),
-                      )
-                      .withTrace(s"high-level-plan-read: ${lowLevelPlan.id}")
-                  }
-            },
-        )
-
-      // now wrap them in a subscription
-      validHighLevelPlans.flatMap(highLevelPlans => planToSubscriptionFunction.map(_.apply(highLevelPlans)))
-    }
-  }
-
-}
-
-case class SubIds(ratePlanId: RatePlanId, productRatePlanId: ProductRatePlanId)

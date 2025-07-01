@@ -14,6 +14,4 @@ object PriceParser {
         } yield Price(price, currency)
     }
 
-  def unsafeParse(s: String): Price =
-    parse(s).getOrElse(throw new IllegalArgumentException(s"Failed while parsing the price: $s"))
 }

@@ -1,6 +1,9 @@
 package monitoring
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import controllers.{Cached, NoCache}
 import filters.AddGuIdentityHeaders
+import filters.AddGuIdentityHeaders.{identityHeaderNames, xGuIdentityIdHeaderName}
 import models.ApiErrors.{badRequest, internalError, notFound}
 import play.api._
 import play.api.http.DefaultHttpErrorHandler
@@ -10,8 +13,6 @@ import play.api.mvc._
 import play.api.routing.Router
 import play.core.SourceMapper
 import services.IdentityAuthService
-import utils.SanitizedLogging
-import utils.Sanitizer.Sanitizer
 
 import scala.concurrent._
 
@@ -24,7 +25,7 @@ class ErrorHandler(
     addGuIdentityHeaders: AddGuIdentityHeaders,
 )(implicit executionContext: ExecutionContext)
     extends DefaultHttpErrorHandler(env, config, sourceMapper, router)
-    with SanitizedLogging {
+    with SafeLogging {
 
   override def onClientError(request: RequestHeader, statusCode: Int, message: String = ""): Future[Result] = {
     super.onClientError(request, statusCode, message).map(Cached(_))
@@ -39,11 +40,22 @@ class ErrorHandler(
   }
 
   override protected def onProdServerError(request: RequestHeader, ex: UsefulException): Future[Result] = {
-    logError(scrub"Error handling request request: $request", ex)
-    addGuIdentityHeaders.fromIdapiIfMissing(request, internalError)
+    // log first to make sure it's not lost
+    logger.errorNoPrefix(scrub"Error handling request request: $request", ex)
+    val result = addGuIdentityHeaders.fromIdapiIfMissing(request, internalError)
+    result.foreach { result: Result =>
+      val identityId = result.header.headers.get(xGuIdentityIdHeaderName)
+      val prefix = identityId.getOrElse("no-identity-id")
+      implicit val logPrefix: LogPrefix = LogPrefix(prefix)
+      // now log with the identity id so it appears in searches
+      logger.error(scrub"Error handling request request: $request", ex)
+    }
+    result
   }
+
   override protected def onBadRequest(request: RequestHeader, message: String): Future[Result] = {
     logServerError(request, new PlayException("Bad request", message))
     Future.successful(NoCache(BadRequest(Json.toJson(badRequest(message)))))
   }
+
 }

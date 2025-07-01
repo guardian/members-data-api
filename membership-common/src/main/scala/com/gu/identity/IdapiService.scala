@@ -1,6 +1,7 @@
 package com.gu.identity
 
 import com.gu.memsub.util.WebServiceHelper
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.okhttp.RequestRunners._
 import okhttp3.{Headers, Request}
 import play.api.libs.json._
@@ -43,7 +44,7 @@ class IdapiService(apiConfig: IdapiConfig, client: FutureHttpClient)(implicit ec
 
   implicit val readsIdapiError = Json.reads[IdapiError]
 
-  override def wsPreExecute(req: Request.Builder): Request.Builder = {
+  override def wsPreExecute(req: Request.Builder)(implicit logPrefix: LogPrefix): Request.Builder = {
     req.addHeader("X-GU-ID-Client-Access-Token", s"Bearer ${apiConfig.token}")
   }
 
@@ -61,7 +62,7 @@ class IdapiService(apiConfig: IdapiConfig, client: FutureHttpClient)(implicit ec
 
     private implicit val readsRedirectResponse: Reads[RedirectAdviceResponse] = Json.reads[RedirectAdviceResponse]
 
-    def getRedirectAdvice(cookieValue: String, scope: Option[String] = None): Future[RedirectAdviceResponse] =
+    def getRedirectAdvice(cookieValue: String, scope: Option[String] = None)(implicit logPrefix: LogPrefix): Future[RedirectAdviceResponse] =
       get[RedirectAdviceResponse](
         "auth/redirect",
         Headers.of(

@@ -23,9 +23,16 @@ case object StripeAUPaymentIntentsMembershipGateway extends PaymentGateway {
   val gatewayName = "Stripe PaymentIntents GNM Membership AUS"
   override val forCountry = Some(Country.Australia)
 }
-case object GoCardless extends PaymentGateway {
+case object StripeTortoiseMediaPaymentIntentsMembershipGateway extends PaymentGateway {
+  val gatewayName = "Stripe - Observer - Tortoise Media"
+}
+case object GoCardlessGateway extends PaymentGateway {
   val gatewayName = "GoCardless"
 }
+case object GoCardlessTortoiseMediaGateway extends PaymentGateway {
+  val gatewayName = "GoCardless - Observer - Tortoise Media"
+}
+// Temporarily here to enable deseerialisation until it's fully deprovisioned.
 case object GoCardlessZuoraInstance extends PaymentGateway {
   val gatewayName = "GoCardless - Zuora Instance"
 }
@@ -39,7 +46,9 @@ object PaymentGateway {
     StripeAUMembershipGateway,
     StripeUKPaymentIntentsMembershipGateway,
     StripeAUPaymentIntentsMembershipGateway,
-    GoCardless,
+    StripeTortoiseMediaPaymentIntentsMembershipGateway,
+    GoCardlessGateway,
+    GoCardlessTortoiseMediaGateway,
     GoCardlessZuoraInstance,
     PayPal,
   ).map(g => (g.gatewayName, g)).toMap
@@ -49,6 +58,4 @@ object PaymentGateway {
 object RegionalStripeGateways {
   def getGatewayForCountry(country: Country): PaymentGateway =
     if (country == Country.Australia) StripeAUMembershipGateway else StripeUKMembershipGateway
-  def getPaymentIntentsGatewayForCountry(country: Country): PaymentGateway =
-    if (country == Country.Australia) StripeAUPaymentIntentsMembershipGateway else StripeUKPaymentIntentsMembershipGateway
 }

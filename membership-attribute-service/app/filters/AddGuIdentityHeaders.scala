@@ -20,11 +20,11 @@ class AddGuIdentityHeadersFilter(addGuIdentityHeaders: AddGuIdentityHeaders)(imp
   }
 }
 
-class AddGuIdentityHeaders(identityAuthService: IdentityAuthService, isTestUser: IsTestUser) {
+class AddGuIdentityHeaders(identityAuthService: IdentityAuthService, testUserChecker: TestUserChecker) {
 
   def fromUser(result: Result, user: UserFromToken): Result = result.withHeaders(
     xGuIdentityIdHeaderName -> user.identityId,
-    xGuMembershipTestUserHeaderName -> isTestUser(user.username).toString,
+    xGuMembershipTestUserHeaderName -> testUserChecker.isTestUser(user.primaryEmailAddress)(user.logPrefix).toString,
   )
 
   def fromIdapiIfMissing(request: RequestHeader, result: Result)(implicit ex: ExecutionContext): Future[Result] = {

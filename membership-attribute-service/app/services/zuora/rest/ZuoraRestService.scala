@@ -1,8 +1,9 @@
 package services.zuora.rest
 
 import com.gu.i18n.{Country, Currency, Title}
-import com.gu.memsub.Subscription.{AccountId, AccountNumber, Name, RatePlanId, SubscriptionRatePlanChargeId}
+import com.gu.memsub.Subscription.{AccountId, AccountNumber, SubscriptionNumber, RatePlanId, SubscriptionRatePlanChargeId}
 import com.gu.memsub.subsv2.reads.CommonReads._
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.ContactId
 import com.gu.zuora.ZuoraLookup
 import com.gu.zuora.api.PaymentGateway
@@ -316,7 +317,7 @@ object ZuoraRestService {
     __.read[String].map(Currency.fromString)
 
   implicit val billToContactReads: Reads[BillToContact] = (
-    (JsPath \ "workEmail").readNullable[String].filter(_ != "") and
+    (JsPath \ "workEmail").readNullable[String].map(_.filter(_.nonEmpty)) and
       (JsPath \ "country").read[String].map(ZuoraLookup.country)
   )(BillToContact.apply _)
 
@@ -398,50 +399,38 @@ object ZuoraRestService {
 }
 
 trait ZuoraRestService {
-  def getAccount(accountId: AccountId): Future[String \/ AccountSummary]
+  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ AccountSummary]
 
-  def getObjectAccount(accountId: AccountId): Future[String \/ ObjectAccount]
+  def getObjectAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ ObjectAccount]
 
-  def getAccounts(identityId: String): Future[String \/ GetAccountsQueryResponse]
+  def getGiftSubscriptionRecordsFromIdentityId(identityId: String)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]]
 
-  def getAccountByCrmId(crmId: String): Future[String \/ AccountsByCrmIdResponse]
-
-  def getGiftSubscriptionRecordsFromIdentityId(identityId: String): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]]
-
-  def getPaymentMethod(paymentMethodId: String): Future[String \/ PaymentMethodResponse]
-
-  def addEmail(accountId: AccountId, email: String): Future[String \/ Unit]
-
-  def updateAccountContacts(record: AccountsByCrmIdResponseRecord, soldTo: Option[ContactData], billTo: Option[ContactData])(implicit
-      ex: ExecutionContext,
-  ): Future[\/[String, ZuoraResponse]]
-
-  def updateAccountIdentityId(accountId: AccountId, identityId: String)(implicit ex: ExecutionContext): Future[\/[String, ZuoraResponse]]
-
-  def cloneContact(id: String): Future[\/[String, String]]
-
-  def updateZuoraBySfContact(contactId: ContactId, soldTo: Option[ContactData], billTo: Option[ContactData]): Future[String \/ Unit]
+  def getPaymentMethod(paymentMethodId: String)(implicit logPrefix: LogPrefix): Future[String \/ PaymentMethodResponse]
 
   def cancelSubscription(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       termEndDate: LocalDate,
       maybeChargedThroughDate: Option[
         LocalDate,
       ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
-  )(implicit ex: ExecutionContext): Future[String \/ Unit]
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ Unit]
 
-  def updateCancellationReason(subscriptionName: Name, userCancellationReason: String): Future[String \/ Unit]
+  def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ Unit]
 
-  def disableAutoPay(accountId: AccountId): Future[String \/ Unit]
+  def disableAutoPay(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ Unit]
 
   def updateChargeAmount(
-      subscriptionName: Name,
+      subscriptionNumber: SubscriptionNumber,
       ratePlanChargeId: SubscriptionRatePlanChargeId,
       ratePlanId: RatePlanId,
       amount: Double,
       reason: String,
       applyFromDate: LocalDate,
-  )(implicit ex: ExecutionContext): Future[\/[String, Unit]]
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[\/[String, Unit]]
 
-  def getCancellationEffectiveDate(name: Name): Future[String \/ Option[String]]
+  def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]]
 }

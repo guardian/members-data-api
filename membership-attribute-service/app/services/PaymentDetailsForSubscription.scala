@@ -1,53 +1,52 @@
 package services
 
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.promo.LogImplicit.LoggableFuture
+import com.gu.memsub.subsv2.{Catalog, Subscription}
 import com.gu.memsub.{BillingPeriod, Price}
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
-import com.typesafe.scalalogging.LazyLogging
 import models.ContactAndSubscription
-import scalaz.\/
-import services.DifferentiateSubscription.differentiateSubscription
 import services.zuora.payment.PaymentService
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
-class PaymentDetailsForSubscription(paymentService: PaymentService) extends LazyLogging {
-  def apply(contactAndSubscription: ContactAndSubscription)(implicit ec: ExecutionContext): Future[PaymentDetails] = {
-    val isGiftRedemption = contactAndSubscription.isGiftRedemption
-    val differentiated = differentiateSubscription(contactAndSubscription)
-    differentiated match {
-      case Right(giftSub) if isGiftRedemption =>
-        Future.successful(giftPaymentDetailsFor(giftSub))
-      case Right(paidSub) =>
-        val paymentDetails = paymentService.paymentDetails(\/.fromEither(differentiated), defaultMandateIdIfApplicable = Some(""))
-        paymentDetails.onComplete {
-          case Failure(exception) => logger.error(s"Failed to get payment details for $paidSub: $exception")
-          case Success(_) => logger.info(s"Successfully got payment details for $paidSub")
-        }
-        paymentDetails
-      case Left(freeSub) => Future.successful(PaymentDetails(freeSub))
-    }
+class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalog: LogPrefix => Future[Catalog]) extends SafeLogging {
+
+  def getPaymentDetails(
+      contactAndSubscription: ContactAndSubscription,
+  )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[PaymentDetails] = {
+    val subscription = contactAndSubscription.subscription
+    for {
+      catalog <- futureCatalog(logPrefix)
+      paymentDetails <-
+        if (contactAndSubscription.isGiftRedemption)
+          Future.successful(giftPaymentDetailsFor(subscription, catalog))
+        else
+          paymentService
+            .paymentDetails(subscription, defaultMandateIdIfApplicable = Some(""), catalog)
+            .withLogging(s"get payment details for $subscription")
+    } yield paymentDetails
   }
 
-  private def giftPaymentDetailsFor(giftSubscription: Subscription[SubscriptionPlan.Paid]): PaymentDetails = PaymentDetails(
+  private def giftPaymentDetailsFor(giftSubscription: Subscription, catalog: Catalog): PaymentDetails = PaymentDetails(
     pendingCancellation = giftSubscription.isCancelled,
     chargedThroughDate = None,
-    startDate = giftSubscription.startDate,
-    customerAcceptanceDate = giftSubscription.startDate,
+    startDate = giftSubscription.contractEffectiveDate,
+    customerAcceptanceDate = giftSubscription.contractEffectiveDate,
     nextPaymentPrice = None,
     lastPaymentDate = None,
     nextPaymentDate = None,
+    nextInvoiceDate = None,
     termEndDate = giftSubscription.termEndDate,
-    pendingAmendment = false,
     paymentMethod = None,
     plan = PersonalPlan(
-      name = giftSubscription.plan.productName,
-      price = Price(0f, giftSubscription.plan.charges.currencies.head),
+      name = giftSubscription.plan(catalog).productName,
+      price = Price(0f, giftSubscription.plan(catalog).chargesPrice.currencies.head),
       interval = BillingPeriod.Year.noun,
     ),
-    subscriberId = giftSubscription.name.get,
+    subscriberId = giftSubscription.subscriptionNumber.getNumber,
     remainingTrialLength = 0,
   )
 }

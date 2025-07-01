@@ -1,16 +1,20 @@
 package services
 
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.memsub.subsv2.Catalog
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import services.MembershipTier._
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 
-class SupporterRatePlanToAttributesMapper(stage: Stage) extends StrictLogging {
+class SupporterRatePlanToAttributesMapper(stage: Stage) extends SafeLogging {
   val productRatePlanIdMappings = productRatePlanMappings(stage.value)
 
-  def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem]): Option[Attributes] = {
+  def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem])(implicit
+      logPrefix: LogPrefix,
+  ): Option[Attributes] = {
     val transformations: List[Attributes => Attributes] = supporterRatePlanItems
       .filter(_.termEndDate.isAfter(LocalDate.now.minusDays(1)))
       .sortWith((first, second) => first.termEndDate.isBefore(second.termEndDate))
@@ -23,14 +27,17 @@ class SupporterRatePlanToAttributesMapper(stage: Stage) extends StrictLogging {
     }
   }
 
-  private def transformationFor(ratePlanItem: DynamoSupporterRatePlanItem): Option[Attributes => Attributes] =
+  private def transformationFor(ratePlanItem: DynamoSupporterRatePlanItem)(implicit logPrefix: LogPrefix): Option[Attributes => Attributes] =
     productRatePlanIdMappings
       .get(ratePlanItem.productRatePlanId)
       .orElse(logUnsupportedRatePlanId(ratePlanItem))
       .map(transformer => transformer.transform(_, ratePlanItem))
 
-  private def logUnsupportedRatePlanId(ratePlanItem: DynamoSupporterRatePlanItem): Option[Nothing] = {
-    logger.error("Unsupported product rate plan id: " + ratePlanItem.productRatePlanId)
+  private def logUnsupportedRatePlanId(ratePlanItem: DynamoSupporterRatePlanItem)(implicit logPrefix: LogPrefix): Option[Nothing] = {
+    // this staff check is needed to tidy up the logs because we have not yet cancelled the staff in zuora
+    val staffPROD = "2c92a0f949efde7c0149f1f18162178e"
+    if (ratePlanItem.productRatePlanId != staffPROD)
+      logger.error(scrub"Unsupported product rate plan id: ${ratePlanItem.productRatePlanId}")
     None
   }
 
@@ -50,10 +57,27 @@ object SupporterRatePlanToAttributesMapper {
       SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val supporterPlusV2Transformer: AttributeTransformer = supporterPlusTransformer
-  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Monthly Contribution"))
-  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
-    attributes.copy(RecurringContributionPaymentPlan = Some("Annual Contribution"))
+  val tierThreeTransformer: AttributeTransformer =
+    (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+      attributes.copy(
+        SupporterPlusExpiryDate = Some(supporterRatePlanItem.termEndDate),
+        GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
+      )
+  val guardianAdLiteTransformer: AttributeTransformer =
+    (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
+      attributes.copy(
+        GuardianAdLiteExpiryDate = Some(supporterRatePlanItem.termEndDate),
+      )
+  val monthlyContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+      RecurringContributionAcquisitionDate = Some(item.contractEffectiveDate),
+    )
+  val annualContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(
+      RecurringContributionPaymentPlan = Some("Annual Contribution"),
+      RecurringContributionAcquisitionDate = Some(item.contractEffectiveDate),
+    )
   val paperTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       PaperSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
@@ -71,10 +95,9 @@ object SupporterRatePlanToAttributesMapper {
     attributes.copy(
       GuardianPatronExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
-  val guardianPatronProductRatePlanId = "guardian_patron"
 
   private val prodMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
+    List(Catalog.guardianPatronProductRatePlanId.get) -> guardianPatronTransformer,
     List(
       "8a12865b8219d9b401822106192b64dc",
       "8a12865b8219d9b40182210618a464ba",
@@ -83,6 +106,19 @@ object SupporterRatePlanToAttributesMapper {
       "8a128ed885fc6ded018602296ace3eb8",
       "8a128ed885fc6ded01860228f77e3d5a",
     ) -> supporterPlusV2Transformer,
+    List(
+      "8a1299788ff2ec100190025fccc32bb1",
+      "8a1288a38ff2af980190025b32591ccc",
+      "8a128ab18ff2af9301900255d77979ac",
+      "8a1299788ff2ec100190024d1e3b1a09",
+      "8a129c2591f06a5d0191fa2edb383026",
+      "8a12891291f04b9d0191fa2ffbe10975",
+      "8a128dfb91f04b9a0191fa30ae2e1b7e",
+      "8a128dfb91f04b9a0191fa315d091c51",
+    ) -> tierThreeTransformer,
+    List(
+      "8a1285e294443da501944b04cb692c9e",
+    ) -> guardianAdLiteTransformer,
     List(
       "2c92a0fb4edd70c8014edeaa4eae220a",
       "2c92a0fb4edd70c8014edeaa4e972204",
@@ -170,13 +206,6 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0086619bf8901661ab545f51b21",
     ) -> guardianWeeklyTransformer,
     List(
-      "2c92a0fb4ce4b8e7014ce711d3c37e60",
-      "2c92a0f9479fb46d0147d0155c6f558b",
-    ) -> memberTransformer(Friend),
-    List(
-      "2c92a0f949efde7c0149f1f18162178e",
-    ) -> memberTransformer(Staff),
-    List(
       "8a129ce886834fa90186a20c3ee70b6a", // 2023 price rise annual
       "8a1287c586832d250186a2040b1548fe", // 2023 price rise monthly
       "2c92a0f94c547592014c69f5b0ff4f7e",
@@ -200,7 +229,7 @@ object SupporterRatePlanToAttributesMapper {
   )
 
   private val codeMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
-    List(guardianPatronProductRatePlanId) -> guardianPatronTransformer,
+    List(Catalog.guardianPatronProductRatePlanId.get) -> guardianPatronTransformer,
     List(
       "8ad09fc281de1ce70181de3b251736a4",
       "8ad09fc281de1ce70181de3b28ee3783",
@@ -209,6 +238,19 @@ object SupporterRatePlanToAttributesMapper {
       "8ad08cbd8586721c01858804e3275376",
       "8ad08e1a8586721801858805663f6fab",
     ) -> supporterPlusV2Transformer,
+    List(
+      "8ad097b48ff26452019001cebac92376",
+      "8ad081dd8ff24a9a019001d95e4e3574",
+      "8ad081dd8ff24a9a019001df2ce83657",
+      "8ad097b48ff26452019001e65bbf2ca8",
+      "8ad097b491daf9180191e0cdf34e185e",
+      "8ad097b491daf9180191e0cdba5f183c",
+      "8ad097b491daf9180191e0cd58e5180b",
+      "8ad081dd91dae1d30191e0ce082d18d3",
+    ) -> tierThreeTransformer,
+    List(
+      "71a1bebf6be9444afad446c5ebaf0019",
+    ) -> guardianAdLiteTransformer,
     List(
       "2c92c0f84bbfec8b014bc655f4852d9d",
       "2c92c0f94bbffaaa014bc6a4212e205b",
@@ -271,13 +313,6 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f878ac40300178acaa04bb401d",
     ) -> guardianWeeklyTransformer,
     List(
-      "2c92c0f94c9ca1c5014c9e5c64ba4260",
-      "2c92c0f945fee1c90146057402c7066b",
-    ) -> memberTransformer(Friend),
-    List(
-      "2c92c0f849c6e58a0149c73d6f114be2",
-    ) -> memberTransformer(Staff),
-    List(
       "2c92c0f94c510a0d014c569ba8eb45f7",
       "2c92c0f94c510a01014c569e2d857cfd",
       "2c92c0f84b079582014b2754c07c0f7d",
@@ -323,14 +358,12 @@ object SupporterRatePlanToAttributesMapper {
 sealed abstract class MembershipTier(val name: String, val value: Int)
 
 object MembershipTier {
-  case object Friend extends MembershipTier("Friend", 1)
-  case object Staff extends MembershipTier("Staff", 2)
   case object Supporter extends MembershipTier("Supporter", 3)
   case object Partner extends MembershipTier("Partner", 4)
   case object Patron extends MembershipTier("Patron", 5)
 
   private def fromString(name: String): Option[MembershipTier] =
-    List(Friend, Staff, Supporter, Partner, Patron).find(_.name == name)
+    List(Supporter, Partner, Patron).find(_.name == name)
 
   def getMostValuableTier(newTier: MembershipTier, existingTier: Option[String]) =
     if (existingTier.flatMap(fromString).exists(_.value > newTier.value))

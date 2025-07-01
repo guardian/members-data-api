@@ -1,21 +1,19 @@
 package services
 
-import _root_.services.SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId
 import _root_.services.stripe.BasicStripeService
 import com.github.nscala_time.time.Imports.DateTimeFormat
-import com.gu.memsub.BillingPeriod.{Month, RecurringPeriod, Year}
-import com.gu.memsub.Product.GuardianPatron
 import com.gu.memsub.Subscription._
 import com.gu.memsub._
 import com.gu.memsub.subsv2.ReaderType.Direct
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, PaidCharge, PaidSubscriptionPlan, Subscription}
+import com.gu.memsub.subsv2.{Subscription, _}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.PersonalPlan
 import com.gu.stripe.Stripe
 import models.{AccountDetails, DynamoSupporterRatePlanItem}
 import monitoring.CreateMetrics
-import scalaz.EitherT
 import scalaz.std.scalaFuture._
+import scalaz.{EitherT, NonEmptyList}
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,7 +26,7 @@ class GuardianPatronService(
 )(implicit executionContext: ExecutionContext) {
   private val metrics = createMetrics.forService(classOf[GuardianPatronService])
 
-  def getGuardianPatronAccountDetails(userId: String): SimpleEitherT[List[AccountDetails]] = {
+  def getGuardianPatronAccountDetails(userId: String)(implicit logPrefix: LogPrefix): SimpleEitherT[List[AccountDetails]] = {
     metrics.measureDurationEither("getGuardianPatronAccountDetails") {
       for {
         supporterRatePlanItems <- supporterProductDataService.getSupporterRatePlanItems(userId)
@@ -37,7 +35,7 @@ class GuardianPatronService(
     }
   }
 
-  private def getListDetailsFromStripe(items: List[DynamoSupporterRatePlanItem]): Future[List[AccountDetails]] = {
+  private def getListDetailsFromStripe(items: List[DynamoSupporterRatePlanItem])(implicit logPrefix: LogPrefix): Future[List[AccountDetails]] = {
     Future.sequence(
       items
         .filter(isGuardianPatronProduct)
@@ -47,9 +45,9 @@ class GuardianPatronService(
   }
 
   private def isGuardianPatronProduct(item: DynamoSupporterRatePlanItem) =
-    item.productRatePlanId == guardianPatronProductRatePlanId
+    item.productRatePlanId == Catalog.guardianPatronProductRatePlanId.get
 
-  private def fetchAccountDetailsFromStripe(subscriptionId: String): Future[AccountDetails] =
+  private def fetchAccountDetailsFromStripe(subscriptionId: String)(implicit logPrefix: LogPrefix): Future[AccountDetails] =
     metrics.measureDuration("fetchAccountDetailsFromStripe") {
       for {
         subscription <- patronsStripeService.fetchSubscription(subscriptionId)
@@ -57,9 +55,9 @@ class GuardianPatronService(
       } yield accountDetailsFromStripeSubscription(subscription, paymentDetails, stripePatronsPublicKey)
     }
 
-  private def billingPeriodFromInterval(interval: String): RecurringPeriod = interval match {
-    case "year" => Year
-    case _ => Month
+  private def billingPeriodFromInterval(interval: String): ZBillingPeriod = interval match {
+    case "year" => ZYear
+    case _ => ZMonth
   }
 
   private def accountDetailsFromStripeSubscription(
@@ -75,41 +73,37 @@ class GuardianPatronService(
       deliveryAddress = None,
       subscription = Subscription(
         id = Id(subscription.id),
-        name = Name(subscription.id),
+        subscriptionNumber = SubscriptionNumber(subscription.id),
         accountId = AccountId(subscription.customer.id),
-        startDate = subscription.created,
-        acceptanceDate = subscription.created,
-        termStartDate = subscription.currentPeriodStart,
+        contractEffectiveDate = subscription.created,
+        customerAcceptanceDate = subscription.created,
         termEndDate = subscription.currentPeriodEnd,
-        casActivationDate = None,
-        promoCode = None,
         isCancelled = subscription.isCancelled,
-        hasPendingFreePlan = false,
-        plans = CovariantNonEmptyList(
-          PaidSubscriptionPlan(
-            id = RatePlanId(guardianPatronProductRatePlanId),
-            productRatePlanId = ProductRatePlanId(guardianPatronProductRatePlanId),
-            name = subscription.plan.id,
-            description = "Guardian Patron",
-            productName = "Guardian Patron",
-            productType = "Membership",
-            product = GuardianPatron,
+        ratePlans = List(
+          RatePlan(
+            id = RatePlanId("guardian_patron_unused"), // only used for contribution amount change
+            productRatePlanId = Catalog.guardianPatronProductRatePlanId,
+            productName = "guardianpatron",
+            lastChangeType = None,
             features = Nil,
-            charges = PaidCharge(
-              benefit = Benefit.GuardianPatron,
-              billingPeriod = billingPeriodFromInterval(subscription.plan.interval),
-              price = PricingSummary(Map(subscription.plan.currency -> price)),
-              chargeId = ProductRatePlanChargeId(""),
-              subRatePlanChargeId = SubscriptionRatePlanChargeId(""),
+            ratePlanCharges = NonEmptyList(
+              RatePlanCharge(
+                id = SubscriptionRatePlanChargeId(""), // only used for update contribution amount
+                productRatePlanChargeId = ProductRatePlanChargeId(""), // benefit is only used for paper days (was Benefit.GuardianPatron)
+                pricing = PricingSummary(Map(subscription.plan.currency -> price)),
+                zBillingPeriod = Some(billingPeriodFromInterval(subscription.plan.interval)),
+                specificBillingPeriod = None, // only used for fixed period e.g. GW 6 for 6
+                endDateCondition = SubscriptionEnd,
+                upToPeriods = None, // only used for fixed periods
+                upToPeriodsType = None, // only used for fixed periods
+                chargedThroughDate = Some(subscription.currentPeriodEnd),
+                effectiveStartDate = subscription.currentPeriodStart,
+                effectiveEndDate = subscription.currentPeriodEnd,
+              ),
             ),
-            chargedThrough = Some(subscription.currentPeriodEnd),
-            start = subscription.currentPeriodStart,
-            end = subscription.currentPeriodEnd,
           ),
-          tail = Nil,
         ),
         readerType = Direct,
-        gifteeIdentityId = None,
         autoRenew = true,
       ),
       paymentDetails = PaymentDetails(
@@ -121,9 +115,9 @@ class GuardianPatronService(
         nextPaymentPrice = Some(subscription.plan.amount),
         lastPaymentDate = Some(subscription.currentPeriodStart),
         nextPaymentDate = subscription.nextPaymentDate,
+        nextInvoiceDate = subscription.nextPaymentDate,
         remainingTrialLength = 0,
         pendingCancellation = subscription.isPastDue,
-        pendingAmendment = false,
         paymentMethod = paymentDetails.cardStripeList.data.headOption.map(card =>
           PaymentCard(
             isReferenceTransaction = false,

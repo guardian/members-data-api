@@ -1,13 +1,18 @@
 package wiring
 
 import actions.CommonActions
-import org.apache.pekko.actor.ActorSystem
+import ch.qos.logback.classic.LoggerContext
+import com.gu.memsub.subsv2.Catalog
+import com.gu.memsub.subsv2.services.SubscriptionService
+import com.gu.monitoring.SafeLoggerImpl
+import com.gu.zuora.ZuoraSoapService
 import components.TouchpointBackends
-import configuration.{CreateTestUsernames, LogstashConfig, SentryConfig, Stage}
+import configuration.{CreateTestUsernames, SentryConfig, Stage}
 import controllers._
 import filters._
-import loghandling.Logstash
 import monitoring.{CreateRealMetrics, ErrorHandler, SentryLogging}
+import org.apache.pekko.actor.ActorSystem
+import org.slf4j.LoggerFactory
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -16,20 +21,11 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
-import services.mail.{EmailData, QueueName, SendEmail, SendEmailToSQS}
+import services.mail.{QueueName, SendEmail, SendEmailToSQS}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe}
-import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
-import services.zuora.soap.ZuoraSoapService
-import services.{
-  CatalogService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  MobileSubscriptionServiceImpl,
-  PostgresDatabaseService,
-  SupporterProductDataService,
-}
+import services._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -38,9 +34,13 @@ class AppLoader extends ApplicationLoader {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
+    val loggerPackageName = classOf[SafeLoggerImpl].getPackageName
+    // at the moment we get SafeLogger.scala:49 type things in the logs
+    // adding to the FrameworkPackages makes logback skip over and find the real line of code
+    LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext].getFrameworkPackages.add(loggerPackageName)
+
     val config = context.initialConfiguration.underlying
     SentryLogging.init(new SentryConfig(config))
-    Logstash.init(new LogstashConfig(config))
     createMyComponents(context).application
   }
 
@@ -62,9 +62,9 @@ class MyComponents(context: Context)
 
   lazy val supporterProductDataServiceOverride: Option[SupporterProductDataService] = None
   lazy val contactRepositoryOverride: Option[ContactRepository] = None
-  lazy val subscriptionServiceOverride: Option[SubscriptionService] = None
+  lazy val subscriptionServiceOverride: Option[SubscriptionService[Future]] = None
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
-  lazy val catalogServiceOverride: Option[CatalogService] = None
+  lazy val catalogServiceOverride: Option[Future[Catalog]] = None
   lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
   lazy val chooseStripeOverride: Option[ChooseStripe] = None
@@ -85,9 +85,9 @@ class MyComponents(context: Context)
     patronsStripeServiceOverride,
     chooseStripeOverride,
   )
-  private val isTestUser = new IsTestUser(CreateTestUsernames.from(config))
-  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, isTestUser)
-  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, isTestUser)
+  private val testUserChecker = new TestUserChecker(CreateTestUsernames.from(config))
+  private val addGuIdentityHeaders = new AddGuIdentityHeaders(touchPointBackends.normal.identityAuthService, testUserChecker)
+  lazy val commonActions = new CommonActions(touchPointBackends, defaultBodyParser, testUserChecker)
   override lazy val httpErrorHandler: ErrorHandler =
     new ErrorHandler(
       environment,

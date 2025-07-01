@@ -6,11 +6,14 @@ import components.TouchpointComponents
 import configuration.Stage
 import controllers.AccountHelpers
 import monitoring.CreateNoopMetrics
+import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
+import play.api.libs.json.Json
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import testdata.TestLogPrefix.testLogPrefix
 
 class AccountDetailsFromZuoraIntegrationTest extends Specification {
 
@@ -19,17 +22,25 @@ class AccountDetailsFromZuoraIntegrationTest extends Specification {
 
   "AccountDetailsFromZuora" should {
     "fetch a list of subs" in {
-      val result = Await
-        .result(
-          createTouchpointComponents.accountDetailsFromZuora
-            .fetch("200152344", AccountHelpers.NoFilter)
-            .run
-            .map { list =>
-              println(s"Fetched this list: $list")
-              list
-            },
-          Duration.Inf,
-        )
+      val touchpointComponents = createTouchpointComponents
+      val eventualResult = for {
+        catalog <- touchpointComponents.futureCatalog
+        result <- touchpointComponents.accountDetailsFromZuora
+          .fetch("200421949", AccountHelpers.NoFilter)
+          .run
+          .map { list =>
+            println(s"Fetched this list: $list")
+            list
+          }
+      } yield result.map(
+        _.foreach(accountDetails =>
+          println(
+            s"JSON output for ${accountDetails.subscription.subscriptionNumber.getNumber} is:\n" + Json
+              .prettyPrint(accountDetails.toJson(catalog, LocalDate.now)),
+          ),
+        ),
+      )
+      val result = Await.result(eventualResult, Duration.Inf)
       result.isRight must_== true
     }
   }

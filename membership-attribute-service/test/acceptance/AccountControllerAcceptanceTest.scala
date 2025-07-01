@@ -1,47 +1,33 @@
 package acceptance
 
+import acceptance.data._
 import acceptance.data.stripe.{TestCustomersPaymentMethods, TestDynamoSupporterRatePlanItem, TestStripeSubscription}
-import acceptance.data.{
-  IdentityResponse,
-  TestAccountSummary,
-  TestCatalog,
-  TestContact,
-  TestPaidCharge,
-  TestPaidSubscriptionPlan,
-  TestPaymentSummary,
-  TestQueriesAccount,
-  TestSubscription,
-}
 import com.gu.i18n.Currency
-import com.gu.memsub.Product.Contribution
-import com.gu.memsub.Subscription.Name
-import com.gu.memsub.subsv2.{CovariantNonEmptyList, SubscriptionPlan}
-import com.gu.memsub.{Product, Subscription}
+import com.gu.memsub.Subscription
+import com.gu.memsub.Subscription.{SubscriptionNumber, ProductRatePlanId}
+import com.gu.memsub.subsv2.{Catalog, RatePlanCharge}
+import com.gu.memsub.subsv2.services.SubscriptionService
+import com.gu.memsub.subsv2.services.TestCatalog
+import TestCatalog.catalog
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.zuora.ZuoraSoapService
 import kong.unirest.Unirest
+import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
-import org.joda.time.{LocalDate, LocalTime}
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchersSugar.eqTo
 import org.mockserver.model.Cookie
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
-import play.api.libs.json.Json.parse
 import play.api.libs.json.{JsArray, Json}
-import scalaz.\/
+import scalaz.{NonEmptyList, \/}
 import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
-import services.subscription.SubscriptionService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
-import services.zuora.soap.ZuoraSoapService
-import services.{
-  CatalogService,
-  ContributionsStoreDatabaseService,
-  HealthCheckableService,
-  SupporterProductDataService,
-  SupporterRatePlanToAttributesMapper,
-}
+import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
@@ -50,9 +36,9 @@ import scala.concurrent.Future
 
 class AccountControllerAcceptanceTest extends AcceptanceTest {
   var contactRepositoryMock: ContactRepository = _
-  var subscriptionServiceMock: SubscriptionService = _
+  var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
-  var catalogServiceMock: CatalogService = _
+  var catalogServiceMock: Catalog = _
   var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
@@ -61,9 +47,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
-    subscriptionServiceMock = mock[SubscriptionService]
+    subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
-    catalogServiceMock = mock[CatalogService]
+    catalogServiceMock = catalog
     zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
@@ -78,7 +64,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       override lazy val contactRepositoryOverride = Some(contactRepositoryMock)
       override lazy val subscriptionServiceOverride = Some(subscriptionServiceMock)
       override lazy val zuoraRestServiceOverride = Some(zuoraRestServiceMock)
-      override lazy val catalogServiceOverride = Some(catalogServiceMock)
+      override lazy val catalogServiceOverride = Some(Future.successful(catalogServiceMock))
       override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
@@ -140,61 +126,80 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       val contact = TestContact(identityId = "200067388")
 
-      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+      contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
+
+      val giftSubscriptionName = "giftSubscriptionName"
+      val supporterPlusSubscriptionName = "supporterPlusName"
+      val patronSubscriptionName = "patronFromDynamoName"
 
       val giftSubscription = GiftSubscriptionsFromIdentityIdRecord(
         Id = "giftSubscriptionId",
-        Name = "giftSubscriptionName",
+        Name = giftSubscriptionName,
         TermEndDate = LocalDate.now().plusYears(1),
       )
 
-      zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388") returns Future(
+      zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388")(any) returns Future(
         \/.right(
           List(giftSubscription),
         ),
       )
 
-      val nonGiftSubscription = TestSubscription()
+      val nonGiftSubscription = TestSubscription(
+        subscriptionNumber = Subscription.SubscriptionNumber(supporterPlusSubscriptionName),
+        plans = List(
+          TestPaidSubscriptionPlan(
+            productRatePlanId = TestCatalog.supporterPlusPrpId,
+            charges = NonEmptyList(
+              TestSingleCharge(chargeId = TestCatalog.ProductRatePlanChargeIds.supporterPlusChargeId),
+              TestSingleCharge(chargeId = TestCatalog.ProductRatePlanChargeIds.sPluscontributionChargeId),
+            ),
+          ),
+        ),
+      )
       val nonGiftSubscriptionAccountId = nonGiftSubscription.accountId
 
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns
+      subscriptionServiceMock.current(contact)(any) returns
         Future(List(nonGiftSubscription))
 
       val giftSubscriptionFromSubscriptionService = TestSubscription(
         id = Subscription.Id(giftSubscription.Id),
-        name = Subscription.Name(giftSubscription.Name),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(product = Product.SupporterPlus), Nil),
+        subscriptionNumber = Subscription.SubscriptionNumber(giftSubscription.Name),
+        plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
       )
       val giftSubscriptionAccountId = giftSubscriptionFromSubscriptionService.accountId
 
-      subscriptionServiceMock.get[SubscriptionPlan.AnyPlan](Subscription.Name(giftSubscription.Name), false)(any) returns Future.successful(
+      subscriptionServiceMock.get(Subscription.SubscriptionNumber(giftSubscription.Name), false)(any) returns Future.successful(
         Some(giftSubscriptionFromSubscriptionService),
       )
 
-      catalogServiceMock.unsafeCatalog returns TestCatalog()
+      zuoraRestServiceMock.getAccount(giftSubscriptionAccountId)(any) returns Future(\/.right(TestAccountSummary(id = giftSubscriptionAccountId)))
+      zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(
+        \/.right(TestAccountSummary(id = nonGiftSubscriptionAccountId)),
+      )
 
-      zuoraRestServiceMock.getAccount(giftSubscriptionAccountId) returns Future(\/.right(TestAccountSummary(id = giftSubscriptionAccountId)))
-      zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId) returns Future(\/.right(TestAccountSummary(id = nonGiftSubscriptionAccountId)))
+      zuoraRestServiceMock.getCancellationEffectiveDate(giftSubscriptionFromSubscriptionService.subscriptionNumber)(any) returns Future(
+        \/.right(None),
+      )
+      zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.subscriptionNumber)(any) returns Future(\/.right(None))
 
-      zuoraRestServiceMock.getCancellationEffectiveDate(giftSubscriptionFromSubscriptionService.name) returns Future(\/.right(None))
-      zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.name) returns Future(\/.right(None))
-
-      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) returns Future(TestPaymentSummary())
-      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) returns Future(TestQueriesAccount())
+      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) returns Future(TestPaymentSummary())
+      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(TestQueriesAccount())
+      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 15)(any) returns Future(Seq(TestPreviewInvoiceItem()))
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(
+        subscriptionName = patronSubscriptionName,
         identityId = "200067388",
-        productRatePlanId = SupporterRatePlanToAttributesMapper.guardianPatronProductRatePlanId,
+        productRatePlanId = Catalog.guardianPatronProductRatePlanId,
       )
-      supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") returns
+      supporterProductDataServiceMock.getSupporterRatePlanItems(eqTo("200067388"))(any) returns
         SimpleEitherT.right(List(patronSubscription))
 
       val stripeSubscription = TestStripeSubscription(id = patronSubscription.subscriptionName)
 
-      patronsStripeServiceMock.fetchSubscription(patronSubscription.subscriptionName) returns
+      patronsStripeServiceMock.fetchSubscription(patronSubscription.subscriptionName)(any) returns
         Future.successful(stripeSubscription)
 
-      patronsStripeServiceMock.fetchPaymentMethod(stripeSubscription.customer.id) returns
+      patronsStripeServiceMock.fetchPaymentMethod(stripeSubscription.customer.id)(any) returns
         Future.successful(TestCustomersPaymentMethods())
 
       val url = endpointUrl("/user-attributes/me/mma")
@@ -209,27 +214,26 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       httpResponse.getStatus shouldEqual 200
 
-      contactRepositoryMock.get("200067388") was called
-      supporterProductDataServiceMock.getSupporterRatePlanItems("200067388") was called
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) was called
-      zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388") was called
-      subscriptionServiceMock.get[SubscriptionPlan.AnyPlan](Subscription.Name(giftSubscription.Name), isActiveToday = false)(any) was called
-      catalogServiceMock.unsafeCatalog was called
+      contactRepositoryMock.get("200067388")(any) was called
+      supporterProductDataServiceMock.getSupporterRatePlanItems("200067388")(any[LogPrefix]) was called
+      subscriptionServiceMock.current(contact)(any) was called
+      zuoraRestServiceMock.getGiftSubscriptionRecordsFromIdentityId("200067388")(any) was called
+      subscriptionServiceMock.get(Subscription.SubscriptionNumber(giftSubscription.Name), isActiveToday = false)(any) was called
 
-      zuoraRestServiceMock.getAccount(giftSubscriptionAccountId) was called
-      zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId) was called
+      zuoraRestServiceMock.getAccount(giftSubscriptionAccountId)(any) was called
+      zuoraRestServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
 
-      zuoraRestServiceMock.getCancellationEffectiveDate(giftSubscriptionFromSubscriptionService.name) was called
-      zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.name) was called
+      zuoraRestServiceMock.getCancellationEffectiveDate(giftSubscriptionFromSubscriptionService.subscriptionNumber)(any) was called
+      zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.subscriptionNumber)(any) was called
 
-      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId) was called
-      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.name, Currency.GBP) was called
+      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
+      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) was called
+      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 15)(any) was called
 
       supporterProductDataServiceMock wasNever calledAgain
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever calledAgain
       zuoraSoapServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
 
@@ -246,23 +250,25 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       val productsArray = (json \ "products").as[JsArray].value
       productsArray.size shouldEqual 3
 
-      val membershipProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "membership").get
-      val supporterPlusProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "recurringSupport").get
-      val patronProduct = productsArray.find(json => (json \ "mmaCategory").as[String] == "subscriptions").get
+      val digiGiftProduct = productsArray.find(json => (json \ "subscription" \ "subscriptionId").as[String] == giftSubscriptionName).get
+      val supporterPlusProduct =
+        productsArray.find(json => (json \ "subscription" \ "subscriptionId").as[String] == supporterPlusSubscriptionName).get
+      val patronProduct = productsArray.find(json => (json \ "subscription" \ "subscriptionId").as[String] == patronSubscriptionName).get
 
-      (supporterPlusProduct \ "tier").as[String] shouldEqual giftSubscriptionFromSubscriptionService.plans.head.productName
-      (supporterPlusProduct \ "isPaidTier").as[Boolean] shouldEqual false
+      (supporterPlusProduct \ "tier").as[String] shouldEqual nonGiftSubscription.ratePlans.head.productName
+      (supporterPlusProduct \ "isPaidTier").as[Boolean] shouldEqual true
       (supporterPlusProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
-      (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.name.get
-      (supporterPlusProduct \ "subscription" \ "accountId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.accountId.get
-      (supporterPlusProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual giftSubscriptionFromSubscriptionService.plan.productName
+      (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.subscriptionNumber.getNumber
+      (supporterPlusProduct \ "subscription" \ "accountId").as[String] shouldEqual nonGiftSubscription.accountId.get
+      (supporterPlusProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual nonGiftSubscription.plan(catalog).productName
 
-      (membershipProduct \ "tier").as[String] shouldEqual nonGiftSubscription.plans.head.productName
-      (membershipProduct \ "isPaidTier").as[Boolean] shouldEqual true
-      (membershipProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
-      (membershipProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.name.get
-      (membershipProduct \ "subscription" \ "accountId").as[String] shouldEqual nonGiftSubscription.accountId.get
-      (membershipProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual nonGiftSubscription.plan.productName
+      (digiGiftProduct \ "tier").as[String] shouldEqual giftSubscriptionFromSubscriptionService.ratePlans.head.productName
+      (digiGiftProduct \ "isPaidTier").as[Boolean] shouldEqual false
+      (digiGiftProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
+      (digiGiftProduct \ "subscription" \ "subscriptionId")
+        .as[String] shouldEqual giftSubscriptionFromSubscriptionService.subscriptionNumber.getNumber
+      (digiGiftProduct \ "subscription" \ "accountId").as[String] shouldEqual giftSubscriptionFromSubscriptionService.accountId.get
+      (digiGiftProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual giftSubscriptionFromSubscriptionService.plan(catalog).productName
 
       (patronProduct \ "tier").as[String] shouldEqual "guardianpatron"
       (patronProduct \ "isPaidTier").as[Boolean] shouldEqual true
@@ -319,32 +325,33 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         ),
       )
 
-      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+      contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
-      val charge = TestPaidCharge()
       val chargedThroughDate = new LocalDate(2023, 3, 11)
+      val charge = TestSingleCharge(
+        chargedThroughDate = Some(chargedThroughDate),
+      )
       val plan = TestPaidSubscriptionPlan(
-        product = Contribution,
-        charges = charge,
-        chargedThrough = Some(chargedThroughDate),
+        productRatePlanId = TestCatalog.contributorPrpId,
+        charges = NonEmptyList(charge),
       )
       val subscription = TestSubscription(
-        name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(plan, Nil),
-      ).asInstanceOf[com.gu.memsub.subsv2.Subscription[SubscriptionPlan.Contributor]]
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
+        plans = List(plan),
+      )
 
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
 
       zuoraRestServiceMock.updateChargeAmount(
-        subscription.name,
-        charge.subRatePlanChargeId,
-        subscription.plan.id,
+        subscription.subscriptionNumber,
+        charge.id,
+        plan.id,
         12.00d,
         any,
         chargedThroughDate,
-      )(any) returns Future(\/.right(()))
+      )(any, any) returns Future(\/.right(()))
 
-      sendEmailMock(emailData) returns Future.successful(())
+      sendEmailMock.send(emailData)(any) returns Future.successful(())
 
       val httpResponse = Unirest
         .post(endpointUrl(s"/user-attributes/me/contribution-update-amount/$subscriptionId"))
@@ -358,26 +365,25 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       httpResponse.getStatus shouldEqual 200
 
-      contactRepositoryMock.get("200067388") was called
+      contactRepositoryMock.get("200067388")(any) was called
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) was called
+      subscriptionServiceMock.current(contact)(any) was called
       zuoraRestServiceMock.updateChargeAmount(
-        subscription.name,
-        charge.subRatePlanChargeId,
-        subscription.plan.id,
+        subscription.subscriptionNumber,
+        charge.id,
+        plan.id,
         12.00d,
         any,
         chargedThroughDate,
-      )(any) was called
+      )(any, any) was called
 
-      sendEmailMock(emailData) was called
+      sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever called
       zuoraSoapServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
@@ -430,30 +436,36 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         ),
       )
 
-      contactRepositoryMock.get("200067388") returns Future(\/.right(Some(contact)))
+      contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
 
       val subscription = TestSubscription(
-        name = Subscription.Name(subscriptionId),
-        plans = CovariantNonEmptyList(TestPaidSubscriptionPlan(productType = "Digital Pack"), Nil),
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
+        plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
         termEndDate = new LocalDate(2024, 4, 12),
       )
 
-      subscriptionServiceMock.current[SubscriptionPlan.AnyPlan](contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
 
       val cancellationEffectiveDate = new LocalDate(2024, 4, 5)
-      subscriptionServiceMock.decideCancellationEffectiveDate[SubscriptionPlan.AnyPlan](Name(subscriptionId), any, any)(any) returns SimpleEitherT
+      subscriptionServiceMock
+        .decideCancellationEffectiveDate(SubscriptionNumber(subscriptionId), any, any)(any) returns SimpleEitherT
         .right(Some(cancellationEffectiveDate))
 
       subscriptionServiceMock
-        .subscriptionsForAccountId[SubscriptionPlan.AnyPlan](subscription.accountId)(any) shouldReturn SimpleEitherT.right(List(subscription)).run
+        .subscriptionsForAccountId(subscription.accountId)(any) shouldReturn SimpleEitherT
+        .right(List(subscription))
+        .run
 
-      zuoraRestServiceMock.disableAutoPay(subscription.accountId) returns unit()
+      zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) returns unit()
 
-      zuoraRestServiceMock.updateCancellationReason(Name(subscriptionId), "My reason") returns unit()
+      zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) returns unit()
 
-      zuoraRestServiceMock.cancelSubscription(Name(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(any) returns unit()
+      zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
+        any,
+        any,
+      ) returns unit()
 
-      sendEmailMock(emailData) returns Future.successful(())
+      sendEmailMock.send(emailData)(any) returns Future.successful(())
 
       val httpResponse = Unirest
         .post(endpointUrl(s"/user-attributes/me/cancel/$subscriptionId"))
@@ -467,24 +479,26 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       httpResponse.getStatus shouldEqual 200
 
-      contactRepositoryMock.get("200067388") was called
+      contactRepositoryMock.get("200067388")(any) was called
 
       identityMockClientAndServer.verify(identityRequest)
-      subscriptionServiceMock.current[SubscriptionPlan.Contributor](contact)(any) was called
+      subscriptionServiceMock.current(contact)(any) was called
 
-      subscriptionServiceMock.decideCancellationEffectiveDate[SubscriptionPlan.AnyPlan](Name(subscriptionId), any, any)(any) was called
-      subscriptionServiceMock.subscriptionsForAccountId[SubscriptionPlan.AnyPlan](subscription.accountId)(any) was called
-      zuoraRestServiceMock.disableAutoPay(subscription.accountId) was called
-      zuoraRestServiceMock.updateCancellationReason(Name(subscriptionId), "My reason") was called
-      zuoraRestServiceMock.cancelSubscription(Name(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(any) was called
+      subscriptionServiceMock.decideCancellationEffectiveDate(SubscriptionNumber(subscriptionId), any, any)(any) was called
+      subscriptionServiceMock.subscriptionsForAccountId(subscription.accountId)(any) was called
+      zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) was called
+      zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) was called
+      zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
+        any,
+        any,
+      ) was called
 
-      sendEmailMock(emailData) was called
+      sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      catalogServiceMock wasNever called
       zuoraSoapServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain

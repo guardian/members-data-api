@@ -1,28 +1,20 @@
 package services.stripe
 
-import com.gu.i18n.Currency
+import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.stripe.Stripe
-import com.gu.stripe.Stripe.{Charge, Customer, CustomersPaymentMethods, StripeObject}
+import com.gu.stripe.Stripe.{Customer, CustomersPaymentMethods, StripeObject}
 
 import scala.concurrent.Future
 
 trait BasicStripeService {
-  def fetchCustomer(customerId: String): Future[Customer]
+  def fetchCustomer(customerId: String)(implicit logPrefix: LogPrefix): Future[Customer]
 
   @Deprecated
-  def createCustomer(card: String): Future[Customer]
+  def createCustomer(card: String)(implicit logPrefix: LogPrefix): Future[Customer]
 
-  def createCustomerWithStripePaymentMethod(stripePaymentMethodID: String): Future[Customer]
+  def createCustomerWithStripePaymentMethod(stripePaymentMethodID: String)(implicit logPrefix: LogPrefix): Future[Customer]
 
-  def fetchPaymentMethod(customerId: String): Future[CustomersPaymentMethods]
+  def fetchPaymentMethod(customerId: String)(implicit logPrefix: LogPrefix): Future[CustomersPaymentMethods]
 
-  def createCharge(amount: Int, currency: Currency, email: String, description: String, cardToken: String, meta: Map[String, String]): Future[Charge]
-
-  def fetchBalanceTransaction(id: String): Future[Stripe.BalanceTransaction]
-
-  def fetchEvent(id: String): Future[Stripe.Event[StripeObject]]
-
-  def fetchCharge(id: String): Future[Option[Stripe.Event[Charge]]]
-
-  def fetchSubscription(id: String): Future[Stripe.Subscription]
+  def fetchSubscription(id: String)(implicit logPrefix: LogPrefix): Future[Stripe.Subscription]
 }

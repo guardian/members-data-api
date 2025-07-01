@@ -1,16 +1,16 @@
 package com.gu.memsub.util
 
+import com.gu.monitoring.SafeLogging
 import org.apache.pekko.actor.ActorSystem
-import com.gu.monitoring.SafeLogger
-import com.gu.monitoring.SafeLogger._
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
+
 import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 /** Use ScheduledTask only when initial value is well defined.
   */
-trait ScheduledTask[T] {
+trait ScheduledTask[T] extends SafeLogging {
   val initialValue: T
 
   val initialDelay: FiniteDuration
@@ -26,11 +26,11 @@ trait ScheduledTask[T] {
   def task(): Future[T]
 
   def start(): Unit = {
-    SafeLogger.info(s"Starting $name scheduled task with an initial delay of: $initialDelay. This task will refresh every: $interval")
+    logger.infoNoPrefix(s"Starting $name scheduled task with an initial delay of: $initialDelay. This task will refresh every: $interval")
     system.scheduler.schedule(initialDelay, interval) {
       task.onComplete {
         case Success(t) => atomicReference.set(t)
-        case Failure(e) => SafeLogger.error(scrub"Scheduled task $name failed due to: $e. This task will retry in: $interval")
+        case Failure(e) => logger.errorNoPrefix(scrub"Scheduled task $name failed due to: $e. This task will retry in: $interval")
       }
     }
   }

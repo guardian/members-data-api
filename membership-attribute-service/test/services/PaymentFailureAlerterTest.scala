@@ -8,6 +8,7 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import testdata.AccountObjectTestData._
 import testdata.AccountSummaryTestData.{accountSummaryWithBalance, accountSummaryWithZeroBalance}
+import testdata.TestLogPrefix.testLogPrefix
 import testdata.{InvoiceAndPaymentTestData, SubscriptionTestData}
 
 import java.util.Locale
@@ -28,20 +29,21 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
     "membershipAlertText" should {
       "not return any for a user with no balance" in {
         val result: Future[Option[String]] =
-          PaymentFailureAlerter.alertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures)
+          PaymentFailureAlerter.alertText(accountSummaryWithZeroBalance, membership, paymentMethodResponseNoFailures, catalog)
 
         result must beNone.await
       }
 
       "return none if one of the zuora calls returns a left" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodLeftResponse)
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodLeftResponse, catalog)
 
         result must beNone.await
       }
 
       "return a message for a member who is in payment failure" in {
         val result: Future[Option[String]] =
-          PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure)
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, membership, paymentMethodResponseRecentFailure, catalog)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -52,7 +54,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
 
       "return a message for a contributor who is in payment failure" in {
         val result: Future[Option[String]] =
-          PaymentFailureAlerter.alertText(accountSummaryWithBalance, contributor, paymentMethodResponseRecentFailure)
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, contributor, paymentMethodResponseRecentFailure, catalog)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -62,7 +64,8 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
       }
 
       "return a message for a digipack holder who is in payment failure" in {
-        val result: Future[Option[String]] = PaymentFailureAlerter.alertText(accountSummaryWithBalance, digipack, paymentMethodResponseRecentFailure)
+        val result: Future[Option[String]] =
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, digipack, paymentMethodResponseRecentFailure, catalog)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -73,7 +76,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
 
       "return a message for a supporter plus who is in payment failure" in {
         val result: Future[Option[String]] =
-          PaymentFailureAlerter.alertText(accountSummaryWithBalance, supporterPlus, paymentMethodResponseRecentFailure)
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, supporterPlus, paymentMethodResponseRecentFailure, catalog)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -84,7 +87,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
 
       "return a message for a Guardian Weekly subscriber who is in payment failure" in {
         val result: Future[Option[String]] =
-          PaymentFailureAlerter.alertText(accountSummaryWithBalance, guardianWeekly, paymentMethodResponseRecentFailure)
+          PaymentFailureAlerter.alertText(accountSummaryWithBalance, guardianWeekly, paymentMethodResponseRecentFailure, catalog)
 
         val attemptDateTime = DateTime.now().minusDays(1)
         val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -98,19 +101,20 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
     "alertAvailableFor" should {
 
       "return false for a member with a zero balance" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithZeroBalance, membership, paymentMethodResponseNoFailures)
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithZeroBalance, membership, paymentMethodResponseNoFailures, catalog)
 
         result must be_==(false).await
       }
 
       "return false for a member with last invoice more than 27 days ago" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalanceAndOldInvoice, membership, paymentMethodResponseStaleFailure)
+        val result =
+          PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalanceAndOldInvoice, membership, paymentMethodResponseStaleFailure, catalog)
 
         result must be_==(false).await
       }
 
       "return false for a member with a balance but no failed payments" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseNoFailures)
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseNoFailures, catalog)
 
         result must be_==(false).await
       }
@@ -119,37 +123,39 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
         def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) =
           Future.successful(Right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
 
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal)
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal, catalog)
 
         result must be_==(false).await
       }
 
       "return true for a member with a failed payment and an invoice in the last 27 days" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseRecentFailure)
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponseRecentFailure, catalog)
 
         result must be_==(true).await
       }
 
       "return true for a contributor with a failed payment and an invoice in the last 27 days" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, contributor, paymentMethodResponseRecentFailure)
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, contributor, paymentMethodResponseRecentFailure, catalog)
 
         result must be_==(true).await
       }
 
       "return true for a digipack holder with a failed payment and an invoice in the last 27 days" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, digipack, paymentMethodResponseRecentFailure)
+        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, digipack, paymentMethodResponseRecentFailure, catalog)
 
         result must be_==(true).await
       }
 
       "return false for a cancelled membership with a failed payment in the last 27 days" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, cancelledMembership, paymentMethodResponseRecentFailure)
+        val result =
+          PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, cancelledMembership, paymentMethodResponseRecentFailure, catalog)
 
         result must be_==(false).await
       }
 
       "return false for an active membership with a failed payment in the last 27 days but no invoice in the last 27 days" in {
-        val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalanceAndOldInvoice, membership, paymentMethodResponseRecentFailure)
+        val result =
+          PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalanceAndOldInvoice, membership, paymentMethodResponseRecentFailure, catalog)
 
         result must be_==(false).await
       }

@@ -4,6 +4,7 @@ import scala.util.Try
 
 val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
+ThisBuild / resolvers ++= Resolver.sonatypeOssRepos("releases") // libraries that haven't yet synced to maven central
 
 def commitId(): String =
   try { "git rev-parse HEAD".!!.trim }
@@ -72,7 +73,7 @@ val `membership-common` =
         licenses := Seq("Apache V2" -> url("http://www.apache.org/licenses/LICENSE-2.0.html")),
         Compile / unmanagedResourceDirectories += baseDirectory.value / "conf",
         libraryDependencies ++= MembershipCommonDependencies.dependencies,
-        dependencyOverrides += MembershipCommonDependencies.jacksonDatabind,
+        dependencyOverrides ++= Dependencies.dependencyOverrides,
       ),
     )
 
@@ -91,6 +92,6 @@ val api = Project("membership-attribute-service", file("membership-attribute-ser
     addCommandAlias("batch-load", "runMain BatchLoader"),
     addCommandAlias("play-artifact", "riffRaffNotifyTeamcity"),
   )
-  .dependsOn(`membership-common`)
+  .dependsOn(`membership-common` % "test->test;compile->compile")
 
 val root = project.in(file(".")).aggregate(api)

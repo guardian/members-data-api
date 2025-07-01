@@ -1,13 +1,13 @@
 package monitoring
 
 import com.amazonaws.services.cloudwatch.model.StandardUnit
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Metrics(service: String, cloudwatch: CloudWatch) extends StrictLogging {
+case class Metrics(service: String, cloudwatch: CloudWatch) extends SafeLogging {
   def incrementCount(metricName: String): Unit = cloudwatch.put(metricName + " count", 1, StandardUnit.Count)
 
   def measureDurationEither[T](metricName: String)(block: => SimpleEitherT[T])(implicit ec: ExecutionContext): SimpleEitherT[T] =

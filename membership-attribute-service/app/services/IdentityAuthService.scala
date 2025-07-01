@@ -6,7 +6,7 @@ import cats.implicits._
 import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
-import com.typesafe.scalalogging.StrictLogging
+import com.gu.monitoring.SafeLogging
 import models.{ApiError, ApiErrors, UserFromToken}
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
 
@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(implicit ec: ExecutionContext)
     extends AuthenticationService
-    with StrictLogging {
+    with SafeLogging {
 
   def user(requiredScopes: List[AccessScope])(implicit requestHeader: RequestHeader): Future[Either[AuthenticationFailure, UserFromToken]] = {
     getUser(requestHeader, requiredScopes).attempt
@@ -22,27 +22,26 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
         case Left(UserCredentialsMissingError(_)) =>
           // IdentityPlayAuthService throws an error if there is no SC_GU_U cookie or crypto auth token
           // frontend decides to make a request based on the existence of a GU_U cookie, so this case is expected.
-          logger.info(s"unable to authorize user - no token or cookie provided")
           Left(Unauthorised)
 
         case Left(OktaValidationException(validationError: ValidationError)) =>
           validationError match {
             case MissingRequiredScope(_) =>
-              logger.warn(s"could not validate okta token - $validationError")
+              logger.warnNoPrefix(s"could not validate okta token - $validationError")
               Left(Forbidden)
             case OktaValidationError(originalException) =>
-              logger.warn(
+              logger.warnNoPrefix(
                 s"could not validate okta token - $validationError. Path: ${requestHeader.path}. User-Agent: ${requestHeader.headers.get("User-Agent")}",
                 originalException,
               )
               Left(Unauthorised)
             case _ =>
-              logger.warn(s"could not validate okta token - $validationError")
+              logger.warnNoPrefix(s"could not validate okta token - $validationError")
               Left(Unauthorised)
           }
 
         case Left(err) =>
-          logger.warn(s"valid request but expired token or cookie so user must log in again - $err")
+          logger.warnNoPrefix(s"valid request but expired token or cookie so user must log in again - $err")
           Left(Unauthorised)
 
         case Right(Some(user)) => Right(user)
@@ -83,9 +82,9 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
       .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
       .map {
         case (_: OktaUserCredentials, claims) =>
-          logger.warn("Authorised by Okta token")
           Some(claims)
         case (_: IdapiUserCredentials, claims) =>
+          import claims.logPrefix
           logger.warn("Authorised by Idapi token")
           Some(claims)
       }

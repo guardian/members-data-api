@@ -7,6 +7,7 @@ import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
 import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
 import services.SupporterRatePlanToAttributesMapperTest.allActiveProductRatePlans
+import testdata.TestLogPrefix.testLogPrefix
 
 class SupporterRatePlanToAttributesMapperTest extends Specification {
   val mapper = new SupporterRatePlanToAttributesMapper(Stage("PROD"))
@@ -109,6 +110,29 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
           ),
         ),
         _ should beSome.which(_.SupporterPlusExpiryDate should beSome(termEndDate)),
+      )
+    }
+
+    "handle a Tier Three subscription" in {
+      testMapper(
+        Map(
+          "PROD" -> List(
+            ratePlanItem("8a1299788ff2ec100190025fccc32bb1"),
+            ratePlanItem("8a1288a38ff2af980190025b32591ccc"),
+            ratePlanItem("8a128ab18ff2af9301900255d77979ac"),
+            ratePlanItem("8a1299788ff2ec100190024d1e3b1a09"),
+          ),
+          "CODE" -> List(
+            ratePlanItem("8ad097b48ff26452019001cebac92376"),
+            ratePlanItem("8ad081dd8ff24a9a019001d95e4e3574"),
+            ratePlanItem("8ad081dd8ff24a9a019001df2ce83657"),
+            ratePlanItem("8ad097b48ff26452019001e65bbf2ca8"),
+          ),
+        ),
+        _ should beSome.which { attributes: Attributes =>
+          attributes.SupporterPlusExpiryDate should beSome(termEndDate)
+          attributes.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate)
+        },
       )
     }
 
@@ -263,9 +287,6 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
 
     "identify memberships correctly" in {
       val possibleProductRatePlanIds = Map(
-        "2c92a0fb4ce4b8e7014ce711d3c37e60" -> "Friend",
-        "2c92a0f9479fb46d0147d0155c6f558b" -> "Friend",
-        "2c92a0f949efde7c0149f1f18162178e" -> "Staff",
         "2c92a0f94c547592014c69f5b0ff4f7e" -> "Supporter",
         "2c92a0fb4c5481db014c69f4a1e03bbd" -> "Supporter",
         "2c92a0fb4bb97034014bbbc562114fef" -> "Supporter",
@@ -289,43 +310,6 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       }.toList
     }
 
-    "Always choose the most valuable membership" in {
-      val friend = "2c92a0fb4ce4b8e7014ce711d3c37e60"
-      val staff = "2c92a0f949efde7c0149f1f18162178e"
-      val supporter = "2c92a0f94c547592014c69f5b0ff4f7e"
-      val partner = "2c92a0fb4c5481dc014c69f95fce7240"
-      val patron = "2c92a0fb4c5481db014c69fb9118704b"
-
-      mapper
-        .attributesFromSupporterRatePlans(
-          identityId,
-          List(
-            ratePlanItem(staff),
-            ratePlanItem(friend),
-          ),
-        ) should beSome.which(_.Tier should beSome("Staff"))
-
-      mapper
-        .attributesFromSupporterRatePlans(
-          identityId,
-          List(
-            ratePlanItem(friend),
-            ratePlanItem(patron),
-            ratePlanItem(partner),
-          ),
-        ) should beSome.which(_.Tier should beSome("Patron"))
-
-      mapper
-        .attributesFromSupporterRatePlans(
-          identityId,
-          List(
-            ratePlanItem(staff),
-            ratePlanItem(supporter),
-            ratePlanItem(friend),
-          ),
-        ) should beSome.which(_.Tier should beSome("Supporter"))
-    }
-
     "handle an empty list of supporterProductRatePlanIds correctly" in {
       mapper
         .attributesFromSupporterRatePlans(
@@ -343,29 +327,32 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
     }
 
     "handle supporter with multiple products correctly" in {
+      val recurringContributionAcquisitionDate = LocalDate.parse("2024-02-29")
       mapper
         .attributesFromSupporterRatePlans(
           identityId,
           List(
             ratePlanItem("2c92a0f94c547592014c69f5b0ff4f7e"),
-            ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97"),
+            ratePlanItem("2c92a0fc5aacfadd015ad24db4ff5e97", termEndDate, recurringContributionAcquisitionDate),
             ratePlanItem("2c92a0fb4edd70c8014edeaa4eae220a"),
             ratePlanItem("2c92a00870ec598001710740d0d83017"),
             ratePlanItem("2c92a0fe6619b4b601661ab300222651"),
           ),
         ) should beSome(
         Attributes(
-          identityId,
-          Some("Supporter"),
-          Some("Monthly Contribution"),
-          None,
-          None,
-          None,
-          Some(termEndDate),
-          Some(termEndDate),
-          Some(termEndDate),
-          None,
-          None,
+          UserId = identityId,
+          Tier = Some("Supporter"),
+          RecurringContributionPaymentPlan = Some("Monthly Contribution"),
+          OneOffContributionDate = None,
+          MembershipJoinDate = None,
+          SupporterPlusExpiryDate = None,
+          GuardianAdLiteExpiryDate = None,
+          DigitalSubscriptionExpiryDate = Some(termEndDate),
+          PaperSubscriptionExpiryDate = Some(termEndDate),
+          GuardianWeeklySubscriptionExpiryDate = Some(termEndDate),
+          LiveAppSubscriptionExpiryDate = None,
+          GuardianPatronExpiryDate = None,
+          RecurringContributionAcquisitionDate = Some(recurringContributionAcquisitionDate),
         ),
       )
     }
@@ -453,8 +440,6 @@ object SupporterRatePlanToAttributesMapperTest {
     ("Everyday+", "2c92a0fd560d132301560e43cf041a3c"),
     ("Everyday+", "2c92a0ff56fe33f50157040bbdcf3ae4"),
     ("Fiveday", "2c92a0fd596d321a0159735a7b150e43"),
-    ("Friend", "2c92a0f9479fb46d0147d0155c6f558b"),
-    ("Friends", "2c92a0fb4ce4b8e7014ce711d3c37e60"),
     ("GW Oct 18 - 1 Year - Domestic", "2c92a0ff67cebd0d0167f0a1a834234e"),
     ("GW Oct 18 - 1 Year - ROW", "2c92a0ff67cebd140167f0a2f66a12eb"),
     ("GW Oct 18 - 3 Month - Domestic", "2c92a00e6dd988e2016df85387417498"),
@@ -504,7 +489,6 @@ object SupporterRatePlanToAttributesMapperTest {
     ("Sixday+", "2c92a00870ec598001710740c4582ead"),
     ("Sixday+", "2c92a0fc56fe26ba0157040c5ea17f6a"),
     ("Sixday+", "2c92a0ff560d311b0156136b697438a9"),
-    ("Staff - monthly", "2c92a0f949efde7c0149f1f18162178e"),
     ("Sunday", "2c92a00870ec598001710740d0d83017"),
     ("Sunday", "2c92a0fe5af9a6b9015b0fe1ecc0116c"),
     ("Sunday", "2c92a0ff5af9b657015b0fea5b653f81"),

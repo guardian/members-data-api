@@ -1,26 +1,27 @@
 package models
 
 import com.github.nscala_time.time.OrderingImplicits._
+import json._
+import models.FeastApp.{getFeastAndroidOfferTags, getFeastIosSubscriptionGroup}
 import org.joda.time.LocalDate
 import org.joda.time.LocalDate.now
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.mvc.Result
-import play.api.mvc.Results.Ok
-import json.localDateWrites
-import scala.language.implicitConversions
 import scalaz.syntax.std.boolean._
-import json._
+
+import scala.language.implicitConversions
 
 case class ContentAccess(
     member: Boolean,
     paidMember: Boolean,
     recurringContributor: Boolean,
     supporterPlus: Boolean,
+    feast: Boolean,
     digitalPack: Boolean,
     paperSubscriber: Boolean,
     guardianWeeklySubscriber: Boolean,
     guardianPatron: Boolean,
+    guardianAdLite: Boolean,
 )
 
 object ContentAccess {
@@ -41,13 +42,13 @@ case class Attributes(
     LiveAppSubscriptionExpiryDate: Option[LocalDate] = None,
     GuardianPatronExpiryDate: Option[LocalDate] = None,
     AlertAvailableFor: Option[String] = None,
+    RecurringContributionAcquisitionDate: Option[LocalDate] = None,
+    GuardianAdLiteExpiryDate: Option[LocalDate] = None,
 ) {
-  lazy val isFriendTier = Tier.exists(_.equalsIgnoreCase("friend"))
   lazy val isSupporterTier = Tier.exists(_.equalsIgnoreCase("supporter"))
   lazy val isPartnerTier = Tier.exists(_.equalsIgnoreCase("partner"))
   lazy val isPatronTier = Tier.exists(_.equalsIgnoreCase("patron"))
-  lazy val isStaffTier = Tier.exists(_.equalsIgnoreCase("staff"))
-  lazy val isPaidTier = isSupporterTier || isPartnerTier || isPatronTier || isStaffTier
+  lazy val isPaidTier: Boolean = isSupporterTier || isPartnerTier || isPatronTier
   lazy val isRecurringContributor = RecurringContributionPaymentPlan.isDefined
   lazy val isRecentOneOffContributor = OneOffContributionDate.exists(_.isAfter(now.minusMonths(3)))
   lazy val isSupporterPlus = SupporterPlusExpiryDate.exists(_.isAfter(now))
@@ -59,9 +60,10 @@ case class Attributes(
   lazy val isGuardianWeeklySubscriber = GuardianWeeklySubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isPremiumLiveAppSubscriber = LiveAppSubscriptionExpiryDate.exists(_.isAfter(now))
   lazy val isGuardianPatron = GuardianPatronExpiryDate.exists(_.isAfter(now))
+  lazy val isGuardianAdLite = GuardianAdLiteExpiryDate.exists(_.isAfter(now))
 
   lazy val contentAccess = ContentAccess(
-    member = isPaidTier || isFriendTier,
+    member = isPaidTier,
     paidMember = isPaidTier,
     recurringContributor = isRecurringContributor,
     supporterPlus = isSupporterPlus,
@@ -69,6 +71,8 @@ case class Attributes(
     paperSubscriber = isPaperSubscriber,
     guardianWeeklySubscriber = isGuardianWeeklySubscriber,
     guardianPatron = isGuardianPatron,
+    feast = FeastApp.shouldGetFeastAccess(this),
+    guardianAdLite = isGuardianAdLite,
   )
 
   // show support messaging (in app & on dotcom) if they do NOT have any active products
@@ -82,7 +86,6 @@ case class Attributes(
       || isPaperSubscriber
       || isGuardianWeeklySubscriber
       || isPremiumLiveAppSubscriber
-      || isGuardianPatron
   )
 
 }
@@ -101,10 +104,14 @@ object Attributes {
       (__ \ "guardianWeeklyExpiryDate").writeNullable[LocalDate] and
       (__ \ "liveAppSubscriptionExpiryDate").writeNullable[LocalDate] and
       (__ \ "guardianPatronExpiryDate").writeNullable[LocalDate] and
-      (__ \ "alertAvailableFor").writeNullable[String]
+      (__ \ "alertAvailableFor").writeNullable[String] and
+      (__ \ "recurringContributionAcquisitionDate").writeNullable[LocalDate] and
+      (__ \ "guardianAdLiteExpiryDate").writeNullable[LocalDate]
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("showSupportMessaging", _.showSupportMessaging)
+    .addNullableField("feastIosSubscriptionGroup", getFeastIosSubscriptionGroup)
+    .addNullableField("feastAndroidOfferTags", getFeastAndroidOfferTags)
     .addField("contentAccess", _.contentAccess)
 }
 

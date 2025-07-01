@@ -3,20 +3,18 @@ package monitoring
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.filter.Filter
 import ch.qos.logback.core.spi.FilterReply
+import com.gu.monitoring.{SafeLogger, SafeLogging}
 import configuration.SentryConfig
 import io.sentry.Sentry
-import monitoring.SentryLogging.SanitizedLogMessage
-import utils.SanitizedLogging
-import utils.Sanitizer.Sanitizer
 
 import scala.util.{Failure, Success, Try}
 
-object SentryLogging extends SanitizedLogging {
+object SentryLogging extends SafeLogging {
   def init(config: SentryConfig): Unit = {
     config.sentryDsn match {
-      case None => logger.warn("No Sentry logging configured (OK for dev)")
+      case None => logger.warnNoPrefix("No Sentry logging configured (OK for dev)")
       case Some(sentryDSN) =>
-        logger.info(s"Initialising Sentry logging")
+        logger.infoNoPrefix(s"Initialising Sentry logging")
         Try {
           Sentry.init(sentryDSN)
           val buildInfo: Map[String, String] = app.BuildInfo.toMap.view.mapValues(_.toString).toMap
@@ -26,7 +24,7 @@ object SentryLogging extends SanitizedLogging {
           }
         } match {
           case Success(_) => logger.debug("Sentry logging configured.")
-          case Failure(e) => logError(scrub"Something went wrong when setting up Sentry logging ${e.getStackTrace}")
+          case Failure(e) => logger.errorNoPrefix(scrub"Something went wrong when setting up Sentry logging ${e.getStackTrace}")
         }
     }
 
@@ -34,6 +32,6 @@ object SentryLogging extends SanitizedLogging {
 }
 
 class PiiFilter extends Filter[ILoggingEvent] {
-  override def decide(event: ILoggingEvent): FilterReply = if (event.getMarker.contains(SanitizedLogMessage)) FilterReply.ACCEPT
+  override def decide(event: ILoggingEvent): FilterReply = if (event.getMarker.contains(SafeLogger.sanitizedLogMessage)) FilterReply.ACCEPT
   else FilterReply.DENY
 }

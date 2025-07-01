@@ -2,10 +2,10 @@ package monitoring
 
 import com.amazonaws.handlers.AsyncHandler
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
-import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResult, StandardUnit}
-import com.typesafe.scalalogging.StrictLogging
+import com.amazonaws.services.cloudwatch.model._
+import com.gu.monitoring.SafeLogging
 
-class CloudWatch(stage: String, application: String, service: String, cloudwatch: AmazonCloudWatchAsync) extends StrictLogging {
+class CloudWatch(stage: String, application: String, service: String, cloudwatch: AmazonCloudWatchAsync) extends SafeLogging {
   private lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
   private lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
 
@@ -25,12 +25,12 @@ class CloudWatch(stage: String, application: String, service: String, cloudwatch
   }
 }
 
-object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with StrictLogging {
+object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with SafeLogging {
   def onError(exception: Exception): Unit = {
-    logger.error(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
+    logger.errorNoPrefix(scrub"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
   }
 
   def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult): Unit = {
-    logger.trace("CloudWatch PutMetricDataRequest - success")
+    logger.debug("CloudWatch PutMetricDataRequest - success")
   }
 }

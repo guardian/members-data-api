@@ -2,9 +2,10 @@ package actions
 import org.apache.pekko.stream.Materializer
 import com.gu.identity.RedirectAdviceResponse
 import com.gu.identity.auth.AccessScope
+import com.gu.monitoring.SafeLogger.LogPrefix
 import components.{TouchpointBackends, TouchpointComponents}
 import controllers.NoCache
-import filters.IsTestUser
+import filters.TestUserChecker
 import models.UserFromToken
 import play.api.mvc._
 
@@ -14,7 +15,7 @@ sealed trait HowToHandleRecencyOfSignedIn
 case object Return401IfNotSignedInRecently extends HowToHandleRecencyOfSignedIn
 case object ContinueRegardlessOfSignInRecency extends HowToHandleRecencyOfSignedIn
 
-class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent], isTestUser: IsTestUser)(implicit
+class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyParser[AnyContent], testUserChecker: TestUserChecker)(implicit
     ex: ExecutionContext,
     mat: Materializer,
 ) {
@@ -24,13 +25,13 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
 
   // TODO: Might need a better name as authoriseForRecentLogin checks for recency and scopes
   def AuthorizeForScopes(requiredScopes: List[AccessScope]): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
-    NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
+    NoCacheAction andThen new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, testUserChecker)
 
   def AuthorizeForRecentLogin(
       howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
       requiredScopes: List[AccessScope],
   ): ActionBuilder[AuthAndBackendRequest, AnyContent] =
-    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes)
+    NoCacheAction andThen new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, testUserChecker, requiredScopes)
 
   // TODO: Is this redundant, given that authoriseForRecentLogin checks for recency and scopes?
   def AuthorizeForRecentLoginAndScopes(
@@ -38,8 +39,8 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
       requiredScopes: List[AccessScope],
   ): ActionBuilder[AuthenticatedUserAndBackendRequest, AnyContent] =
     NoCacheAction andThen
-      new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, isTestUser, requiredScopes) andThen
-      new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, isTestUser)
+      new AuthAndBackendViaIdapiAction(touchpointBackends, howToHandleRecencyOfSignedIn, testUserChecker, requiredScopes) andThen
+      new AuthAndBackendViaAuthLibAction(touchpointBackends, requiredScopes, testUserChecker)
 
   private def resultModifier(f: Result => Result) = new ActionBuilder[Request, AnyContent] {
     override val parser = bodyParser
@@ -52,10 +53,14 @@ class AuthenticatedUserAndBackendRequest[A](
     val user: UserFromToken,
     val touchpoint: TouchpointComponents,
     val request: Request[A],
-) extends WrappedRequest[A](request)
+) extends WrappedRequest[A](request) {
+  implicit val logPrefix: LogPrefix = user.logPrefix
+}
 
 class AuthAndBackendRequest[A](
     val redirectAdvice: RedirectAdviceResponse,
     val touchpoint: TouchpointComponents,
     request: Request[A],
-) extends WrappedRequest[A](request)
+) extends WrappedRequest[A](request) {
+  implicit val logPrefix: LogPrefix = LogPrefix(redirectAdvice.userId.getOrElse("no-identity-id"))
+}

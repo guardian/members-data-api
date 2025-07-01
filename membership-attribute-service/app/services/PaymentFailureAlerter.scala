@@ -1,13 +1,12 @@
 package services
 
 import com.gu.memsub.Product
+import com.gu.memsub.Product.{Contribution, Membership}
 import com.gu.memsub.Subscription.AccountId
-import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
-import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
+import com.gu.memsub.subsv2.{Catalog, Subscription}
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import com.gu.zuora.api.{RegionalStripeGateways, StripeAUMembershipGateway, StripeUKMembershipGateway}
-import com.typesafe.scalalogging.StrictLogging
-import loghandling.LoggingField.LogFieldString
-import loghandling.LoggingWithLogstashFields
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import scalaz.syntax.std.boolean._
@@ -16,7 +15,7 @@ import services.zuora.rest.ZuoraRestService.{AccountObject, AccountSummary, Invo
 import java.util.Locale
 import scala.concurrent.{ExecutionContext, Future}
 
-object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLogging {
+object PaymentFailureAlerter extends SafeLogging {
 
   private def accountObject(accountSummary: AccountSummary) =
     AccountObject(
@@ -39,9 +38,10 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
 
   def alertText(
       accountSummary: AccountSummary,
-      subscription: Subscription[AnyPlan],
+      subscription: Subscription,
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
-  )(implicit ec: ExecutionContext): Future[Option[String]] = {
+      catalog: Catalog,
+  )(implicit ec: ExecutionContext, logPrefix: LogPrefix): Future[Option[String]] = {
 
     def expectedAlertText: Future[Option[String]] = {
       val formatter = DateTimeFormat.forPattern("d MMMM yyyy").withLocale(Locale.ENGLISH)
@@ -54,30 +54,21 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
         case None => Future.successful(None)
       }
 
-      def getProductDescription(subscription: Subscription[SubscriptionPlan.AnyPlan]) = if (subscription.asMembership.isDefined) {
-        s"${subscription.plan.productName} membership"
-      } else if (subscription.asContribution.isDefined) {
-        "contribution"
-      } else {
-        subscription.plan.productName
-      }
-
-      def customFields(identityId: Option[String], paymentFailedDate: String, productName: String): List[LogFieldString] = {
-        val logFields = List(LogFieldString("payment_failed_date", paymentFailedDate), LogFieldString("product_name", productName))
-        identityId match {
-          case Some(id) => LogFieldString("identity_id", id) :: logFields
-          case None => logFields
+      def getProductDescription(subscription: Subscription) =
+        if (subscription.ratePlans.head.product(catalog) == Membership) {
+          s"${subscription.plan(catalog).productName} membership"
+        } else if (subscription.ratePlans.head.product(catalog) == Contribution) {
+          "contribution"
+        } else {
+          subscription.plan(catalog).productName
         }
-      }
+
       maybePaymentMethodLatestDate map { maybeDate: Option[DateTime] =>
         maybeDate map { latestDate: DateTime =>
           val productDescription = getProductDescription(subscription)
-          val productName = subscription.plan.productName
 
-          val fields = customFields(accountSummary.identityId, latestDate.toString(formatter), productName)
-          logInfoWithCustomFields(
+          logger.info(
             s"Logging an alert for identityId: ${accountSummary.identityId} accountId: ${accountSummary.id}. Payment failed on ${latestDate.toString(formatter)}",
-            fields,
           )
 
           s"Our attempt to take payment for your $productDescription failed on ${latestDate.toString(formatter)}."
@@ -85,7 +76,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
       }
     }
 
-    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter) flatMap { shouldShowAlert: Boolean =>
+    alertAvailableFor(accountObject(accountSummary), subscription, paymentMethodGetter, catalog) flatMap { shouldShowAlert: Boolean =>
       expectedAlertText.map { someText => shouldShowAlert.option(someText).flatten }
     }
   }
@@ -94,10 +85,11 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
 
   def alertAvailableFor(
       account: AccountObject,
-      subscription: Subscription[AnyPlan],
+      subscription: Subscription,
       paymentMethodGetter: PaymentMethodId => Future[Either[String, PaymentMethodResponse]],
+      catalog: Catalog,
   )(implicit ec: ExecutionContext): Future[Boolean] = {
-    def isAlertableProduct = !nonAlertableProducts.contains(subscription.plan.product)
+    def isAlertableProduct = !nonAlertableProducts.contains(subscription.plan(catalog).product(catalog))
 
     def creditCard(paymentMethodResponse: PaymentMethodResponse) =
       paymentMethodResponse.paymentMethodType == "CreditCardReferenceTransaction" || paymentMethodResponse.paymentMethodType == "CreditCard"
@@ -140,7 +132,9 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
     nonZeroInvoicesOlderThanOneMonth.sortBy(_.invoiceDate).take(2)
   }
 
-  def accountHasMissedPayments(accountId: AccountId, recentInvoices: List[Invoice], recentPayments: List[Payment]): Boolean = {
+  def accountHasMissedPayments(accountId: AccountId, recentInvoices: List[Invoice], recentPayments: List[Payment])(implicit
+      logPrefix: LogPrefix,
+  ): Boolean = {
     val paidInvoiceNumbers = recentPayments.filter(_.status == "Processed").flatMap(_.paidInvoices).map(_.invoiceNumber)
     val unpaidPayableInvoiceOlderThanOneMonth = mostRecentPayableInvoicesOlderThanOneMonth(recentInvoices) match {
       case Nil => false
@@ -150,7 +144,7 @@ object PaymentFailureAlerter extends LoggingWithLogstashFields with StrictLoggin
     unpaidPayableInvoiceOlderThanOneMonth
   }
 
-  def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice]): Boolean = {
+  def safeToAllowPaymentUpdate(accountId: AccountId, recentInvoices: List[Invoice])(implicit logPrefix: LogPrefix): Boolean = {
     val result = !recentInvoices.exists(invoice => invoice.balance > 0 && invoice.invoiceDate.isBefore(DateTime.now.minusMonths(1)))
     logger.info(s"${accountId.get} | safeToAllowPaymentUpdate: ${result}")
     result

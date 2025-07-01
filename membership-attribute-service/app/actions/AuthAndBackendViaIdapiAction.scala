@@ -2,8 +2,9 @@ package actions
 
 import com.gu.identity.auth.{AccessScope, IdapiUserCredentials, OktaUserCredentials}
 import com.gu.identity.{IdapiService, RedirectAdviceResponse, SignedInRecently}
+import com.gu.monitoring.SafeLogger.LogPrefix
 import components.{TouchpointBackends, TouchpointComponents}
-import filters.IsTestUser
+import filters.TestUserChecker
 import models.{ApiError, UserFromToken}
 import play.api.mvc.{ActionRefiner, Request, Result, Results}
 import services.UserAndCredentials
@@ -13,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class AuthAndBackendViaIdapiAction(
     touchpointBackends: TouchpointBackends,
     howToHandleRecencyOfSignedIn: HowToHandleRecencyOfSignedIn,
-    isTestUser: IsTestUser,
+    testUserChecker: TestUserChecker,
     requiredScopes: List[AccessScope],
 )(implicit
     ex: ExecutionContext,
@@ -26,12 +27,14 @@ class AuthAndBackendViaIdapiAction(
     userAndCredentials flatMap {
       case Left(error) => Future.successful(Left(ApiError.apiErrorToResult(error)))
       case Right(UserAndCredentials(user, _: OktaUserCredentials)) => Future.successful(Right(oktaRefine(request, user)))
-      case Right(UserAndCredentials(_, _: IdapiUserCredentials)) => idapiRefine(request)
+      case Right(UserAndCredentials(user, _: IdapiUserCredentials)) =>
+        implicit val logPrefix: LogPrefix = user.logPrefix
+        idapiRefine(request, user.primaryEmailAddress)
     }
   }
 
-  private def backend(displayName: Option[String]): TouchpointComponents =
-    if (isTestUser(displayName)) {
+  private def backend(primaryEmailAddress: String)(implicit logPrefix: LogPrefix): TouchpointComponents =
+    if (testUserChecker.isTestUser(primaryEmailAddress)) {
       touchpointBackends.test
     } else {
       touchpointBackends.normal
@@ -47,11 +50,13 @@ class AuthAndBackendViaIdapiAction(
         // Okta reauthentication redirect will be managed by the API client
         redirect = None,
       ),
-      touchpoint = backend(user.username),
+      touchpoint = backend(user.primaryEmailAddress)(user.logPrefix),
       request,
     )
 
-  private def idapiRefine[A](request: Request[A]): Future[Either[Result, AuthAndBackendRequest[A]]] =
+  private def idapiRefine[A](request: Request[A], primaryEmailAddress: String)(implicit
+      logPrefix: LogPrefix,
+  ): Future[Either[Result, AuthAndBackendRequest[A]]] =
     touchpointBackends.normal.idapiService.RedirectAdvice
       .getRedirectAdvice(
         request.headers.get(IdapiService.HeaderNameCookie).getOrElse(""),
@@ -62,7 +67,7 @@ class AuthAndBackendViaIdapiAction(
           case Return401IfNotSignedInRecently if redirectAdvice.signInStatus != SignedInRecently =>
             Left(Results.Unauthorized.withHeaders(("X-GU-IDAPI-Redirect", redirectAdvice.redirect.map(_.url).getOrElse(""))))
           case _ =>
-            val backendConf = backend(redirectAdvice.displayName)
+            val backendConf = backend(primaryEmailAddress)
             Right(new AuthAndBackendRequest[A](redirectAdvice, backendConf, request))
         },
       )

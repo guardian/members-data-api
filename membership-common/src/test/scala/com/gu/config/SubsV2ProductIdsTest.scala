@@ -11,8 +11,8 @@ class SubsV2ProductIdsTest extends Specification {
       val dev = ConfigFactory.parseResources("touchpoint.CODE.conf")
       val prod = ConfigFactory.parseResources("touchpoint.PROD.conf")
 
-      SubsV2ProductIds(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
-      SubsV2ProductIds(prod.getConfig("touchpoint.backend.environments.PROD.zuora.productIds"))
+      SubsV2ProductIds.load(dev.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
+      SubsV2ProductIds.load(prod.getConfig("touchpoint.backend.environments.PROD.zuora.productIds"))
       done
     }
   }

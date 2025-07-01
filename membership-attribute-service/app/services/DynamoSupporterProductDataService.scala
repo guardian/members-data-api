@@ -1,7 +1,8 @@
 package services
 
 import com.gu.i18n.Currency
-import com.typesafe.scalalogging.LazyLogging
+import com.gu.monitoring.SafeLogger.LogPrefix
+import com.gu.monitoring.SafeLogging
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import monitoring.CreateMetrics
 import org.joda.time.{DateTimeZone, LocalDate}
@@ -17,21 +18,15 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait SupporterProductDataService {
-  def getNonCancelledAttributes(identityId: String): Future[Either[String, Option[Attributes]]]
-  def getSupporterRatePlanItems(identityId: String): SimpleEitherT[List[DynamoSupporterRatePlanItem]]
-}
-
-class DynamoSupporterProductDataService(
+class SupporterProductDataService(
     client: DynamoDbAsyncClient,
     table: String,
     mapper: SupporterRatePlanToAttributesMapper,
     createMetrics: CreateMetrics,
 )(implicit
     executionContext: ExecutionContext,
-) extends SupporterProductDataService
-    with LazyLogging {
-  val metrics = createMetrics.forService(classOf[SupporterProductDataService]) // referenced in CloudFormation
+) extends SafeLogging {
+  val metrics = createMetrics.forService(classOf[SupporterProductDataService]) // class name referenced in CloudFormation(!)
 
   implicit val jodaStringFormat: DynamoFormat[LocalDate] =
     DynamoFormat.coercedXmap[LocalDate, String, IllegalArgumentException](LocalDate.parse, _.toString)
@@ -39,14 +34,14 @@ class DynamoSupporterProductDataService(
     DynamoFormat.xmap[Currency, String](s => Currency.fromString(s).toRight(TypeCoercionError(new Throwable("Invalid currency"))), _.iso)
   implicit val dynamoSupporterRatePlanItem: DynamoFormat[DynamoSupporterRatePlanItem] = deriveDynamoFormat
 
-  def getNonCancelledAttributes(identityId: String): Future[Either[String, Option[Attributes]]] = {
+  def getNonCancelledAttributes(identityId: String)(implicit logPrefix: LogPrefix): Future[Either[String, Option[Attributes]]] = {
     getSupporterRatePlanItems(identityId).map { ratePlanItems =>
       val nonCancelled = ratePlanItems.filter(item => !item.cancellationDate.exists(_.isBefore(LocalDate.now(DateTimeZone.UTC))))
       mapper.attributesFromSupporterRatePlans(identityId, nonCancelled)
     }.toEither
   }
 
-  def getSupporterRatePlanItems(identityId: String): SimpleEitherT[List[DynamoSupporterRatePlanItem]] = {
+  def getSupporterRatePlanItems(identityId: String)(implicit logPrefix: LogPrefix): SimpleEitherT[List[DynamoSupporterRatePlanItem]] = {
     EitherT(
       for {
         futureDynamoResult <- getSupporterRatePlanItemsWithReadErrors(identityId)
@@ -71,9 +66,9 @@ class DynamoSupporterProductDataService(
         .query("identityId" === identityId)
     }
 
-  private def alertOnDynamoReadErrors(identityId: String, errors: List[DynamoReadError]) =
+  private def alertOnDynamoReadErrors(identityId: String, errors: List[DynamoReadError])(implicit logPrefix: LogPrefix) =
     if (errors.nonEmpty) {
-      logger.error(errorMessage(identityId, errors))
+      logger.error(scrub"${errorMessage(identityId, errors)}")
       metrics.incrementCount("SupporterProductDataDynamoError") // referenced in CloudFormation
     }
 }

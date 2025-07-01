@@ -1,41 +1,26 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import com.gu.memsub
-import com.gu.memsub.{Benefit, BillingPeriod, Product}
-import com.gu.memsub.Product.Membership
-import com.gu.memsub.Subscription.{Feature, ProductRatePlanId, RatePlanId}
-import com.gu.memsub.subsv2.{PaidChargeList, PaidSubscriptionPlan}
+import com.gu.memsub.Subscription.{ProductRatePlanId, RatePlanId}
+import com.gu.memsub.subsv2.{RatePlan, RatePlanCharge}
+import com.gu.zuora.rest.Feature
 import org.joda.time.LocalDate
-
-import java.time.Month
+import scalaz.NonEmptyList
 
 object TestPaidSubscriptionPlan {
-  def apply[P <: Product, C <: PaidChargeList](
+  def apply(
       id: RatePlanId = RatePlanId(randomId("ratePlan")),
       productRatePlanId: ProductRatePlanId = ProductRatePlanId(randomId("productRatePlan")),
-      name: String = randomId("paidSubscriptionPlanName"),
-      description: String = randomId("paidSubscriptionPlanDescription"),
       productName: String = randomId("paidSubscriptionPlanProductName"),
-      productType: String = randomId("paidSubscriptionPlanProductType"),
-      product: P = Membership,
+      lastChangeType: Option[String] = None,
       features: List[Feature] = Nil,
-      charges: C = TestPaidCharge(),
-      chargedThrough: Option[LocalDate] = None, // this is None if the sub hasn't been billed yet (on a free trial)
-      start: LocalDate = LocalDate.now().minusDays(13),
-      end: LocalDate = LocalDate.now().minusDays(13).plusYears(1),
-  ): PaidSubscriptionPlan[P, C] = PaidSubscriptionPlan(
+      charges: NonEmptyList[RatePlanCharge] = NonEmptyList(TestSingleCharge()),
+  ): RatePlan = RatePlan(
     id: RatePlanId,
     productRatePlanId,
-    name,
-    description,
     productName,
-    productType,
-    product,
+    lastChangeType,
     features,
     charges,
-    chargedThrough,
-    start,
-    end: LocalDate,
   )
 }

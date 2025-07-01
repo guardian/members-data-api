@@ -5,5 +5,5 @@ import com.typesafe.config.ConfigFactory
 
 object Fixtures {
   lazy val config = ConfigFactory.parseResources("touchpoint.CODE.conf")
-  lazy val productIds = SubsV2ProductIds(config.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
+  lazy val productIds = SubsV2ProductIds.load(config.getConfig("touchpoint.backend.environments.CODE.zuora.productIds"))
 }
