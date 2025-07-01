@@ -26,8 +26,8 @@ case class Subscription(
 
   val firstPaymentDate: LocalDate = (customerAcceptanceDate :: ratePlans.map(_.effectiveStartDate)).min
 
-  def plan(catalog: Catalog): RatePlan =
-    GetCurrentPlans.currentPlans(this, LocalDate.now, catalog).fold(error => throw new RuntimeException(error), _.head)
+  def plan(catalog: Catalog, date: LocalDate = LocalDate.now): RatePlan =
+    GetCurrentPlans.currentPlans(this, date, catalog).fold(error => throw new RuntimeException(error), _.head)
 
 }
 
@@ -81,7 +81,7 @@ object GetCurrentPlans {
         digipackGiftEnded(_ => sub.termEndDate >= dateToCheck)
       else
         paidPlanEnded(_ => {
-          val inGracePeriodAndNotCancelled = plan.effectiveEndDate == dateToCheck && !sub.isCancelled
+          val inGracePeriodAndNotCancelled = plan.effectiveEndDate == dateToCheck && !sub.isCancelled && !plan.lastChangeType.contains("Remove")
           plan.effectiveEndDate > dateToCheck || inGracePeriodAndNotCancelled
         })
     }

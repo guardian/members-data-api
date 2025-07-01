@@ -241,7 +241,7 @@ object PlanWithCreditsTestData {
     upToPeriodsType = None,
     chargedThroughDate = Some(28 Jul 2024),
     effectiveStartDate = 28 Jun 2024,
-    effectiveEndDate = 13 Jun 2025,
+    effectiveEndDate = 13 Jun 2099,
   )
   private val sPlusCharge = RatePlanCharge(
     id = SubscriptionRatePlanChargeId("8ad093fb90a5fb8c0190bdfd67d862b0"),
@@ -253,7 +253,7 @@ object PlanWithCreditsTestData {
     upToPeriodsType = None,
     chargedThroughDate = Some(28 Jul 2024),
     effectiveStartDate = 28 Jun 2024,
-    effectiveEndDate = 13 Jun 2025,
+    effectiveEndDate = 13 Jun 2099,
   )
   val mainPlan = subsv2.RatePlan(
     id = RatePlanId("8ad093fb90a5fb8c0190bdfd67d662ac"),

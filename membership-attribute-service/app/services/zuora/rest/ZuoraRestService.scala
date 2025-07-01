@@ -317,7 +317,7 @@ object ZuoraRestService {
     __.read[String].map(Currency.fromString)
 
   implicit val billToContactReads: Reads[BillToContact] = (
-    (JsPath \ "workEmail").readNullable[String].filter(_ != "") and
+    (JsPath \ "workEmail").readNullable[String].map(_.filter(_.nonEmpty)) and
       (JsPath \ "country").read[String].map(ZuoraLookup.country)
   )(BillToContact.apply _)
 

@@ -13,6 +13,7 @@ case class TouchpointBackendConfig(
     stripePatrons: BasicStripeServiceConfig,
     stripeUKMembership: StripeServiceConfig,
     stripeAUMembership: StripeServiceConfig,
+    stripeTortoiseMedia: StripeServiceConfig,
     zuoraSoap: ZuoraSoapConfig,
     zuoraRest: ZuoraRestConfig,
     idapi: IdapiConfig,
@@ -29,6 +30,7 @@ object TouchpointBackendConfig extends SafeLogging {
       BasicStripeServiceConfig.from(envBackendConf, "patrons"),
       StripeServiceConfig.from(envBackendConf, environmentName, Country.UK), // uk-membership
       StripeServiceConfig.from(envBackendConf, environmentName, Country.Australia, variant = "au-membership"),
+      StripeServiceConfig.from(envBackendConf, environmentName, Country.UK, variant = "tortoise-media"), // tortoise-media
       ZuoraApiConfig.soap(envBackendConf, environmentName),
       ZuoraApiConfig.rest(envBackendConf, environmentName),
       IdapiConfig.from(envBackendConf, environmentName),

@@ -111,8 +111,8 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |    "email" : "test@thegulocal.com"
         |  },
         |  "products" : [ {
-        |    "mmaCategory" : "recurringSupport",
         |    "tier" : "Supporter Plus",
+        |    "mmaProductKey" : "Supporter Plus",
         |    "isPaidTier" : true,
         |    "selfServiceCancellation" : {
         |      "isAllowed" : true,
@@ -164,6 +164,8 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |        "billingPeriod" : "month"
         |      },
         |      "currentPlans" : [ {
+        |        "tier": "Supporter Plus",
+        |        "mmaProductKey": "Supporter Plus",
         |        "name" : null,
         |        "start" : "2024-05-15",
         |        "end" : "2025-05-15",
@@ -183,7 +185,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |  } ]
         }""".stripMargin)
       val user = UserFromToken("test@thegulocal.com", "12345", None, None, None, None, None)
-      val productsResponseWrites = new ProductsResponseWrites(catalog)
+      val productsResponseWrites = new ProductsResponseWrites(catalog, LocalDate.parse("2025-01-01"))
       import productsResponseWrites.writes
       val productsResponseJson = Json.toJson(productsResponseWrites.from(user, List(accountDetails)))
       productsResponseJson mustEqual expectedResponse
@@ -309,8 +311,8 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |  },
         |  "products": [
         |    {
-        |      "mmaCategory": "subscriptions",
         |      "tier": "$productName",
+        |      "mmaProductKey": "$productName",
         |      "isPaidTier": true,
         |      "selfServiceCancellation": {
         |        "isAllowed": true,
@@ -366,6 +368,8 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |          "billingPeriod": "$month"
         |        },
         |        "currentPlans" : [ {
+        |          "tier": "$productName",
+        |          "mmaProductKey": "$productName",
         |          "name" : null,
         |          "start" : "$startDate",
         |          "end" : "$endDate",
@@ -387,7 +391,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         }""".stripMargin)
 
       val user = UserFromToken(email, identityId, None, None, None, None, None)
-      val productsResponseWrites = new ProductsResponseWrites(catalog)
+      val productsResponseWrites = new ProductsResponseWrites(catalog, LocalDate.parse("2025-01-01"))
       import productsResponseWrites.writes
       val productsResponseJson = Json.toJson(productsResponseWrites.from(user, List(accountDetails)))
       productsResponseJson mustEqual expectedResponse

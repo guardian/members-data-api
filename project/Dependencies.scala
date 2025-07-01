@@ -27,8 +27,7 @@ object Dependencies {
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.37" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.5.17"
 
-  val jacksonVersion = "2.15.4"
-  val jacksonDatabindVersion = "2.15.4"
+  val jacksonVersion = "2.15.4"=
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.11"
   val jackson = Seq(
@@ -36,7 +35,7 @@ object Dependencies {
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
     "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonVersion,
     "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonVersion,
-    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion,
+    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
     "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonVersion,
     "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
