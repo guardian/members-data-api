@@ -112,6 +112,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |  },
         |  "products" : [ {
         |    "tier" : "Supporter Plus",
+        |    "mmaProductKey" : "Supporter Plus",
         |    "isPaidTier" : true,
         |    "selfServiceCancellation" : {
         |      "isAllowed" : true,
@@ -164,6 +165,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |      },
         |      "currentPlans" : [ {
         |        "tier": "Supporter Plus",
+        |        "mmaProductKey": "Supporter Plus",
         |        "name" : null,
         |        "start" : "2024-05-15",
         |        "end" : "2025-05-15",
@@ -310,6 +312,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |  "products": [
         |    {
         |      "tier": "$productName",
+        |      "mmaProductKey": "$productName",
         |      "isPaidTier": true,
         |      "selfServiceCancellation": {
         |        "isAllowed": true,
@@ -366,6 +369,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |        },
         |        "currentPlans" : [ {
         |          "tier": "$productName",
+        |          "mmaProductKey": "$productName",
         |          "name" : null,
         |          "start" : "$startDate",
         |          "end" : "$endDate",

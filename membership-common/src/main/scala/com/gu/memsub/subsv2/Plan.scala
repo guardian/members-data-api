@@ -224,6 +224,14 @@ case class RatePlan(
   def productType(catalog: Catalog): ProductType =
     productRatePlan(catalog).productType
 
+  def getChargeTypes(catalog: Catalog): List[ProductRatePlanChargeProductType] = {
+    val getChargeProductType = catalog.productRatePlans(productRatePlanId).productRatePlanCharges
+    ratePlanCharges.list.toList
+      .map(_.productRatePlanChargeId)
+      .map(getChargeProductType)
+      .distinct
+  }
+
 }
 
 /** Low level model of a product rate plan, as it appears in the Zuora product catalog

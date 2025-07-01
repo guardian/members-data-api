@@ -31,6 +31,7 @@ object TestCatalog {
   val digipackPrpId = ProductRatePlanId("2c92c0f94f2acf73014f2c908f671591")
   val gw6for6PrpId = ProductRatePlanId("2c92c0f965f212210165f69b94c92d66")
   val homeDeliveryPrpId = ProductRatePlanId("homedelPRPid")
+  val homeDeliveryPlusPrpId = ProductRatePlanId("homedelPlusPRPid")
   val gw = ProductRatePlanId("2c92c0f965dc30640165f150c0956859")
   val discountPrpId = ProductRatePlanId("2c92c0f96b03800b016b081fc04f1ba2")
   val now = 27 Sep 2016
@@ -42,6 +43,9 @@ object TestCatalog {
     val tierThreeDigitalId = ProductRatePlanChargeId("tierthreedigiPRPCid")
     val tierThreeGWId = ProductRatePlanChargeId("tierthreeGWprpcID")
     val guardianAdLiteChargeId = ProductRatePlanChargeId("8a1285e294443da501944b04cb9d2ca0")
+    val homeDeliveryPlusChargeId: ProductRatePlanChargeId = ProductRatePlanChargeId("homedelchargedpID")
+    val homeDelMondayCharge: ProductRatePlanChargeId = ProductRatePlanChargeId("homedelchargemondayID")
+
   }
   import ProductRatePlanChargeIds._
 
@@ -121,7 +125,17 @@ object TestCatalog {
       homeDeliveryPrpId,
       "Newspaper - Home Delivery",
       idForProduct(Product.Delivery),
-      Map(ProductRatePlanChargeId("homedelchargeID") -> MondayPaper),
+      Map(homeDelMondayCharge -> MondayPaper),
+      Some(ProductType("Newspaper - Home Delivery")),
+    ),
+    homeDeliveryPlusPrpId -> ProductRatePlan(
+      homeDeliveryPlusPrpId,
+      "Newspaper - Home Delivery",
+      idForProduct(Product.Delivery),
+      Map(
+        homeDelMondayCharge -> MondayPaper,
+        homeDeliveryPlusChargeId -> Digipack,
+      ),
       Some(ProductType("Newspaper - Home Delivery")),
     ),
     contributorPrpId -> ProductRatePlan(

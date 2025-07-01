@@ -16,10 +16,10 @@
   "serviceActivationDate": "2024-06-13",
   "customerAcceptanceDate": "2024-06-28",
   "subscriptionStartDate": "2024-06-13",
-  "subscriptionEndDate": "2025-06-13",
+  "subscriptionEndDate": "2099-06-13",
   "lastBookingDate": "2024-07-17",
   "termStartDate": "2024-06-13",
-  "termEndDate": "2025-06-13",
+  "termEndDate": "2099-06-13",
   "initialTerm": 12,
   "initialTermPeriodType": "Month",
   "currentTerm": 12,
@@ -223,7 +223,7 @@
           "usageRecordRatingOption": null,
           "segment": 1,
           "effectiveStartDate": "2024-06-28",
-          "effectiveEndDate": "2025-06-13",
+          "effectiveEndDate": "2099-06-13",
           "processedThroughDate": "2024-06-28",
           "chargedThroughDate": "2024-07-28",
           "done": false,
@@ -294,7 +294,7 @@
           "usageRecordRatingOption": null,
           "segment": 1,
           "effectiveStartDate": "2024-06-28",
-          "effectiveEndDate": "2025-06-13",
+          "effectiveEndDate": "2099-06-13",
           "processedThroughDate": "2024-06-28",
           "chargedThroughDate": "2024-07-28",
           "done": false,
@@ -330,11 +330,11 @@
   "statusHistory": [
     {
       "startDate": "2024-06-13",
-      "endDate": "2025-06-13",
+      "endDate": "2099-06-13",
       "status": "Active"
     },
     {
-      "startDate": "2025-06-13",
+      "startDate": "2099-06-13",
       "endDate": null,
       "status": "OutOfTerm"
     }

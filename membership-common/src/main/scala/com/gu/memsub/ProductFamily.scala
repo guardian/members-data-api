@@ -16,6 +16,7 @@ object Product {
 
   sealed trait Paper extends ContentSubscription
   sealed trait Weekly extends Paper
+  sealed trait Newspaper extends Paper
 
   case object UnknownProduct extends Product {
     val name = "UNKNOWN_PRODUCT"
@@ -39,16 +40,16 @@ object Product {
   case object Digipack extends ContentSubscription {
     val name = "digitalpack"
   }
-  case object Delivery extends Paper {
+  case object Delivery extends Newspaper {
     val name = "delivery"
   }
-  case object NationalDelivery extends Paper {
+  case object NationalDelivery extends Newspaper {
     val name = "nationalDelivery"
   }
-  case object Voucher extends Paper {
+  case object Voucher extends Newspaper {
     val name = "voucher"
   }
-  case object DigitalVoucher extends Paper {
+  case object DigitalVoucher extends Newspaper {
     val name = "digitalVoucher"
   }
   case object WeeklyZoneA extends Weekly {

@@ -73,7 +73,7 @@ val `membership-common` =
         licenses := Seq("Apache V2" -> url("http://www.apache.org/licenses/LICENSE-2.0.html")),
         Compile / unmanagedResourceDirectories += baseDirectory.value / "conf",
         libraryDependencies ++= MembershipCommonDependencies.dependencies,
-        dependencyOverrides += MembershipCommonDependencies.jacksonDatabind,
+        dependencyOverrides ++= Dependencies.dependencyOverrides,
       ),
     )
 
