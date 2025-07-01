@@ -1,6 +1,6 @@
 package models
 import com.gu.i18n.Country
-import com.gu.memsub.ProductRatePlanChargeProductType.PaperDay
+import com.gu.memsub.ProductRatePlanChargeProductType.{Digipack, PaperDay}
 import com.gu.memsub._
 import com.gu.memsub.subsv2._
 import com.gu.monitoring.SafeLogger.LogPrefix
@@ -117,7 +117,8 @@ object AccountDetails {
       }
 
       def jsonifyPlan(plan: RatePlan) = Json.obj(
-        "tier" -> getTier(catalog, plan),
+        "tier" -> getTier(catalog, plan), // TODO deprecated - keep until MMA stops using it
+        "mmaProductKey" -> getMMAProductKey(catalog, plan),
         "name" -> externalisePlanName(plan),
         "start" -> plan.effectiveStartDate,
         "end" -> plan.effectiveEndDate,
@@ -141,7 +142,8 @@ object AccountDetails {
       val start = subscriptionData.startDate.getOrElse(paymentDetails.customerAcceptanceDate)
       val end = subscriptionData.endDate.getOrElse(paymentDetails.termEndDate)
       Json.obj(
-        "tier" -> getTier(catalog, mainPlan),
+        "tier" -> getTier(catalog, mainPlan), // TODO deprecated - keep until MMA stops using it
+        "mmaProductKey" -> getMMAProductKey(catalog, mainPlan),
         "isPaidTier" -> (paymentDetails.plan.price.amount > 0f),
         "selfServiceCancellation" -> Json.obj(
           "isAllowed" -> selfServiceCancellation.isAllowed,
@@ -216,6 +218,14 @@ object AccountDetails {
       case Product.Delivery if plan.name(catalog) == "Sunday" => "Newspaper Delivery - Observer"
       case Product.DigitalVoucher if plan.name(catalog) == "Sunday" => "Newspaper Digital Voucher - Observer"
       case Product.Voucher if plan.name(catalog) == "Sunday" => "Newspaper Voucher - Observer"
+      case _ => plan.productName
+    }
+
+  def getMMAProductKey(catalog: Catalog, plan: RatePlan): String =
+    plan.product(catalog) match {
+      case _: Product.Newspaper if plan.name(catalog) == "Sunday" => plan.productName + " - Observer"
+      case _: Product.Newspaper if plan.getChargeTypes(catalog).contains(Digipack) => plan.productName + " + Digital"
+      // TODO if it's the new tier 3 (digital only) return a different key (later)
       case _ => plan.productName
     }
 
