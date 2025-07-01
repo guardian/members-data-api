@@ -7,7 +7,7 @@ import com.gu.identity.auth._
 import com.gu.identity.play.IdentityPlayAuthService
 import com.gu.identity.play.IdentityPlayAuthService.UserCredentialsMissingError
 import com.gu.monitoring.SafeLogging
-import models.{ApiError, ApiErrors, UserFromToken}
+import models.{ApiError, ApiErrors, MDAPIIdentityClaims, UserFromToken}
 import services.AuthenticationFailure.{Forbidden, Unauthorised}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -60,7 +60,7 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
     */
   def userAndCredentials(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Either[ApiError, UserAndCredentials]] =
     identityPlayAuthService
-      .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
+      .validateCredentialsFromRequest[MDAPIIdentityClaims, UserFromToken](requestHeader, requiredScopes)
       .attempt
       .flatMap {
         // Request has Okta token but it's invalid
@@ -71,22 +71,25 @@ class IdentityAuthService(identityPlayAuthService: IdentityPlayAuthService)(impl
         // Something unexpected
         case Left(other) => IO.raiseError(other)
         // Request has valid Okta token
-        case Right((credentials: OktaUserCredentials, user)) => IO.pure(Right(UserAndCredentials(user, credentials)))
+        case Right((credentials: OktaUserCredentials, user: OktaAuthenticatedUserInfo[MDAPIIdentityClaims, UserFromToken])) =>
+          IO.pure(Right(UserAndCredentials(user.localAccessTokenClaims, credentials)))
         // Request has valid Idapi credentials
-        case Right((credentials: IdapiUserCredentials, user)) => IO.pure(Right(UserAndCredentials(user, credentials)))
+        case Right((credentials: IdapiUserCredentials, user: IdapiAuthenticatedUserInfo)) =>
+          IO.pure(Right(UserAndCredentials(UserFromToken.fromIdapiUser(user.idapiUser), credentials)))
       }
       .unsafeToFuture()
 
   private def getUser(requestHeader: RequestHeader, requiredScopes: List[AccessScope]): Future[Option[UserFromToken]] =
     identityPlayAuthService
-      .validateCredentialsFromRequest[UserFromToken](requestHeader, requiredScopes)
+      .validateCredentialsFromRequest[MDAPIIdentityClaims, UserFromToken](requestHeader, requiredScopes)
       .map {
-        case (_: OktaUserCredentials, claims) =>
-          Some(claims)
-        case (_: IdapiUserCredentials, claims) =>
-          import claims.logPrefix
+        case (_: OktaUserCredentials, claims: OktaAuthenticatedUserInfo[MDAPIIdentityClaims, UserFromToken]) =>
+          Some(claims.localAccessTokenClaims)
+        case (_: IdapiUserCredentials, claims: IdapiAuthenticatedUserInfo) =>
+          val user = UserFromToken.fromIdapiUser(claims.idapiUser)
+          import user.logPrefix
           logger.warn("Authorised by Idapi token")
-          Some(claims)
+          Some(user)
       }
       .unsafeToFuture()
 }

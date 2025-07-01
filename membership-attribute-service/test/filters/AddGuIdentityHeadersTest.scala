@@ -26,6 +26,7 @@ class AddGuIdentityHeadersTest extends Specification with IdiomaticMockito {
     username = Some("testUserName"),
     userEmailValidated = None,
     authTime = None,
+    oktaId = "testOktaId",
   )
 
   val request = mock[RequestHeader]
