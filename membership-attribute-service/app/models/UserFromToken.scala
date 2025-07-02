@@ -27,6 +27,7 @@ case class UserFromToken(
     username: Option[String] = None,
     userEmailValidated: Option[Boolean] = None,
     authTime: Option[ZonedDateTime], // optional because not available from Idapi
+    oktaId: String,
 ) extends AccessClaims {
   implicit val logPrefix: LogPrefix = LogPrefix(identityId)
 }
@@ -41,6 +42,7 @@ object UserFromToken {
         authTime <- unparsedClaims.getRequired[Int]("auth_time")
         primaryEmailAddress <- AccessClaimsParser.primaryEmailAddress(unparsedClaims)
         identityId <- AccessClaimsParser.identityId(unparsedClaims)
+        oktaId <- AccessClaimsParser.oktaId(unparsedClaims)
       } yield UserFromToken(
         primaryEmailAddress = primaryEmailAddress,
         identityId = identityId,
@@ -49,10 +51,11 @@ object UserFromToken {
         firstName = unparsedClaims.getOptional[String]("first_name"),
         lastName = unparsedClaims.getOptional[String]("last_name"),
         authTime = Some(toUtcTime(authTime)),
+        oktaId = oktaId,
       )
     }
 
-  implicit val userParser: UserParser[UserFromToken] = (user: User) =>
+  def fromIdapiUser(user: User): UserFromToken = {
     UserFromToken(
       primaryEmailAddress = user.primaryEmailAddress,
       identityId = user.id,
@@ -61,6 +64,22 @@ object UserFromToken {
       firstName = user.privateFields.firstName,
       lastName = user.privateFields.secondName,
       authTime = None,
+      oktaId = "", // no okta id in idapi, it's not used by MDAPI
     )
+  }
+
+}
+case class MDAPIIdentityClaims(oktaId: String, primaryEmailAddress: String, identityId: String) extends IdentityClaims
+
+object MDAPIIdentityClaims {
+
+  implicit val identityClaimsParser: UserInfoResponseParser[MDAPIIdentityClaims] =
+    (rawClaims: JsonString) => {
+      for {
+        oktaId <- UserInfoResponseParser.oktaId(rawClaims)
+        primaryEmailAddress <- UserInfoResponseParser.primaryEmailAddress(rawClaims)
+        identityId <- UserInfoResponseParser.identityId(rawClaims)
+      } yield MDAPIIdentityClaims(oktaId, primaryEmailAddress, identityId)
+    }
 
 }

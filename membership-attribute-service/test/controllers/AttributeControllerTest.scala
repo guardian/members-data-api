@@ -101,56 +101,66 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     identityId = validUserId,
     userEmailValidated = Some(true),
     authTime = None,
+    oktaId = "thisIsOktaValid",
   )
   private val unvalidatedEmailUser = UserFromToken(
     primaryEmailAddress = "unvalidatedEmail@thegulocal.com",
     identityId = unvalidatedEmailUserId,
     userEmailValidated = Some(false),
     authTime = None,
+    oktaId = "thisIsOktaUnvalidated",
   )
   private val userWithoutAttributes = UserFromToken(
     primaryEmailAddress = "notcached@thegulocal.com",
     identityId = userWithoutAttributesUserId,
     authTime = None,
+    oktaId = "thisIsOktaNone",
   )
   private val userWithRecurringContribution = UserFromToken(
     primaryEmailAddress = "recurringContribution@thegulocal.com",
     identityId = userWithRecurringContributionUserId,
     authTime = None,
+    oktaId = "thisIsOktaRC",
   )
   private val userWithLiveApp = UserFromToken(
     primaryEmailAddress = "liveapp@thegulocal.com",
     identityId = userWithLiveAppUserId,
     authTime = None,
+    oktaId = "thisIsOktaLiveApp",
   )
   private val userWithNewspaper = UserFromToken(
     primaryEmailAddress = "newspaper@thegulocal.com",
     identityId = userWithNewspaperUserId,
     authTime = None,
+    oktaId = "thisIsOktaPaper",
   )
 
   private val userWithNewspaperPlus = UserFromToken(
     primaryEmailAddress = "newspaperPlus@thegulocal.com",
     identityId = userWithNewspaperPlusUserId,
     authTime = None,
+    oktaId = "thisIsOktaPaperPlus",
   )
 
   private val userWithGuardianWeekly = UserFromToken(
     primaryEmailAddress = "GuardianWeekly@thegulocal.com",
     identityId = userWithGuardianWeeklyUserId,
     authTime = None,
+    oktaId = "thisIsOktaGW",
   )
 
   private val userWithTierThree = UserFromToken(
     primaryEmailAddress = "TierThree@thegulocal.com",
     identityId = userWithTierThreeId,
     authTime = None,
+    oktaId = "thisIsOktaTierThree",
   )
 
   private val userWithGuardianAdLite = UserFromToken(
     primaryEmailAddress = "GuardianAdLite@thegulocal.com",
     identityId = userWithGuardianAdLiteUserId,
     authTime = None,
+    oktaId = "thisIsOktaAdLite",
   )
 
   private val guardianEmployeeUser = UserFromToken(
@@ -158,6 +168,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     identityId = "1234321",
     userEmailValidated = Some(true),
     authTime = None,
+    oktaId = "thisIsOktaEmployee0",
   )
   private val guardianEmployeeCookie = Cookie("employeeDigiPackHack", "true")
 
@@ -166,6 +177,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     identityId = "123theguardiancom",
     userEmailValidated = Some(true),
     authTime = None,
+    oktaId = "thisIsOktaEmployee1",
   )
   private val guardianEmployeeCookieTheguardian = Cookie("employeeDigiPackHackTheguardian", "true")
 
@@ -174,6 +186,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
     identityId = "userWithRealProducts",
     userEmailValidated = Some(true),
     authTime = None,
+    oktaId = "thisIsOktaEmployee2",
   )
   private val validEmployeeUserCookie = Cookie("userWithRealProducts", "true")
 
