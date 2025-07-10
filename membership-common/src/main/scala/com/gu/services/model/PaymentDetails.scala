@@ -47,7 +47,9 @@ object PaymentDetails extends SafeLogging {
       startDate = sub.contractEffectiveDate,
       chargedThroughDate = plan.chargedThroughDate,
       customerAcceptanceDate = sub.customerAcceptanceDate,
-      nextPaymentPrice = nextPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue),
+      // If nextPayment is None (no bills with amount > 0 found), return 0 instead of None.
+      // This happens when users have free products or 100% discount/promo codes forever
+      nextPaymentPrice = nextPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue).orElse(Some(0)),
       lastPaymentDate = lastPaymentDate,
       nextPaymentDate = nextPayment.map(_.date),
       nextInvoiceDate = nextInvoiceDate,
