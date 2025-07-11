@@ -48,7 +48,7 @@ object PaymentDetails extends SafeLogging {
       chargedThroughDate = plan.chargedThroughDate,
       customerAcceptanceDate = sub.customerAcceptanceDate,
       // If nextPayment is None (no bills with amount > 0 found), return 0 instead of None.
-      // This happens when users have free products or 100% discount/promo codes forever
+      // This happens when users have free products or 100% discount/promo codes for more than 30 months
       nextPaymentPrice = nextPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue).orElse(Some(0)),
       lastPaymentDate = lastPaymentDate,
       nextPaymentDate = nextPayment.map(_.date),
