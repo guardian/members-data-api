@@ -262,6 +262,7 @@ object CancelledSubscription {
       .map { plan =>
         Json.obj(
           "tier" -> getTier(catalog, plan),
+          "mmaProductKey" -> getMMAProductKey(catalog, plan),
           "subscription" -> Json.obj(
             "subscriptionId" -> subscription.subscriptionNumber.getNumber,
             "cancellationEffectiveDate" -> subscription.termEndDate,
