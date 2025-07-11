@@ -37,7 +37,9 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
 
     for {
       account <- zuoraService.getAccount(sub.accountId)
-      eventualBills = getNextBill(sub.id, account, 15).withLogging(s"next bill for $sub")
+      // Request 30 bills to handle long promotional periods (e.g., Australian student offer: 24 months free)
+      // 24 bills for promo + 6 buffer bills ensures we find the first paid bill even with billing irregularities
+      eventualBills = getNextBill(sub.id, account, 30).withLogging(s"next bill for $sub")
       eventualMaybePaymentMethod = getPaymentMethod(account.defaultPaymentMethodId, defaultMandateIdIfApplicable) // kick off async
       bills <- eventualBills
       maybePaymentMethod <- eventualMaybePaymentMethod
