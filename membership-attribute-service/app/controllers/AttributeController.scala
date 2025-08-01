@@ -85,7 +85,7 @@ class AttributeController(
         Some(status.to.toLocalDate)
       }
     }
-    
+
     attributes.copy(
       OneOffContributionDate = latestOneOffDate,
       LiveAppSubscriptionExpiryDate = liveAppMobileExpiryDate,
