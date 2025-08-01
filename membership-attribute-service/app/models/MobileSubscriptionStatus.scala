@@ -8,6 +8,7 @@ import scala.util.Try
 case class MobileSubscriptionStatus(
     valid: Boolean,
     to: DateTime,
+    productId: Option[String] = None,
 )
 
 object MobileSubscriptionStatus {
