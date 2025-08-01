@@ -1,6 +1,6 @@
 package com.gu.services.model
 import com.gu.memsub.subsv2.{Catalog, Subscription}
-import com.gu.memsub.{PaymentMethod, Price}
+import com.gu.memsub.{PaymentMethod, Price, Product}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails.PersonalPlan
@@ -22,6 +22,9 @@ case class PaymentDetails(
     pendingCancellation: Boolean,
     paymentMethod: Option[PaymentMethod],
     plan: PersonalPlan,
+    nextChargeDate: Option[LocalDate],
+    nextChargeAmount: Option[Int],
+    remainingDiscountDays: Option[Int],
 )
 
 object PaymentDetails extends SafeLogging {
@@ -42,6 +45,29 @@ object PaymentDetails extends SafeLogging {
     import scala.math.BigDecimal.RoundingMode._
 
     val plan = sub.plan(catalog)
+    
+    // Check if subscription has a discount rate plan (simplified detection for now)
+    val hasDiscountPlan = sub.ratePlans.exists(_.product(catalog) == Product.Discounts)
+    val isInFreePeriod = nextPayment.forall(_.price.amount == 0)
+    
+    // Calculate discount-specific fields
+    val (nextChargeDate, nextChargeAmount, remainingDiscountDays) = if (hasDiscountPlan && isInFreePeriod) {
+      // For discount periods, we need to find the first non-zero payment
+      val futurePayments = nextPayment.toList // This would need enhancement to get multiple future payments
+      val firstPaidPayment = futurePayments.find(_.price.amount > 0)
+      
+      val chargeDate = firstPaidPayment.map(_.date)
+      val chargeAmount = firstPaidPayment.map(p => (BigDecimal.decimal(p.price.amount) * 100).setScale(2, HALF_UP).intValue)
+      
+      val discountDays = chargeDate.map(date => 
+        Days.daysBetween(new LocalDate(DateTime.now()), date).getDays
+      ).filter(_ > 0)
+      
+      (chargeDate, chargeAmount, discountDays)
+    } else {
+      (None, None, None)
+    }
+
     PaymentDetails(
       pendingCancellation = sub.isCancelled,
       startDate = sub.contractEffectiveDate,
@@ -62,6 +88,9 @@ object PaymentDetails extends SafeLogging {
       ),
       subscriberId = sub.subscriptionNumber.getNumber,
       remainingTrialLength = timeUntilPaying,
+      nextChargeDate = nextChargeDate,
+      nextChargeAmount = nextChargeAmount,
+      remainingDiscountDays = remainingDiscountDays,
     )
   }
 

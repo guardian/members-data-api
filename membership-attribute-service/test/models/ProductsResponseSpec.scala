@@ -95,6 +95,9 @@ class ProductsResponseSpec extends Specification with SafeLogging {
             ),
           ),
           plan = PersonalPlan("Supporter Plus", Price(25.0f, GBP), "month"),
+          nextChargeDate = None,
+          nextChargeAmount = None,
+          remainingDiscountDays = None,
         ),
         billingCountry = Some(com.gu.i18n.Country.UK),
         stripePublicKey = "pk_test_Qm3CGRdrV4WfGYCpm0sftR0f",
@@ -285,6 +288,9 @@ class ProductsResponseSpec extends Specification with SafeLogging {
           ),
         ),
         plan = PersonalPlan(productName, Price(priceInPounds, GBP), month),
+        nextChargeDate = None,
+        nextChargeAmount = None,
+        remainingDiscountDays = None,
       )
 
       val accountDetails = AccountDetails(
