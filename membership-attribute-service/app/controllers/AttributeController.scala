@@ -78,7 +78,7 @@ class AttributeController(
   ): Attributes = {
     // Filter out Feast subscriptions from Live App subscription expiry date
     val liveAppMobileExpiryDate = mobileSubscriptionStatus.flatMap { status =>
-      val isFeastSubscription = status.productId.exists(_.contains("Feast"))
+      val isFeastSubscription = status.productId.exists(id => id.contains("Feast") || id.contains("feast"))
       if (isFeastSubscription) {
         None // Don't set Live App expiry for Feast subscriptions
       } else {
