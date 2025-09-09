@@ -9,6 +9,7 @@ case class MobileSubscriptionStatus(
     valid: Boolean,
     to: DateTime,
     productId: Option[String] = None,
+    platform: Option[String] = None,
 )
 
 object MobileSubscriptionStatus {
