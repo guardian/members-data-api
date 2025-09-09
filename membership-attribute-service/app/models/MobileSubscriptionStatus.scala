@@ -6,7 +6,6 @@ import MobileSubscriptionPlatform._
 
 import scala.util.Try
 
-
 case class MobileSubscriptionStatus(
     valid: Boolean,
     to: DateTime,
@@ -20,6 +19,5 @@ object MobileSubscriptionStatus {
       case _ => JsError("Unable to parse date, was expecting a JsString")
     }
   }
-  
   implicit val mobileSubscriptionStatusReads: Reads[MobileSubscriptionStatus] = Json.reads[MobileSubscriptionStatus]
 }
