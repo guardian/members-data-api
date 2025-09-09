@@ -2,54 +2,32 @@ package models
 
 import play.api.libs.json._
 
-sealed trait MobileSubscriptionPlatform {
-  def value: String
-}
+sealed abstract class MobileSubscriptionPlatform(val value: String)
 
 object MobileSubscriptionPlatform {
-  case object Ios extends MobileSubscriptionPlatform {
-    val value = "ios"
-  }
-  
-  case object Android extends MobileSubscriptionPlatform {
-    val value = "android"
-  }
-  
-  case object DailyEdition extends MobileSubscriptionPlatform {
-    val value = "newsstand"
-  }
-  
-  case object IosEdition extends MobileSubscriptionPlatform {
-    val value = "ios-edition"
-  }
-  
-  case object AndroidEdition extends MobileSubscriptionPlatform {
-    val value = "android-edition"
-  }
-  
-  case object IosPuzzles extends MobileSubscriptionPlatform {
-    val value = "ios-puzzles"
-  }
-  
-  case object AndroidPuzzles extends MobileSubscriptionPlatform {
-    val value = "android-puzzles"
-  }
-  
-  case object IosFeast extends MobileSubscriptionPlatform {
-    val value = "ios-feast"
-  }
-  
-  case object AndroidFeast extends MobileSubscriptionPlatform {
-    val value = "android-feast"
-  }
-
-  val all: Seq[MobileSubscriptionPlatform] = Seq(
-    Ios, Android, DailyEdition, IosEdition, AndroidEdition,
-    IosPuzzles, AndroidPuzzles, IosFeast, AndroidFeast
-  )
+  case object Ios extends MobileSubscriptionPlatform("ios")
+  case object Android extends MobileSubscriptionPlatform("android")
+  case object DailyEdition extends MobileSubscriptionPlatform("newsstand")
+  case object IosEdition extends MobileSubscriptionPlatform("ios-edition")
+  case object AndroidEdition extends MobileSubscriptionPlatform("android-edition")
+  case object IosPuzzles extends MobileSubscriptionPlatform("ios-puzzles")
+  case object AndroidPuzzles extends MobileSubscriptionPlatform("android-puzzles")
+  case object IosFeast extends MobileSubscriptionPlatform("ios-feast")
+  case object AndroidFeast extends MobileSubscriptionPlatform("android-feast")
 
   def fromString(value: String): Option[MobileSubscriptionPlatform] = {
-    all.find(_.value == value)
+    value match {
+      case Ios.value => Some(Ios)
+      case Android.value => Some(Android)
+      case DailyEdition.value => Some(DailyEdition)
+      case IosEdition.value => Some(IosEdition)
+      case AndroidEdition.value => Some(AndroidEdition)
+      case IosPuzzles.value => Some(IosPuzzles)
+      case AndroidPuzzles.value => Some(AndroidPuzzles)
+      case IosFeast.value => Some(IosFeast)
+      case AndroidFeast.value => Some(AndroidFeast)
+      case _ => None
+    }
   }
 
   // JSON serialization/deserialization
