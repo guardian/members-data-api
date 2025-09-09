@@ -2,8 +2,10 @@ package models
 
 import org.joda.time.DateTime
 import play.api.libs.json._
+import MobileSubscriptionPlatform._
 
 import scala.util.Try
+
 
 case class MobileSubscriptionStatus(
     valid: Boolean,
@@ -19,13 +21,5 @@ object MobileSubscriptionStatus {
     }
   }
   
-  private implicit val dateTimeWrites: Writes[DateTime] = new Writes[DateTime] {
-    override def writes(dateTime: DateTime): JsValue = JsString(dateTime.toString)
-  }
-  
-  // Import MobileSubscriptionPlatform JSON readers/writers
-  import MobileSubscriptionPlatform._
-  
   implicit val mobileSubscriptionStatusReads: Reads[MobileSubscriptionStatus] = Json.reads[MobileSubscriptionStatus]
-  implicit val mobileSubscriptionStatusWrites: Writes[MobileSubscriptionStatus] = Json.writes[MobileSubscriptionStatus]
 }
