@@ -8,7 +8,7 @@ import scala.util.Try
 case class MobileSubscriptionStatus(
     valid: Boolean,
     to: DateTime,
-    platform: Option[String] = None,
+    platform: Option[Platform] = None,
 )
 
 object MobileSubscriptionStatus {
@@ -18,5 +18,14 @@ object MobileSubscriptionStatus {
       case _ => JsError("Unable to parse date, was expecting a JsString")
     }
   }
+  
+  private implicit val dateTimeWrites: Writes[DateTime] = new Writes[DateTime] {
+    override def writes(dateTime: DateTime): JsValue = JsString(dateTime.toString)
+  }
+  
+  // Import Platform JSON readers/writers
+  import Platform._
+  
   implicit val mobileSubscriptionStatusReads: Reads[MobileSubscriptionStatus] = Json.reads[MobileSubscriptionStatus]
+  implicit val mobileSubscriptionStatusWrites: Writes[MobileSubscriptionStatus] = Json.writes[MobileSubscriptionStatus]
 }

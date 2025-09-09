@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigFactory
 import components.{TouchpointBackends, TouchpointComponents}
 import configuration.{CreateTestUsernames, Stage}
 import filters.{AddGuIdentityHeaders, TestUserChecker}
-import models.{Attributes, FeastApp, MobileSubscriptionStatus, UserFromToken}
+import models.{Attributes, FeastApp, MobileSubscriptionStatus, Platform, UserFromToken}
 import monitoring.CreateNoopMetrics
 import org.joda.time.{DateTime, LocalDate}
 import org.joda.time.LocalDate.now
@@ -255,7 +255,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         identityId: String,
     )(implicit logPrefix: LogPrefix): Future[Either[String, Option[MobileSubscriptionStatus]]] = {
       if (identityId == userWithLiveAppUserId)
-        Future.successful(Right(Some(MobileSubscriptionStatus(valid = true, dateTimeInTheFuture))))
+        Future.successful(Right(Some(MobileSubscriptionStatus(valid = true, dateTimeInTheFuture, Some(Platform.Ios)))))
       else
         Future.successful(Right(None))
     }
