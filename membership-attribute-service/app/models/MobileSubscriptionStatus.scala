@@ -8,7 +8,7 @@ import scala.util.Try
 case class MobileSubscriptionStatus(
     valid: Boolean,
     to: DateTime,
-    platform: Option[Platform] = None,
+    platform: Option[MobileSubscriptionPlatform] = None,
 )
 
 object MobileSubscriptionStatus {
@@ -23,8 +23,8 @@ object MobileSubscriptionStatus {
     override def writes(dateTime: DateTime): JsValue = JsString(dateTime.toString)
   }
   
-  // Import Platform JSON readers/writers
-  import Platform._
+  // Import MobileSubscriptionPlatform JSON readers/writers
+  import MobileSubscriptionPlatform._
   
   implicit val mobileSubscriptionStatusReads: Reads[MobileSubscriptionStatus] = Json.reads[MobileSubscriptionStatus]
   implicit val mobileSubscriptionStatusWrites: Writes[MobileSubscriptionStatus] = Json.writes[MobileSubscriptionStatus]

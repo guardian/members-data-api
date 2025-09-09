@@ -11,7 +11,7 @@ import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
-import models.Platform
+import models.MobileSubscriptionPlatform
 import monitoring.CreateMetrics
 import org.apache.pekko.actor.ActorSystem
 import org.joda.time.LocalDate
@@ -78,7 +78,7 @@ class AttributeController(
       mobileSubscriptionStatus: Option[MobileSubscriptionStatus],
   ): Attributes = {
     val liveAppMobileExpiryDate = mobileSubscriptionStatus.flatMap { status =>
-      val isLiveAppSubscription = status.platform.exists(p => p == Platform.Android || p == Platform.Ios)
+      val isLiveAppSubscription = status.platform.exists(p => p == MobileSubscriptionPlatform.Android || p == MobileSubscriptionPlatform.Ios)
       if (isLiveAppSubscription) {
         Some(status.to.toLocalDate)
       } else {
