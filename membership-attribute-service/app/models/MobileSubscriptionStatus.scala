@@ -19,6 +19,5 @@ object MobileSubscriptionStatus {
       case _ => JsError("Unable to parse date, was expecting a JsString")
     }
   }
-
   implicit val mobileSubscriptionStatusReads: Reads[MobileSubscriptionStatus] = Json.reads[MobileSubscriptionStatus]
 }
