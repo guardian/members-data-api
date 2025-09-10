@@ -37,7 +37,7 @@ object MobileSubscriptionPlatform {
 
   implicit val platformReads: Reads[MobileSubscriptionPlatform] = new Reads[MobileSubscriptionPlatform] {
     def reads(json: JsValue): JsResult[MobileSubscriptionPlatform] = json match {
-      case JsString(value) => 
+      case JsString(value) =>
         fromString(value) match {
           case Some(platform) => JsSuccess(platform)
           case None => JsError(s"Invalid platform value: $value")
