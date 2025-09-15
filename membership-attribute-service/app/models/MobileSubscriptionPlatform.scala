@@ -30,7 +30,6 @@ object MobileSubscriptionPlatform {
     }
   }
 
-  // JSON serialization/deserialization
   implicit val platformWrites: Writes[MobileSubscriptionPlatform] = new Writes[MobileSubscriptionPlatform] {
     def writes(platform: MobileSubscriptionPlatform): JsValue = JsString(platform.value)
   }
