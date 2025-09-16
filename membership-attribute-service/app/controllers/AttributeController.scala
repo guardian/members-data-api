@@ -77,14 +77,14 @@ class AttributeController(
       latestOneOffDate: Option[LocalDate],
       mobileSubscriptionStatus: Option[MobileSubscriptionStatus],
   ): Attributes = {
-    val liveAppMobileExpiryDate = mobileSubscriptionStatus.flatMap { status =>
-      val isLiveAppSubscription = status.platform.exists(p => p == MobileSubscriptionPlatform.Android || p == MobileSubscriptionPlatform.Ios)
-      if (isLiveAppSubscription) {
-        Some(status.to.toLocalDate)
-      } else {
-        None // Don't set Live App expiry for other subscriptions (Feast, Puzzles, etc)
-      }
-    }
+    val livePlatforms = List(
+      MobileSubscriptionPlatform.Android,
+      MobileSubscriptionPlatform.Ios,
+    )
+    val liveAppMobileExpiryDate = for {
+      status <- mobileSubscriptionStatus
+      if status.platform.exists(livePlatforms.contains)
+    } yield status.to.toLocalDate
 
     attributes.copy(
       OneOffContributionDate = latestOneOffDate,
