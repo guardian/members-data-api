@@ -34,14 +34,10 @@ object MobileSubscriptionPlatform {
     def writes(platform: MobileSubscriptionPlatform): JsValue = JsString(platform.value)
   }
 
-  implicit val platformReads: Reads[MobileSubscriptionPlatform] = new Reads[MobileSubscriptionPlatform] {
-    def reads(json: JsValue): JsResult[MobileSubscriptionPlatform] = json match {
-      case JsString(value) =>
-        fromString(value) match {
-          case Some(platform) => JsSuccess(platform)
-          case None => JsError(s"Invalid platform value: $value")
-        }
-      case _ => JsError("Platform must be a string")
-    }
-  }
-}
+  implicit val platformReads: Reads[MobileSubscriptionPlatform] = for {
+    string <- implicitly[Reads[String]]
+    platform <- fromString(string) match {
+        case Some(platform) => JsSuccess(platform)
+        case None => JsError(s"Invalid platform value: $value")
+      }
+    } yield platform
