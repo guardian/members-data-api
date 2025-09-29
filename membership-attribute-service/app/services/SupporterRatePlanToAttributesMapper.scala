@@ -105,6 +105,7 @@ object SupporterRatePlanToAttributesMapper {
     List(
       "8a128ed885fc6ded018602296ace3eb8",
       "8a128ed885fc6ded01860228f77e3d5a",
+      "8a129797980d634c019818808a4c7668",
     ) -> supporterPlusV2Transformer,
     List(
       "8a1299788ff2ec100190025fccc32bb1",
@@ -237,6 +238,7 @@ object SupporterRatePlanToAttributesMapper {
     List(
       "8ad08cbd8586721c01858804e3275376",
       "8ad08e1a8586721801858805663f6fab",
+      "71a10c6269b981784c9817e1887c0000",
     ) -> supporterPlusV2Transformer,
     List(
       "8ad097b48ff26452019001cebac92376",
