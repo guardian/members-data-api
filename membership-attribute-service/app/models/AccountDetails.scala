@@ -248,7 +248,7 @@ class FilterPlans(subscription: Subscription, catalog: Catalog, today: LocalDate
   val futurePlans: List[RatePlan] = sortedPlans.filter(plan => plan.effectiveStartDate.isAfter(today))
 
   val startDate: Option[LocalDate] = sortedPlans.headOption.map(_.effectiveStartDate)
-  val endDate: Option[LocalDate] = sortedPlans.headOption.map(_.effectiveEndDate)
+  val endDate: Option[LocalDate] = sortedPlans.lastOption.map(_.effectiveEndDate)
 
   if (currentPlans.length > 1) logger.warn(s"More than one 'current plan' on sub with id: ${subscription.id}")
 
