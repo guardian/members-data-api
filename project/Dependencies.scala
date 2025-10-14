@@ -13,7 +13,8 @@ object Dependencies {
   val jdbc = PlayImport.jdbc
   val playWS = PlayImport.ws
   val playFilters = PlayImport.filters
-  val specs2 = PlayImport.specs2 % "test"
+  val specs2 = (PlayImport.specs2 % "test")
+    .exclude("net.sourceforge.htmlunit", "htmlunit") // Exclude vulnerable version, replace with org.htmlunit below
   val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
@@ -23,6 +24,7 @@ object Dependencies {
   val netty = "io.netty" % "netty-codec" % "4.1.118.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.118.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+  val htmlUnit = "org.htmlunit" % "htmlunit" % "3.11.0" // Override to fix CVE-2023-2798 (RCE) - requires 3.0.0+
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
@@ -66,6 +68,7 @@ object Dependencies {
     anorm,
     netty,
     nettyHttp,
+    htmlUnit % Test, // Safe version to replace excluded net.sourceforge.htmlunit:htmlunit
     "com.google.guava" % "guava" % "32.1.3-jre", // until https://github.com/playframework/playframework/pull/10874
     unirest,
     mockServer,
