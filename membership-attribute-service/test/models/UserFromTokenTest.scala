@@ -11,6 +11,7 @@ class UserFromTokenTest extends Specification {
   val identityId = "someIdentityId"
   val username = "username"
   val email = "some@email.com"
+  private val oktaId = "testOkta"
   val rawClaims = Map(
     "legacy_identity_id" -> identityId,
     "identity_username" -> username,
@@ -18,6 +19,7 @@ class UserFromTokenTest extends Specification {
     "email_validated" -> Boolean.box(true),
     "unused" -> "unusedValue",
     "auth_time" -> Int.box(1672917908),
+    "uid" -> oktaId,
   )
 
   val parsedClaims = UserFromToken(
@@ -26,6 +28,7 @@ class UserFromTokenTest extends Specification {
     primaryEmailAddress = email,
     userEmailValidated = Some(true),
     authTime = Some(ZonedDateTime.of(2023, 1, 5, 11, 25, 8, 0, ZoneId.of("UTC"))),
+    oktaId = oktaId,
   )
 
   "UserFromTokenParser.fromUnparsed" should {
@@ -71,7 +74,7 @@ class UserFromTokenTest extends Specification {
         ),
       )
 
-      UserFromToken.userParser.parse(testUser) shouldEqual parsedClaims.copy(authTime = None)
+      UserFromToken.fromIdapiUser(testUser) shouldEqual parsedClaims.copy(authTime = None, oktaId = "")
 
     }
   }

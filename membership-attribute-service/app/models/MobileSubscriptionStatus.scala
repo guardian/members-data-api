@@ -2,12 +2,14 @@ package models
 
 import org.joda.time.DateTime
 import play.api.libs.json._
+import MobileSubscriptionPlatform._
 
 import scala.util.Try
 
 case class MobileSubscriptionStatus(
     valid: Boolean,
     to: DateTime,
+    platform: Option[MobileSubscriptionPlatform] = None,
 )
 
 object MobileSubscriptionStatus {

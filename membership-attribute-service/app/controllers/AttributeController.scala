@@ -11,6 +11,7 @@ import models.ApiError._
 import models.ApiErrors._
 import models.Features._
 import models._
+import models.MobileSubscriptionPlatform
 import monitoring.CreateMetrics
 import org.apache.pekko.actor.ActorSystem
 import org.joda.time.LocalDate
@@ -76,10 +77,18 @@ class AttributeController(
       latestOneOffDate: Option[LocalDate],
       mobileSubscriptionStatus: Option[MobileSubscriptionStatus],
   ): Attributes = {
-    val mobileExpiryDate = mobileSubscriptionStatus.map(_.to.toLocalDate)
+    val livePlatforms = List(
+      MobileSubscriptionPlatform.Android,
+      MobileSubscriptionPlatform.Ios,
+    )
+    val liveAppMobileExpiryDate = for {
+      status <- mobileSubscriptionStatus
+      if status.platform.exists(livePlatforms.contains)
+    } yield status.to.toLocalDate
+
     attributes.copy(
       OneOffContributionDate = latestOneOffDate,
-      LiveAppSubscriptionExpiryDate = mobileExpiryDate,
+      LiveAppSubscriptionExpiryDate = liveAppMobileExpiryDate,
     )
   }
 
