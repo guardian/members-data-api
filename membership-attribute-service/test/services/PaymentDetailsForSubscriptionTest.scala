@@ -50,6 +50,9 @@ class PaymentDetailsForSubscriptionTest(implicit ee: ExecutionEnv) extends Speci
             ),
             subscriberId = "AS-123123",
             remainingTrialLength = 0,
+            nextChargeDate = None,
+            nextChargeAmount = None,
+            remainingDiscountDays = None,
           ),
         )
     }
