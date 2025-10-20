@@ -4,7 +4,7 @@ import play.sbt.PlayImport
 object Dependencies {
 
   val awsClientVersion = "1.12.667"
-  val awsClientV2Version = "2.24.11"
+  val awsClientV2Version = "2.35.10"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.37.0"
@@ -15,7 +15,7 @@ object Dependencies {
   val playFilters = PlayImport.filters
   val specs2 = (PlayImport.specs2 % "test")
     .exclude("net.sourceforge.htmlunit", "htmlunit") // Exclude vulnerable version, replace with org.htmlunit below
-  val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M23"
+  val scanamo = "org.scanamo" %% "scanamo" % "4.0.0"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
