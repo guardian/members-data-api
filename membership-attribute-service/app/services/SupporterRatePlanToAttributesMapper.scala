@@ -7,10 +7,12 @@ import configuration.Stage
 import models.{Attributes, DynamoSupporterRatePlanItem}
 import org.joda.time.LocalDate
 import services.MembershipTier._
-import services.SupporterRatePlanToAttributesMapper.productRatePlanMappings
+import services.SupporterRatePlanToAttributesMapper.{ProductRatePlanId, productRatePlanMappings}
 
 class SupporterRatePlanToAttributesMapper(stage: Stage) extends SafeLogging {
-  val productRatePlanIdMappings = productRatePlanMappings(stage.value)
+  private val productRatePlanIdMappings: Map[ProductRatePlanId, SupporterRatePlanToAttributesMapper.AttributeTransformer] = productRatePlanMappings(
+    stage.value,
+  )
 
   def attributesFromSupporterRatePlans(identityId: String, supporterRatePlanItems: List[DynamoSupporterRatePlanItem])(implicit
       logPrefix: LogPrefix,
@@ -227,6 +229,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0f9479fb46d0147d0155c245581",
     ) -> memberTransformer(Patron),
     List("single_contribution") -> singleContributionTransformer,
+    List("in_app_purchase") -> iapTransformer,
   )
 
   private val codeMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
@@ -333,6 +336,7 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f9471e145d01471ffd7c304df9",
     ) -> memberTransformer(Patron),
     List("single_contribution") -> singleContributionTransformer,
+    List("in_app_purchase") -> iapTransformer,
   )
 
   val productRatePlanMappings: Map[Stage, Map[ProductRatePlanId, AttributeTransformer]] =
@@ -348,6 +352,9 @@ object SupporterRatePlanToAttributesMapper {
 
   private def singleContributionTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
     attributes.copy(OneOffContributionDate = Some(item.contractEffectiveDate))
+
+  private def iapTransformer: AttributeTransformer = (attributes: Attributes, item: DynamoSupporterRatePlanItem) =>
+    attributes.copy(LiveAppSubscriptionExpiryDate = Some(item.contractEffectiveDate))
 
   private def memberTransformer(tier: MembershipTier): AttributeTransformer = (attributes: Attributes, _: DynamoSupporterRatePlanItem) =>
     attributes.copy(Tier = getMostValuableTier(tier, attributes.Tier))
@@ -367,7 +374,7 @@ object MembershipTier {
   private def fromString(name: String): Option[MembershipTier] =
     List(Supporter, Partner, Patron).find(_.name == name)
 
-  def getMostValuableTier(newTier: MembershipTier, existingTier: Option[String]) =
+  def getMostValuableTier(newTier: MembershipTier, existingTier: Option[String]): Option[ProductRatePlanId] =
     if (existingTier.flatMap(fromString).exists(_.value > newTier.value))
       existingTier
     else
