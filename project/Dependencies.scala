@@ -78,5 +78,6 @@ object Dependencies {
   val dependencyOverrides = jackson ++ Seq(scalaXml)
   val excludeDependencies = Seq(
     ExclusionRule("com.squareup.okio", "okio"),
+    ExclusionRule("net.sourceforge.htmlunit", "htmlunit"), // Block vulnerable version from all transitive deps
   )
 }
