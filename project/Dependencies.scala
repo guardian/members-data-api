@@ -25,7 +25,13 @@ object Dependencies {
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.118.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val htmlUnit = "org.htmlunit" % "htmlunit" % "3.11.0" // Override to fix CVE-2023-2798 (RCE) - requires 3.0.0+
-  val mockServer = "org.mock-server" % "mockserver-netty" % "5.14.0" % Test
+  val mockServer = "org.mock-server" % "mockserver-netty" % "5.15.0" % Test
+
+  // Security overrides for vulnerable transitive dependencies
+  val commonsBeanUtils = "commons-beanutils" % "commons-beanutils" % "1.11.0" // Fix CVE-2025-48734
+  val nimbusJoseJwt = "com.nimbusds" % "nimbus-jose-jwt" % "9.37.4" // Fix CVE-2023-52428
+  val jsonSmart = "net.minidev" % "json-smart" % "2.5.0" // Fix CVE-2023-1370
+  val snakeYaml = "org.yaml" % "snakeyaml" % "2.2" // Fix CVE-2022-1471 and others
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
 
@@ -75,7 +81,13 @@ object Dependencies {
     mockitoScala,
   ) ++ jackson ++ oktaJwtVerifier
 
-  val dependencyOverrides = jackson ++ Seq(scalaXml)
+  val dependencyOverrides = jackson ++ Seq(
+    scalaXml,
+    commonsBeanUtils,
+    nimbusJoseJwt,
+    jsonSmart,
+    snakeYaml,
+  )
   val excludeDependencies = Seq(
     ExclusionRule("com.squareup.okio", "okio"),
     ExclusionRule("net.sourceforge.htmlunit", "htmlunit"), // Block vulnerable version from all transitive deps
