@@ -156,6 +156,9 @@ object SupporterRatePlanToAttributesMapper {
       "8a12999f8a268c57018a27ebfd721883", // Sixday
       "8a12999f8a268c57018a27ebe868150c", // Weekend
       "8a12999f8a268c57018a27ebe31414a4", // Everyday
+      "8a1280be96d33dbf0196d487b55c1283", // weekend+
+      "8a12994696d3587b0196d484491e3beb", // sixday+
+      "8a1280be96d33dbf0196d48a632616f4", // everyday+
     ) -> paperTransformer,
     List(
       "2c92a00870ec598001710740ce702ff0",
@@ -285,6 +288,9 @@ object SupporterRatePlanToAttributesMapper {
       "8ad096ca8992481d018992a363bd17ad", // Everyday
       "8ad096ca8992481d018992a36256175e", // Weekend
       "8ad096ca8992481d018992a35f60171b", // Sixday
+      "71a1383e2a796aafcb16b527842001ca", // sixday+
+      "71a116628be96ab11606b51ec6060555", // everyday+
+      "71a1166283a96ab11606b50ebbb50381", // weekend+
     ) -> paperTransformer,
     List(
       "2c92c0f86fa49142016fa49eb1732a39",
