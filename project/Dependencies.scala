@@ -33,7 +33,7 @@ object Dependencies {
   val jsonSmart = "net.minidev" % "json-smart" % "2.5.0" // Fix CVE-2023-1370
   val snakeYaml = "org.yaml" % "snakeyaml" % "2.2" // Fix CVE-2022-1471 and others
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
-  val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
+  val logback = "ch.qos.logback" % "logback-classic" % "1.5.21"
 
   val jacksonVersion = "2.15.4"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
