@@ -30,7 +30,7 @@ object Dependencies {
   // Security overrides for vulnerable transitive dependencies
   val commonsBeanUtils = "commons-beanutils" % "commons-beanutils" % "1.11.0" // Fix CVE-2025-48734
   val nimbusJoseJwt = "com.nimbusds" % "nimbus-jose-jwt" % "9.37.4" // Fix CVE-2023-52428
-  val jsonSmart = "net.minidev" % "json-smart" % "2.5.0" // Fix CVE-2023-1370
+  val jsonSmart = "net.minidev" % "json-smart" % "2.5.2" // Fix CVE-2023-1370
   val snakeYaml = "org.yaml" % "snakeyaml" % "2.2" // Fix CVE-2022-1471 and others
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
