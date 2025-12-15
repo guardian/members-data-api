@@ -15,7 +15,7 @@ object Dependencies {
   val playFilters = PlayImport.filters
   val specs2 = (PlayImport.specs2 % "test")
     .exclude("net.sourceforge.htmlunit", "htmlunit") // Exclude vulnerable version, replace with org.htmlunit below
-  val scanamo = "org.scanamo" %% "scanamo" % "4.0.0"
+  val scanamo = "org.scanamo" %% "scanamo" % "6.0.0"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
