@@ -7,7 +7,7 @@ object Dependencies {
   val awsClientV2Version = "2.35.10"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "v6.0.0-PREVIEW.pvdeps20260105.2026-01-06T1024.898eb99a"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "6.0.0-PREVIEW.pvdeps20260105.2026-01-06T1024.898eb99a"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.10.2"
   val postgres = "org.postgresql" % "postgresql" % "42.7.2"
   val jdbc = PlayImport.jdbc
