@@ -3,7 +3,6 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientVersion = "1.12.667"
   val awsClientV2Version = "2.35.10"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
@@ -18,7 +17,7 @@ object Dependencies {
   val scanamo = "org.scanamo" %% "scanamo" % "4.0.0"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
-  val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
+  val awsCloudWatch = "software.amazon.awssdk" % "cloudwatch" % awsClientV2Version
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
   val netty = "io.netty" % "netty-codec" % "4.1.118.Final"
