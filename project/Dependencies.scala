@@ -18,7 +18,7 @@ object Dependencies {
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
-  val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
+  val anorm = "org.playframework.anorm" %% "anorm" % "2.8.1"
   val netty = "io.netty" % "netty-codec" % "4.1.118.Final"
   val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.118.Final"
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
