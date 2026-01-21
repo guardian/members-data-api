@@ -32,7 +32,7 @@ object Dependencies {
   val snakeYaml = "org.yaml" % "snakeyaml" % "2.2" // Fix CVE-2022-1471 and others
   val lz4Java = "org.lz4" % "lz4-java" % "1.8.1" // Fix CVE-2025-12183, CVE-2025-66566
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
-  val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
+  val logback = "ch.qos.logback" % "logback-classic" % "1.5.25"
 
   val jacksonVersion = "2.15.4"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
