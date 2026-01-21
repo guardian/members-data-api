@@ -73,7 +73,7 @@ object Dependencies {
     netty,
     nettyHttp,
     htmlUnit % Test, // Safe version to replace excluded net.sourceforge.htmlunit:htmlunit
-    "com.google.guava" % "guava" % "32.1.3-jre", // until https://github.com/playframework/playframework/pull/10874
+    "com.google.guava" % "guava" % "33.5.0-jre", // until https://github.com/playframework/playframework/pull/10874
     unirest,
     mockServer,
     mockitoScala,
