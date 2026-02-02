@@ -74,6 +74,7 @@ val `membership-common` =
         Compile / unmanagedResourceDirectories += baseDirectory.value / "conf",
         libraryDependencies ++= MembershipCommonDependencies.dependencies,
         dependencyOverrides ++= Dependencies.dependencyOverrides,
+        excludeDependencies ++= Dependencies.excludeDependencies,
       ),
     )
 

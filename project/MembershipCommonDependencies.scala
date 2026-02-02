@@ -51,7 +51,8 @@ object MembershipCommonDependencies {
     scalaz,
     libPhoneNumber,
     dynamoDB,
-    scalaXml
+    scalaXml,
+    Dependencies.ionJava, // Replace excluded software.amazon.ion:ion-java (CVE-2024-21634)
   )
 }
 
