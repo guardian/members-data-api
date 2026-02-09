@@ -33,7 +33,7 @@ object Dependencies {
   val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.1" // Fix CVE-2025-12183, CVE-2025-66566
   val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
-  val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
+  val logback = "ch.qos.logback" % "logback-classic" % "1.5.28"
 
   val jacksonVersion = "2.15.4"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
