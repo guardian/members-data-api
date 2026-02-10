@@ -39,7 +39,11 @@ object Emails {
       Map(
         "last_name" -> contact.lastName,
         "product_type" -> productType.productTypeString,
-      ) ++ cancellationEffectiveDate.map("cancellation_effective_date" -> dateFormat.print(_)) ++
+        "cancellation_effective_date" -> (cancellationEffectiveDate match {
+          case Some(d) => dateFormat.print(d)
+          case None => "today"
+        }),
+      ) ++
         contact.firstName.map(firstName => "first_name" -> firstName),
     )
   }
