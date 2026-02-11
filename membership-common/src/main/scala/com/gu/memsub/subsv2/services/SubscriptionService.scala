@@ -190,8 +190,16 @@ class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], r
     EitherT(
       OptionT(get(subscriptionNumber, isActiveToday = true)).fold(
         zuoraSubscriptionWithCurrentSegment => {
-          val paidPlans =
-            zuoraSubscriptionWithCurrentSegment.ratePlans
+
+          val paidPlans = for {
+            ratePlan <- zuoraSubscriptionWithCurrentSegment.ratePlans
+            // for some reason zuora returns charges that ended at midnight this morning
+            inDateCharges <- ratePlan.ratePlanCharges.list.toList.filter(_.effectiveEndDate.isAfter(today)) match {
+              case first :: rest => Some(NonEmptyList.fromSeq(first, rest))
+              case _ => None // no charges left
+            }
+          } yield ratePlan.copy(ratePlanCharges = inDateCharges)
+
           val billRunHasAlreadyHappened = wallClockTimeNow.isAfter(BillRunCompletedByTime)
 
           paidPlans match {

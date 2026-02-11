@@ -60,6 +60,7 @@ class SubscriptionServiceTest extends Specification {
         case "/subscriptions/credit" => jsonResponse("rest/plans/Credits.json")(request)
         case "/subscriptions/A-S00063478" => jsonResponse("rest/plans/Upgraded.json")(request)
         case "/subscriptions/A-lead-time" => jsonResponse("rest/cancellation/GW-6for6-lead-time.json")(request)
+        case "/subscriptions/A-upgrade" => jsonResponse("rest/cancellation/t2-t3-upgrade.json")(request)
         case "/subscriptions/A-segment-6for6" => jsonResponse("rest/cancellation/GW-6for6-segment-6for6.json")(request)
         case "/subscriptions/GW-before-bill-run" => jsonResponse("rest/cancellation/GW-before-bill-run.json")(request)
         case "/subscriptions/GW-stale-chargeThroughDate" => jsonResponse("rest/cancellation/GW-stale-chargeThroughDate.json")(request)
@@ -376,6 +377,12 @@ class SubscriptionServiceTest extends Specification {
 
     "Decided cancellation effective date should be None if within lead time period before first fulfilment date" in {
       service.decideCancellationEffectiveDate(SubscriptionNumber("A-lead-time")).run mustEqual \/.right(None)
+    }
+
+    "Decided cancellation effective date should be next month even if they switched today" in {
+      service
+        .decideCancellationEffectiveDate(SubscriptionNumber("A-upgrade"), LocalTime.parse("13:00"), LocalDate.parse("2026-02-10"))
+        .run mustEqual \/.right(Some(LocalDate.parse("2026-03-10")))
     }
 
     "Deciding cancellation effective date should error because Invoiced period has started today, however Bill Run has not yet completed" in {
