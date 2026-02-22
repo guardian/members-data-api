@@ -79,6 +79,7 @@ object Dependencies {
     mockServer,
     mockitoScala,
     ionJava, // Replace excluded software.amazon.ion:ion-java (CVE-2024-21634)
+    lz4Java, // Replace excluded org.lz4:lz4-java (CVE-2025-12183, CVE-2025-66566)
   ) ++ jackson ++ oktaJwtVerifier
 
   val dependencyOverrides = jackson ++ Seq(
@@ -94,5 +95,6 @@ object Dependencies {
     ExclusionRule("com.squareup.okio", "okio"),
     ExclusionRule("net.sourceforge.htmlunit", "htmlunit"), // Block vulnerable version from all transitive deps
     ExclusionRule("software.amazon.ion", "ion-java"), // Exclude old groupId, replaced by com.amazon.ion (CVE-2024-21634)
+    ExclusionRule("org.lz4", "lz4-java"), // Exclude old groupId, replaced by at.yawk.lz4 (CVE-2025-12183, CVE-2025-66566)
   )
 }
