@@ -74,6 +74,7 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
   private val guardianWeeklyOnlyAttributes = Attributes(
     UserId = userWithGuardianWeeklyUserId,
     GuardianWeeklySubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
+    DigitalSubscriptionExpiryDate = Some(dateTimeInTheFuture.toLocalDate),
   )
 
   private val tierThreeAttributes = Attributes(
@@ -578,17 +579,16 @@ class AttributeControllerTest extends Specification with AfterAll with Idiomatic
         Json.parse(s"""
                |{
                |  "userId": "$userWithGuardianWeeklyUserId",
+               |  "digitalSubscriptionExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
                |  "guardianWeeklyExpiryDate":"${dateTimeInTheFuture.toLocalDate}",
                |  "showSupportMessaging": false,
-               |  "feastIosSubscriptionGroup": "${FeastApp.IosSubscriptionGroupIds.IntroductoryOffer}",
-               |  "feastAndroidOfferTags": ["${FeastApp.AndroidOfferTags.IntroductoryOffer}"],
                |  "contentAccess": {
                |    "member": false,
                |    "paidMember": false,
                |    "recurringContributor": false,
                |    "supporterPlus" : false,
-               |    "feast": false,
-               |    "digitalPack": false,
+               |    "feast": true,
+               |    "digitalPack": true,
                |    "paperSubscriber": false,
                |    "guardianWeeklySubscriber": true,
                |    "guardianPatron": false,
