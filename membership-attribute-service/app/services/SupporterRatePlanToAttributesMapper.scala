@@ -210,6 +210,12 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0086619bf8901661aaac94257fe",
       "2c92a0ff79ac64e30179ae45669b3a83",
       "2c92a0086619bf8901661ab545f51b21",
+      "8a1288599c2f45d4019c33de05fd6804",
+      "8a129dff9c2f5e67019c33de28dc1234",
+      "8a129dff9c2f5e67019c33de1a2b1208",
+      "8a1296cc9bf9167b019c2925e5f1697c",
+      "8a1286eb9bf8fee6019c2924e3c84552",
+      "8a1295179bf91686019c2923c1d2487a",
     ) -> guardianWeeklyTransformer,
     List(
       "8a129ce886834fa90186a20c3ee70b6a", // 2023 price rise annual
