@@ -92,6 +92,7 @@ object SupporterRatePlanToAttributesMapper {
   val guardianWeeklyTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
+      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val guardianPatronTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(

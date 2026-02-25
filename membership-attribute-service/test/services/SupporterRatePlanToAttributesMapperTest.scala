@@ -209,7 +209,10 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
             "2c92c0f878ac40300178acaa04bb401d",
           ).map(ratePlanItem(_)),
         ),
-        _ should beSome.which(_.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate)),
+        _ should beSome.which { attributes =>
+          attributes.GuardianWeeklySubscriptionExpiryDate should beSome(termEndDate)
+          attributes.latestDigitalSubscriptionExpiryDate should beSome(termEndDate)
+        },
       )
     }
 
