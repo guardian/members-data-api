@@ -328,6 +328,12 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f878ac402c0178acb3a90a3620",
       "2c92c0f965f212210165f69b94c92d66",
       "2c92c0f878ac40300178acaa04bb401d",
+      "71a1889a11e9c3262efc33d4d2e6003d",
+      "71a1b1d5ae19c3274a6c33d4e8c80000",
+      "71a10c626869c3262f1c33d50fd3000f",
+      "71a10c6268a9c22b079c2452f51f0137",
+      "71a10c626ff9c22b079c245239af0009",
+      "71a17af0e0e9c22c33ec241bf657005b",
     ) -> guardianWeeklyTransformer,
     List(
       "2c92c0f94c510a0d014c569ba8eb45f7",
