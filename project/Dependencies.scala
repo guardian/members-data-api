@@ -32,7 +32,7 @@ object Dependencies {
   val nimbusJoseJwt = "com.nimbusds" % "nimbus-jose-jwt" % "9.37.4" // Fix CVE-2023-52428
   val jsonSmart = "net.minidev" % "json-smart" % "2.5.2" // Fix CVE-2023-1370, CVE-2024-57699
   val snakeYaml = "org.yaml" % "snakeyaml" % "2.2" // Fix CVE-2022-1471 and others
-  val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.1" // Fix CVE-2025-12183, CVE-2025-66566
+  val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.4" // Fix CVE-2025-12183, CVE-2025-66566
   val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
   val bouncyCastle = "org.bouncycastle" % "bcpkix-jdk18on" % "1.79" // Fix CVE-2025-8916 (Excessive Allocation)
