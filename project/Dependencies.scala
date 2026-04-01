@@ -40,7 +40,7 @@ object Dependencies {
   val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
   val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
   val jettyHttp = "org.eclipse.jetty" % "jetty-http" % "12.0.12" // Fix CVE-2024-6763 (URI parsing)
-  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
+  val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.45" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.5.25"
 
   val jacksonVersion = "2.18.6"
