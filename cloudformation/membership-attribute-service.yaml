@@ -488,6 +488,35 @@ Resources:
     DependsOn:
       - LoadBalancer
 
+  NotEnoughHealthyInstancesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateProdMonitoring
+    Properties:
+      AlarmActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:alarms-handler-topic-${Stage}
+      AlarmName: !Join
+        - ' '
+        - - !FindInMap [ StageVariables, !Ref Stage, Urgent ]
+          - !Ref 'Stage'
+          - !FindInMap [ Constants , MetricFilters , MetricNamespace ]
+          - 'Not enough healthy instances'
+      AlarmDescription: !Join
+        - ' '
+        - - "Impact - members-data-api has reduced redundancy and could go down"
+          - !FindInMap [ Constants, Alarm, Process ]
+      MetricName: HealthyHostCount
+      Namespace: AWS/ELB
+      Dimensions:
+        - Name: LoadBalancerName
+          Value: !Ref LoadBalancer
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Threshold: 2
+      Period: 300
+      EvaluationPeriods: 4
+      Statistic: Average
+    DependsOn:
+      - LoadBalancer
+
   High5XXRateAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateProdMonitoring
