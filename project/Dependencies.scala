@@ -43,7 +43,7 @@ object Dependencies {
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.5.25"
 
-  val jacksonVersion = "2.18.6"
+  val jacksonVersion = "2.21"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
