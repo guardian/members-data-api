@@ -37,7 +37,7 @@ object Dependencies {
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
   val bouncyCastle = "org.bouncycastle" % "bcpkix-jdk18on" % "1.79" // Fix CVE-2025-8916 (Excessive Allocation)
   val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
-  val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
+  val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.10.0" // Fix CVE-2023-51074 (OOB Write)
   val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
   val jettyHttp = "org.eclipse.jetty" % "jetty-http" % "12.0.12" // Fix CVE-2024-6763 (URI parsing)
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
