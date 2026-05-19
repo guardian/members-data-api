@@ -30,9 +30,8 @@ object SelfServiceCancellation {
         phoneRegionsToDisplay = allPhones,
       )
     } else if (billingCountry.contains(UK)) {
-      val isWeekly = isOneOf(product, WeeklyDomestic, WeeklyRestOfWorld, WeeklyZoneA, WeeklyZoneB, WeeklyZoneC)
       SelfServiceCancellation(
-        isAllowed = isWeekly,
+        isAllowed = false,
         shouldDisplayEmail = false,
         phoneRegionsToDisplay = List(ukRowPhone),
       )
