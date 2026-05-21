@@ -3,11 +3,9 @@ package models
 import com.gu.i18n.Country.{Australia, Canada, Ireland, NewZealand, UK, US}
 import com.gu.memsub.Product._
 import org.specs2.mutable.Specification
-import org.specs2.specification.core.Fragment
 
 class SelfServiceCancellationTest extends Specification {
   val allCountries = Set(UK, Australia, US, Canada, NewZealand, Ireland)
-  private val weeklies = Set(WeeklyDomestic, WeeklyRestOfWorld, WeeklyZoneA, WeeklyZoneB, WeeklyZoneC)
   val allProducts = Set(
     Membership,
     Contribution,
@@ -19,7 +17,12 @@ class SelfServiceCancellationTest extends Specification {
     DigitalVoucher,
     Digipack,
     GuardianPatron,
-  ) ++ weeklies
+    WeeklyDomestic,
+    WeeklyRestOfWorld,
+    WeeklyZoneA,
+    WeeklyZoneB,
+    WeeklyZoneC,
+  )
 
   "SelfServiceCancellation.apply" should {
 
@@ -47,21 +50,13 @@ class SelfServiceCancellationTest extends Specification {
       }.toList
     }
 
-    "allow cancellation for Guardian Weekly in the UK" in {
-      weeklies.map { product =>
-        SelfServiceCancellation(product, Some(UK)).isAllowed shouldEqual true
-      }.toList
-    }
-
     "disallow cancellation for all products except Membership, Contribution, Digipack, Tier Three, Guardian Ad-Lite and Supporter Plus in the UK" in {
-      val productsToTest = allProducts
-        .diff(Set(Membership, Contribution, SupporterPlus, Digipack, TierThree, AdLite) ++ weeklies)
-        .toList
-      Fragment.foreach(productsToTest) { product =>
-        s"$product" in {
+      allProducts
+        .diff(Set(Membership, Contribution, SupporterPlus, Digipack, TierThree, AdLite))
+        .map { product =>
           SelfServiceCancellation(product, Some(UK)).isAllowed shouldEqual false
         }
-      }
+        .toList
     }
 
     "allow cancellation for all products in countries other than the UK" in {
