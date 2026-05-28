@@ -120,6 +120,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |      "phoneRegionsToDisplay" : [ "UK & ROW", "US", "AUS" ]
         |    },
         |    "billingCountry" : "United Kingdom",
+        |    "isTaxableCountry": false,
         |    "joinDate" : "2024-05-15",
         |    "optIn" : true,
         |    "subscription" : {
@@ -324,6 +325,7 @@ class ProductsResponseSpec extends Specification with SafeLogging {
         |        ]
         |      },
         |      "billingCountry": "$country",
+        |      "isTaxableCountry": false,
         |      "joinDate" : "$startDate",
         |      "optIn": true,
         |      "subscription": {
