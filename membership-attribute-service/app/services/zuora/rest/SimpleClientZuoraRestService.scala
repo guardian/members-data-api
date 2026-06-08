@@ -129,10 +129,9 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
 
   def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {
     (for {
-      amendment <- EitherT(simpleRest.get[Amendment](s"amendments/subscriptions/${subscriptionNumber.getNumber}"))
       cancelledSub <- EitherT(simpleRest.get[CancelledSubscription](s"subscriptions/${subscriptionNumber.getNumber}"))
     } yield {
-      if (amendment.`type`.contains("Cancellation") && cancelledSub.status == "Cancelled")
+      if (cancelledSub.status == "Cancelled")
         Some(cancelledSub.subscriptionEndDate)
       else
         None
