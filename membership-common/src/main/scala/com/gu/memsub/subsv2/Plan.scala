@@ -242,6 +242,7 @@ case class ProductRatePlan(
     productId: ProductId,
     productRatePlanCharges: Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType],
     private val productTypeOption: Option[ProductType],
+    taxExclusive: Boolean = false,
 ) {
   lazy val productType: ProductType = productTypeOption.getOrElse(throw new RuntimeException("Product type is undefined for plan: " + name))
 }
