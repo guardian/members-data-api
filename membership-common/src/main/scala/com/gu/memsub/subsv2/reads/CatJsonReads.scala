@@ -41,7 +41,7 @@ object CatJsonReads {
   private val extraTaxAppliesReads: Reads[Boolean] = new Reads[Boolean] {
     override def reads(json: JsValue): JsResult[Boolean] = json match {
       case JsArray(charges) => JsSuccess(charges.exists(charge => (charge \ "taxMode").asOpt[String].contains("TaxExclusive")))
-      case _ => JsSuccess(false)
+      case _ => JsError("expected productRatePlanCharges to be an array")
     }
   }
 
