@@ -42,7 +42,7 @@ object AccountDetails {
 
       val mainPlan = subscription.plan(catalog, today)
       val product = mainPlan.product(catalog)
-      val taxExclusive = catalog.productRatePlans.get(mainPlan.productRatePlanId).exists(_.taxExclusive)
+      val taxExclusive = mainPlan.taxExclusive(catalog)
 
       val paymentMethod = paymentDetails.paymentMethod match {
         case Some(payPal: PayPalMethod) =>

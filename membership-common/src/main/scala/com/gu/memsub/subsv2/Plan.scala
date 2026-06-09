@@ -224,6 +224,9 @@ case class RatePlan(
   def productType(catalog: Catalog): ProductType =
     productRatePlan(catalog).productType
 
+  def taxExclusive(catalog: Catalog): Boolean =
+    productRatePlan(catalog).taxExclusive
+
   def getChargeTypes(catalog: Catalog): List[ProductRatePlanChargeProductType] = {
     val getChargeProductType = catalog.productRatePlans(productRatePlanId).productRatePlanCharges
     ratePlanCharges.list.toList
