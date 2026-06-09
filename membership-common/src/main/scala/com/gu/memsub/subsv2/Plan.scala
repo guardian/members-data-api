@@ -224,8 +224,8 @@ case class RatePlan(
   def productType(catalog: Catalog): ProductType =
     productRatePlan(catalog).productType
 
-  def taxExclusive(catalog: Catalog): Boolean =
-    productRatePlan(catalog).taxExclusive
+  def extraTaxApplies(catalog: Catalog): Boolean =
+    productRatePlan(catalog).extraTaxApplies
 
   def getChargeTypes(catalog: Catalog): List[ProductRatePlanChargeProductType] = {
     val getChargeProductType = catalog.productRatePlans(productRatePlanId).productRatePlanCharges
@@ -245,7 +245,7 @@ case class ProductRatePlan(
     productId: ProductId,
     productRatePlanCharges: Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType],
     private val productTypeOption: Option[ProductType],
-    taxExclusive: Boolean = false,
+    extraTaxApplies: Boolean = false,
 ) {
   lazy val productType: ProductType = productTypeOption.getOrElse(throw new RuntimeException("Product type is undefined for plan: " + name))
 }

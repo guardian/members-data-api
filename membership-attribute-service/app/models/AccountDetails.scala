@@ -42,7 +42,7 @@ object AccountDetails {
 
       val mainPlan = subscription.plan(catalog, today)
       val product = mainPlan.product(catalog)
-      val taxExclusive = mainPlan.taxExclusive(catalog)
+      val extraTaxApplies = mainPlan.extraTaxApplies(catalog)
 
       val paymentMethod = paymentDetails.paymentMethod match {
         case Some(payPal: PayPalMethod) =>
@@ -154,7 +154,7 @@ object AccountDetails {
       ) ++
         regNumber.fold(Json.obj())({ reg => Json.obj("regNumber" -> reg) }) ++
         billingCountry.fold(Json.obj())({ bc => Json.obj("billingCountry" -> bc.name) }) ++
-        Json.obj("taxExclusive" -> taxExclusive) ++
+        Json.obj("extraTaxApplies" -> extraTaxApplies) ++
         Json.obj(
           "joinDate" -> paymentDetails.startDate,
           "optIn" -> !paymentDetails.pendingCancellation,

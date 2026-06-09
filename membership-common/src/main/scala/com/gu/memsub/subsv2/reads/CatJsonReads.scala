@@ -37,8 +37,8 @@ object CatJsonReads {
     }
   }
 
-  // A plan is tax exclusive when any of its charges carry Zuora's taxMode "TaxExclusive" (the rest are "TaxInclusive" or absent).
-  private val taxExclusiveReads: Reads[Boolean] = new Reads[Boolean] {
+  // Extra tax applies when any of a plan's charges carry Zuora's taxMode "TaxExclusive" (the rest are "TaxInclusive" or absent).
+  private val extraTaxAppliesReads: Reads[Boolean] = new Reads[Boolean] {
     override def reads(json: JsValue): JsResult[Boolean] = json match {
       case JsArray(charges) => JsSuccess(charges.exists(charge => (charge \ "taxMode").asOpt[String].contains("TaxExclusive")))
       case _ => JsSuccess(false)
@@ -52,7 +52,7 @@ object CatJsonReads {
         Reads.pure(pid) and
         (__ \ "productRatePlanCharges").read[Map[ProductRatePlanChargeId, ProductRatePlanChargeProductType]](productRatePlanChargesReads) and
         Reads.pure(productType) and
-        (__ \ "productRatePlanCharges").read[Boolean](taxExclusiveReads))(ProductRatePlan.apply _).reads(json)
+        (__ \ "productRatePlanCharges").read[Boolean](extraTaxAppliesReads))(ProductRatePlan.apply _).reads(json)
     }
 
   val productsReads: Reads[List[ProductRatePlan]] =
