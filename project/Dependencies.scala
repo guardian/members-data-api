@@ -19,7 +19,7 @@ object Dependencies {
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
-  val nettyVersion = "4.1.132.Final"
+  val nettyVersion = "4.1.135.Final"
   val netty = "io.netty" % "netty-codec" % nettyVersion
   val nettyHttp = "io.netty" % "netty-codec-http" % nettyVersion
   val nettyHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion // Fix CVE-2026-33871 (HTTP/2 CONTINUATION Flood DoS)
