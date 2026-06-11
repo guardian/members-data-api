@@ -23,6 +23,7 @@ class CatReadsTest extends AnyFlatSpec {
         productId = ProductId("2c92c0f8574b2b8101574c4a9473068b"),
         productRatePlanCharges = Map(ProductRatePlanChargeId("2c92c0f958aa45600158ac00e19d5daf") -> Weekly),
         productTypeOption = Some(ProductType("Guardian Weekly")),
+        extraTaxApplies = true,
       ),
     )
 
@@ -63,6 +64,16 @@ class CatReadsTest extends AnyFlatSpec {
 
     Diff.assertEquals(expected, result)
 
+  }
+
+  it should "mark a plan as extra tax applies when a charge has taxMode TaxExclusive" in {
+    val taxExclusivePlan = plans.find(_.id.get == "2c92c0f958aa455e0158aa6bc72f2aba")
+    assert(taxExclusivePlan.exists(_.extraTaxApplies))
+  }
+
+  it should "not mark a plan as extra tax applies when its charges are tax inclusive" in {
+    val taxInclusivePlan = plans.find(_.id.get == "2c92c0f96df75b5a016df81ba1c62609")
+    assert(taxInclusivePlan.exists(!_.extraTaxApplies))
   }
 
 }
