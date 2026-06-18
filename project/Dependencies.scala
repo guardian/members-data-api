@@ -25,7 +25,7 @@ object Dependencies {
   val nettyHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion // Fix CVE-2026-33871 (HTTP/2 CONTINUATION Flood DoS)
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val htmlUnit = "org.htmlunit" % "htmlunit" % "3.11.0" // Override to fix CVE-2023-2798 (RCE) - requires 3.0.0+
-  val mockServer = "org.mock-server" % "mockserver-netty" % "5.15.0" % Test
+  val mockServer = "org.mock-server" % "mockserver-netty" % "7.0.0" % Test
 
   // Security overrides for vulnerable transitive dependencies
   val commonsBeanUtils = "commons-beanutils" % "commons-beanutils" % "1.11.0" // Fix CVE-2025-48734
