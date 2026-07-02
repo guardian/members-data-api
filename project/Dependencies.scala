@@ -35,9 +35,10 @@ object Dependencies {
   val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.1" // Fix CVE-2025-12183, CVE-2025-66566
   val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
-  val bouncyCastleBcpkix = "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
+  val bouncyCastleBcpkix =
+    "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
   val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.84" // https://github.com/guardian/members-data-api/security/dependabot/79
-  val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
+  val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.20.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
   val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
   val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
   val jettyHttp = "org.eclipse.jetty" % "jetty-http" % "12.0.12" // Fix CVE-2024-6763 (URI parsing)
