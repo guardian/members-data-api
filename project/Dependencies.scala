@@ -6,7 +6,7 @@ object Dependencies {
   val awsClientV2Version = "2.35.10"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.37.0"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "5.0.0"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.10.2"
   val postgres = "org.postgresql" % "postgresql" % "42.7.2"
   val jdbc = PlayImport.jdbc
@@ -35,7 +35,8 @@ object Dependencies {
   val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.1" // Fix CVE-2025-12183, CVE-2025-66566
   val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
-  val bouncyCastle = "org.bouncycastle" % "bcpkix-jdk18on" % "1.79" // Fix CVE-2025-8916 (Excessive Allocation)
+  val bouncyCastleBcpkix = "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
+  val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.84" // https://github.com/guardian/members-data-api/security/dependabot/79
   val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
   val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
   val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
@@ -102,7 +103,8 @@ object Dependencies {
     nettyHttp,
     nettyHttp2,
     plexusUtils,
-    bouncyCastle,
+    bouncyCastleBcpkix,
+    bouncyCastleBcprov,
     commonsLang3,
     jsonPath,
     rhino,
