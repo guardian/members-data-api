@@ -101,9 +101,10 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
         .toList
     } yield bill
 
-  // billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items.
-  // A preview failure only means we show no next payment; it must never fail the whole /mma call, so we log it and
-  // carry on with an empty list (as before, but now with a log line so the failure is visible).
+  /** billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items. A preview failure only means
+    * we show no next payment; it must never fail the whole /mma call, so we log it and carry on with an empty list (as before, but now with a log
+    * line so the failure is visible).
+    */
   private def getPreviewInvoiceItems(subId: Id, accountId: AccountId, targetDate: LocalDate)(implicit
       logPrefix: LogPrefix,
   ): Future[Seq[Queries.PreviewInvoiceItem]] =
@@ -135,9 +136,9 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
 
 object PaymentService {
 
-  // Map a Zuora billing-preview invoice item to the internal preview shape BillingSchedule consumes.
-  // price includes tax to stay like-for-like with the old SOAP amend-with-preview.
-  // productId and productRatePlanChargeId are not returned by billing-preview and are unused by BillingSchedule.
+  /** Map a Zuora billing-preview invoice item to the internal preview shape BillingSchedule consumes. price includes tax to stay like-for-like with
+    * the old SOAP amend-with-preview. productId and productRatePlanChargeId are not returned by billing-preview and are unused by BillingSchedule.
+    */
   def toPreviewInvoiceItem(item: ZuoraRestService.BillingPreviewInvoiceItem): Queries.PreviewInvoiceItem = {
     val grossPrice = (item.chargeAmount + item.taxAmount).toFloat
     Queries.PreviewInvoiceItem(

@@ -200,8 +200,10 @@ object ZuoraRestService {
   case class RestQuery(queryString: String)
   implicit val restQueryWrites = Json.writes[RestQuery]
 
-  // Billing Preview (REST replacement for the SOAP amend-with-preview hack). assumeRenewal projects the next
-  // charge for subs already billed for their current term, so the old "evergreen" trick is no longer needed.
+  /** Billing Preview, the REST replacement for the SOAP amend-with-preview hack. assumeRenewal projects the next charge for subs already billed for
+    * their current term, so the old "evergreen" trick is no longer needed. See
+    * https://www.zuora.com/developer/api-references/api/operation/POST_BillingPreview
+    */
   case class BillingPreviewRequest(accountId: String, targetDate: LocalDate, assumeRenewal: String = "Autorenew")
   implicit val billingPreviewRequestWrites = Json.writes[BillingPreviewRequest]
 
