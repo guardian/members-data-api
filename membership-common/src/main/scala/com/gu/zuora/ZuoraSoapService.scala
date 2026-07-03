@@ -13,12 +13,10 @@ import com.gu.zuora.soap._
 import com.gu.zuora.soap.actions.{Action, XmlWriterAction}
 import com.gu.zuora.soap.actions.Actions._
 import com.gu.zuora.soap.models.Commands.CreatePaymentMethod
-import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
-import com.gu.zuora.soap.models.Results.{AmendResult, CreateResult, UpdateResult}
+import com.gu.zuora.soap.models.Results.{CreateResult, UpdateResult}
 import com.gu.zuora.soap.models.errors._
 import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
 import com.gu.zuora.soap.writers.Command.createPaymentMethodWrites
-import org.joda.time.LocalDate
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -53,26 +51,6 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
 
   def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
     soapClient.queryOne[SoapQueries.Contact](SimpleFilter("Id", contactId))
-
-  def getSubscription(id: S.Id)(implicit logPrefix: LogPrefix): Future[SoapQueries.Subscription] =
-    soapClient.queryOne[SoapQueries.Subscription](SimpleFilter("id", id.get))
-
-  private def previewInvoices(subscriptionId: String, paymentDate: LocalDate, action: (String, LocalDate) => Action[AmendResult])(implicit
-      logPrefix: LogPrefix,
-  ) = {
-    val invoices = soapClient.authenticatedRequest(action(subscriptionId, paymentDate)).map(_.invoiceItems)
-    invoices recover {
-      case e: Error => Nil
-      case e: Throwable => throw e
-    }
-  }
-
-  def previewInvoices(subscriptionId: S.Id, number: Int = 2)(implicit logPrefix: LogPrefix): Future[Seq[PreviewInvoiceItem]] = {
-    for {
-      sub <- getSubscription(subscriptionId)
-      previewInvoiceItems <- previewInvoices(sub.id, sub.contractAcceptanceDate, PreviewInvoicesViaAmend(number) _)
-    } yield previewInvoiceItems
-  }
 
   private def setDefaultPaymentMethod(
       accountId: AccountId,
