@@ -102,19 +102,24 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
     } yield bill
 
   // billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items.
-  // A Zuora error means we show no next payment (as before); we let unexpected failures propagate rather than hide them.
-  // TODO if an account has several subscriptions this runs once per subscription; it could be fetched once per account
-  // and shared to save Zuora calls.
+  // A preview failure only means we show no next payment; it must never fail the whole /mma call, so we log it and
+  // carry on with an empty list (as before, but now with a log line so the failure is visible).
   private def getPreviewInvoiceItems(subId: Id, accountId: AccountId, targetDate: LocalDate)(implicit
       logPrefix: LogPrefix,
   ): Future[Seq[Queries.PreviewInvoiceItem]] =
-    restService.getBillingPreview(accountId, targetDate).map {
-      case \/-(items) =>
-        items.collect { case item if item.subscriptionId == subId.get => PaymentService.toPreviewInvoiceItem(item) }
-      case -\/(error) =>
-        logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment: $error")
+    restService
+      .getBillingPreview(accountId, targetDate)
+      .map {
+        case \/-(items) =>
+          items.collect { case item if item.subscriptionId == subId.get => PaymentService.toPreviewInvoiceItem(item) }
+        case -\/(error) =>
+          logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment: $error")
+          Nil
+      }
+      .recover { case error =>
+        logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment", error)
         Nil
-    }
+      }
 
   def getPaymentMethod(maybePaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit
       logPrefix: LogPrefix,
