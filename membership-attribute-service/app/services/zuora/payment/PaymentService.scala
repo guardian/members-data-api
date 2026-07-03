@@ -111,7 +111,7 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
       .getBillingPreview(accountId, targetDate)
       .map {
         case \/-(items) =>
-          items.collect { case item if item.subscriptionId == subId.get => PaymentService.toPreviewInvoiceItem(item) }
+          items.filter(_.subscriptionId == subId.get).map(PaymentService.toPreviewInvoiceItem)
         case -\/(error) =>
           logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment: $error")
           Nil
