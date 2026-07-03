@@ -102,8 +102,7 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
     } yield bill
 
   /** billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items. A preview failure only means
-    * we show no next payment; it must never fail the whole /mma call, so we log it and carry on with an empty list (as before, but now with a log
-    * line so the failure is visible).
+    * we show no next payment; it must never fail the whole /mma call, so we log it and carry on.
     */
   private def getPreviewInvoiceItems(subId: Id, accountId: AccountId, targetDate: LocalDate)(implicit
       logPrefix: LogPrefix,
