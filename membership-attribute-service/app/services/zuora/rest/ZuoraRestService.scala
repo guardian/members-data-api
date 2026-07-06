@@ -15,6 +15,7 @@ import services.zuora.rest.ZuoraRestService.{
   AccountSummary,
   AccountsByCrmIdResponse,
   AccountsByCrmIdResponseRecord,
+  BillingPreviewInvoiceItem,
   ContactData,
   GetAccountsQueryResponse,
   GiftSubscriptionsFromIdentityIdRecord,
@@ -198,6 +199,26 @@ object ZuoraRestService {
 
   case class RestQuery(queryString: String)
   implicit val restQueryWrites = Json.writes[RestQuery]
+
+  /** Billing Preview, the REST replacement for the SOAP amend-with-preview hack. assumeRenewal projects the next charge for subs already billed for
+    * their current term, so the old "evergreen" trick is no longer needed. See
+    * https://www.zuora.com/developer/api-references/api/operation/POST_BillingPreview
+    */
+  case class BillingPreviewRequest(accountId: String, targetDate: LocalDate, assumeRenewal: String = "Autorenew")
+  implicit val billingPreviewRequestWrites = Json.writes[BillingPreviewRequest]
+
+  case class BillingPreviewInvoiceItem(
+      subscriptionId: String,
+      chargeAmount: Double,
+      taxAmount: Double,
+      serviceStartDate: String,
+      serviceEndDate: String,
+      chargeName: String,
+  )
+  implicit val billingPreviewInvoiceItemReads = Json.reads[BillingPreviewInvoiceItem]
+
+  case class BillingPreviewResponse(invoiceItems: List[BillingPreviewInvoiceItem])
+  implicit val billingPreviewResponseReads = Json.reads[BillingPreviewResponse]
 
   case class SalesforceContactId(get: String) extends AnyVal
 
@@ -408,6 +429,10 @@ trait ZuoraRestService {
   ): Future[String \/ List[GiftSubscriptionsFromIdentityIdRecord]]
 
   def getPaymentMethod(paymentMethodId: String)(implicit logPrefix: LogPrefix): Future[String \/ PaymentMethodResponse]
+
+  def getBillingPreview(accountId: AccountId, targetDate: LocalDate)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ List[BillingPreviewInvoiceItem]]
 
   def cancelSubscription(
       subscriptionNumber: SubscriptionNumber,

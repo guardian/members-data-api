@@ -183,8 +183,12 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.subscriptionNumber)(any) returns Future(\/.right(None))
 
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) returns Future(TestPaymentSummary())
-      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(TestQueriesAccount())
-      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 30)(any) returns Future(Seq(TestPreviewInvoiceItem()))
+      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(
+        TestQueriesAccount(id = nonGiftSubscriptionAccountId.get),
+      )
+      zuoraRestServiceMock.getBillingPreview(eqTo(nonGiftSubscriptionAccountId), any)(any) returns Future(
+        \/.right(List(TestBillingPreviewInvoiceItem(subscriptionId = nonGiftSubscription.id.get))),
+      )
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(
         subscriptionName = patronSubscriptionName,
@@ -228,7 +232,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) was called
-      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 30)(any) was called
+      zuoraRestServiceMock.getBillingPreview(eqTo(nonGiftSubscriptionAccountId), any)(any) was called
 
       supporterProductDataServiceMock wasNever calledAgain
       contactRepositoryMock wasNever calledAgain

@@ -13,6 +13,9 @@ import com.gu.zuora.ZuoraSoapService
 import com.gu.zuora.soap.models.Queries
 import com.gu.zuora.soap.models.Queries.Account
 import com.gu.zuora.soap.models.Queries.PaymentMethod._
+import org.joda.time.LocalDate
+import services.zuora.rest.ZuoraRestService
+import scalaz.{-\/, \/-}
 import scalaz.std.option._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
@@ -20,7 +23,7 @@ import scalaz.syntax.std.option._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionContext) extends SafeLogging {
+class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestService)(implicit ec: ExecutionContext) extends SafeLogging {
 
   def paymentDetails(
       sub: Subscription,
@@ -37,9 +40,9 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
 
     for {
       account <- zuoraService.getAccount(sub.accountId)
-      // Request 30 bills to handle long promotional periods (e.g., Australian student offer: 24 months free)
-      // 24 bills for promo + 6 buffer bills ensures we find the first paid bill even with billing irregularities
-      eventualBills = getNextBill(sub.id, account, 30).withLogging(s"next bill for $sub")
+      // Preview ~30 months ahead to handle long promotional periods (e.g. Australian student offer: 24 months free),
+      // so we still find the first paid bill for those. Like-for-like with the previous SOAP 30-billing-periods request.
+      eventualBills = getNextBill(sub.id, account, LocalDate.now.plusMonths(30)).withLogging(s"next bill for $sub")
       eventualMaybePaymentMethod = getPaymentMethod(account.defaultPaymentMethodId, defaultMandateIdIfApplicable) // kick off async
       bills <- eventualBills
       maybePaymentMethod <- eventualMaybePaymentMethod
@@ -86,9 +89,9 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
       case _ => None
     }
 
-  private def getNextBill(subId: Id, account: Account, numberOfBills: Int)(implicit logPrefix: LogPrefix): Future[List[Bill]] =
+  private def getNextBill(subId: Id, account: Account, targetDate: LocalDate)(implicit logPrefix: LogPrefix): Future[List[Bill]] =
     for {
-      previewInvoiceItems <- zuoraService.previewInvoices(subId, numberOfBills)
+      previewInvoiceItems <- getPreviewInvoiceItems(subId, AccountId(account.id), targetDate)
     } yield for {
       billingSched <- BillingSchedule.fromPreviewInvoiceItems(previewInvoiceItems).toList
       bill <- billingSched
@@ -97,6 +100,26 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
         .list
         .toList
     } yield bill
+
+  /** billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items. A preview failure only means
+    * we show no next payment; it must never fail the whole /mma call, so we log it and carry on.
+    */
+  private def getPreviewInvoiceItems(subId: Id, accountId: AccountId, targetDate: LocalDate)(implicit
+      logPrefix: LogPrefix,
+  ): Future[Seq[Queries.PreviewInvoiceItem]] =
+    restService
+      .getBillingPreview(accountId, targetDate)
+      .map {
+        case \/-(items) =>
+          items.filter(_.subscriptionId == subId.get).map(PaymentService.toPreviewInvoiceItem)
+        case -\/(error) =>
+          logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment: $error")
+          Nil
+      }
+      .recover { case error =>
+        logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment", error)
+        Nil
+      }
 
   def getPaymentMethod(maybePaymentMethodId: Option[String], defaultMandateIdIfApplicable: Option[String] = None)(implicit
       logPrefix: LogPrefix,
@@ -108,4 +131,23 @@ class PaymentService(zuoraService: ZuoraSoapService)(implicit ec: ExecutionConte
     } yield buildPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod))
       .getOrElse(Future.successful(None))
 
+}
+
+object PaymentService {
+
+  /** Map a Zuora billing-preview invoice item to the internal preview shape BillingSchedule consumes. price includes tax to stay like-for-like with
+    * the old SOAP amend-with-preview. productId and productRatePlanChargeId are not returned by billing-preview and are unused by BillingSchedule.
+    */
+  def toPreviewInvoiceItem(item: ZuoraRestService.BillingPreviewInvoiceItem): Queries.PreviewInvoiceItem = {
+    val grossPrice = (item.chargeAmount + item.taxAmount).toFloat
+    Queries.PreviewInvoiceItem(
+      price = grossPrice,
+      serviceStartDate = new LocalDate(item.serviceStartDate),
+      serviceEndDate = new LocalDate(item.serviceEndDate),
+      productId = "",
+      productRatePlanChargeId = "",
+      chargeName = item.chargeName,
+      unitPrice = grossPrice,
+    )
+  }
 }

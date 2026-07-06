@@ -147,7 +147,7 @@ class TouchpointComponents(
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }
-  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, zuoraRestService)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
