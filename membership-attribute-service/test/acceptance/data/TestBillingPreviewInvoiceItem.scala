@@ -1,5 +1,6 @@
 package acceptance.data
 
+import com.gu.memsub.Subscription.SubscriptionNumber
 import services.zuora.rest.ZuoraRestService.BillingPreviewInvoiceItem
 
 object TestBillingPreviewInvoiceItem {
@@ -11,7 +12,7 @@ object TestBillingPreviewInvoiceItem {
       serviceEndDate: String = "2024-02-01",
       chargeName: String = "chargeName",
   ): BillingPreviewInvoiceItem = BillingPreviewInvoiceItem(
-    subscriptionNumber,
+    SubscriptionNumber(subscriptionNumber),
     chargeAmount,
     taxAmount,
     serviceStartDate,
