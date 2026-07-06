@@ -184,10 +184,17 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) returns Future(TestPaymentSummary())
       zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(
-        TestQueriesAccount(id = nonGiftSubscriptionAccountId.get),
+        TestQueriesAccount(id = nonGiftSubscriptionAccountId.get, creditBalance = 0),
       )
+      // billing-preview is account-scoped: it returns items for this subscription plus a different one on the account.
+      // We must keep only this subscription's items (matched by number), so the next payment reflects 10, not 10 + 999.
       zuoraRestServiceMock.getBillingPreview(eqTo(nonGiftSubscriptionAccountId), any)(any) returns Future(
-        \/.right(List(TestBillingPreviewInvoiceItem(subscriptionNumber = nonGiftSubscription.subscriptionNumber.getNumber))),
+        \/.right(
+          List(
+            TestBillingPreviewInvoiceItem(subscriptionNumber = nonGiftSubscription.subscriptionNumber.getNumber, chargeAmount = 10),
+            TestBillingPreviewInvoiceItem(subscriptionNumber = "A-S00000999", chargeAmount = 999),
+          ),
+        ),
       )
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(
@@ -264,6 +271,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       (supporterPlusProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
       (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.subscriptionNumber.getNumber
       (supporterPlusProduct \ "subscription" \ "accountId").as[String] shouldEqual nonGiftSubscription.accountId.get
+      // the next payment is this subscription's billing-preview charge (10.00, i.e. 1000 in minor units), not the
+      // other subscription's charge of 999 which must be filtered out
+      (supporterPlusProduct \ "subscription" \ "nextPaymentPrice").as[Double] shouldEqual 1000.0
       (supporterPlusProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual nonGiftSubscription.plan(catalog).productName
 
       (digiGiftProduct \ "tier").as[String] shouldEqual giftSubscriptionFromSubscriptionService.ratePlans.head.productName
