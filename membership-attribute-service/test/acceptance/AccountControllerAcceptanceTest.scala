@@ -187,7 +187,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
         TestQueriesAccount(id = nonGiftSubscriptionAccountId.get),
       )
       zuoraRestServiceMock.getBillingPreview(eqTo(nonGiftSubscriptionAccountId), any)(any) returns Future(
-        \/.right(List(TestBillingPreviewInvoiceItem(subscriptionId = nonGiftSubscription.id.get))),
+        \/.right(List(TestBillingPreviewInvoiceItem(subscriptionNumber = nonGiftSubscription.subscriptionNumber.getNumber))),
       )
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(

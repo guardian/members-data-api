@@ -208,7 +208,7 @@ object ZuoraRestService {
   implicit val billingPreviewRequestWrites = Json.writes[BillingPreviewRequest]
 
   case class BillingPreviewInvoiceItem(
-      subscriptionId: String,
+      subscriptionNumber: String,
       chargeAmount: Double,
       taxAmount: Double,
       serviceStartDate: String,

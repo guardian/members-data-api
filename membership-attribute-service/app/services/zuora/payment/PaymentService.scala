@@ -42,7 +42,7 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
       account <- zuoraService.getAccount(sub.accountId)
       // Preview ~30 months ahead to handle long promotional periods (e.g. Australian student offer: 24 months free),
       // so we still find the first paid bill for those. Like-for-like with the previous SOAP 30-billing-periods request.
-      eventualBills = getNextBill(sub.id, account, LocalDate.now.plusMonths(30)).withLogging(s"next bill for $sub")
+      eventualBills = getNextBill(sub.subscriptionNumber, account, LocalDate.now.plusMonths(30)).withLogging(s"next bill for $sub")
       eventualMaybePaymentMethod = getPaymentMethod(account.defaultPaymentMethodId, defaultMandateIdIfApplicable) // kick off async
       bills <- eventualBills
       maybePaymentMethod <- eventualMaybePaymentMethod
@@ -89,9 +89,11 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
       case _ => None
     }
 
-  private def getNextBill(subId: Id, account: Account, targetDate: LocalDate)(implicit logPrefix: LogPrefix): Future[List[Bill]] =
+  private def getNextBill(subscriptionNumber: SubscriptionNumber, account: Account, targetDate: LocalDate)(implicit
+      logPrefix: LogPrefix,
+  ): Future[List[Bill]] =
     for {
-      previewInvoiceItems <- getPreviewInvoiceItems(subId, AccountId(account.id), targetDate)
+      previewInvoiceItems <- getPreviewInvoiceItems(subscriptionNumber, AccountId(account.id), targetDate)
     } yield for {
       billingSched <- BillingSchedule.fromPreviewInvoiceItems(previewInvoiceItems).toList
       bill <- billingSched
@@ -101,17 +103,18 @@ class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestServi
         .toList
     } yield bill
 
-  /** billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items. A preview failure only means
-    * we show no next payment; it must never fail the whole /mma call, so we log it and carry on.
+  /** billing-preview is account-scoped, so we request the whole account and keep only the target subscription's items. We match on the subscription
+    * number, not the Zuora id: with assumeRenewal the projected items carry a simulated renewal subscription id, so filtering by id would drop them
+    * all. A preview failure only means we show no next payment; it must never fail the whole /mma call, so we log it and carry on.
     */
-  private def getPreviewInvoiceItems(subId: Id, accountId: AccountId, targetDate: LocalDate)(implicit
+  private def getPreviewInvoiceItems(subscriptionNumber: SubscriptionNumber, accountId: AccountId, targetDate: LocalDate)(implicit
       logPrefix: LogPrefix,
   ): Future[Seq[Queries.PreviewInvoiceItem]] =
     restService
       .getBillingPreview(accountId, targetDate)
       .map {
         case \/-(items) =>
-          items.filter(_.subscriptionId == subId.get).map(PaymentService.toPreviewInvoiceItem)
+          items.filter(_.subscriptionNumber == subscriptionNumber.getNumber).map(PaymentService.toPreviewInvoiceItem)
         case -\/(error) =>
           logger.warn(s"could not get billing preview for account ${accountId.get}, showing no next payment: $error")
           Nil
