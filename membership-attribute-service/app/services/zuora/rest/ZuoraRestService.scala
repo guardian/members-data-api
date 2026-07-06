@@ -207,8 +207,9 @@ object ZuoraRestService {
   case class BillingPreviewRequest(accountId: String, targetDate: LocalDate, assumeRenewal: String = "Autorenew")
   implicit val billingPreviewRequestWrites = Json.writes[BillingPreviewRequest]
 
+  implicit val subscriptionNumberReads: Reads[SubscriptionNumber] = Json.valueReads[SubscriptionNumber]
   case class BillingPreviewInvoiceItem(
-      subscriptionId: String,
+      subscriptionNumber: SubscriptionNumber,
       chargeAmount: Double,
       taxAmount: Double,
       serviceStartDate: String,
