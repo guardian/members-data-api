@@ -23,7 +23,7 @@ object ZuoraQueryReads {
   case class AccountIdRecord(id: String)
   implicit val accountIdRecordReads: Reads[AccountIdRecord] = (__ \ "Id").read[String].map(AccountIdRecord)
 
-  // Zuora returns some fields (e.g. credit card expiry) as JSON numbers; the SOAP readers treated everything as strings, so normalise to String.
+  /* Zuora returns some fields (e.g. credit card expiry) as JSON numbers; the SOAP readers treated everything as strings, so normalise to String. */
   private def optString(json: JsValue, field: String): JsResult[Option[String]] =
     (json \ field)
       .validateOpt[JsValue]

@@ -45,16 +45,16 @@ class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Fu
 
   import ZuoraSoapService._
 
-  // These reads used to go through the SOAP query API; they now hit the equivalent Zuora REST endpoints (object/{type}/{id} and action/query),
-  // mapping the responses back to the same case classes so callers are unchanged. A missing record or REST error fails the Future, matching the
-  // old queryOne behaviour.
+  /* These reads used to go through the SOAP query API; they now hit the equivalent Zuora REST endpoints (object/{type}/{id} and action/query),
+     mapping the responses back to the same case classes so callers are unchanged. getObject fails the Future if the object is missing or the call
+     errors, like the old queryOne; query returns the records (empty if none) and only fails on a REST error, like the old plural query. */
   private def getObject[A: Reads](url: String)(implicit logPrefix: LogPrefix): Future[A] =
-    restClient.get[A](url).map(_.valueOr(error => throw new RuntimeException(s"Zuora REST get '$url' failed: $error")))
+    restClient.get[A](url).map(_.valueOr(error => throw QueryError(s"Zuora REST get '$url' failed: $error")))
 
   private def query[A: Reads](zoql: String)(implicit logPrefix: LogPrefix): Future[List[A]] =
     restClient
       .post[RestQuery, QueryResponse[A]]("action/query", RestQuery(zoql))
-      .map(_.valueOr(error => throw new RuntimeException(s"Zuora REST query '$zoql' failed: $error")).records)
+      .map(_.valueOr(error => throw QueryError(s"Zuora REST query '$zoql' failed: $error")).records)
 
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): Future[List[AccountId]] =
     query[AccountIdRecord](s"select Id from account where crmId = '${contactId.salesforceAccountId}'")
