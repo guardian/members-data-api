@@ -57,8 +57,7 @@ class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Fu
       .map(_.valueOr(error => throw QueryError(s"Zuora REST query '$zoql' failed: $error")).records)
 
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): Future[List[AccountId]] =
-    query[AccountIdRecord](s"select Id from account where crmId = '${contactId.salesforceAccountId}'")
-      .map(_.map(record => AccountId(record.id)))
+    query[AccountId](s"select Id from account where crmId = '${contactId.salesforceAccountId}'")
 
   def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[SoapQueries.Account] =
     getObject[SoapQueries.Account](s"object/account/${accountId.get}")
@@ -130,11 +129,21 @@ class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Fu
     } yield result
   }
 
-  def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit logPrefix: LogPrefix): Future[PaymentSummary] =
-    query[SoapQueries.InvoiceItem](
-      s"select Id, ChargeAmount, TaxAmount, ServiceStartDate, ServiceEndDate, ChargeNumber, ProductName, SubscriptionId " +
-        s"from invoiceitem where SubscriptionNumber = '${subscriptionNumber.getNumber}'",
-    ).map(invoiceItems => PaymentSummary(latestInvoiceItems(invoiceItems), accountCurrency))
+  def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit
+      logPrefix: LogPrefix,
+  ): Future[PaymentSummary] = {
+    val zoql = List(
+      "select Id, ChargeAmount, TaxAmount, ServiceStartDate, ServiceEndDate, ChargeNumber, ProductName, SubscriptionId",
+      "from invoiceitem",
+      s"where SubscriptionNumber = '${subscriptionNumber.getNumber}'",
+    ).mkString(" ")
+    for {
+      invoiceItems <- query[SoapQueries.InvoiceItem](zoql)
+    } yield {
+      val filteredInvoices = latestInvoiceItems(invoiceItems)
+      PaymentSummary(filteredInvoices, accountCurrency)
+    }
+  }
 
   def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.PaymentMethod] =
     getObject[SoapQueries.PaymentMethod](s"object/payment-method/$id")

@@ -1,6 +1,7 @@
 package com.gu.zuora.rest
 
 import com.gu.i18n.Currency
+import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.ZuoraLookup
 import com.gu.zuora.api.PaymentGateway
 import com.gu.zuora.soap.models.Queries
@@ -9,7 +10,7 @@ import play.api.libs.json._
 
 /** JSON readers that let ZuoraSoapService's read methods hit Zuora REST (object/{type}/{id} and action/query) instead of SOAP query, mapping the
   * responses back to the existing SOAP query case classes so callers are unaffected. Field names and parsing mirror the old SOAP readers in
-  * com.gu.zuora.soap.Readers. See https://developer.zuora.com/api-references/api/operation/Object_GETAccount
+  * com.gu.zuora.soap.Readers. Each reader links the Zuora operation it parses.
   */
 object ZuoraQueryReads {
 
@@ -20,19 +21,10 @@ object ZuoraQueryReads {
   implicit def queryResponseReads[A](implicit r: Reads[A]): Reads[QueryResponse[A]] =
     (__ \ "records").read[List[A]].map(QueryResponse(_))
 
-  case class AccountIdRecord(id: String)
-  implicit val accountIdRecordReads: Reads[AccountIdRecord] = (__ \ "Id").read[String].map(AccountIdRecord)
+  /** @see https://developer.zuora.com/api-references/api/operation/Action_POSTquery */
+  implicit val accountIdReads: Reads[AccountId] = (__ \ "Id").read[String].map(AccountId)
 
-  /* Zuora returns some fields (e.g. credit card expiry) as JSON numbers; the SOAP readers treated everything as strings, so normalise to String. */
-  private def optString(json: JsValue, field: String): JsResult[Option[String]] =
-    (json \ field)
-      .validateOpt[JsValue]
-      .map(_.flatMap {
-        case JsString(s) => Some(s)
-        case JsNumber(n) => Some(n.toBigInt.toString)
-        case _ => None
-      })
-
+  /** @see https://developer.zuora.com/api-references/older-api/operation/Object_GETAccount */
   implicit val accountReads: Reads[Queries.Account] = Reads { json =>
     for {
       id <- (json \ "Id").validate[String]
@@ -57,6 +49,7 @@ object ZuoraQueryReads {
     )
   }
 
+  /** @see https://developer.zuora.com/api-references/older-api/operation/Object_GETContact */
   implicit val contactReads: Reads[Queries.Contact] = Reads { json =>
     for {
       id <- (json \ "Id").validate[String]
@@ -75,6 +68,7 @@ object ZuoraQueryReads {
     )
   }
 
+  /** @see https://developer.zuora.com/api-references/older-api/operation/Object_GETPaymentMethod */
   implicit val paymentMethodReads: Reads[Queries.PaymentMethod] = Reads { json =>
     for {
       id <- (json \ "Id").validate[String]
@@ -89,9 +83,9 @@ object ZuoraQueryReads {
       bankTransferAccountName <- (json \ "BankTransferAccountName").validateOpt[String]
       bankTransferAccountNumberMask <- (json \ "BankTransferAccountNumberMask").validateOpt[String]
       bankCode <- (json \ "BankCode").validateOpt[String]
-      creditCardMaskNumber <- optString(json, "CreditCardMaskNumber")
-      creditCardExpirationMonth <- optString(json, "CreditCardExpirationMonth")
-      creditCardExpirationYear <- optString(json, "CreditCardExpirationYear")
+      creditCardMaskNumber <- (json \ "CreditCardMaskNumber").validateOpt[String]
+      creditCardExpirationMonth <- (json \ "CreditCardExpirationMonth").validateOpt[Int]
+      creditCardExpirationYear <- (json \ "CreditCardExpirationYear").validateOpt[Int]
       creditCardType <- (json \ "CreditCardType").validateOpt[String]
     } yield Queries.PaymentMethod(
       id = id,
@@ -105,14 +99,15 @@ object ZuoraQueryReads {
       bankCode = bankCode,
       `type` = paymentType,
       creditCardNumber = creditCardMaskNumber.map(_.takeRight(4)),
-      creditCardExpirationMonth = creditCardExpirationMonth,
-      creditCardExpirationYear = creditCardExpirationYear,
+      creditCardExpirationMonth = creditCardExpirationMonth.map(_.toString),
+      creditCardExpirationYear = creditCardExpirationYear.map(_.toString),
       creditCardType = creditCardType,
       numConsecutiveFailures = numConsecutiveFailures,
       paymentMethodStatus = paymentMethodStatus,
     )
   }
 
+  /** @see https://developer.zuora.com/api-references/api/operation/Action_POSTquery */
   implicit val invoiceItemReads: Reads[Queries.InvoiceItem] = Reads { json =>
     for {
       id <- (json \ "Id").validate[String]

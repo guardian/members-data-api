@@ -1,6 +1,7 @@
 package com.gu.zuora.rest
 
 import com.gu.i18n.Currency.GBP
+import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraQueryReads._
 import com.gu.zuora.soap.models.Queries
 import org.joda.time.LocalDate
@@ -57,9 +58,9 @@ class ZuoraQueryReadsTest extends Specification {
   }
 
   "queryResponseReads" should {
-    "extract account ids from an action/query response" in {
+    "read account ids straight into AccountId" in {
       val json = Json.parse("""{"records": [{"Id": "acc-1"}, {"Id": "acc-2"}], "size": 2, "done": true}""")
-      json.as[QueryResponse[AccountIdRecord]].records.map(_.id) must_== List("acc-1", "acc-2")
+      json.as[QueryResponse[AccountId]].records.map(_.get) must_== List("acc-1", "acc-2")
     }
   }
 }
