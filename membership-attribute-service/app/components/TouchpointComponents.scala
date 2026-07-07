@@ -109,7 +109,7 @@ class TouchpointComponents(
         metrics = zuoraMetrics,
       )
 
-    lazy val simpleZuoraSoapService = new ZuoraSoapService(zuoraSoapClient) with HealthCheckableService {
+    lazy val simpleZuoraSoapService = new ZuoraSoapService(zuoraSoapClient, zuoraRestClient) with HealthCheckableService {
       override def checkHealth: Boolean = zuoraSoapClient.isReady
     }
 
