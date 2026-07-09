@@ -25,7 +25,7 @@ object Dependencies {
   val nettyHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion // Fix CVE-2026-33871 (HTTP/2 CONTINUATION Flood DoS)
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val htmlUnit = "org.htmlunit" % "htmlunit" % "3.11.0" // Override to fix CVE-2023-2798 (RCE) - requires 3.0.0+
-  val mockServer = "org.mock-server" % "mockserver-netty" % "5.15.0" % Test
+  val mockServer = "org.mock-server" % "mockserver-netty" % "7.3.0" % Test
 
   // Security overrides for vulnerable transitive dependencies
   val commonsBeanUtils = "commons-beanutils" % "commons-beanutils" % "1.11.0" // Fix CVE-2025-48734
@@ -35,7 +35,8 @@ object Dependencies {
   val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.1" // Fix CVE-2025-12183, CVE-2025-66566
   val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
-  val bouncyCastleBcpkix = "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
+  val bouncyCastleBcpkix =
+    "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
   val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.84" // https://github.com/guardian/members-data-api/security/dependabot/79
   val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
   val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
