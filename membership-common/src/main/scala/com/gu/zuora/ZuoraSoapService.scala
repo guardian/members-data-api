@@ -17,6 +17,8 @@ import com.gu.zuora.soap.models.Results.{CreateResult, UpdateResult}
 import com.gu.zuora.soap.models.errors._
 import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
 import com.gu.zuora.soap.writers.Command.createPaymentMethodWrites
+import com.gu.zuora.rest.ZuoraQueryReads._
+import play.api.libs.json.Reads
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -37,20 +39,31 @@ trait SoapClient[M[_]] {
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): M[List[AccountId]]
 }
 
-class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
+class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext)
+    extends SoapClient[Future]
+    with SafeLogging {
 
   import ZuoraSoapService._
 
+  /* These reads used to go through the SOAP query API; they now hit the equivalent Zuora REST endpoints (object/{type}/{id} and action/query),
+     mapping the responses back to the same case classes so callers are unchanged. getObject fails the Future if the object is missing or the call
+     errors, like the old queryOne; query returns the records (empty if none) and only fails on a REST error, like the old plural query. */
+  private def getObject[A: Reads](url: String)(implicit logPrefix: LogPrefix): Future[A] =
+    restClient.get[A](url).map(_.valueOr(error => throw QueryError(s"Zuora REST get '$url' failed: $error")))
+
+  private def query[A: Reads](zoql: String)(implicit logPrefix: LogPrefix): Future[List[A]] =
+    restClient
+      .post[RestQuery, QueryResponse[A]]("action/query", RestQuery(zoql))
+      .map(_.valueOr(error => throw QueryError(s"Zuora REST query '$zoql' failed: $error")).records)
+
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): Future[List[AccountId]] =
-    soapClient
-      .query[SoapQueries.Account](SimpleFilter("crmId", contactId.salesforceAccountId))
-      .map(_.map(a => AccountId(a.id)).toList)
+    query[AccountId](s"select Id from account where crmId = '${contactId.salesforceAccountId}'")
 
   def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[SoapQueries.Account] =
-    soapClient.queryOne[SoapQueries.Account](SimpleFilter("id", accountId.get))
+    getObject[SoapQueries.Account](s"object/account/${accountId.get}")
 
   def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
-    soapClient.queryOne[SoapQueries.Contact](SimpleFilter("Id", contactId))
+    getObject[SoapQueries.Contact](s"object/contact/$contactId")
 
   private def setDefaultPaymentMethod(
       accountId: AccountId,
@@ -116,15 +129,23 @@ class ZuoraSoapService(soapClient: soap.Client)(implicit ec: ExecutionContext) e
     } yield result
   }
 
-  def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit logPrefix: LogPrefix): Future[PaymentSummary] =
+  def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit
+      logPrefix: LogPrefix,
+  ): Future[PaymentSummary] = {
+    val zoql = List(
+      "select Id, ChargeAmount, TaxAmount, ServiceStartDate, ServiceEndDate, ChargeNumber, ProductName, SubscriptionId",
+      "from invoiceitem",
+      s"where SubscriptionNumber = '${subscriptionNumber.getNumber}'",
+    ).mkString(" ")
     for {
-      invoiceItems <- soapClient.query[SoapQueries.InvoiceItem](SimpleFilter("SubscriptionNumber", subscriptionNumber.getNumber))
+      invoiceItems <- query[SoapQueries.InvoiceItem](zoql)
     } yield {
       val filteredInvoices = latestInvoiceItems(invoiceItems)
       PaymentSummary(filteredInvoices, accountCurrency)
     }
+  }
 
   def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.PaymentMethod] =
-    soapClient.queryOne[SoapQueries.PaymentMethod](SimpleFilter("Id", id))
+    getObject[SoapQueries.PaymentMethod](s"object/payment-method/$id")
 
 }
