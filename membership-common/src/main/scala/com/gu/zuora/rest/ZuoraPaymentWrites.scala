@@ -25,7 +25,7 @@ object ZuoraPaymentWrites {
   }
 
   /** POST /v1/object/payment-method returns {"Id": "...", "Success": true}. See
-    * https://developer.zuora.com/api-references/api/operation/Object_POSTPaymentMethod
+    * https://developer.zuora.com/api-references/older-api/operation/Object_POSTPaymentMethod
     */
   case class ObjectCreateResponse(id: String, success: Boolean)
   implicit val objectCreateResponseReads: Reads[ObjectCreateResponse] =
