@@ -4,16 +4,15 @@ import com.gu.zuora.soap.models.Commands
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
-/** JSON for the Zuora payment-method WRITE operations that ZuoraSoapService used to do over SOAP: account payment updates via PUT /v1/accounts/{id},
-  * and payment-method creation via POST /v1/object/payment-method. The object API takes the same PascalCase zObject fields the SOAP create used, so
-  * the field mapping mirrors com.gu.zuora.soap.writers.Command and the CreateCreditCardReferencePaymentMethod action.
+/** JSON for the Zuora payment-method write operations: account payment updates via PUT /v1/accounts/{id}, and payment-method creation via POST
+  * /v1/object/payment-method (which takes the PascalCase zObject fields of the payment method).
   */
 object ZuoraPaymentWrites {
 
   implicit val jsObjectWrites: Writes[JsObject] = Writes(identity)
 
-  /** PUT /v1/accounts/{id}. A None defaultPaymentMethodId is written as an explicit JSON null, which Zuora treats as "clear the default" — the REST
-    * equivalent of the SOAP fieldsToNull. See https://developer.zuora.com/api-references/api/operation/PUT_Account
+  /** PUT /v1/accounts/{id}. A None defaultPaymentMethodId is written as an explicit JSON null, which Zuora treats as clearing the default. See
+    * https://developer.zuora.com/api-references/api/operation/PUT_Account
     */
   case class AccountPaymentUpdate(defaultPaymentMethodId: Option[String], paymentGateway: String, autoPay: Boolean)
   implicit val accountPaymentUpdateWrites: Writes[AccountPaymentUpdate] = Writes { update =>

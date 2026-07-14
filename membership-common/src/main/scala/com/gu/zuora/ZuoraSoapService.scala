@@ -41,9 +41,8 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
 
   import ZuoraSoapService._
 
-  /* These reads used to go through the SOAP query API; they now hit the equivalent Zuora REST endpoints (object/{type}/{id} and action/query),
-     mapping the responses back to the same case classes so callers are unchanged. getObject fails the Future if the object is missing or the call
-     errors, like the old queryOne; query returns the records (empty if none) and only fails on a REST error, like the old plural query. */
+  /* getObject fetches a single object via object/{type}/{id} and fails the Future if it is missing or the call errors; query runs a ZOQL query via
+     action/query and returns the records (empty if none), failing only on a REST error. */
   private def getObject[A: Reads](url: String)(implicit logPrefix: LogPrefix): Future[A] =
     restClient.get[A](url).map(_.valueOr(error => throw QueryError(s"Zuora REST get '$url' failed: $error")))
 
@@ -61,9 +60,8 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
   def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
     getObject[SoapQueries.Contact](s"object/contact/$contactId")
 
-  /* These payment-method writes used to go through the SOAP create/update API; they now hit the equivalent Zuora REST endpoints: the account payment
-     fields via PUT accounts/{id}, and the payment method itself via POST object/payment-method (which takes the same zObject fields the SOAP create
-     used). A REST error or an unsuccessful response fails the Future, matching the old behaviour where a non-success SOAP response raised. */
+  /* The account payment fields are updated via PUT accounts/{id}, and the payment method is created via POST object/payment-method. A REST error or an
+     unsuccessful response fails the Future. */
   private def updateAccountPayment(
       accountId: AccountId,
       defaultPaymentMethodId: Option[String],
