@@ -8,9 +8,8 @@ import com.gu.zuora.soap.models.Queries
 import org.joda.time.LocalDate
 import play.api.libs.json._
 
-/** JSON readers that let ZuoraSoapService's read methods hit Zuora REST (object/{type}/{id} and action/query) instead of SOAP query, mapping the
-  * responses back to the existing SOAP query case classes so callers are unaffected. Field names and parsing mirror the old SOAP readers in
-  * com.gu.zuora.soap.Readers. Each reader links the Zuora operation it parses.
+/** JSON readers for the Zuora REST read operations (object/{type}/{id} and action/query), mapping the responses onto the query case classes in
+  * com.gu.zuora.soap.models.Queries. Each reader links the Zuora operation it parses.
   */
 object ZuoraQueryReads {
 
