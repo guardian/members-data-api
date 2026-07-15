@@ -8,16 +8,14 @@ import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{PaymentGateway}
-import com.gu.zuora.soap.Readers._
 import com.gu.zuora.soap._
-import com.gu.zuora.soap.actions.{Action, XmlWriterAction}
-import com.gu.zuora.soap.actions.Actions._
-import com.gu.zuora.soap.models.Commands.CreatePaymentMethod
-import com.gu.zuora.soap.models.Results.{CreateResult, UpdateResult}
+import com.gu.zuora.soap.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
+import com.gu.zuora.soap.models.Results.UpdateResult
 import com.gu.zuora.soap.models.errors._
 import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
-import com.gu.zuora.soap.writers.Command.createPaymentMethodWrites
 import com.gu.zuora.rest.ZuoraQueryReads._
+import com.gu.zuora.rest.ZuoraPaymentWrites._
+import com.gu.zuora.rest.{ZuoraResponse, zuoraResponseReads}
 import play.api.libs.json.Reads
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,15 +37,12 @@ trait SoapClient[M[_]] {
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): M[List[AccountId]]
 }
 
-class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext)
-    extends SoapClient[Future]
-    with SafeLogging {
+class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
 
   import ZuoraSoapService._
 
-  /* These reads used to go through the SOAP query API; they now hit the equivalent Zuora REST endpoints (object/{type}/{id} and action/query),
-     mapping the responses back to the same case classes so callers are unchanged. getObject fails the Future if the object is missing or the call
-     errors, like the old queryOne; query returns the records (empty if none) and only fails on a REST error, like the old plural query. */
+  /* getObject fetches a single object via object/{type}/{id} and fails the Future if it is missing or the call errors; query runs a ZOQL query via
+     action/query and returns the records (empty if none), failing only on a REST error. */
   private def getObject[A: Reads](url: String)(implicit logPrefix: LogPrefix): Future[A] =
     restClient.get[A](url).map(_.valueOr(error => throw QueryError(s"Zuora REST get '$url' failed: $error")))
 
@@ -65,41 +60,51 @@ class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Fu
   def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
     getObject[SoapQueries.Contact](s"object/contact/$contactId")
 
-  private def setDefaultPaymentMethod(
+  /* The account payment fields are updated via PUT accounts/{id}, and the payment method is created via POST object/payment-method. A REST error or an
+     unsuccessful response fails the Future. */
+  private def updateAccountPayment(
       accountId: AccountId,
-      paymentMethodId: String,
+      defaultPaymentMethodId: Option[String],
       paymentGateway: PaymentGateway,
-  )(implicit logPrefix: LogPrefix) = {
-    soapClient.authenticatedRequest(
-      action = UpdateAccountPayment(
-        accountId = accountId.get,
-        defaultPaymentMethodId = SetTo(paymentMethodId),
-        paymentGatewayName = paymentGateway.gatewayName,
-        autoPay = Some(true),
-      ),
-    )
-  }
+      autoPay: Boolean,
+  )(implicit logPrefix: LogPrefix): Future[UpdateResult] =
+    restClient
+      .put[AccountPaymentUpdate, ZuoraResponse](
+        s"accounts/${accountId.get}",
+        AccountPaymentUpdate(defaultPaymentMethodId, paymentGateway.gatewayName, autoPay),
+      )
+      .map(_.valueOr(error => throw QueryError(s"Zuora REST account update for ${accountId.get} failed: $error")))
+      .map { response =>
+        if (response.success) UpdateResult(accountId.get)
+        else throw QueryError(s"Zuora account update for ${accountId.get} was unsuccessful: ${response.error.getOrElse("")}")
+      }
 
-  // When setting the payment gateway in the account we have to clear the default payment method to avoid conflicts
-  private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway)(implicit logPrefix: LogPrefix) = {
-    soapClient.authenticatedRequest(
-      action = UpdateAccountPayment(
-        accountId = accountId.get,
-        defaultPaymentMethodId = Clear,
-        paymentGatewayName = paymentGateway.gatewayName,
-        autoPay = Some(false),
-      ),
-    )
-  }
+  private def createObjectPaymentMethod(request: CreatePaymentMethodObject)(implicit logPrefix: LogPrefix): Future[String] =
+    restClient
+      .post[CreatePaymentMethodObject, ObjectCreateResult]("object/payment-method", request)
+      .map(_.valueOr(error => throw QueryError(s"Zuora REST create payment method failed: $error")))
+      .map {
+        case ObjectCreateResult.Created(id) => id
+        case ObjectCreateResult.Failed(reason) => throw QueryError(s"Zuora create payment method was unsuccessful: $reason")
+      }
 
-  // Creates a payment method in zuora and sets it as default in the specified account.To satisfy zuora validations this has to be done in three steps
+  private def setDefaultPaymentMethod(accountId: AccountId, paymentMethodId: String, paymentGateway: PaymentGateway)(implicit
+      logPrefix: LogPrefix,
+  ): Future[UpdateResult] =
+    updateAccountPayment(accountId, defaultPaymentMethodId = Some(paymentMethodId), paymentGateway, autoPay = true)
+
+  // Clear the default payment method before switching the gateway: Zuora requires the account gateway to match its default method's gateway.
+  private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway)(implicit
+      logPrefix: LogPrefix,
+  ): Future[UpdateResult] =
+    updateAccountPayment(accountId, defaultPaymentMethodId = None, paymentGateway, autoPay = false)
+
+  /* Creates a payment method and sets it as default. Still three steps because Zuora validates that the account's gateway matches its default method's,
+     so we cannot swap gateway and method atomically: clear the old default onto the new gateway, create the method, then set it default. */
   def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[UpdateResult] = for {
-    _ <- setGatewayAndClearDefaultMethod(
-      command.accountId,
-      command.paymentGateway,
-    ) // We need to set gateway correctly because it must match with the payment method we'll create below
-    createMethodResult <- soapClient.authenticatedRequest[CreateResult](new XmlWriterAction(command)(createPaymentMethodWrites))
-    result <- setDefaultPaymentMethod(command.accountId, createMethodResult.id, command.paymentGateway)
+    _ <- setGatewayAndClearDefaultMethod(command.accountId, command.paymentGateway)
+    paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(command.accountId, command.paymentMethod))
+    result <- setDefaultPaymentMethod(command.accountId, paymentMethodId, command.paymentGateway)
   } yield result
 
   def createCreditCardPaymentMethod(
@@ -108,24 +113,19 @@ class ZuoraSoapService(soapClient: soap.Client, restClient: rest.SimpleClient[Fu
       paymentGateway: PaymentGateway,
   )(implicit logPrefix: LogPrefix): Future[UpdateResult] = {
     val card = stripeCustomer.card
+    val paymentMethod = CreditCardReferenceTransaction(
+      cardId = card.id,
+      customerId = stripeCustomer.id,
+      last4 = card.last4,
+      cardCountry = CountryGroup.countryByCode(card.country),
+      expirationMonth = card.exp_month,
+      expirationYear = card.exp_year,
+      cardType = card.`type`,
+    )
     for {
-      r <- setGatewayAndClearDefaultMethod(
-        accountId,
-        paymentGateway,
-      ) // We need to set gateway correctly because it must match with the payment method
-      paymentMethod <- soapClient.authenticatedRequest(
-        CreateCreditCardReferencePaymentMethod(
-          accountId = accountId.get,
-          cardId = card.id,
-          customerId = stripeCustomer.id,
-          last4 = card.last4,
-          cardCountry = CountryGroup.countryByCode(card.country),
-          expirationMonth = card.exp_month,
-          expirationYear = card.exp_year,
-          cardType = card.`type`,
-        ),
-      )
-      result <- setDefaultPaymentMethod(accountId, paymentMethod.id, paymentGateway)
+      _ <- setGatewayAndClearDefaultMethod(accountId, paymentGateway)
+      paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(accountId, paymentMethod))
+      result <- setDefaultPaymentMethod(accountId, paymentMethodId, paymentGateway)
     } yield result
   }
 

@@ -25,7 +25,7 @@ import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe, StripePublicKey, StripeService}
 import services.zuora.rest.ZuoraRestService
-import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
+import services.{ContributionsStoreDatabaseService, SupporterProductDataService}
 import wiring.MyComponents
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -36,7 +36,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
   var catalogServiceMock: Catalog = _
-  var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
+  var zuoraSoapServiceMock: ZuoraSoapService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var patronsStripeServiceMock: BasicStripeService = _
@@ -50,7 +50,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
     catalogServiceMock = TestCatalog.catalog
-    zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
+    zuoraSoapServiceMock = mock[ZuoraSoapService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
     patronsStripeServiceMock = mock[BasicStripeService]

@@ -65,7 +65,7 @@ class MyComponents(context: Context)
   lazy val subscriptionServiceOverride: Option[SubscriptionService[Future]] = None
   lazy val zuoraRestServiceOverride: Option[ZuoraRestService] = None
   lazy val catalogServiceOverride: Option[Future[Catalog]] = None
-  lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None
+  lazy val zuoraSoapServiceOverride: Option[ZuoraSoapService] = None
   lazy val patronsStripeServiceOverride: Option[BasicStripeService] = None
   lazy val chooseStripeOverride: Option[ChooseStripe] = None
 
