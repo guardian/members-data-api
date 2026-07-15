@@ -10,7 +10,7 @@ import org.apache.pekko.actor.ActorSystem
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe}
 import services.zuora.rest.ZuoraRestService
-import services.{HealthCheckableService, SupporterProductDataService}
+import services.SupporterProductDataService
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -23,7 +23,7 @@ class TouchpointBackends(
     subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
     catalogServiceOverride: Option[Future[Catalog]] = None,
-    zuoraServiceOverride: Option[ZuoraSoapService with HealthCheckableService] = None,
+    zuoraServiceOverride: Option[ZuoraSoapService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,
 )(implicit

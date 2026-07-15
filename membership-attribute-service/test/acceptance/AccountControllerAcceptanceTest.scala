@@ -27,7 +27,7 @@ import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
-import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
+import services.{ContributionsStoreDatabaseService, SupporterProductDataService}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
@@ -39,7 +39,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
   var catalogServiceMock: Catalog = _
-  var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
+  var zuoraSoapServiceMock: ZuoraSoapService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var patronsStripeServiceMock: BasicStripeService = _
@@ -50,7 +50,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
     catalogServiceMock = catalog
-    zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
+    zuoraSoapServiceMock = mock[ZuoraSoapService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
     patronsStripeServiceMock = mock[BasicStripeService]

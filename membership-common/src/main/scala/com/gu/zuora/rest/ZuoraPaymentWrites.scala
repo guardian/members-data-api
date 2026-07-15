@@ -1,7 +1,8 @@
 package com.gu.zuora.rest
 
+import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.soap.models.Commands
-import play.api.libs.functional.syntax._
+import play.api.libs.json.JsonNaming.PascalCase
 import play.api.libs.json._
 
 /** JSON for the Zuora payment-method write operations: account payment updates via PUT /v1/accounts/{id}, and payment-method creation via POST
@@ -9,12 +10,14 @@ import play.api.libs.json._
   */
 object ZuoraPaymentWrites {
 
-  implicit val jsObjectWrites: Writes[JsObject] = Writes(identity)
+  // The Zuora object API names its fields in PascalCase (Id, Success, ...), so derived readers/writers use that naming.
+  implicit val jsonConfig: JsonConfiguration = JsonConfiguration(PascalCase)
 
   /** PUT /v1/accounts/{id}. A None defaultPaymentMethodId is written as an explicit JSON null, which Zuora treats as clearing the default. See
-    * https://developer.zuora.com/api-references/api/operation/PUT_Account
+    * https://developer.zuora.com/v1-api-reference/api/accounts/put_account
     */
   case class AccountPaymentUpdate(defaultPaymentMethodId: Option[String], paymentGateway: String, autoPay: Boolean)
+  // Hand-written rather than derived: a None must serialise to an explicit JSON null (to clear the default), whereas Json.writes would omit it.
   implicit val accountPaymentUpdateWrites: Writes[AccountPaymentUpdate] = Writes { update =>
     Json.obj(
       "defaultPaymentMethodId" -> update.defaultPaymentMethodId.fold[JsValue](JsNull)(JsString(_)),
@@ -23,60 +26,32 @@ object ZuoraPaymentWrites {
     )
   }
 
-  /** POST /v1/object/payment-method returns {"Id": "...", "Success": true}. See
+  /** POST /v1/object/payment-method returns {"Id": "...", "Success": true}. Id is absent on a failure response, hence optional. See
     * https://developer.zuora.com/api-references/older-api/operation/Object_POSTPaymentMethod
     */
-  case class ObjectCreateResponse(id: String, success: Boolean)
-  implicit val objectCreateResponseReads: Reads[ObjectCreateResponse] =
-    ((__ \ "Id").read[String] and (__ \ "Success").read[Boolean])(ObjectCreateResponse.apply _)
+  case class ObjectCreateResponse(id: Option[String], success: Boolean)
+  implicit val objectCreateResponseReads: Reads[ObjectCreateResponse] = Json.reads[ObjectCreateResponse]
 
-  // Zuora only accepts a fixed set of CreditCardType values; anything else is omitted (matches the old SOAP action).
-  private def normaliseCardType(cardType: String): Option[String] = cardType.toLowerCase.replaceAll(" ", "") match {
-    case "mastercard" => Some("MasterCard")
-    case "visa" => Some("Visa")
-    case "amex" | "americanexpress" => Some("AmericanExpress")
-    case "discover" => Some("Discover")
-    case _ => None
+  /** The zObject payload for POST /v1/object/payment-method: the target account plus the payment-method business object. */
+  case class CreatePaymentMethodObject(accountId: AccountId, paymentMethod: Commands.PaymentMethod)
+  implicit val createPaymentMethodObjectWrites: Writes[CreatePaymentMethodObject] = Writes { request =>
+    Json.obj("AccountId" -> request.accountId.get) ++ paymentMethodFields(request.paymentMethod)
   }
 
-  def creditCardReference(
-      accountId: String,
-      cardId: String,
-      customerId: String,
-      last4: String,
-      cardCountryAlpha2: Option[String],
-      expirationMonth: Int,
-      expirationYear: Int,
-      cardType: String,
-  ): JsObject = {
-    val base = Json.obj(
-      "AccountId" -> accountId,
-      "Type" -> "CreditCardReferenceTransaction",
-      "TokenId" -> cardId,
-      "SecondTokenId" -> customerId,
-      "CreditCardNumber" -> last4,
-      "CreditCardExpirationMonth" -> expirationMonth,
-      "CreditCardExpirationYear" -> expirationYear,
-    )
-    val withCountry = cardCountryAlpha2.fold(base)(country => base + ("CreditCardCountry" -> JsString(country)))
-    normaliseCardType(cardType).fold(withCountry)(mapped => withCountry + ("CreditCardType" -> JsString(mapped)))
-  }
-
-  def paymentMethod(accountId: String, paymentMethod: Commands.PaymentMethod): JsObject = paymentMethod match {
+  private def paymentMethodFields(paymentMethod: Commands.PaymentMethod): JsObject = paymentMethod match {
     case card: Commands.CreditCardReferenceTransaction =>
-      creditCardReference(
-        accountId,
-        card.cardId,
-        card.customerId,
-        card.last4,
-        card.cardCountry.map(_.alpha2),
-        card.expirationMonth,
-        card.expirationYear,
-        card.cardType,
+      val base = Json.obj(
+        "Type" -> "CreditCardReferenceTransaction",
+        "TokenId" -> card.cardId,
+        "SecondTokenId" -> card.customerId,
+        "CreditCardNumber" -> card.last4,
+        "CreditCardExpirationMonth" -> card.expirationMonth,
+        "CreditCardExpirationYear" -> card.expirationYear,
+        "CreditCardType" -> normaliseCardType(card.cardType),
       )
+      card.cardCountry.fold(base)(country => base + ("CreditCardCountry" -> JsString(country.alpha2)))
     case bankTransfer: Commands.BankTransfer =>
       Json.obj(
-        "AccountId" -> accountId,
         "Type" -> "BankTransfer",
         "BankTransferType" -> "DirectDebitUK",
         "Country" -> bankTransfer.countryCode,
@@ -88,11 +63,19 @@ object ZuoraPaymentWrites {
       )
     case payPal: Commands.PayPalReferenceTransaction =>
       Json.obj(
-        "AccountId" -> accountId,
         "Type" -> "PayPal",
         "PaypalType" -> "ExpressCheckout",
         "PaypalBaid" -> payPal.baId,
         "PaypalEmail" -> payPal.email,
       )
+  }
+
+  // Normalise the common brands to Zuora's CreditCardType casing; anything else is passed through with spaces removed.
+  private def normaliseCardType(cardType: String): String = cardType.toLowerCase.replaceAll(" ", "") match {
+    case "mastercard" => "MasterCard"
+    case "visa" => "Visa"
+    case "amex" | "americanexpress" => "AmericanExpress"
+    case "discover" => "Discover"
+    case _ => cardType.replaceAll(" ", "")
   }
 }

@@ -9,14 +9,14 @@ import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{PaymentGateway}
 import com.gu.zuora.soap._
-import com.gu.zuora.soap.models.Commands.CreatePaymentMethod
+import com.gu.zuora.soap.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
 import com.gu.zuora.soap.models.Results.UpdateResult
 import com.gu.zuora.soap.models.errors._
 import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
 import com.gu.zuora.rest.ZuoraQueryReads._
 import com.gu.zuora.rest.ZuoraPaymentWrites._
 import com.gu.zuora.rest.{ZuoraResponse, zuoraResponseReads}
-import play.api.libs.json.{JsObject, Reads}
+import play.api.libs.json.Reads
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -79,11 +79,14 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
         else throw QueryError(s"Zuora account update for ${accountId.get} was unsuccessful: ${response.error.getOrElse("")}")
       }
 
-  private def createObjectPaymentMethod(zObject: JsObject)(implicit logPrefix: LogPrefix): Future[String] =
+  private def createObjectPaymentMethod(request: CreatePaymentMethodObject)(implicit logPrefix: LogPrefix): Future[String] =
     restClient
-      .post[JsObject, ObjectCreateResponse]("object/payment-method", zObject)
+      .post[CreatePaymentMethodObject, ObjectCreateResponse]("object/payment-method", request)
       .map(_.valueOr(error => throw QueryError(s"Zuora REST create payment method failed: $error")))
-      .map(response => if (response.success) response.id else throw QueryError("Zuora create payment method was unsuccessful"))
+      .map { response =>
+        if (response.success) response.id.getOrElse(throw QueryError("Zuora create payment method succeeded but returned no Id"))
+        else throw QueryError("Zuora create payment method was unsuccessful")
+      }
 
   private def setDefaultPaymentMethod(accountId: AccountId, paymentMethodId: String, paymentGateway: PaymentGateway)(implicit
       logPrefix: LogPrefix,
@@ -100,7 +103,7 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
      so we cannot swap gateway and method atomically: clear the old default onto the new gateway, create the method, then set it default. */
   def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[UpdateResult] = for {
     _ <- setGatewayAndClearDefaultMethod(command.accountId, command.paymentGateway)
-    paymentMethodId <- createObjectPaymentMethod(paymentMethod(command.accountId.get, command.paymentMethod))
+    paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(command.accountId, command.paymentMethod))
     result <- setDefaultPaymentMethod(command.accountId, paymentMethodId, command.paymentGateway)
   } yield result
 
@@ -110,20 +113,18 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
       paymentGateway: PaymentGateway,
   )(implicit logPrefix: LogPrefix): Future[UpdateResult] = {
     val card = stripeCustomer.card
+    val paymentMethod = CreditCardReferenceTransaction(
+      cardId = card.id,
+      customerId = stripeCustomer.id,
+      last4 = card.last4,
+      cardCountry = CountryGroup.countryByCode(card.country),
+      expirationMonth = card.exp_month,
+      expirationYear = card.exp_year,
+      cardType = card.`type`,
+    )
     for {
       _ <- setGatewayAndClearDefaultMethod(accountId, paymentGateway)
-      paymentMethodId <- createObjectPaymentMethod(
-        creditCardReference(
-          accountId = accountId.get,
-          cardId = card.id,
-          customerId = stripeCustomer.id,
-          last4 = card.last4,
-          cardCountryAlpha2 = CountryGroup.countryByCode(card.country).map(_.alpha2),
-          expirationMonth = card.exp_month,
-          expirationYear = card.exp_year,
-          cardType = card.`type`,
-        ),
-      )
+      paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(accountId, paymentMethod))
       result <- setDefaultPaymentMethod(accountId, paymentMethodId, paymentGateway)
     } yield result
   }
