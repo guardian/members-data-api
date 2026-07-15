@@ -53,7 +53,7 @@ object ZuoraPaymentWrites {
         "CreditCardNumber" -> card.last4,
         "CreditCardExpirationMonth" -> card.expirationMonth,
         "CreditCardExpirationYear" -> card.expirationYear,
-        "CreditCardType" -> normaliseCardType(card.cardType),
+        "CreditCardType" -> card.cardType.replaceAll(" ", ""),
       )
       card.cardCountry.fold(base)(country => base + ("CreditCardCountry" -> JsString(country.alpha2)))
     case bankTransfer: Commands.BankTransfer =>
@@ -74,14 +74,5 @@ object ZuoraPaymentWrites {
         "PaypalBaid" -> payPal.baId,
         "PaypalEmail" -> payPal.email,
       )
-  }
-
-  // Normalise the common brands to Zuora's CreditCardType casing; anything else is passed through with spaces removed.
-  private def normaliseCardType(cardType: String): String = cardType.toLowerCase.replaceAll(" ", "") match {
-    case "mastercard" => "MasterCard"
-    case "visa" => "Visa"
-    case "amex" | "americanexpress" => "AmericanExpress"
-    case "discover" => "Discover"
-    case _ => cardType.replaceAll(" ", "")
   }
 }
