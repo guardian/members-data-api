@@ -9,7 +9,6 @@ import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{PaymentGateway}
 import com.gu.zuora.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
-import com.gu.zuora.models.Results.UpdateResult
 import com.gu.zuora.models.errors._
 import com.gu.zuora.models.{PaymentSummary, Queries}
 import com.gu.zuora.rest.ZuoraQueryReads._
@@ -66,7 +65,7 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
       defaultPaymentMethodId: Option[String],
       paymentGateway: PaymentGateway,
       autoPay: Boolean,
-  )(implicit logPrefix: LogPrefix): Future[UpdateResult] =
+  )(implicit logPrefix: LogPrefix): Future[Unit] =
     restClient
       .put[AccountPaymentUpdate, ZuoraResponse](
         s"accounts/${accountId.get}",
@@ -74,7 +73,7 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
       )
       .map(_.valueOr(error => throw QueryError(s"Zuora REST account update for ${accountId.get} failed: $error")))
       .map { response =>
-        if (response.success) UpdateResult(accountId.get)
+        if (response.success) ()
         else throw QueryError(s"Zuora account update for ${accountId.get} was unsuccessful: ${response.error.getOrElse("")}")
       }
 
@@ -89,28 +88,28 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
 
   private def setDefaultPaymentMethod(accountId: AccountId, paymentMethodId: String, paymentGateway: PaymentGateway)(implicit
       logPrefix: LogPrefix,
-  ): Future[UpdateResult] =
+  ): Future[Unit] =
     updateAccountPayment(accountId, defaultPaymentMethodId = Some(paymentMethodId), paymentGateway, autoPay = true)
 
   // Clear the default payment method before switching the gateway: Zuora requires the account gateway to match its default method's gateway.
   private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway)(implicit
       logPrefix: LogPrefix,
-  ): Future[UpdateResult] =
+  ): Future[Unit] =
     updateAccountPayment(accountId, defaultPaymentMethodId = None, paymentGateway, autoPay = false)
 
   /* Creates a payment method and sets it as default. Still three steps because Zuora validates that the account's gateway matches its default method's,
      so we cannot swap gateway and method atomically: clear the old default onto the new gateway, create the method, then set it default. */
-  def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[UpdateResult] = for {
+  def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[Unit] = for {
     _ <- setGatewayAndClearDefaultMethod(command.accountId, command.paymentGateway)
     paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(command.accountId, command.paymentMethod))
-    result <- setDefaultPaymentMethod(command.accountId, paymentMethodId, command.paymentGateway)
-  } yield result
+    _ <- setDefaultPaymentMethod(command.accountId, paymentMethodId, command.paymentGateway)
+  } yield ()
 
   def createCreditCardPaymentMethod(
       accountId: AccountId,
       stripeCustomer: Stripe.Customer,
       paymentGateway: PaymentGateway,
-  )(implicit logPrefix: LogPrefix): Future[UpdateResult] = {
+  )(implicit logPrefix: LogPrefix): Future[Unit] = {
     val card = stripeCustomer.card
     val paymentMethod = CreditCardReferenceTransaction(
       cardId = card.id,
@@ -124,8 +123,8 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
     for {
       _ <- setGatewayAndClearDefaultMethod(accountId, paymentGateway)
       paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(accountId, paymentMethod))
-      result <- setDefaultPaymentMethod(accountId, paymentMethodId, paymentGateway)
-    } yield result
+      _ <- setDefaultPaymentMethod(accountId, paymentMethodId, paymentGateway)
+    } yield ()
   }
 
   def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit

@@ -11,7 +11,6 @@ import com.gu.zuora.ZuoraService
 import com.gu.zuora.api.{GoCardlessGateway, PaymentGateway}
 import com.gu.zuora.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.gu.zuora.models.Queries
-import com.gu.zuora.models.Results.UpdateResult
 import kong.unirest.Unirest
 import org.mockito.ArgumentMatchers.any
 import org.mockserver.model.Cookie
@@ -181,7 +180,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         billtoContact = queriesContact,
       )
 
-      zuoraServiceMock.createPaymentMethod(createPaymentMethod)(any) returns Future(UpdateResult(randomId()))
+      zuoraServiceMock.createPaymentMethod(createPaymentMethod)(any) returns Future.successful(())
 
       val paymentMethod = TestQueriesPaymentMethod(
         id = paymentMethodId,
@@ -330,7 +329,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       ukStripeServiceMock.paymentIntentsGateway returns paymentGateway
 
       zuoraServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) returns
-        Future.successful(UpdateResult(randomId("updateId")))
+        Future.successful(())
 
       val account = TestQueriesAccount()
       val paymentMethodId = randomId("paymentMethod")
