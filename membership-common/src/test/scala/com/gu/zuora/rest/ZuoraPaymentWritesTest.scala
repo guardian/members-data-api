@@ -37,11 +37,11 @@ class ZuoraPaymentWritesTest extends Specification {
   }
 
   "CreatePaymentMethodObject writes for a credit card reference" should {
-    "map the card reference fields and send the card type with spaces removed" in {
+    "map the card reference fields and normalise a common card type" in {
       val json = Json.toJson(
         CreatePaymentMethodObject(
           AccountId("acc-1"),
-          Commands.CreditCardReferenceTransaction("pm_token", "cus_token", "4242", Some(Country.UK), 12, 2030, "American Express"),
+          Commands.CreditCardReferenceTransaction("pm_token", "cus_token", "4242", Some(Country.UK), 12, 2030, "visa"),
         ),
       )
       (json \ "AccountId").as[String] must_== "acc-1"
@@ -50,13 +50,13 @@ class ZuoraPaymentWritesTest extends Specification {
       (json \ "SecondTokenId").as[String] must_== "cus_token"
       (json \ "CreditCardNumber").as[String] must_== "4242"
       (json \ "CreditCardCountry").as[String] must_== "GB"
-      (json \ "CreditCardType").as[String] must_== "AmericanExpress"
-    }
-    "omit the country when absent" in {
-      val json = Json.toJson(
-        CreatePaymentMethodObject(AccountId("acc-1"), Commands.CreditCardReferenceTransaction("t", "c", "4242", None, 1, 2030, "Visa")),
-      )
       (json \ "CreditCardType").as[String] must_== "Visa"
+    }
+    "pass an unrecognised card type through with spaces removed, and omit the country when absent" in {
+      val json = Json.toJson(
+        CreatePaymentMethodObject(AccountId("acc-1"), Commands.CreditCardReferenceTransaction("t", "c", "4242", None, 1, 2030, "Some Scheme")),
+      )
+      (json \ "CreditCardType").as[String] must_== "SomeScheme"
       (json \ "CreditCardCountry").toOption must beNone
     }
   }
