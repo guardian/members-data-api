@@ -81,11 +81,11 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
 
   private def createObjectPaymentMethod(request: CreatePaymentMethodObject)(implicit logPrefix: LogPrefix): Future[String] =
     restClient
-      .post[CreatePaymentMethodObject, ObjectCreateResponse]("object/payment-method", request)
+      .post[CreatePaymentMethodObject, ObjectCreateResult]("object/payment-method", request)
       .map(_.valueOr(error => throw QueryError(s"Zuora REST create payment method failed: $error")))
-      .map { response =>
-        if (response.success) response.id.getOrElse(throw QueryError("Zuora create payment method succeeded but returned no Id"))
-        else throw QueryError("Zuora create payment method was unsuccessful")
+      .map {
+        case ObjectCreateResult.Created(id) => id
+        case ObjectCreateResult.Failed(reason) => throw QueryError(s"Zuora create payment method was unsuccessful: $reason")
       }
 
   private def setDefaultPaymentMethod(accountId: AccountId, paymentMethodId: String, paymentGateway: PaymentGateway)(implicit

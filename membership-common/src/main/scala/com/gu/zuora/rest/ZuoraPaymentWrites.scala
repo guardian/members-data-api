@@ -2,16 +2,12 @@ package com.gu.zuora.rest
 
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.soap.models.Commands
-import play.api.libs.json.JsonNaming.PascalCase
 import play.api.libs.json._
 
 /** JSON for the Zuora payment-method write operations: account payment updates via PUT /v1/accounts/{id}, and payment-method creation via POST
   * /v1/object/payment-method (which takes the PascalCase zObject fields of the payment method).
   */
 object ZuoraPaymentWrites {
-
-  // The Zuora object API names its fields in PascalCase (Id, Success, ...), so derived readers/writers use that naming.
-  implicit val jsonConfig: JsonConfiguration = JsonConfiguration(PascalCase)
 
   /** PUT /v1/accounts/{id}. A None defaultPaymentMethodId is written as an explicit JSON null, which Zuora treats as clearing the default. See
     * https://developer.zuora.com/v1-api-reference/api/accounts/put_account
@@ -26,11 +22,21 @@ object ZuoraPaymentWrites {
     )
   }
 
-  /** POST /v1/object/payment-method returns {"Id": "...", "Success": true}. Id is absent on a failure response, hence optional. See
+  /** The outcome of POST /v1/object/payment-method: {"Success": true, "Id": "..."} on success, {"Success": false, ...} on failure. Modelled as a
+    * success/failure result so the Id is required exactly when the create succeeded (no Option to unwrap downstream). See
     * https://developer.zuora.com/api-references/older-api/operation/Object_POSTPaymentMethod
     */
-  case class ObjectCreateResponse(id: Option[String], success: Boolean)
-  implicit val objectCreateResponseReads: Reads[ObjectCreateResponse] = Json.reads[ObjectCreateResponse]
+  sealed trait ObjectCreateResult
+  object ObjectCreateResult {
+    case class Created(id: String) extends ObjectCreateResult
+    case class Failed(reason: String) extends ObjectCreateResult
+
+    implicit val reads: Reads[ObjectCreateResult] = (json: JsValue) =>
+      (json \ "Success").validate[Boolean].flatMap {
+        case true => (json \ "Id").validate[String].map(Created.apply)
+        case false => JsSuccess(Failed((json \ "Errors").asOpt[JsValue].map(_.toString).getOrElse("no error detail")))
+      }
+  }
 
   /** The zObject payload for POST /v1/object/payment-method: the target account plus the payment-method business object. */
   case class CreatePaymentMethodObject(accountId: AccountId, paymentMethod: Commands.PaymentMethod)

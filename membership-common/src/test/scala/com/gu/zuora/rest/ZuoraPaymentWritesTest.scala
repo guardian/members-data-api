@@ -61,16 +61,12 @@ class ZuoraPaymentWritesTest extends Specification {
     }
   }
 
-  "ObjectCreateResponse reads" should {
-    "read the PascalCase Id and Success fields" in {
-      val response = Json.parse("""{"Id":"pm-1","Success":true}""").as[ObjectCreateResponse]
-      response.id must beSome("pm-1")
-      response.success must beTrue
+  "ObjectCreateResult reads" should {
+    "read a success response as Created with the required Id" in {
+      Json.parse("""{"Id":"pm-1","Success":true}""").as[ObjectCreateResult] must_== ObjectCreateResult.Created("pm-1")
     }
-    "treat a missing Id on a failure response as absent rather than failing to parse" in {
-      val response = Json.parse("""{"Success":false}""").as[ObjectCreateResponse]
-      response.id must beNone
-      response.success must beFalse
+    "read a failure response as Failed without needing an Id" in {
+      Json.parse("""{"Success":false,"Errors":[{"Message":"bad card"}]}""").as[ObjectCreateResult] must beAnInstanceOf[ObjectCreateResult.Failed]
     }
   }
 }
