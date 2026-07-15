@@ -15,7 +15,7 @@ import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.salesforce.ContactId
 import com.gu.zuora.rest.SimpleClient
-import com.gu.zuora.{SoapClient, ZuoraRestConfig}
+import com.gu.zuora.{ZuoraClient, ZuoraRestConfig}
 import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
 import org.joda.time.LocalDate
@@ -41,7 +41,7 @@ class SubscriptionServiceTest extends Specification {
       .protocol(Protocol.HTTP_2)
       .build()
 
-  object soapClient extends SoapClient[Id] {
+  object zuoraClient extends ZuoraClient[Id] {
     override def getAccountIds(contactId: ContactId)(implicit logPrefix: SafeLogger.LogPrefix): scalaz.Id.Id[List[AccountId]] =
       List(
         memsub.Subscription.AccountId("foo"),
@@ -69,7 +69,7 @@ class SubscriptionServiceTest extends Specification {
   }
 
   val rc = new SimpleClient[Id](ZuoraRestConfig("TESTS", "https://localhost", "foo", "bar"), subscriptions)
-  private val service = new SubscriptionService[Id](_ => catalog, rc, soapClient, () => LocalDate.parse("2025-01-01"))
+  private val service = new SubscriptionService[Id](_ => catalog, rc, zuoraClient, () => LocalDate.parse("2025-01-01"))
 
   "Current Plan" should {
 

@@ -20,7 +20,7 @@ import play.api.libs.json.Reads
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object ZuoraSoapService {
+object ZuoraService {
 
   def latestInvoiceItems(items: Seq[SoapQueries.InvoiceItem]): Seq[SoapQueries.InvoiceItem] = {
     if (items.isEmpty)
@@ -32,14 +32,14 @@ object ZuoraSoapService {
   }
 }
 
-trait SoapClient[M[_]] {
+trait ZuoraClient[M[_]] {
 
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): M[List[AccountId]]
 }
 
-class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
+class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext) extends ZuoraClient[Future] with SafeLogging {
 
-  import ZuoraSoapService._
+  import ZuoraService._
 
   /* getObject fetches a single object via object/{type}/{id} and fails the Future if it is missing or the call errors; query runs a ZOQL query via
      action/query and returns the records (empty if none), failing only on a REST error. */

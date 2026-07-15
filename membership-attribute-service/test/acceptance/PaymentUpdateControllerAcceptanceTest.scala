@@ -7,7 +7,7 @@ import com.gu.i18n.Country
 import com.gu.memsub.Subscription
 import com.gu.memsub.subsv2.services.{SubscriptionService, TestCatalog}
 import com.gu.memsub.subsv2.Catalog
-import com.gu.zuora.ZuoraSoapService
+import com.gu.zuora.ZuoraService
 import com.gu.zuora.api.{GoCardlessGateway, PaymentGateway}
 import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
 import com.gu.zuora.soap.models.Queries
@@ -36,7 +36,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
   var catalogServiceMock: Catalog = _
-  var zuoraSoapServiceMock: ZuoraSoapService = _
+  var zuoraServiceMock: ZuoraService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var patronsStripeServiceMock: BasicStripeService = _
@@ -50,7 +50,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
     catalogServiceMock = TestCatalog.catalog
-    zuoraSoapServiceMock = mock[ZuoraSoapService]
+    zuoraServiceMock = mock[ZuoraService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
     patronsStripeServiceMock = mock[BasicStripeService]
@@ -71,7 +71,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       override lazy val subscriptionServiceOverride = Some(subscriptionServiceMock)
       override lazy val zuoraRestServiceOverride = Some(zuoraRestServiceMock)
       override lazy val catalogServiceOverride = Some(Future.successful(catalogServiceMock))
-      override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
+      override lazy val zuoraServiceOverride = Some(zuoraServiceMock)
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
       override lazy val sendEmail = sendEmailMock
@@ -161,10 +161,10 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       val account = TestQueriesAccount()
       val paymentMethodId = randomId("paymentMethod")
       val accountWithUpdatedPaymentMethodId = account.copy(defaultPaymentMethodId = Some(paymentMethodId))
-      zuoraSoapServiceMock.getAccount(subscription.accountId)(any) returns Future(account) andThen Future(accountWithUpdatedPaymentMethodId)
+      zuoraServiceMock.getAccount(subscription.accountId)(any) returns Future(account) andThen Future(accountWithUpdatedPaymentMethodId)
 
       val queriesContact = TestQueriesContact()
-      zuoraSoapServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
+      zuoraServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
 
       val bankTransferPaymentMethod = BankTransfer(
         accountHolderName = "Frank Poole",
@@ -181,7 +181,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         billtoContact = queriesContact,
       )
 
-      zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod)(any) returns Future(UpdateResult(randomId()))
+      zuoraServiceMock.createPaymentMethod(createPaymentMethod)(any) returns Future(UpdateResult(randomId()))
 
       val paymentMethod = TestQueriesPaymentMethod(
         id = paymentMethodId,
@@ -192,7 +192,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
         paymentType = Queries.PaymentMethod.BankTransfer,
       )
 
-      zuoraSoapServiceMock.getPaymentMethod(paymentMethodId)(any) returns Future(paymentMethod)
+      zuoraServiceMock.getPaymentMethod(paymentMethodId)(any) returns Future(paymentMethod)
 
       sendEmailMock.send(emailData)(any) returns Future.successful(())
 
@@ -213,17 +213,17 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       identityMockClientAndServer.verify(identityRequest)
       subscriptionServiceMock.current(contact)(any) was called
       contactRepositoryMock.get("200067388")(any) was called
-      zuoraSoapServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
-      zuoraSoapServiceMock.getContact(account.billToId)(any) was called
-      zuoraSoapServiceMock.createPaymentMethod(createPaymentMethod)(any) was called
-      zuoraSoapServiceMock.getPaymentMethod(paymentMethodId)(any) was called
+      zuoraServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
+      zuoraServiceMock.getContact(account.billToId)(any) was called
+      zuoraServiceMock.createPaymentMethod(createPaymentMethod)(any) was called
+      zuoraServiceMock.getPaymentMethod(paymentMethodId)(any) was called
       sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      zuoraSoapServiceMock wasNever calledAgain
+      zuoraServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
 
@@ -329,18 +329,18 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       val paymentGateway = mock[PaymentGateway]
       ukStripeServiceMock.paymentIntentsGateway returns paymentGateway
 
-      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) returns
+      zuoraServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) returns
         Future.successful(UpdateResult(randomId("updateId")))
 
       val account = TestQueriesAccount()
       val paymentMethodId = randomId("paymentMethod")
       val accountWithUpdatedPaymentMethodId = account.copy(defaultPaymentMethodId = Some(paymentMethodId))
-      zuoraSoapServiceMock.getAccount(subscription.accountId)(any) returns
+      zuoraServiceMock.getAccount(subscription.accountId)(any) returns
         Future(account) andThen
         Future(accountWithUpdatedPaymentMethodId)
 
       val queriesContact = TestQueriesContact()
-      zuoraSoapServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
+      zuoraServiceMock.getContact(account.billToId)(any) returns Future(queriesContact)
 
       sendEmailMock.send(emailData)(any) returns Future.successful(())
 
@@ -362,7 +362,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock.get("200067388")(any) was called
       ukStripeServiceMock.createCustomerWithStripePaymentMethod("myStripePaymentMethodId")(any) was called
       ukStripeServiceMock.paymentIntentsGateway was called
-      zuoraSoapServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) was called
+      zuoraServiceMock.createCreditCardPaymentMethod(subscription.accountId, customer, paymentGateway)(any) was called
       sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called
@@ -370,7 +370,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
       ukStripeServiceMock wasNever calledAgain
-      zuoraSoapServiceMock wasNever calledAgain
+      zuoraServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
 

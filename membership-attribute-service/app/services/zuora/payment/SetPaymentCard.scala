@@ -4,7 +4,7 @@ import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.{CardUpdateFailure, CardUpdateSuccess, PaymentCard, PaymentCardDetails, PaymentCardUpdateResult}
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.stripe.Stripe
-import com.gu.zuora.ZuoraSoapService
+import com.gu.zuora.ZuoraService
 import scalaz.Monad
 import services.stripe.StripeService
 import utils.SimpleEitherT
@@ -12,7 +12,7 @@ import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SetPaymentCard(zuoraService: ZuoraSoapService, stripeServiceEither: Either[String, StripeService])(implicit
+class SetPaymentCard(zuoraService: ZuoraService, stripeServiceEither: Either[String, StripeService])(implicit
     ec: ExecutionContext,
     m: Monad[Future],
 ) {

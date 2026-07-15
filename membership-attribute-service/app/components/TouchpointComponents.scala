@@ -12,7 +12,7 @@ import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest.SimpleClient
-import com.gu.zuora.{ZuoraSoapService, rest}
+import com.gu.zuora.{ZuoraService, rest}
 import com.typesafe.config.Config
 import configuration.Stage
 import monitoring.CreateMetrics
@@ -48,7 +48,7 @@ class TouchpointComponents(
     subscriptionServiceOverride: Option[SubscriptionService[Future]] = None,
     zuoraRestServiceOverride: Option[ZuoraRestService] = None,
     catalogServiceOverride: Option[Future[Catalog]] = None,
-    zuoraServiceOverride: Option[ZuoraSoapService] = None,
+    zuoraServiceOverride: Option[ZuoraService] = None,
     patronsStripeServiceOverride: Option[BasicStripeService] = None,
     chooseStripeOverride: Option[ChooseStripe] = None,
 )(implicit
@@ -97,9 +97,9 @@ class TouchpointComponents(
   lazy val supporterProductDataService: SupporterProductDataService =
     supporterProductDataServiceOverride.getOrElse(dynamoSupporterProductDataService)
 
-  lazy val zuoraSoapService = {
-    lazy val simpleZuoraSoapService = new ZuoraSoapService(zuoraRestClient)
-    zuoraServiceOverride.getOrElse(simpleZuoraSoapService)
+  lazy val zuoraService = {
+    lazy val simpleZuoraService = new ZuoraService(zuoraRestClient)
+    zuoraServiceOverride.getOrElse(simpleZuoraService)
   }
 
   lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
@@ -129,11 +129,11 @@ class TouchpointComponents(
       }
 
   lazy val subscriptionService: SubscriptionService[Future] = {
-    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog(_), zuoraRestClient, zuoraSoapService, () => LocalDate.now())
+    lazy val zuoraSubscriptionService = new SubscriptionService(futureCatalog(_), zuoraRestClient, zuoraService, () => LocalDate.now())
 
     subscriptionServiceOverride.getOrElse(zuoraSubscriptionService)
   }
-  lazy val paymentService: PaymentService = new PaymentService(zuoraSoapService, zuoraRestService)
+  lazy val paymentService: PaymentService = new PaymentService(zuoraService, zuoraRestService)
 
   lazy val idapiService = new IdapiService(backendConfig.idapi, RequestRunners.futureRunner)
   lazy val tokenVerifierConfig = OktaTokenValidationConfig(
@@ -183,7 +183,7 @@ class TouchpointComponents(
 
   def setPaymentCard(stripePublicKey: String): SetPaymentCard = {
     val stripeService = chooseStripe.serviceForPublicKey(stripePublicKey).toRight(s"No Stripe service for public key: $stripePublicKey")
-    new SetPaymentCard(zuoraSoapService, stripeService)
+    new SetPaymentCard(zuoraService, stripeService)
   }
 
   lazy val cancelSubscription = new CancelSubscription(subscriptionService, zuoraRestService)
