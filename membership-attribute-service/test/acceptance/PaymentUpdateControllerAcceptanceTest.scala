@@ -9,9 +9,9 @@ import com.gu.memsub.subsv2.services.{SubscriptionService, TestCatalog}
 import com.gu.memsub.subsv2.Catalog
 import com.gu.zuora.ZuoraService
 import com.gu.zuora.api.{GoCardlessGateway, PaymentGateway}
-import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
-import com.gu.zuora.soap.models.Queries
-import com.gu.zuora.soap.models.Results.UpdateResult
+import com.gu.zuora.models.Commands.{BankTransfer, CreatePaymentMethod}
+import com.gu.zuora.models.Queries
+import com.gu.zuora.models.Results.UpdateResult
 import kong.unirest.Unirest
 import org.mockito.ArgumentMatchers.any
 import org.mockserver.model.Cookie

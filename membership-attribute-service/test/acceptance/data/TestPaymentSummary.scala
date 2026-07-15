@@ -2,8 +2,8 @@ package acceptance.data
 
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Currency
-import com.gu.zuora.soap.models.PaymentSummary
-import com.gu.zuora.soap.models.Queries.InvoiceItem
+import com.gu.zuora.models.PaymentSummary
+import com.gu.zuora.models.Queries.InvoiceItem
 import org.joda.time.LocalDate
 
 object TestPaymentSummary {

@@ -2,7 +2,7 @@ package com.gu.memsub
 import com.github.nscala_time.time.Imports._
 import com.gu.lib.DateDSL._
 import com.gu.memsub.BillingSchedule._
-import com.gu.zuora.soap.models.Queries._
+import com.gu.zuora.models.Queries._
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import scalaz.syntax.nel._

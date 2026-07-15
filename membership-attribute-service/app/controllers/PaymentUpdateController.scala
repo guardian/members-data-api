@@ -9,7 +9,7 @@ import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import com.gu.zuora.api.GoCardlessGateway
 import com.gu.zuora.api.GoCardlessTortoiseMediaGateway
-import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
+import com.gu.zuora.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.{readSelf, updateSelf}
 import monitoring.CreateMetrics

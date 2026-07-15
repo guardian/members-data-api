@@ -8,11 +8,10 @@ import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{PaymentGateway}
-import com.gu.zuora.soap._
-import com.gu.zuora.soap.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
-import com.gu.zuora.soap.models.Results.UpdateResult
-import com.gu.zuora.soap.models.errors._
-import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
+import com.gu.zuora.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
+import com.gu.zuora.models.Results.UpdateResult
+import com.gu.zuora.models.errors._
+import com.gu.zuora.models.{PaymentSummary, Queries}
 import com.gu.zuora.rest.ZuoraQueryReads._
 import com.gu.zuora.rest.ZuoraPaymentWrites._
 import com.gu.zuora.rest.{ZuoraResponse, zuoraResponseReads}
@@ -22,7 +21,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object ZuoraService {
 
-  def latestInvoiceItems(items: Seq[SoapQueries.InvoiceItem]): Seq[SoapQueries.InvoiceItem] = {
+  def latestInvoiceItems(items: Seq[Queries.InvoiceItem]): Seq[Queries.InvoiceItem] = {
     if (items.isEmpty)
       items
     else {
@@ -54,11 +53,11 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): Future[List[AccountId]] =
     query[AccountId](s"select Id from account where crmId = '${contactId.salesforceAccountId}'")
 
-  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[SoapQueries.Account] =
-    getObject[SoapQueries.Account](s"object/account/${accountId.get}")
+  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[Queries.Account] =
+    getObject[Queries.Account](s"object/account/${accountId.get}")
 
-  def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
-    getObject[SoapQueries.Contact](s"object/contact/$contactId")
+  def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[Queries.Contact] =
+    getObject[Queries.Contact](s"object/contact/$contactId")
 
   /* The account payment fields are updated via PUT accounts/{id}, and the payment method is created via POST object/payment-method. A REST error or an
      unsuccessful response fails the Future. */
@@ -138,14 +137,14 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
       s"where SubscriptionNumber = '${subscriptionNumber.getNumber}'",
     ).mkString(" ")
     for {
-      invoiceItems <- query[SoapQueries.InvoiceItem](zoql)
+      invoiceItems <- query[Queries.InvoiceItem](zoql)
     } yield {
       val filteredInvoices = latestInvoiceItems(invoiceItems)
       PaymentSummary(filteredInvoices, accountCurrency)
     }
   }
 
-  def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.PaymentMethod] =
-    getObject[SoapQueries.PaymentMethod](s"object/payment-method/$id")
+  def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[Queries.PaymentMethod] =
+    getObject[Queries.PaymentMethod](s"object/payment-method/$id")
 
 }

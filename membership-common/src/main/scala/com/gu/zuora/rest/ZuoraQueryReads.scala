@@ -4,12 +4,12 @@ import com.gu.i18n.Currency
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.ZuoraLookup
 import com.gu.zuora.api.PaymentGateway
-import com.gu.zuora.soap.models.Queries
+import com.gu.zuora.models.Queries
 import org.joda.time.LocalDate
 import play.api.libs.json._
 
 /** JSON readers for the Zuora REST read operations (object/{type}/{id} and action/query), mapping the responses onto the query case classes in
-  * com.gu.zuora.soap.models.Queries. Each reader links the Zuora operation it parses.
+  * com.gu.zuora.models.Queries. Each reader links the Zuora operation it parses.
   */
 object ZuoraQueryReads {
 

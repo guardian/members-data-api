@@ -10,9 +10,9 @@ import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.Payment
 import com.gu.zuora.ZuoraService
-import com.gu.zuora.soap.models.Queries
-import com.gu.zuora.soap.models.Queries.Account
-import com.gu.zuora.soap.models.Queries.PaymentMethod._
+import com.gu.zuora.models.Queries
+import com.gu.zuora.models.Queries.Account
+import com.gu.zuora.models.Queries.PaymentMethod._
 import org.joda.time.LocalDate
 import services.zuora.rest.ZuoraRestService
 import scalaz.{-\/, \/-}

@@ -1,4 +1,4 @@
-package com.gu.zuora.soap.models
+package com.gu.zuora.models
 
 import com.gu.i18n.{Country, Currency}
 import com.gu.memsub.Subscription.AccountId
@@ -7,7 +7,7 @@ import com.gu.memsub.subsv2.ReaderType
 import com.gu.memsub.{Address, FullName, NormalisedTelephoneNumber, SupplierCode}
 import com.gu.salesforce.ContactId
 import com.gu.zuora.api.{PaymentGateway}
-import com.gu.zuora.soap.models.Queries.Contact
+import com.gu.zuora.models.Queries.Contact
 import org.joda.time.LocalDate
 import scalaz.NonEmptyList
 

@@ -1,6 +1,6 @@
-package com.gu.zuora.soap.models
+package com.gu.zuora.models
 
-import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
+import com.gu.zuora.models.Queries.PreviewInvoiceItem
 
 trait Result
 object Results {

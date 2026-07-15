@@ -1,4 +1,4 @@
-package com.gu.zuora.soap.models.errors
+package com.gu.zuora.models.errors
 
 import scala.xml.Node
 
