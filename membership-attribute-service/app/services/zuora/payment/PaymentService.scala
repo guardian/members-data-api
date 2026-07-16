@@ -77,10 +77,9 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
     soapPaymentMethod.`type` match {
       case `CreditCard` | `CreditCardReferenceTransaction` =>
         val isReferenceTransaction = soapPaymentMethod.`type` == `CreditCardReferenceTransaction`
-        def asInt(num: String) = Try(num.toInt).toOption
         val m = soapPaymentMethod
         val details =
-          (m.creditCardNumber |@| m.creditCardExpirationMonth.flatMap(asInt) |@| m.creditCardExpirationYear.flatMap(asInt))(PaymentCardDetails)
+          (m.creditCardNumber |@| m.creditCardExpirationMonth |@| m.creditCardExpirationYear)(PaymentCardDetails)
         Some(PaymentCard(isReferenceTransaction, m.creditCardType, details, m.numConsecutiveFailures, m.paymentMethodStatus))
       case `BankTransfer` =>
         buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod)

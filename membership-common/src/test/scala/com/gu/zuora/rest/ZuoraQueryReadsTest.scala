@@ -36,8 +36,8 @@ class ZuoraQueryReadsTest extends Specification {
       }""")
       val pm = json.as[Queries.PaymentMethod]
       pm.`type` must_== "CreditCardReferenceTransaction"
-      pm.creditCardExpirationMonth must beSome("10")
-      pm.creditCardExpirationYear must beSome("2026")
+      pm.creditCardExpirationMonth must beSome(10)
+      pm.creditCardExpirationYear must beSome(2026)
       pm.creditCardNumber must beSome("4242")
       pm.numConsecutiveFailures must beSome(0)
       pm.bankCode must beNone
