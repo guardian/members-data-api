@@ -8,11 +8,9 @@ import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
 import com.gu.stripe.Stripe
 import com.gu.zuora.api.{PaymentGateway}
-import com.gu.zuora.soap._
-import com.gu.zuora.soap.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
-import com.gu.zuora.soap.models.Results.UpdateResult
-import com.gu.zuora.soap.models.errors._
-import com.gu.zuora.soap.models.{PaymentSummary, Queries => SoapQueries}
+import com.gu.zuora.models.Commands.{CreatePaymentMethod, CreditCardReferenceTransaction}
+import com.gu.zuora.models.errors._
+import com.gu.zuora.models.{PaymentSummary, Queries}
 import com.gu.zuora.rest.ZuoraQueryReads._
 import com.gu.zuora.rest.ZuoraPaymentWrites._
 import com.gu.zuora.rest.{ZuoraResponse, zuoraResponseReads}
@@ -20,9 +18,9 @@ import play.api.libs.json.Reads
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object ZuoraSoapService {
+object ZuoraService {
 
-  def latestInvoiceItems(items: Seq[SoapQueries.InvoiceItem]): Seq[SoapQueries.InvoiceItem] = {
+  def latestInvoiceItems(items: Seq[Queries.InvoiceItem]): Seq[Queries.InvoiceItem] = {
     if (items.isEmpty)
       items
     else {
@@ -32,14 +30,14 @@ object ZuoraSoapService {
   }
 }
 
-trait SoapClient[M[_]] {
+trait ZuoraClient[M[_]] {
 
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): M[List[AccountId]]
 }
 
-class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext) extends SoapClient[Future] with SafeLogging {
+class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: ExecutionContext) extends ZuoraClient[Future] with SafeLogging {
 
-  import ZuoraSoapService._
+  import ZuoraService._
 
   /* getObject fetches a single object via object/{type}/{id} and fails the Future if it is missing or the call errors; query runs a ZOQL query via
      action/query and returns the records (empty if none), failing only on a REST error. */
@@ -54,11 +52,11 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
   def getAccountIds(contactId: ContactId)(implicit logPrefix: LogPrefix): Future[List[AccountId]] =
     query[AccountId](s"select Id from account where crmId = '${contactId.salesforceAccountId}'")
 
-  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[SoapQueries.Account] =
-    getObject[SoapQueries.Account](s"object/account/${accountId.get}")
+  def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[Queries.Account] =
+    getObject[Queries.Account](s"object/account/${accountId.get}")
 
-  def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.Contact] =
-    getObject[SoapQueries.Contact](s"object/contact/$contactId")
+  def getContact(contactId: String)(implicit logPrefix: LogPrefix): Future[Queries.Contact] =
+    getObject[Queries.Contact](s"object/contact/$contactId")
 
   /* The account payment fields are updated via PUT accounts/{id}, and the payment method is created via POST object/payment-method. A REST error or an
      unsuccessful response fails the Future. */
@@ -67,7 +65,7 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
       defaultPaymentMethodId: Option[String],
       paymentGateway: PaymentGateway,
       autoPay: Boolean,
-  )(implicit logPrefix: LogPrefix): Future[UpdateResult] =
+  )(implicit logPrefix: LogPrefix): Future[Unit] =
     restClient
       .put[AccountPaymentUpdate, ZuoraResponse](
         s"accounts/${accountId.get}",
@@ -75,7 +73,7 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
       )
       .map(_.valueOr(error => throw QueryError(s"Zuora REST account update for ${accountId.get} failed: $error")))
       .map { response =>
-        if (response.success) UpdateResult(accountId.get)
+        if (response.success) ()
         else throw QueryError(s"Zuora account update for ${accountId.get} was unsuccessful: ${response.error.getOrElse("")}")
       }
 
@@ -90,28 +88,28 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
 
   private def setDefaultPaymentMethod(accountId: AccountId, paymentMethodId: String, paymentGateway: PaymentGateway)(implicit
       logPrefix: LogPrefix,
-  ): Future[UpdateResult] =
+  ): Future[Unit] =
     updateAccountPayment(accountId, defaultPaymentMethodId = Some(paymentMethodId), paymentGateway, autoPay = true)
 
   // Clear the default payment method before switching the gateway: Zuora requires the account gateway to match its default method's gateway.
   private def setGatewayAndClearDefaultMethod(accountId: AccountId, paymentGateway: PaymentGateway)(implicit
       logPrefix: LogPrefix,
-  ): Future[UpdateResult] =
+  ): Future[Unit] =
     updateAccountPayment(accountId, defaultPaymentMethodId = None, paymentGateway, autoPay = false)
 
   /* Creates a payment method and sets it as default. Still three steps because Zuora validates that the account's gateway matches its default method's,
      so we cannot swap gateway and method atomically: clear the old default onto the new gateway, create the method, then set it default. */
-  def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[UpdateResult] = for {
+  def createPaymentMethod(command: CreatePaymentMethod)(implicit logPrefix: LogPrefix): Future[Unit] = for {
     _ <- setGatewayAndClearDefaultMethod(command.accountId, command.paymentGateway)
     paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(command.accountId, command.paymentMethod))
-    result <- setDefaultPaymentMethod(command.accountId, paymentMethodId, command.paymentGateway)
-  } yield result
+    _ <- setDefaultPaymentMethod(command.accountId, paymentMethodId, command.paymentGateway)
+  } yield ()
 
   def createCreditCardPaymentMethod(
       accountId: AccountId,
       stripeCustomer: Stripe.Customer,
       paymentGateway: PaymentGateway,
-  )(implicit logPrefix: LogPrefix): Future[UpdateResult] = {
+  )(implicit logPrefix: LogPrefix): Future[Unit] = {
     val card = stripeCustomer.card
     val paymentMethod = CreditCardReferenceTransaction(
       cardId = card.id,
@@ -125,8 +123,8 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
     for {
       _ <- setGatewayAndClearDefaultMethod(accountId, paymentGateway)
       paymentMethodId <- createObjectPaymentMethod(CreatePaymentMethodObject(accountId, paymentMethod))
-      result <- setDefaultPaymentMethod(accountId, paymentMethodId, paymentGateway)
-    } yield result
+      _ <- setDefaultPaymentMethod(accountId, paymentMethodId, paymentGateway)
+    } yield ()
   }
 
   def getPaymentSummary(subscriptionNumber: S.SubscriptionNumber, accountCurrency: Currency)(implicit
@@ -138,14 +136,14 @@ class ZuoraSoapService(restClient: rest.SimpleClient[Future])(implicit ec: Execu
       s"where SubscriptionNumber = '${subscriptionNumber.getNumber}'",
     ).mkString(" ")
     for {
-      invoiceItems <- query[SoapQueries.InvoiceItem](zoql)
+      invoiceItems <- query[Queries.InvoiceItem](zoql)
     } yield {
       val filteredInvoices = latestInvoiceItems(invoiceItems)
       PaymentSummary(filteredInvoices, accountCurrency)
     }
   }
 
-  def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[SoapQueries.PaymentMethod] =
-    getObject[SoapQueries.PaymentMethod](s"object/payment-method/$id")
+  def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[Queries.PaymentMethod] =
+    getObject[Queries.PaymentMethod](s"object/payment-method/$id")
 
 }

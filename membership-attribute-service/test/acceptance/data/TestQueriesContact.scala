@@ -2,7 +2,7 @@ package acceptance.data
 
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Country
-import com.gu.zuora.soap.models.Queries.Contact
+import com.gu.zuora.models.Queries.Contact
 
 object TestQueriesContact {
   def apply(

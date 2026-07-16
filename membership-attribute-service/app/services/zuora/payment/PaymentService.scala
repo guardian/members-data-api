@@ -9,10 +9,10 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.services.model.PaymentDetails
 import com.gu.services.model.PaymentDetails.Payment
-import com.gu.zuora.ZuoraSoapService
-import com.gu.zuora.soap.models.Queries
-import com.gu.zuora.soap.models.Queries.Account
-import com.gu.zuora.soap.models.Queries.PaymentMethod._
+import com.gu.zuora.ZuoraService
+import com.gu.zuora.models.Queries
+import com.gu.zuora.models.Queries.Account
+import com.gu.zuora.models.Queries.PaymentMethod._
 import org.joda.time.LocalDate
 import services.zuora.rest.ZuoraRestService
 import scalaz.{-\/, \/-}
@@ -23,7 +23,7 @@ import scalaz.syntax.std.option._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-class PaymentService(zuoraService: ZuoraSoapService, restService: ZuoraRestService)(implicit ec: ExecutionContext) extends SafeLogging {
+class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(implicit ec: ExecutionContext) extends SafeLogging {
 
   def paymentDetails(
       sub: Subscription,

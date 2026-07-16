@@ -1,12 +1,12 @@
 package com.gu.zuora
 
 import com.github.nscala_time.time.Imports._
-import com.gu.zuora.soap.models.Queries.{Amendment, InvoiceItem, Subscription}
+import com.gu.zuora.models.Queries.{Amendment, InvoiceItem, Subscription}
 import org.joda.time.{DateTime, DurationFieldType}
 import org.specs2.mutable.Specification
 
-class ZuoraSoapServiceTest extends Specification {
-  import ZuoraSoapService._
+class ZuoraServiceTest extends Specification {
+  import ZuoraService._
 
   "latestInvoiceItems" should {
     def invoiceItem(subscriptionId: String, chargeNumber: String = "1") = {

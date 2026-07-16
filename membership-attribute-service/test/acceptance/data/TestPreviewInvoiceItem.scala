@@ -1,6 +1,6 @@
 package acceptance.data
 
-import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
+import com.gu.zuora.models.Queries.PreviewInvoiceItem
 import org.joda.time.LocalDate
 
 object TestPreviewInvoiceItem {

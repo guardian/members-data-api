@@ -1,7 +1,7 @@
 package com.gu.zuora.rest
 
 import com.gu.memsub.Subscription.AccountId
-import com.gu.zuora.soap.models.Commands
+import com.gu.zuora.models.Commands
 import play.api.libs.json._
 
 /** JSON for the Zuora payment-method write operations: account payment updates via PUT /v1/accounts/{id}, and payment-method creation via POST

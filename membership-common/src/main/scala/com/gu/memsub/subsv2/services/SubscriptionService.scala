@@ -8,7 +8,7 @@ import com.gu.memsub.subsv2.reads.SubJsonReads._
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.ContactId
-import com.gu.zuora.SoapClient
+import com.gu.zuora.ZuoraClient
 import com.gu.zuora.rest.SimpleClient
 import org.joda.time.{LocalDate, LocalTime}
 import scalaz._
@@ -50,7 +50,7 @@ object Trace {
 
 }
 
-class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], rest: SimpleClient[M], soap: SoapClient[M], today: () => LocalDate)
+class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], rest: SimpleClient[M], zuora: ZuoraClient[M], today: () => LocalDate)
     extends SafeLogging {
   private type EitherTM[A] = EitherT[String, M, A]
 
@@ -157,7 +157,7 @@ class SubscriptionService[M[_]: Monad](futureCatalog: LogPrefix => M[Catalog], r
   private def getSubscriptionsFromContact(contact: ContactId)(implicit logPrefix: LogPrefix): M[Disjunction[String, List[Subscription]]] =
     (for {
       account <- ListT[EitherTM, AccountId](
-        EitherT[String, M, IList[AccountId]](soap.getAccountIds(contact).map(l => \/.r[String](IList.fromSeq(l)))),
+        EitherT[String, M, IList[AccountId]](zuora.getAccountIds(contact).map(l => \/.r[String](IList.fromSeq(l)))),
       )
       subscription <- ListT[EitherTM, Subscription](EitherT(getSubscriptionsFromAccount(account)).map(IList.fromSeq))
     } yield subscription).toList.run

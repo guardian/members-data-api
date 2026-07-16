@@ -3,7 +3,7 @@ package com.gu.zuora.rest
 import com.gu.i18n.Country
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraPaymentWrites._
-import com.gu.zuora.soap.models.Commands
+import com.gu.zuora.models.Commands
 import org.specs2.mutable.Specification
 import play.api.libs.json.{JsNull, Json}
 

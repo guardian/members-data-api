@@ -5,7 +5,7 @@ import java.lang.Math.min
 import com.github.nscala_time.time.Imports._
 import com.gu.memsub.BillingSchedule.Bill
 import com.gu.memsub.Subscription.ProductRatePlanChargeId
-import com.gu.zuora.soap.models.Queries.PreviewInvoiceItem
+import com.gu.zuora.models.Queries.PreviewInvoiceItem
 import org.joda.time.Period
 
 import scala.annotation.tailrec

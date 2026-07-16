@@ -3,7 +3,7 @@ package com.gu.zuora.rest
 import com.gu.i18n.Currency.GBP
 import com.gu.memsub.Subscription.AccountId
 import com.gu.zuora.rest.ZuoraQueryReads._
-import com.gu.zuora.soap.models.Queries
+import com.gu.zuora.models.Queries
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
