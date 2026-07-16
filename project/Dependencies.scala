@@ -6,7 +6,7 @@ object Dependencies {
   val awsClientV2Version = "2.35.10"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
-  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "4.37.0"
+  val identityAuth = "com.gu.identity" %% "identity-auth-play" % "5.0.0"
   val identityTestUsers = "com.gu" %% "identity-test-users" % "0.10.2"
   val postgres = "org.postgresql" % "postgresql" % "42.7.2"
   val jdbc = PlayImport.jdbc
@@ -19,8 +19,10 @@ object Dependencies {
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
-  val netty = "io.netty" % "netty-codec" % "4.1.118.Final"
-  val nettyHttp = "io.netty" % "netty-codec-http" % "4.1.118.Final"
+  val nettyVersion = "4.1.132.Final"
+  val netty = "io.netty" % "netty-codec" % nettyVersion
+  val nettyHttp = "io.netty" % "netty-codec-http" % nettyVersion
+  val nettyHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion // Fix CVE-2026-33871 (HTTP/2 CONTINUATION Flood DoS)
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val htmlUnit = "org.htmlunit" % "htmlunit" % "3.11.0" // Override to fix CVE-2023-2798 (RCE) - requires 3.0.0+
   val mockServer = "org.mock-server" % "mockserver-netty" % "5.15.0" % Test
@@ -28,12 +30,21 @@ object Dependencies {
   // Security overrides for vulnerable transitive dependencies
   val commonsBeanUtils = "commons-beanutils" % "commons-beanutils" % "1.11.0" // Fix CVE-2025-48734
   val nimbusJoseJwt = "com.nimbusds" % "nimbus-jose-jwt" % "9.37.4" // Fix CVE-2023-52428
-  val jsonSmart = "net.minidev" % "json-smart" % "2.5.0" // Fix CVE-2023-1370
+  val jsonSmart = "net.minidev" % "json-smart" % "2.5.2" // Fix CVE-2023-1370, CVE-2024-57699
   val snakeYaml = "org.yaml" % "snakeyaml" % "2.2" // Fix CVE-2022-1471 and others
+  val lz4Java = "at.yawk.lz4" % "lz4-java" % "1.10.1" // Fix CVE-2025-12183, CVE-2025-66566
+  val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
+  val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
+  val bouncyCastleBcpkix = "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
+  val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.84" // https://github.com/guardian/members-data-api/security/dependabot/79
+  val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
+  val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
+  val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
+  val jettyHttp = "org.eclipse.jetty" % "jetty-http" % "12.0.12" // Fix CVE-2024-6763 (URI parsing)
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
-  val logback = "ch.qos.logback" % "logback-classic" % "1.4.14"
+  val logback = "ch.qos.logback" % "logback-classic" % "1.5.25"
 
-  val jacksonVersion = "2.15.4"
+  val jacksonVersion = "2.18.6"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
@@ -76,6 +87,8 @@ object Dependencies {
     unirest,
     mockServer,
     mockitoScala,
+    ionJava, // Replace excluded software.amazon.ion:ion-java (CVE-2024-21634)
+    lz4Java, // Replace excluded org.lz4:lz4-java (CVE-2025-12183, CVE-2025-66566)
   ) ++ jackson ++ oktaJwtVerifier
 
   val dependencyOverrides = jackson ++ Seq(
@@ -84,9 +97,24 @@ object Dependencies {
     nimbusJoseJwt,
     jsonSmart,
     snakeYaml,
+    lz4Java,
+    ionJava,
+    netty,
+    nettyHttp,
+    nettyHttp2,
+    plexusUtils,
+    bouncyCastleBcpkix,
+    bouncyCastleBcprov,
+    commonsLang3,
+    jsonPath,
+    rhino,
+    logback,
+    jettyHttp,
   )
   val excludeDependencies = Seq(
     ExclusionRule("com.squareup.okio", "okio"),
     ExclusionRule("net.sourceforge.htmlunit", "htmlunit"), // Block vulnerable version from all transitive deps
+    ExclusionRule("software.amazon.ion", "ion-java"), // Exclude old groupId, replaced by com.amazon.ion (CVE-2024-21634)
+    ExclusionRule("org.lz4", "lz4-java"), // Exclude old groupId, replaced by at.yawk.lz4 (CVE-2025-12183, CVE-2025-66566)
   )
 }

@@ -92,6 +92,7 @@ object SupporterRatePlanToAttributesMapper {
   val guardianWeeklyTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
       GuardianWeeklySubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
+      DigitalSubscriptionExpiryDate = Some(supporterRatePlanItem.termEndDate),
     )
   val guardianPatronTransformer: AttributeTransformer = (attributes: Attributes, supporterRatePlanItem: DynamoSupporterRatePlanItem) =>
     attributes.copy(
@@ -210,6 +211,12 @@ object SupporterRatePlanToAttributesMapper {
       "2c92a0086619bf8901661aaac94257fe",
       "2c92a0ff79ac64e30179ae45669b3a83",
       "2c92a0086619bf8901661ab545f51b21",
+      "8a1288599c2f45d4019c33de05fd6804",
+      "8a129dff9c2f5e67019c33de28dc1234",
+      "8a129dff9c2f5e67019c33de1a2b1208",
+      "8a1296cc9bf9167b019c2925e5f1697c",
+      "8a1286eb9bf8fee6019c2924e3c84552",
+      "8a1295179bf91686019c2923c1d2487a",
     ) -> guardianWeeklyTransformer,
     List(
       "8a129ce886834fa90186a20c3ee70b6a", // 2023 price rise annual
@@ -322,6 +329,12 @@ object SupporterRatePlanToAttributesMapper {
       "2c92c0f878ac402c0178acb3a90a3620",
       "2c92c0f965f212210165f69b94c92d66",
       "2c92c0f878ac40300178acaa04bb401d",
+      "71a1889a11e9c3262efc33d4d2e6003d",
+      "71a1b1d5ae19c3274a6c33d4e8c80000",
+      "71a10c626869c3262f1c33d50fd3000f",
+      "71a10c6268a9c22b079c2452f51f0137",
+      "71a10c626ff9c22b079c245239af0009",
+      "71a17af0e0e9c22c33ec241bf657005b",
     ) -> guardianWeeklyTransformer,
     List(
       "2c92c0f94c510a0d014c569ba8eb45f7",

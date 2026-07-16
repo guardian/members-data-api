@@ -1,7 +1,7 @@
 package acceptance.data
 
 import acceptance.data.Randoms.randomId
-import com.gu.zuora.soap.models.Queries.PaymentMethod
+import com.gu.zuora.models.Queries.PaymentMethod
 
 object TestQueriesPaymentMethod {
   def apply(

@@ -76,7 +76,7 @@ class SimpleClientTest extends AnyFlatSpec {
     val result = badClient.post[String, Int]("foo/bar", "stuff")
 
     result.value match {
-      case -\/(error) => error should include("bad json")
+      case -\/(error) => error should include("Unrecognized token 'bad'")
       case failed => throw new TestFailedException(failed.toString, 0)
     }
   }
@@ -87,7 +87,7 @@ class SimpleClientTest extends AnyFlatSpec {
     val result = badClient.put[String, Int]("foo/bar", "stuff")
 
     result.value match {
-      case -\/(error) => error should include("bad json")
+      case -\/(error) => error should include("Unrecognized token 'bad'")
       case failed => throw new TestFailedException(failed.toString, 0)
     }
   }

@@ -1,4 +1,4 @@
-package com.gu.zuora.soap.models
+package com.gu.zuora.models
 
 import com.gu.i18n.{Country, Currency}
 import com.gu.memsub.Subscription.Feature.{Code, Id}

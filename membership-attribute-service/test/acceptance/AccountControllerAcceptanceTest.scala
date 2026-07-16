@@ -10,7 +10,7 @@ import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.services.TestCatalog
 import TestCatalog.catalog
 import com.gu.monitoring.SafeLogger.LogPrefix
-import com.gu.zuora.ZuoraSoapService
+import com.gu.zuora.ZuoraService
 import kong.unirest.Unirest
 import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
@@ -27,7 +27,7 @@ import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
 import services.zuora.rest.ZuoraRestService
 import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
-import services.{ContributionsStoreDatabaseService, HealthCheckableService, SupporterProductDataService}
+import services.{ContributionsStoreDatabaseService, SupporterProductDataService}
 import utils.SimpleEitherT
 import wiring.MyComponents
 
@@ -39,7 +39,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var subscriptionServiceMock: SubscriptionService[Future] = _
   var zuoraRestServiceMock: ZuoraRestService = _
   var catalogServiceMock: Catalog = _
-  var zuoraSoapServiceMock: ZuoraSoapService with HealthCheckableService = _
+  var zuoraServiceMock: ZuoraService = _
   var supporterProductDataServiceMock: SupporterProductDataService = _
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var patronsStripeServiceMock: BasicStripeService = _
@@ -50,7 +50,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     subscriptionServiceMock = mock[SubscriptionService[Future]]
     zuoraRestServiceMock = mock[ZuoraRestService]
     catalogServiceMock = catalog
-    zuoraSoapServiceMock = mock[ZuoraSoapService with HealthCheckableService]
+    zuoraServiceMock = mock[ZuoraService]
     supporterProductDataServiceMock = mock[SupporterProductDataService]
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
     patronsStripeServiceMock = mock[BasicStripeService]
@@ -65,7 +65,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       override lazy val subscriptionServiceOverride = Some(subscriptionServiceMock)
       override lazy val zuoraRestServiceOverride = Some(zuoraRestServiceMock)
       override lazy val catalogServiceOverride = Some(Future.successful(catalogServiceMock))
-      override lazy val zuoraSoapServiceOverride = Some(zuoraSoapServiceMock)
+      override lazy val zuoraServiceOverride = Some(zuoraServiceMock)
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
       override lazy val sendEmail = sendEmailMock
@@ -182,9 +182,20 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       )
       zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.subscriptionNumber)(any) returns Future(\/.right(None))
 
-      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) returns Future(TestPaymentSummary())
-      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(TestQueriesAccount())
-      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 30)(any) returns Future(Seq(TestPreviewInvoiceItem()))
+      zuoraServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) returns Future(TestPaymentSummary())
+      zuoraServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) returns Future(
+        TestQueriesAccount(id = nonGiftSubscriptionAccountId.get, creditBalance = 0),
+      )
+      // billing-preview is account-scoped: it returns items for this subscription plus a different one on the account.
+      // We must keep only this subscription's items (matched by number), so the next payment reflects 10, not 10 + 999.
+      zuoraRestServiceMock.getBillingPreview(eqTo(nonGiftSubscriptionAccountId), any)(any) returns Future(
+        \/.right(
+          List(
+            TestBillingPreviewInvoiceItem(subscriptionNumber = nonGiftSubscription.subscriptionNumber.getNumber, chargeAmount = 10),
+            TestBillingPreviewInvoiceItem(subscriptionNumber = "A-S00000999", chargeAmount = 999),
+          ),
+        ),
+      )
 
       val patronSubscription = TestDynamoSupporterRatePlanItem(
         subscriptionName = patronSubscriptionName,
@@ -226,15 +237,15 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraRestServiceMock.getCancellationEffectiveDate(giftSubscriptionFromSubscriptionService.subscriptionNumber)(any) was called
       zuoraRestServiceMock.getCancellationEffectiveDate(nonGiftSubscription.subscriptionNumber)(any) was called
 
-      zuoraSoapServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
-      zuoraSoapServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) was called
-      zuoraSoapServiceMock.previewInvoices(nonGiftSubscription.id, 30)(any) was called
+      zuoraServiceMock.getAccount(nonGiftSubscriptionAccountId)(any) was called
+      zuoraServiceMock.getPaymentSummary(nonGiftSubscription.subscriptionNumber, Currency.GBP)(any) was called
+      zuoraRestServiceMock.getBillingPreview(eqTo(nonGiftSubscriptionAccountId), any)(any) was called
 
       supporterProductDataServiceMock wasNever calledAgain
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      zuoraSoapServiceMock wasNever calledAgain
+      zuoraServiceMock wasNever calledAgain
       databaseServiceMock wasNever called
 
       val body = httpResponse.getBody
@@ -260,6 +271,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       (supporterPlusProduct \ "subscription" \ "contactId").as[String] shouldEqual contact.salesforceContactId
       (supporterPlusProduct \ "subscription" \ "subscriptionId").as[String] shouldEqual nonGiftSubscription.subscriptionNumber.getNumber
       (supporterPlusProduct \ "subscription" \ "accountId").as[String] shouldEqual nonGiftSubscription.accountId.get
+      // the next payment is this subscription's billing-preview charge (10.00, i.e. 1000 in minor units), not the
+      // other subscription's charge of 999 which must be filtered out
+      (supporterPlusProduct \ "subscription" \ "nextPaymentPrice").as[Double] shouldEqual 1000.0
       (supporterPlusProduct \ "subscription" \ "plan" \ "name").as[String] shouldEqual nonGiftSubscription.plan(catalog).productName
 
       (digiGiftProduct \ "tier").as[String] shouldEqual giftSubscriptionFromSubscriptionService.ratePlans.head.productName
@@ -384,7 +398,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      zuoraSoapServiceMock wasNever called
+      zuoraServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
 
@@ -499,7 +513,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       contactRepositoryMock wasNever calledAgain
       subscriptionServiceMock wasNever calledAgain
       zuoraRestServiceMock wasNever calledAgain
-      zuoraSoapServiceMock wasNever called
+      zuoraServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
 

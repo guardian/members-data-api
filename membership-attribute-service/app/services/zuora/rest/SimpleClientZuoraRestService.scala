@@ -35,6 +35,15 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
   def getPaymentMethod(paymentMethodId: String)(implicit logPrefix: LogPrefix): Future[String \/ PaymentMethodResponse] =
     simpleRest.get[PaymentMethodResponse](s"object/payment-method/$paymentMethodId")
 
+  def getBillingPreview(accountId: AccountId, targetDate: LocalDate)(implicit
+      logPrefix: LogPrefix,
+  ): Future[String \/ List[BillingPreviewInvoiceItem]] = {
+    val request = BillingPreviewRequest(accountId.get, targetDate)
+    EitherT(simpleRest.post[BillingPreviewRequest, BillingPreviewResponse]("operations/billing-preview", request))
+      .map(_.invoiceItems)
+      .run
+  }
+
   private def unsuccessfulResponseToLeft(restResponse: EitherT[String, Future, ZuoraResponse]): EitherT[String, Future, ZuoraResponse] = {
     val futureMonad = implicitly[Monad[Future]]
 
@@ -129,10 +138,9 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
 
   def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {
     (for {
-      amendment <- EitherT(simpleRest.get[Amendment](s"amendments/subscriptions/${subscriptionNumber.getNumber}"))
       cancelledSub <- EitherT(simpleRest.get[CancelledSubscription](s"subscriptions/${subscriptionNumber.getNumber}"))
     } yield {
-      if (amendment.`type`.contains("Cancellation") && cancelledSub.status == "Cancelled")
+      if (cancelledSub.status == "Cancelled")
         Some(cancelledSub.subscriptionEndDate)
       else
         None

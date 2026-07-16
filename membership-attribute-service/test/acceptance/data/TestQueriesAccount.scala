@@ -3,7 +3,7 @@ package acceptance.data
 import acceptance.data.Randoms.randomId
 import com.gu.i18n.Currency
 import com.gu.zuora.api.PaymentGateway
-import com.gu.zuora.soap.models.Queries
+import com.gu.zuora.models.Queries
 
 object TestQueriesAccount {
   def apply(

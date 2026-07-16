@@ -9,7 +9,7 @@ import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.Contact
 import com.gu.zuora.api.GoCardlessGateway
 import com.gu.zuora.api.GoCardlessTortoiseMediaGateway
-import com.gu.zuora.soap.models.Commands.{BankTransfer, CreatePaymentMethod}
+import com.gu.zuora.models.Commands.{BankTransfer, CreatePaymentMethod}
 import json.PaymentCardUpdateResultWriters._
 import models.AccessScope.{readSelf, updateSelf}
 import monitoring.CreateMetrics
@@ -162,10 +162,10 @@ class PaymentUpdateController(
               .map(subs => subscriptionSelector(memsub.Subscription.SubscriptionNumber(subscriptionName), s"the sfUser $contact", subs)),
           )
           account <- SimpleEitherT(
-            annotateFailableFuture(services.zuoraSoapService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
+            annotateFailableFuture(services.zuoraService.getAccount(subscription.accountId), s"get account with id ${subscription.accountId}"),
           )
           billToContact <- SimpleEitherT(
-            annotateFailableFuture(services.zuoraSoapService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
+            annotateFailableFuture(services.zuoraService.getContact(account.billToId), s"get billTo contact with id ${account.billToId}"),
           )
           bankTransferPaymentMethod = BankTransfer(
             accountHolderName = bankAccountName,
@@ -187,13 +187,13 @@ class PaymentUpdateController(
           )
           _ <- SimpleEitherT(
             annotateFailableFuture(
-              services.zuoraSoapService.createPaymentMethod(createPaymentMethod),
+              services.zuoraService.createPaymentMethod(createPaymentMethod),
               s"create direct debit payment method using ${paymentGatewayToUse.gatewayName}",
             ),
           )
           freshAccount <- SimpleEitherT(
             annotateFailableFuture(
-              services.zuoraSoapService.getAccount(subscription.accountId),
+              services.zuoraService.getAccount(subscription.accountId),
               s"get fresh account with id ${subscription.accountId}",
             ),
           )
