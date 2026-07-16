@@ -64,9 +64,9 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
       paymentMethod <-
         (m.bankTransferType, m.bankCode) match {
           case (Some("SEPA"), _) =>
-            Some(Sepa(mandateId, accountName, accountNumber, Some(m.numConsecutiveFailures), m.paymentMethodStatus))
+            Some(Sepa(mandateId, accountName, accountNumber, m.numConsecutiveFailures, m.paymentMethodStatus))
           case (_, Some(sortCode)) =>
-            Some(GoCardless(mandateId, accountName, accountNumber, sortCode, Some(m.numConsecutiveFailures), m.paymentMethodStatus))
+            Some(GoCardless(mandateId, accountName, accountNumber, sortCode, m.numConsecutiveFailures, m.paymentMethodStatus))
           case _ => None
         }
     } yield paymentMethod
@@ -81,11 +81,11 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
         val isReferenceTransaction = m.paymentMethodType == "CreditCardReferenceTransaction"
         val details =
           (m.creditCardNumber |@| m.creditCardExpirationMonth |@| m.creditCardExpirationYear)(PaymentCardDetails)
-        Some(PaymentCard(isReferenceTransaction, m.creditCardType, details, Some(m.numConsecutiveFailures), m.paymentMethodStatus))
+        Some(PaymentCard(isReferenceTransaction, m.creditCardType, details, m.numConsecutiveFailures, m.paymentMethodStatus))
       case "BankTransfer" =>
         buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, m)
       case "PayPal" =>
-        Some(PayPalMethod(m.payPalEmail.get, Some(m.numConsecutiveFailures), m.paymentMethodStatus))
+        Some(PayPalMethod(m.payPalEmail.get, m.numConsecutiveFailures, m.paymentMethodStatus))
       case _ => None
     }
 

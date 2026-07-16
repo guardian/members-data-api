@@ -102,7 +102,7 @@ object PaymentFailureAlerter extends SafeLogging {
       val eventualPaymentMethod: Future[Either[String, PaymentMethodResponse]] = paymentMethodGetter(paymentMethodId)
       eventualPaymentMethod map { maybePaymentMethod: Either[String, PaymentMethodResponse] =>
         maybePaymentMethod.map { pm: PaymentMethodResponse =>
-          creditCard(pm) && pm.numConsecutiveFailures > 0
+          creditCard(pm) && pm.numConsecutiveFailures.exists(_ > 0)
         }
       }
     }

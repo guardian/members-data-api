@@ -325,7 +325,7 @@ object ZuoraRestService {
   }
 
   case class PaymentMethodResponse(
-      numConsecutiveFailures: Int,
+      numConsecutiveFailures: Option[Int],
       paymentMethodType: String,
       lastTransactionDateTime: Option[DateTime],
       mandateId: Option[String] = None,
@@ -345,7 +345,7 @@ object ZuoraRestService {
 
   implicit val paymentMethodReads: Reads[PaymentMethodResponse] = Reads { json =>
     for {
-      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validate[Int]
+      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validateOpt[Int]
       paymentMethodType <- (json \ "Type").validate[String]
       lastTransactionDateTime <- (json \ "LastTransactionDateTime").validateOpt[String].map(_.map(isoDateStringAsDateTime))
       mandateId <- (json \ "MandateID").validateOpt[String]

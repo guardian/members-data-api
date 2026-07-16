@@ -6,7 +6,7 @@ import services.zuora.rest.ZuoraRestService.PaymentMethodResponse
 object TestPaymentMethodResponse {
   def apply(
       paymentMethodType: String,
-      numConsecutiveFailures: Int = 0,
+      numConsecutiveFailures: Option[Int] = None,
       lastTransactionDateTime: Option[DateTime] = None,
       mandateId: Option[String] = None,
       tokenId: Option[String] = None,
