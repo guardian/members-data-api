@@ -143,7 +143,4 @@ class ZuoraService(restClient: rest.SimpleClient[Future])(implicit ec: Execution
     }
   }
 
-  def getPaymentMethod(id: String)(implicit logPrefix: LogPrefix): Future[Queries.PaymentMethod] =
-    getObject[Queries.PaymentMethod](s"object/payment-method/$id")
-
 }

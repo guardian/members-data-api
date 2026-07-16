@@ -182,16 +182,15 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraServiceMock.createPaymentMethod(createPaymentMethod)(any) returns Future.successful(())
 
-      val paymentMethod = TestQueriesPaymentMethod(
-        id = paymentMethodId,
+      val paymentMethod = TestPaymentMethodResponse(
+        paymentMethodType = "BankTransfer",
         mandateId = Some(randomId("mandateId")),
         bankTransferAccountName = Some("Frank Poole"),
         bankCode = Some("000000"),
         bankTransferAccountNumberMask = Some("4444 4444 4444 4444"),
-        paymentType = Queries.PaymentMethod.BankTransfer,
       )
 
-      zuoraServiceMock.getPaymentMethod(paymentMethodId)(any) returns Future(paymentMethod)
+      zuoraRestServiceMock.getPaymentMethod(paymentMethodId)(any) returns Future(\/.right(paymentMethod))
 
       sendEmailMock.send(emailData)(any) returns Future.successful(())
 
@@ -215,7 +214,7 @@ class PaymentUpdateControllerAcceptanceTest extends AcceptanceTest {
       zuoraServiceMock.getAccount(subscription.accountId)(any) wasCalled twice
       zuoraServiceMock.getContact(account.billToId)(any) was called
       zuoraServiceMock.createPaymentMethod(createPaymentMethod)(any) was called
-      zuoraServiceMock.getPaymentMethod(paymentMethodId)(any) was called
+      zuoraRestServiceMock.getPaymentMethod(paymentMethodId)(any) was called
       sendEmailMock.send(emailData)(any) was called
 
       supporterProductDataServiceMock wasNever called

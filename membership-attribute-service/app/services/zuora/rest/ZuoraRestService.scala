@@ -324,13 +324,62 @@ object ZuoraRestService {
     implicit val reads: Reads[GiftSubscriptionsFromIdentityIdResponse] = Json.reads[GiftSubscriptionsFromIdentityIdResponse]
   }
 
-  case class PaymentMethodResponse(numConsecutiveFailures: Int, paymentMethodType: String, lastTransactionDateTime: DateTime)
+  case class PaymentMethodResponse(
+      numConsecutiveFailures: Int,
+      paymentMethodType: String,
+      lastTransactionDateTime: DateTime,
+      mandateId: Option[String] = None,
+      tokenId: Option[String] = None,
+      secondTokenId: Option[String] = None,
+      payPalEmail: Option[String] = None,
+      bankTransferType: Option[String] = None,
+      bankTransferAccountName: Option[String] = None,
+      bankTransferAccountNumberMask: Option[String] = None,
+      bankCode: Option[String] = None,
+      creditCardNumber: Option[String] = None,
+      creditCardExpirationMonth: Option[Int] = None,
+      creditCardExpirationYear: Option[Int] = None,
+      creditCardType: Option[String] = None,
+      paymentMethodStatus: Option[String] = None,
+  )
 
-  implicit val paymentMethodReads: Reads[PaymentMethodResponse] = (
-    (JsPath \ "NumConsecutiveFailures").read[Int] and
-      (JsPath \ "Type").read[String] and
-      (JsPath \ "LastTransactionDateTime").read[String].map(isoDateStringAsDateTime)
-  )(PaymentMethodResponse.apply _)
+  implicit val paymentMethodReads: Reads[PaymentMethodResponse] = Reads { json =>
+    for {
+      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validate[Int]
+      paymentMethodType <- (json \ "Type").validate[String]
+      lastTransactionDateTime <- (json \ "LastTransactionDateTime").validate[String].map(isoDateStringAsDateTime)
+      mandateId <- (json \ "MandateID").validateOpt[String]
+      tokenId <- (json \ "TokenId").validateOpt[String]
+      secondTokenId <- (json \ "SecondTokenId").validateOpt[String]
+      payPalEmail <- (json \ "PaypalEmail").validateOpt[String]
+      bankTransferType <- (json \ "BankTransferType").validateOpt[String]
+      bankTransferAccountName <- (json \ "BankTransferAccountName").validateOpt[String]
+      bankTransferAccountNumberMask <- (json \ "BankTransferAccountNumberMask").validateOpt[String]
+      bankCode <- (json \ "BankCode").validateOpt[String]
+      creditCardMaskNumber <- (json \ "CreditCardMaskNumber").validateOpt[String]
+      creditCardExpirationMonth <- (json \ "CreditCardExpirationMonth").validateOpt[Int]
+      creditCardExpirationYear <- (json \ "CreditCardExpirationYear").validateOpt[Int]
+      creditCardType <- (json \ "CreditCardType").validateOpt[String]
+      paymentMethodStatus <- (json \ "PaymentMethodStatus").validateOpt[String]
+    } yield PaymentMethodResponse(
+      numConsecutiveFailures = numConsecutiveFailures,
+      paymentMethodType = paymentMethodType,
+      lastTransactionDateTime = lastTransactionDateTime,
+      mandateId = mandateId,
+      tokenId = tokenId,
+      secondTokenId = secondTokenId,
+      payPalEmail = payPalEmail,
+      bankTransferType = bankTransferType,
+      bankTransferAccountName = bankTransferAccountName,
+      bankTransferAccountNumberMask = bankTransferAccountNumberMask,
+      bankCode = bankCode,
+      creditCardNumber = creditCardMaskNumber.map(_.takeRight(4)),
+      creditCardExpirationMonth = creditCardExpirationMonth,
+      creditCardExpirationYear = creditCardExpirationYear,
+      creditCardType = creditCardType,
+      paymentMethodStatus = paymentMethodStatus,
+    )
+  }
 
   implicit val paymentGatewayReads: Reads[Option[PaymentGateway]] =
     __.read[String].map(PaymentGateway.getByName)

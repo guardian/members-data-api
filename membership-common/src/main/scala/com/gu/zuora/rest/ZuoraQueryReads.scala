@@ -67,45 +67,6 @@ object ZuoraQueryReads {
     )
   }
 
-  /** @see https://developer.zuora.com/api-references/older-api/operation/Object_GETPaymentMethod */
-  implicit val paymentMethodReads: Reads[Queries.PaymentMethod] = Reads { json =>
-    for {
-      id <- (json \ "Id").validate[String]
-      paymentType <- (json \ "Type").validate[String]
-      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validateOpt[Int]
-      paymentMethodStatus <- (json \ "PaymentMethodStatus").validateOpt[String]
-      mandateId <- (json \ "MandateID").validateOpt[String]
-      tokenId <- (json \ "TokenId").validateOpt[String]
-      secondTokenId <- (json \ "SecondTokenId").validateOpt[String]
-      payPalEmail <- (json \ "PaypalEmail").validateOpt[String]
-      bankTransferType <- (json \ "BankTransferType").validateOpt[String]
-      bankTransferAccountName <- (json \ "BankTransferAccountName").validateOpt[String]
-      bankTransferAccountNumberMask <- (json \ "BankTransferAccountNumberMask").validateOpt[String]
-      bankCode <- (json \ "BankCode").validateOpt[String]
-      creditCardMaskNumber <- (json \ "CreditCardMaskNumber").validateOpt[String]
-      creditCardExpirationMonth <- (json \ "CreditCardExpirationMonth").validateOpt[Int]
-      creditCardExpirationYear <- (json \ "CreditCardExpirationYear").validateOpt[Int]
-      creditCardType <- (json \ "CreditCardType").validateOpt[String]
-    } yield Queries.PaymentMethod(
-      id = id,
-      mandateId = mandateId,
-      tokenId = tokenId,
-      secondTokenId = secondTokenId,
-      payPalEmail = payPalEmail,
-      bankTransferType = bankTransferType,
-      bankTransferAccountName = bankTransferAccountName,
-      bankTransferAccountNumberMask = bankTransferAccountNumberMask,
-      bankCode = bankCode,
-      `type` = paymentType,
-      creditCardNumber = creditCardMaskNumber.map(_.takeRight(4)),
-      creditCardExpirationMonth = creditCardExpirationMonth,
-      creditCardExpirationYear = creditCardExpirationYear,
-      creditCardType = creditCardType,
-      numConsecutiveFailures = numConsecutiveFailures,
-      paymentMethodStatus = paymentMethodStatus,
-    )
-  }
-
   /** @see https://developer.zuora.com/api-references/api/operation/Action_POSTquery */
   implicit val invoiceItemReads: Reads[Queries.InvoiceItem] = Reads { json =>
     for {

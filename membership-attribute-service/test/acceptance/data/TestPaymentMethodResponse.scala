@@ -1,11 +1,13 @@
 package acceptance.data
 
-import acceptance.data.Randoms.randomId
-import com.gu.zuora.models.Queries.PaymentMethod
+import org.joda.time.DateTime
+import services.zuora.rest.ZuoraRestService.PaymentMethodResponse
 
-object TestQueriesPaymentMethod {
+object TestPaymentMethodResponse {
   def apply(
-      id: String = randomId("paymentMethod"),
+      paymentMethodType: String,
+      numConsecutiveFailures: Int = 0,
+      lastTransactionDateTime: DateTime = DateTime.now(),
       mandateId: Option[String] = None,
       tokenId: Option[String] = None,
       secondTokenId: Option[String] = None,
@@ -14,15 +16,15 @@ object TestQueriesPaymentMethod {
       bankTransferAccountName: Option[String] = None,
       bankTransferAccountNumberMask: Option[String] = None,
       bankCode: Option[String] = None,
-      paymentType: String,
       creditCardNumber: Option[String] = None,
       creditCardExpirationMonth: Option[Int] = None,
       creditCardExpirationYear: Option[Int] = None,
       creditCardType: Option[String] = None,
-      numConsecutiveFailures: Option[Int] = None,
       paymentMethodStatus: Option[String] = None,
-  ) = PaymentMethod(
-    id: String,
+  ): PaymentMethodResponse = PaymentMethodResponse(
+    numConsecutiveFailures = numConsecutiveFailures,
+    paymentMethodType = paymentMethodType,
+    lastTransactionDateTime = lastTransactionDateTime,
     mandateId = mandateId,
     tokenId = tokenId,
     secondTokenId = secondTokenId,
@@ -31,13 +33,10 @@ object TestQueriesPaymentMethod {
     bankTransferAccountName = bankTransferAccountName,
     bankTransferAccountNumberMask = bankTransferAccountNumberMask,
     bankCode = bankCode,
-    `type` = paymentType,
     creditCardNumber = creditCardNumber,
     creditCardExpirationMonth = creditCardExpirationMonth,
     creditCardExpirationYear = creditCardExpirationYear,
     creditCardType = creditCardType,
-    numConsecutiveFailures = numConsecutiveFailures,
     paymentMethodStatus = paymentMethodStatus,
   )
-
 }
