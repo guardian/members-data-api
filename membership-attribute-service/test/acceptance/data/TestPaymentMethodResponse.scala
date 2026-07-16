@@ -7,7 +7,7 @@ object TestPaymentMethodResponse {
   def apply(
       paymentMethodType: String,
       numConsecutiveFailures: Int = 0,
-      lastTransactionDateTime: DateTime = DateTime.now(),
+      lastTransactionDateTime: Option[DateTime] = None,
       mandateId: Option[String] = None,
       tokenId: Option[String] = None,
       secondTokenId: Option[String] = None,

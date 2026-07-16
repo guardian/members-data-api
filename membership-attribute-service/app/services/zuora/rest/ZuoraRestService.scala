@@ -327,7 +327,7 @@ object ZuoraRestService {
   case class PaymentMethodResponse(
       numConsecutiveFailures: Int,
       paymentMethodType: String,
-      lastTransactionDateTime: DateTime,
+      lastTransactionDateTime: Option[DateTime],
       mandateId: Option[String] = None,
       tokenId: Option[String] = None,
       secondTokenId: Option[String] = None,
@@ -347,7 +347,7 @@ object ZuoraRestService {
     for {
       numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validate[Int]
       paymentMethodType <- (json \ "Type").validate[String]
-      lastTransactionDateTime <- (json \ "LastTransactionDateTime").validate[String].map(isoDateStringAsDateTime)
+      lastTransactionDateTime <- (json \ "LastTransactionDateTime").validateOpt[String].map(_.map(isoDateStringAsDateTime))
       mandateId <- (json \ "MandateID").validateOpt[String]
       tokenId <- (json \ "TokenId").validateOpt[String]
       secondTokenId <- (json \ "SecondTokenId").validateOpt[String]

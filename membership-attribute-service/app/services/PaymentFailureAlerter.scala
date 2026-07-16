@@ -50,7 +50,7 @@ object PaymentFailureAlerter extends SafeLogging {
         case Some(id) =>
           val paymentMethod: Future[Either[String, PaymentMethodResponse]] =
             paymentMethodGetter(id) fallbackTo Future.successful(Left("Failed to get payment method"))
-          paymentMethod.map(_.map(_.lastTransactionDateTime).toOption)
+          paymentMethod.map(_.map(_.lastTransactionDateTime).toOption.flatten)
         case None => Future.successful(None)
       }
 

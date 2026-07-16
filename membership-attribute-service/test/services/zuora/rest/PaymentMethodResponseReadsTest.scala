@@ -7,15 +7,15 @@ import services.zuora.rest.ZuoraRestService.PaymentMethodResponse
 class PaymentMethodResponseReadsTest extends Specification {
 
   "PaymentMethodResponse reads" should {
-    "parse a credit card, reading the expiry as numbers and keeping only the last 4 mask digits" in {
+    "parse a credit card that has never been charged (no LastTransactionDateTime), reading the expiry as numbers and keeping only the last 4 mask digits" in {
       val json = Json.parse("""{
         "Type": "CreditCardReferenceTransaction", "PaymentMethodStatus": "Active",
-        "NumConsecutiveFailures": 0, "LastTransactionDateTime": "2026-06-18T00:00:00.000+01:00",
-        "CreditCardMaskNumber": "************4242",
+        "NumConsecutiveFailures": 0, "CreditCardMaskNumber": "************4242",
         "CreditCardExpirationMonth": 10, "CreditCardExpirationYear": 2026, "CreditCardType": "Visa"
       }""")
       val pm = json.as[PaymentMethodResponse]
       pm.paymentMethodType must_== "CreditCardReferenceTransaction"
+      pm.lastTransactionDateTime must beNone
       pm.creditCardExpirationMonth must beSome(10)
       pm.creditCardExpirationYear must beSome(2026)
       pm.creditCardNumber must beSome("4242")

@@ -18,12 +18,12 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
   override def referenceDate = new LocalDate()
 
   def paymentMethodResponseNoFailures(id: PaymentMethodId) =
-    Future.successful(Right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", referenceDate.toDateTimeAtCurrentTime)))
+    Future.successful(Right(PaymentMethodResponse(0, "CreditCardReferenceTransaction", Some(referenceDate.toDateTimeAtCurrentTime))))
   def paymentMethodResponseRecentFailure(id: PaymentMethodId) =
-    Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusDays(1))))
+    Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", Some(DateTime.now().minusDays(1)))))
   def paymentMethodLeftResponse(id: PaymentMethodId) = Future.successful(Left("Something's gone wrong!"))
   def paymentMethodResponseStaleFailure(id: PaymentMethodId) =
-    Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", DateTime.now().minusMonths(2))))
+    Future.successful(Right(PaymentMethodResponse(1, "CreditCardReferenceTransaction", Some(DateTime.now().minusMonths(2)))))
 
   "PaymentFailureAlerterTest" should {
     "membershipAlertText" should {
@@ -121,7 +121,7 @@ class PaymentFailureAlerterTest(implicit ee: ExecutionEnv) extends Specification
 
       "return false for a member who pays via paypal" in {
         def paymentMethodResponsePaypal(paymentMethodId: PaymentMethodId) =
-          Future.successful(Right(PaymentMethodResponse(1, "PayPal", DateTime.now().minusDays(1))))
+          Future.successful(Right(PaymentMethodResponse(1, "PayPal", Some(DateTime.now().minusDays(1)))))
 
         val result = PaymentFailureAlerter.alertAvailableFor(accountObjectWithBalance, membership, paymentMethodResponsePaypal, catalog)
 
