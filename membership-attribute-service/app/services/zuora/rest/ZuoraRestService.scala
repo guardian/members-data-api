@@ -334,63 +334,83 @@ object ZuoraRestService {
     implicit val reads: Reads[GiftSubscriptionsFromIdentityIdResponse] = Json.reads[GiftSubscriptionsFromIdentityIdResponse]
   }
 
+  /** The type-specific part of a payment method. Modelling it as a discriminated union (rather than one flat record where every field is optional)
+    * keeps the fields that only exist for a given type together, and lets required fields — e.g. a PayPal email — be non-optional.
+    */
+  sealed trait PaymentMethodDetails
+  object PaymentMethodDetails {
+    case class Card(
+        number: Option[String],
+        expirationMonth: Option[Int],
+        expirationYear: Option[Int],
+        cardType: Option[String],
+        isReferenceTransaction: Boolean,
+    ) extends PaymentMethodDetails
+    case class BankTransfer(
+        mandateId: Option[String],
+        transferType: Option[String],
+        accountName: Option[String],
+        accountNumberMask: Option[String],
+        bankCode: Option[String],
+    ) extends PaymentMethodDetails
+    case class PayPal(email: String) extends PaymentMethodDetails
+    // A payment method type we don't render (e.g. a new gateway's type). Kept so parsing never fails on an unknown type.
+    case class Other(paymentMethodType: String) extends PaymentMethodDetails
+  }
+
   case class PaymentMethodResponse(
-      numConsecutiveFailures: Option[Int],
       paymentMethodType: String,
+      numConsecutiveFailures: Option[Int],
       lastTransactionDateTime: Option[DateTime],
-      mandateId: Option[String] = None,
-      tokenId: Option[String] = None,
-      secondTokenId: Option[String] = None,
-      payPalEmail: Option[String] = None,
-      bankTransferType: Option[String] = None,
-      bankTransferAccountName: Option[String] = None,
-      bankTransferAccountNumberMask: Option[String] = None,
-      bankCode: Option[String] = None,
-      creditCardNumber: Option[String] = None,
-      creditCardExpirationMonth: Option[Int] = None,
-      creditCardExpirationYear: Option[Int] = None,
-      creditCardType: Option[String] = None,
-      paymentMethodStatus: Option[String] = None,
+      paymentMethodStatus: Option[String],
+      details: PaymentMethodDetails,
   )
+
+  private def paymentMethodDetailsReads(paymentMethodType: String, json: JsValue): JsResult[PaymentMethodDetails] =
+    paymentMethodType match {
+      case "CreditCard" | "CreditCardReferenceTransaction" =>
+        for {
+          maskNumber <- (json \ "CreditCardMaskNumber").validateOpt[String]
+          expirationMonth <- (json \ "CreditCardExpirationMonth").validateOpt[Int]
+          expirationYear <- (json \ "CreditCardExpirationYear").validateOpt[Int]
+          cardType <- (json \ "CreditCardType").validateOpt[String]
+        } yield PaymentMethodDetails.Card(
+          number = maskNumber.map(_.takeRight(4)),
+          expirationMonth = expirationMonth,
+          expirationYear = expirationYear,
+          cardType = cardType,
+          isReferenceTransaction = paymentMethodType == "CreditCardReferenceTransaction",
+        )
+      case "BankTransfer" =>
+        for {
+          mandateId <- (json \ "MandateID").validateOpt[String]
+          transferType <- (json \ "BankTransferType").validateOpt[String]
+          accountName <- (json \ "BankTransferAccountName").validateOpt[String]
+          accountNumberMask <- (json \ "BankTransferAccountNumberMask").validateOpt[String]
+          bankCode <- (json \ "BankCode").validateOpt[String]
+        } yield PaymentMethodDetails.BankTransfer(mandateId, transferType, accountName, accountNumberMask, bankCode)
+      case "PayPal" =>
+        (json \ "PaypalEmail").validate[String].map(PaymentMethodDetails.PayPal)
+      case other =>
+        JsSuccess(PaymentMethodDetails.Other(other))
+    }
 
   implicit val paymentMethodReads: Reads[PaymentMethodResponse] = Reads { json =>
     for {
-      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validateOpt[Int]
       paymentMethodType <- (json \ "Type").validate[String]
+      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validateOpt[Int]
       lastTransactionDateTime <- (json \ "LastTransactionDateTime").validateOpt[String].flatMap {
         case Some(dateString) => isoDateStringAsDateTimeResult(dateString).map(Some(_))
         case None => JsSuccess(None)
       }
-      mandateId <- (json \ "MandateID").validateOpt[String]
-      tokenId <- (json \ "TokenId").validateOpt[String]
-      secondTokenId <- (json \ "SecondTokenId").validateOpt[String]
-      payPalEmail <- (json \ "PaypalEmail").validateOpt[String]
-      bankTransferType <- (json \ "BankTransferType").validateOpt[String]
-      bankTransferAccountName <- (json \ "BankTransferAccountName").validateOpt[String]
-      bankTransferAccountNumberMask <- (json \ "BankTransferAccountNumberMask").validateOpt[String]
-      bankCode <- (json \ "BankCode").validateOpt[String]
-      creditCardMaskNumber <- (json \ "CreditCardMaskNumber").validateOpt[String]
-      creditCardExpirationMonth <- (json \ "CreditCardExpirationMonth").validateOpt[Int]
-      creditCardExpirationYear <- (json \ "CreditCardExpirationYear").validateOpt[Int]
-      creditCardType <- (json \ "CreditCardType").validateOpt[String]
       paymentMethodStatus <- (json \ "PaymentMethodStatus").validateOpt[String]
+      details <- paymentMethodDetailsReads(paymentMethodType, json)
     } yield PaymentMethodResponse(
-      numConsecutiveFailures = numConsecutiveFailures,
       paymentMethodType = paymentMethodType,
+      numConsecutiveFailures = numConsecutiveFailures,
       lastTransactionDateTime = lastTransactionDateTime,
-      mandateId = mandateId,
-      tokenId = tokenId,
-      secondTokenId = secondTokenId,
-      payPalEmail = payPalEmail,
-      bankTransferType = bankTransferType,
-      bankTransferAccountName = bankTransferAccountName,
-      bankTransferAccountNumberMask = bankTransferAccountNumberMask,
-      bankCode = bankCode,
-      creditCardNumber = creditCardMaskNumber.map(_.takeRight(4)),
-      creditCardExpirationMonth = creditCardExpirationMonth,
-      creditCardExpirationYear = creditCardExpirationYear,
-      creditCardType = creditCardType,
       paymentMethodStatus = paymentMethodStatus,
+      details = details,
     )
   }
 

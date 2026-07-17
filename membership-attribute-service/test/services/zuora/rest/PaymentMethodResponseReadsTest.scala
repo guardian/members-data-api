@@ -2,7 +2,7 @@ package services.zuora.rest
 
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
-import services.zuora.rest.ZuoraRestService.PaymentMethodResponse
+import services.zuora.rest.ZuoraRestService.{PaymentMethodDetails, PaymentMethodResponse}
 
 class PaymentMethodResponseReadsTest extends Specification {
 
@@ -17,10 +17,12 @@ class PaymentMethodResponseReadsTest extends Specification {
       pm.paymentMethodType must_== "CreditCardReferenceTransaction"
       pm.lastTransactionDateTime must beNone
       pm.numConsecutiveFailures must beNone
-      pm.creditCardExpirationMonth must beSome(10)
-      pm.creditCardExpirationYear must beSome(2026)
-      pm.creditCardNumber must beSome("4242")
-      pm.bankCode must beNone
+      pm.details must beLike { case card: PaymentMethodDetails.Card =>
+        (card.expirationMonth must beSome(10)) and
+          (card.expirationYear must beSome(2026)) and
+          (card.number must beSome("4242")) and
+          (card.isReferenceTransaction must beTrue)
+      }
     }
 
     "parse a direct debit bank transfer" in {
@@ -32,9 +34,26 @@ class PaymentMethodResponseReadsTest extends Specification {
       }""")
       val pm = json.as[PaymentMethodResponse]
       pm.paymentMethodType must_== "BankTransfer"
-      pm.mandateId must beSome("mandate-1")
-      pm.bankTransferAccountName must beSome("Frank Poole")
-      pm.bankCode must beSome("200000")
+      pm.details must beLike { case bankTransfer: PaymentMethodDetails.BankTransfer =>
+        (bankTransfer.mandateId must beSome("mandate-1")) and
+          (bankTransfer.accountName must beSome("Frank Poole")) and
+          (bankTransfer.bankCode must beSome("200000"))
+      }
+    }
+
+    "parse a PayPal payment method, keeping the email as a required field rather than an Option" in {
+      val json = Json.parse("""{ "Type": "PayPal", "PaypalEmail": "frank.poole@example.com" }""")
+      json.as[PaymentMethodResponse].details must_== PaymentMethodDetails.PayPal("frank.poole@example.com")
+    }
+
+    "return a JsError for a PayPal payment method with no email, rather than accepting it" in {
+      val json = Json.parse("""{ "Type": "PayPal" }""")
+      json.validate[PaymentMethodResponse].isError must beTrue
+    }
+
+    "keep an unknown payment method type as Other rather than failing to parse the whole payload" in {
+      val json = Json.parse("""{ "Type": "AmazonPay" }""")
+      json.as[PaymentMethodResponse].details must_== PaymentMethodDetails.Other("AmazonPay")
     }
 
     "return a JsError, rather than throwing, when LastTransactionDateTime is malformed" in {

@@ -55,14 +55,15 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
 
   private def buildBankTransferPaymentMethod(
       defaultMandateIdIfApplicable: Option[String],
+      bankTransfer: ZuoraRestService.PaymentMethodDetails.BankTransfer,
       response: ZuoraRestService.PaymentMethodResponse,
-  ): Option[PaymentMethod] = {
+  ): Option[PaymentMethod] =
     for {
-      mandateId <- response.mandateId.orElse(defaultMandateIdIfApplicable)
-      accountName <- response.bankTransferAccountName
-      accountNumber <- response.bankTransferAccountNumberMask
+      mandateId <- bankTransfer.mandateId.orElse(defaultMandateIdIfApplicable)
+      accountName <- bankTransfer.accountName
+      accountNumber <- bankTransfer.accountNumberMask
       paymentMethod <-
-        (response.bankTransferType, response.bankCode) match {
+        (bankTransfer.transferType, bankTransfer.bankCode) match {
           case (Some("SEPA"), _) =>
             Some(Sepa(mandateId, accountName, accountNumber, response.numConsecutiveFailures, response.paymentMethodStatus))
           case (_, Some(sortCode)) =>
@@ -70,23 +71,20 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
           case _ => None
         }
     } yield paymentMethod
-  }
 
   private def buildPaymentMethod(
       defaultMandateIdIfApplicable: Option[String] = None,
       response: ZuoraRestService.PaymentMethodResponse,
   ): Option[PaymentMethod] =
-    response.paymentMethodType match {
-      case "CreditCard" | "CreditCardReferenceTransaction" =>
-        val isReferenceTransaction = response.paymentMethodType == "CreditCardReferenceTransaction"
-        val details =
-          (response.creditCardNumber |@| response.creditCardExpirationMonth |@| response.creditCardExpirationYear)(PaymentCardDetails)
-        Some(PaymentCard(isReferenceTransaction, response.creditCardType, details, response.numConsecutiveFailures, response.paymentMethodStatus))
-      case "BankTransfer" =>
-        buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, response)
-      case "PayPal" =>
-        Some(PayPalMethod(response.payPalEmail.get, response.numConsecutiveFailures, response.paymentMethodStatus))
-      case _ => None
+    response.details match {
+      case card: ZuoraRestService.PaymentMethodDetails.Card =>
+        val details = (card.number |@| card.expirationMonth |@| card.expirationYear)(PaymentCardDetails)
+        Some(PaymentCard(card.isReferenceTransaction, card.cardType, details, response.numConsecutiveFailures, response.paymentMethodStatus))
+      case bankTransfer: ZuoraRestService.PaymentMethodDetails.BankTransfer =>
+        buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, bankTransfer, response)
+      case paypal: ZuoraRestService.PaymentMethodDetails.PayPal =>
+        Some(PayPalMethod(paypal.email, response.numConsecutiveFailures, response.paymentMethodStatus))
+      case _: ZuoraRestService.PaymentMethodDetails.Other => None
     }
 
   private def getNextBill(subscriptionNumber: SubscriptionNumber, account: Account, targetDate: LocalDate)(implicit
