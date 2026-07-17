@@ -25,6 +25,7 @@ import services.zuora.rest.ZuoraRestService.{
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
+import scala.util.Try
 
 object ZuoraRestService {
 
@@ -42,6 +43,15 @@ object ZuoraRestService {
 
   def jsStringOrNull(value: Option[String]) = value.map(JsString(_)).getOrElse(JsNull)
   def isoDateStringAsDateTime(dateString: String): DateTime = ISODateTimeFormat.dateTimeParser().parseDateTime(dateString)
+
+  /** Parse an ISO datetime into the JsResult error channel: a malformed value becomes a JsError rather than a thrown exception that would escape the
+    * Reads and crash parsing of the whole payload.
+    */
+  def isoDateStringAsDateTimeResult(dateString: String): JsResult[DateTime] =
+    Try(isoDateStringAsDateTime(dateString)).fold(
+      error => JsError(s"could not parse '$dateString' as an ISO 8601 datetime: ${error.getMessage}"),
+      JsSuccess(_),
+    )
 
   case class AddressData(
       address1: Option[String],
@@ -347,7 +357,10 @@ object ZuoraRestService {
     for {
       numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validateOpt[Int]
       paymentMethodType <- (json \ "Type").validate[String]
-      lastTransactionDateTime <- (json \ "LastTransactionDateTime").validateOpt[String].map(_.map(isoDateStringAsDateTime))
+      lastTransactionDateTime <- (json \ "LastTransactionDateTime").validateOpt[String].flatMap {
+        case Some(dateString) => isoDateStringAsDateTimeResult(dateString).map(Some(_))
+        case None => JsSuccess(None)
+      }
       mandateId <- (json \ "MandateID").validateOpt[String]
       tokenId <- (json \ "TokenId").validateOpt[String]
       secondTokenId <- (json \ "SecondTokenId").validateOpt[String]

@@ -55,18 +55,18 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
 
   private def buildBankTransferPaymentMethod(
       defaultMandateIdIfApplicable: Option[String],
-      m: ZuoraRestService.PaymentMethodResponse,
+      response: ZuoraRestService.PaymentMethodResponse,
   ): Option[PaymentMethod] = {
     for {
-      mandateId <- m.mandateId.orElse(defaultMandateIdIfApplicable)
-      accountName <- m.bankTransferAccountName
-      accountNumber <- m.bankTransferAccountNumberMask
+      mandateId <- response.mandateId.orElse(defaultMandateIdIfApplicable)
+      accountName <- response.bankTransferAccountName
+      accountNumber <- response.bankTransferAccountNumberMask
       paymentMethod <-
-        (m.bankTransferType, m.bankCode) match {
+        (response.bankTransferType, response.bankCode) match {
           case (Some("SEPA"), _) =>
-            Some(Sepa(mandateId, accountName, accountNumber, m.numConsecutiveFailures, m.paymentMethodStatus))
+            Some(Sepa(mandateId, accountName, accountNumber, response.numConsecutiveFailures, response.paymentMethodStatus))
           case (_, Some(sortCode)) =>
-            Some(GoCardless(mandateId, accountName, accountNumber, sortCode, m.numConsecutiveFailures, m.paymentMethodStatus))
+            Some(GoCardless(mandateId, accountName, accountNumber, sortCode, response.numConsecutiveFailures, response.paymentMethodStatus))
           case _ => None
         }
     } yield paymentMethod
@@ -74,18 +74,18 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
 
   private def buildPaymentMethod(
       defaultMandateIdIfApplicable: Option[String] = None,
-      m: ZuoraRestService.PaymentMethodResponse,
+      response: ZuoraRestService.PaymentMethodResponse,
   ): Option[PaymentMethod] =
-    m.paymentMethodType match {
+    response.paymentMethodType match {
       case "CreditCard" | "CreditCardReferenceTransaction" =>
-        val isReferenceTransaction = m.paymentMethodType == "CreditCardReferenceTransaction"
+        val isReferenceTransaction = response.paymentMethodType == "CreditCardReferenceTransaction"
         val details =
-          (m.creditCardNumber |@| m.creditCardExpirationMonth |@| m.creditCardExpirationYear)(PaymentCardDetails)
-        Some(PaymentCard(isReferenceTransaction, m.creditCardType, details, m.numConsecutiveFailures, m.paymentMethodStatus))
+          (response.creditCardNumber |@| response.creditCardExpirationMonth |@| response.creditCardExpirationYear)(PaymentCardDetails)
+        Some(PaymentCard(isReferenceTransaction, response.creditCardType, details, response.numConsecutiveFailures, response.paymentMethodStatus))
       case "BankTransfer" =>
-        buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, m)
+        buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, response)
       case "PayPal" =>
-        Some(PayPalMethod(m.payPalEmail.get, m.numConsecutiveFailures, m.paymentMethodStatus))
+        Some(PayPalMethod(response.payPalEmail.get, response.numConsecutiveFailures, response.paymentMethodStatus))
       case _ => None
     }
 
@@ -131,11 +131,11 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
       paymentMethodId <- maybePaymentMethodId
     } yield restService
       .getPaymentMethod(paymentMethodId)
-      .withLogging(s"get payment method for $maybePaymentMethodId")
       .map {
         case \/-(paymentMethod) => buildPaymentMethod(defaultMandateIdIfApplicable, paymentMethod)
         case -\/(error) => throw new RuntimeException(s"Failed to get payment method $paymentMethodId: $error")
-      })
+      }
+      .withLogging(s"get payment method for $maybePaymentMethodId"))
       .getOrElse(Future.successful(None))
 
 }

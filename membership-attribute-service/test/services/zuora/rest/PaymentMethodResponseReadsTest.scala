@@ -36,5 +36,15 @@ class PaymentMethodResponseReadsTest extends Specification {
       pm.bankTransferAccountName must beSome("Frank Poole")
       pm.bankCode must beSome("200000")
     }
+
+    "return a JsError, rather than throwing, when LastTransactionDateTime is malformed" in {
+      val json = Json.parse("""{
+        "Type": "CreditCardReferenceTransaction", "PaymentMethodStatus": "Active",
+        "LastTransactionDateTime": "not-a-real-date",
+        "CreditCardMaskNumber": "************4242",
+        "CreditCardExpirationMonth": 10, "CreditCardExpirationYear": 2026, "CreditCardType": "Visa"
+      }""")
+      json.validate[PaymentMethodResponse].isError must beTrue
+    }
   }
 }
