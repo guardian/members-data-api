@@ -84,7 +84,6 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
         buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, bankTransfer, response)
       case paypal: ZuoraRestService.PaymentMethodDetails.PayPal =>
         Some(PayPalMethod(paypal.email, response.numConsecutiveFailures, response.paymentMethodStatus))
-      case _: ZuoraRestService.PaymentMethodDetails.Other => None
     }
 
   private def getNextBill(subscriptionNumber: SubscriptionNumber, account: Account, targetDate: LocalDate)(implicit

@@ -49,7 +49,7 @@ object ZuoraRestService {
     */
   def isoDateStringAsDateTimeResult(dateString: String): JsResult[DateTime] =
     Try(isoDateStringAsDateTime(dateString)).fold(
-      error => JsError(s"could not parse '$dateString' as an ISO 8601 datetime: ${error.getMessage}"),
+      error => JsError(s"could not parse '$dateString' as an ISO 8601 datetime: ${error.toString}"),
       JsSuccess(_),
     )
 
@@ -354,8 +354,6 @@ object ZuoraRestService {
         bankCode: Option[String],
     ) extends PaymentMethodDetails
     case class PayPal(email: String) extends PaymentMethodDetails
-    // A payment method type we don't render (e.g. a new gateway's type). Kept so parsing never fails on an unknown type.
-    case class Other(paymentMethodType: String) extends PaymentMethodDetails
   }
 
   case class PaymentMethodResponse(
@@ -392,7 +390,9 @@ object ZuoraRestService {
       case "PayPal" =>
         (json \ "PaypalEmail").validate[String].map(PaymentMethodDetails.PayPal)
       case other =>
-        JsSuccess(PaymentMethodDetails.Other(other))
+        // Fail loudly on a payment method type we don't model, rather than silently returning no details: downstream that
+        // reads as a missing payment method, which is misleading. A JsError names the actual type and gives a useful stack trace.
+        JsError(s"unknown payment method type: $other")
     }
 
   implicit val paymentMethodReads: Reads[PaymentMethodResponse] = Reads { json =>

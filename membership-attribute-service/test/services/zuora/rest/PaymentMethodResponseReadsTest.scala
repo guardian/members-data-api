@@ -51,9 +51,9 @@ class PaymentMethodResponseReadsTest extends Specification {
       json.validate[PaymentMethodResponse].isError must beTrue
     }
 
-    "keep an unknown payment method type as Other rather than failing to parse the whole payload" in {
+    "return a JsError for an unknown payment method type, so it surfaces loudly rather than looking like a missing method" in {
       val json = Json.parse("""{ "Type": "AmazonPay" }""")
-      json.as[PaymentMethodResponse].details must_== PaymentMethodDetails.Other("AmazonPay")
+      json.validate[PaymentMethodResponse].isError must beTrue
     }
 
     "return a JsError, rather than throwing, when LastTransactionDateTime is malformed" in {

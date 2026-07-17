@@ -34,7 +34,7 @@ object TestPaymentMethodResponse {
       case "PayPal" =>
         PaymentMethodDetails.PayPal(payPalEmail.getOrElse("test@paypal.com"))
       case other =>
-        PaymentMethodDetails.Other(other)
+        throw new IllegalArgumentException(s"TestPaymentMethodResponse: unsupported payment method type '$other'")
     }
     PaymentMethodResponse(paymentMethodType, numConsecutiveFailures, lastTransactionDateTime, paymentMethodStatus, details)
   }
