@@ -12,7 +12,6 @@ import com.gu.services.model.PaymentDetails.Payment
 import com.gu.zuora.ZuoraService
 import com.gu.zuora.models.Queries
 import com.gu.zuora.models.Queries.Account
-import com.gu.zuora.models.Queries.PaymentMethod._
 import org.joda.time.LocalDate
 import services.zuora.rest.ZuoraRestService
 import scalaz.{-\/, \/-}
@@ -54,38 +53,37 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
     }
   }
 
-  private def buildBankTransferPaymentMethod(defaultMandateIdIfApplicable: Option[String], m: Queries.PaymentMethod): Option[PaymentMethod] = {
+  private def buildBankTransferPaymentMethod(
+      defaultMandateIdIfApplicable: Option[String],
+      bankTransfer: ZuoraRestService.PaymentMethodDetails.BankTransfer,
+      response: ZuoraRestService.PaymentMethodResponse,
+  ): Option[PaymentMethod] =
     for {
-      mandateId <- m.mandateId.orElse(defaultMandateIdIfApplicable)
-      accountName <- m.bankTransferAccountName
-      accountNumber <- m.bankTransferAccountNumberMask
+      mandateId <- bankTransfer.mandateId.orElse(defaultMandateIdIfApplicable)
+      accountName <- bankTransfer.accountName
+      accountNumber <- bankTransfer.accountNumberMask
       paymentMethod <-
-        (m.bankTransferType, m.bankCode) match {
+        (bankTransfer.transferType, bankTransfer.bankCode) match {
           case (Some("SEPA"), _) =>
-            Some(Sepa(mandateId, accountName, accountNumber, m.numConsecutiveFailures, m.paymentMethodStatus))
+            Some(Sepa(mandateId, accountName, accountNumber, response.numConsecutiveFailures, response.paymentMethodStatus))
           case (_, Some(sortCode)) =>
-            Some(GoCardless(mandateId, accountName, accountNumber, sortCode, m.numConsecutiveFailures, m.paymentMethodStatus))
+            Some(GoCardless(mandateId, accountName, accountNumber, sortCode, response.numConsecutiveFailures, response.paymentMethodStatus))
           case _ => None
         }
     } yield paymentMethod
-  }
 
   private def buildPaymentMethod(
       defaultMandateIdIfApplicable: Option[String] = None,
-      soapPaymentMethod: Queries.PaymentMethod,
+      response: ZuoraRestService.PaymentMethodResponse,
   ): Option[PaymentMethod] =
-    soapPaymentMethod.`type` match {
-      case `CreditCard` | `CreditCardReferenceTransaction` =>
-        val isReferenceTransaction = soapPaymentMethod.`type` == `CreditCardReferenceTransaction`
-        val m = soapPaymentMethod
-        val details =
-          (m.creditCardNumber |@| m.creditCardExpirationMonth |@| m.creditCardExpirationYear)(PaymentCardDetails)
-        Some(PaymentCard(isReferenceTransaction, m.creditCardType, details, m.numConsecutiveFailures, m.paymentMethodStatus))
-      case `BankTransfer` =>
-        buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod)
-      case `PayPal` =>
-        Some(PayPalMethod(soapPaymentMethod.payPalEmail.get, soapPaymentMethod.numConsecutiveFailures, soapPaymentMethod.paymentMethodStatus))
-      case _ => None
+    response.details match {
+      case card: ZuoraRestService.PaymentMethodDetails.Card =>
+        val details = (card.number |@| card.expirationMonth |@| card.expirationYear)(PaymentCardDetails)
+        Some(PaymentCard(card.isReferenceTransaction, card.cardType, details, response.numConsecutiveFailures, response.paymentMethodStatus))
+      case bankTransfer: ZuoraRestService.PaymentMethodDetails.BankTransfer =>
+        buildBankTransferPaymentMethod(defaultMandateIdIfApplicable, bankTransfer, response)
+      case paypal: ZuoraRestService.PaymentMethodDetails.PayPal =>
+        Some(PayPalMethod(paypal.email, response.numConsecutiveFailures, response.paymentMethodStatus))
     }
 
   private def getNextBill(subscriptionNumber: SubscriptionNumber, account: Account, targetDate: LocalDate)(implicit
@@ -128,9 +126,13 @@ class PaymentService(zuoraService: ZuoraService, restService: ZuoraRestService)(
   ): Future[Option[PaymentMethod]] =
     (for {
       paymentMethodId <- maybePaymentMethodId
-    } yield for {
-      soapPaymentMethod <- zuoraService.getPaymentMethod(paymentMethodId).withLogging(s"get payment method for $maybePaymentMethodId")
-    } yield buildPaymentMethod(defaultMandateIdIfApplicable, soapPaymentMethod))
+    } yield restService
+      .getPaymentMethod(paymentMethodId)
+      .map {
+        case \/-(paymentMethod) => buildPaymentMethod(defaultMandateIdIfApplicable, paymentMethod)
+        case -\/(error) => throw new RuntimeException(s"Failed to get payment method $paymentMethodId: $error")
+      }
+      .withLogging(s"get payment method for $maybePaymentMethodId"))
       .getOrElse(Future.successful(None))
 
 }

@@ -27,23 +27,6 @@ class ZuoraQueryReadsTest extends Specification {
     }
   }
 
-  "paymentMethodReads" should {
-    "parse credit card expiry returned as JSON numbers into strings, and keep only the last 4 mask digits" in {
-      val json = Json.parse("""{
-        "Id": "pm-1", "Type": "CreditCardReferenceTransaction", "PaymentMethodStatus": "Active",
-        "NumConsecutiveFailures": 0, "CreditCardMaskNumber": "************4242",
-        "CreditCardExpirationMonth": 10, "CreditCardExpirationYear": 2026, "CreditCardType": "Visa"
-      }""")
-      val pm = json.as[Queries.PaymentMethod]
-      pm.`type` must_== "CreditCardReferenceTransaction"
-      pm.creditCardExpirationMonth must beSome(10)
-      pm.creditCardExpirationYear must beSome(2026)
-      pm.creditCardNumber must beSome("4242")
-      pm.numConsecutiveFailures must beSome(0)
-      pm.bankCode must beNone
-    }
-  }
-
   "invoiceItemReads" should {
     "sum charge and tax into the price" in {
       val json = Json.parse("""{

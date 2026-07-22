@@ -25,6 +25,7 @@ import services.zuora.rest.ZuoraRestService.{
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
+import scala.util.Try
 
 object ZuoraRestService {
 
@@ -42,6 +43,15 @@ object ZuoraRestService {
 
   def jsStringOrNull(value: Option[String]) = value.map(JsString(_)).getOrElse(JsNull)
   def isoDateStringAsDateTime(dateString: String): DateTime = ISODateTimeFormat.dateTimeParser().parseDateTime(dateString)
+
+  /** Parse an ISO datetime into the JsResult error channel: a malformed value becomes a JsError rather than a thrown exception that would escape the
+    * Reads and crash parsing of the whole payload.
+    */
+  def isoDateStringAsDateTimeResult(dateString: String): JsResult[DateTime] =
+    Try(isoDateStringAsDateTime(dateString)).fold(
+      error => JsError(s"could not parse '$dateString' as an ISO 8601 datetime: ${error.toString}"),
+      JsSuccess(_),
+    )
 
   case class AddressData(
       address1: Option[String],
@@ -324,13 +334,85 @@ object ZuoraRestService {
     implicit val reads: Reads[GiftSubscriptionsFromIdentityIdResponse] = Json.reads[GiftSubscriptionsFromIdentityIdResponse]
   }
 
-  case class PaymentMethodResponse(numConsecutiveFailures: Int, paymentMethodType: String, lastTransactionDateTime: DateTime)
+  /** The type-specific part of a payment method. Modelling it as a discriminated union (rather than one flat record where every field is optional)
+    * keeps the fields that only exist for a given type together, and lets required fields — e.g. a PayPal email — be non-optional.
+    */
+  sealed trait PaymentMethodDetails
+  object PaymentMethodDetails {
+    case class Card(
+        number: Option[String],
+        expirationMonth: Option[Int],
+        expirationYear: Option[Int],
+        cardType: Option[String],
+        isReferenceTransaction: Boolean,
+    ) extends PaymentMethodDetails
+    case class BankTransfer(
+        mandateId: Option[String],
+        transferType: Option[String],
+        accountName: Option[String],
+        accountNumberMask: Option[String],
+        bankCode: Option[String],
+    ) extends PaymentMethodDetails
+    case class PayPal(email: String) extends PaymentMethodDetails
+  }
 
-  implicit val paymentMethodReads: Reads[PaymentMethodResponse] = (
-    (JsPath \ "NumConsecutiveFailures").read[Int] and
-      (JsPath \ "Type").read[String] and
-      (JsPath \ "LastTransactionDateTime").read[String].map(isoDateStringAsDateTime)
-  )(PaymentMethodResponse.apply _)
+  case class PaymentMethodResponse(
+      paymentMethodType: String,
+      numConsecutiveFailures: Option[Int],
+      lastTransactionDateTime: Option[DateTime],
+      paymentMethodStatus: Option[String],
+      details: PaymentMethodDetails,
+  )
+
+  private def paymentMethodDetailsReads(paymentMethodType: String, json: JsValue): JsResult[PaymentMethodDetails] =
+    paymentMethodType match {
+      case "CreditCard" | "CreditCardReferenceTransaction" =>
+        for {
+          maskNumber <- (json \ "CreditCardMaskNumber").validateOpt[String]
+          expirationMonth <- (json \ "CreditCardExpirationMonth").validateOpt[Int]
+          expirationYear <- (json \ "CreditCardExpirationYear").validateOpt[Int]
+          cardType <- (json \ "CreditCardType").validateOpt[String]
+        } yield PaymentMethodDetails.Card(
+          number = maskNumber.map(_.takeRight(4)),
+          expirationMonth = expirationMonth,
+          expirationYear = expirationYear,
+          cardType = cardType,
+          isReferenceTransaction = paymentMethodType == "CreditCardReferenceTransaction",
+        )
+      case "BankTransfer" =>
+        for {
+          mandateId <- (json \ "MandateID").validateOpt[String]
+          transferType <- (json \ "BankTransferType").validateOpt[String]
+          accountName <- (json \ "BankTransferAccountName").validateOpt[String]
+          accountNumberMask <- (json \ "BankTransferAccountNumberMask").validateOpt[String]
+          bankCode <- (json \ "BankCode").validateOpt[String]
+        } yield PaymentMethodDetails.BankTransfer(mandateId, transferType, accountName, accountNumberMask, bankCode)
+      case "PayPal" =>
+        (json \ "PaypalEmail").validate[String].map(PaymentMethodDetails.PayPal)
+      case other =>
+        // Fail loudly on a payment method type we don't model, rather than silently returning no details: downstream that
+        // reads as a missing payment method, which is misleading. A JsError names the actual type and gives a useful stack trace.
+        JsError(s"unknown payment method type: $other")
+    }
+
+  implicit val paymentMethodReads: Reads[PaymentMethodResponse] = Reads { json =>
+    for {
+      paymentMethodType <- (json \ "Type").validate[String]
+      numConsecutiveFailures <- (json \ "NumConsecutiveFailures").validateOpt[Int]
+      lastTransactionDateTime <- (json \ "LastTransactionDateTime").validateOpt[String].flatMap {
+        case Some(dateString) => isoDateStringAsDateTimeResult(dateString).map(Some(_))
+        case None => JsSuccess(None)
+      }
+      paymentMethodStatus <- (json \ "PaymentMethodStatus").validateOpt[String]
+      details <- paymentMethodDetailsReads(paymentMethodType, json)
+    } yield PaymentMethodResponse(
+      paymentMethodType = paymentMethodType,
+      numConsecutiveFailures = numConsecutiveFailures,
+      lastTransactionDateTime = lastTransactionDateTime,
+      paymentMethodStatus = paymentMethodStatus,
+      details = details,
+    )
+  }
 
   implicit val paymentGatewayReads: Reads[Option[PaymentGateway]] =
     __.read[String].map(PaymentGateway.getByName)

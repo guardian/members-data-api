@@ -14,33 +14,6 @@ trait Identifiable { self: Query =>
 
 object Queries {
 
-  object PaymentMethod {
-    val CreditCard = "CreditCard"
-    val CreditCardReferenceTransaction = "CreditCardReferenceTransaction"
-    val BankTransfer = "BankTransfer"
-    val PayPal = "PayPal"
-  }
-
-  case class PaymentMethod(
-      id: String,
-      mandateId: Option[String],
-      tokenId: Option[String],
-      secondTokenId: Option[String],
-      payPalEmail: Option[String],
-      bankTransferType: Option[String],
-      bankTransferAccountName: Option[String],
-      bankTransferAccountNumberMask: Option[String],
-      bankCode: Option[String],
-      `type`: String,
-      creditCardNumber: Option[String],
-      creditCardExpirationMonth: Option[Int],
-      creditCardExpirationYear: Option[Int],
-      creditCardType: Option[String],
-      numConsecutiveFailures: Option[Int],
-      paymentMethodStatus: Option[String],
-  ) extends Query
-      with Identifiable
-
   case class ProductRatePlan(id: String, name: String, productId: String, effectiveStartDate: LocalDate, effectiveEndDate: LocalDate)
       extends Query
       with Identifiable
