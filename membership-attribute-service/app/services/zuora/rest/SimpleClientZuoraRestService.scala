@@ -10,7 +10,11 @@ import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])(implicit val m: Monad[Future])
+class SimpleClientZuoraRestService(
+    private val simpleRest: SimpleClient[Future],
+    private val ordersRest: SimpleClient[Future],
+    private val currentDate: () => LocalDate = () => LocalDate.now,
+)(implicit val m: Monad[Future])
     extends ZuoraRestService
     with SafeLogging {
 
@@ -57,8 +61,20 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     EitherT(validated)
   }
 
+  private def completedOrderResponseToLeft(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] = {
+    val futureMonad = implicitly[Monad[Future]]
+
+    val validated: Future[String \/ Unit] = futureMonad.map(restResponse.run) {
+      case \/-(response) => OrderResponse.completed(response)
+      case -\/(error) => -\/(error)
+    }
+
+    EitherT(validated)
+  }
+
   def cancelSubscription(
       subscriptionNumber: SubscriptionNumber,
+      accountId: AccountId,
       termEndDate: LocalDate,
       maybeChargedThroughDate: Option[
         LocalDate,
@@ -69,28 +85,20 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     //   1. Free trial should be explicitly handled: val cancellationEffectiveDate = if(sub.startDate <= today && sub.acceptanceDate > today) LocalDate.now
     //   2. If outside trial, and invoiced, ChargedThroughDate should always exist: val cancellationEffectiveDate = ChargedThroughDate
     //   3. If outside trial, and invoiced, but ChargedThroughDate does not exist, then it is a likely logic error. Investigate ASAP!. Currently it happens after Contributions amount change.
-    val cancellationEffectiveDate =
-      maybeChargedThroughDate.getOrElse(LocalDate.now) // immediate cancellation for subs which aren't yet invoiced (e.g. during digipack trial)
+    val orderDate = currentDate()
+    val cancellationEffectiveDate = maybeChargedThroughDate.getOrElse(orderDate)
 
-    val extendTermIfNeeded = maybeChargedThroughDate
-      .filter(_.isAfter(termEndDate)) // we need to extend the term if they've paid past their term end date, otherwise cancel call will fail
-      .map(_ =>
-        EitherT(
-          simpleRest.put[RenewSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}/renew", RenewSubscriptionCommand()),
-        ),
-      )
-      .getOrElse(EitherT.right[String, Future, ZuoraResponse](ZuoraResponse(success = true)))
+    /** Zuora rejects a cancellation after the current term end date, even when the subscriber has already paid beyond it. */
+    val needsTermRenewal = maybeChargedThroughDate.exists(_.isAfter(termEndDate))
+    val order = CancellationOrderRequest.forSubscription(
+      accountId,
+      subscriptionNumber,
+      orderDate,
+      cancellationEffectiveDate,
+      needsTermRenewal,
+    )
 
-    val cancelCommand = CancelSubscriptionCommand(cancellationEffectiveDate)
-
-    val restResponse = for {
-      _ <- extendTermIfNeeded
-      cancelResponse <- EitherT(
-        simpleRest.put[CancelSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}/cancel", cancelCommand),
-      )
-    } yield cancelResponse
-
-    unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
+    completedOrderResponseToLeft(EitherT(ordersRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
   }
 
   def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
