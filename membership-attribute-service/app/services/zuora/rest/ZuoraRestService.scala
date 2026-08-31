@@ -137,7 +137,7 @@ object ZuoraRestService {
         needsTermRenewal: Boolean,
     ): CancellationOrderRequest = {
       val renewSubscriptionAction =
-        if (needsTermRenewal) List(RenewSubscriptionOrderAction(TriggerDate.allOn(orderDate)))
+        if (needsTermRenewal) List(RenewSubscriptionOrderAction(TriggerDates.allOn(orderDate)))
         else Nil
 
       CancellationOrderRequest(
@@ -147,7 +147,7 @@ object ZuoraRestService {
           OrderSubscription(
             subscriptionNumber = subscriptionNumber.getNumber,
             orderActions = renewSubscriptionAction :+ CancelSubscriptionOrderAction(
-              triggerDates = List(TriggerDate.contractEffectiveOn(cancellationEffectiveDate)),
+              triggerDates = TriggerDates(cancellationEffectiveDate),
               cancelSubscription = Cancellation(CancellationPolicy.SpecificDate, cancellationEffectiveDate),
             ),
           ),
@@ -160,40 +160,27 @@ object ZuoraRestService {
   case class OrderSubscription(subscriptionNumber: String, orderActions: List[SubscriptionOrderAction])
 
   sealed trait SubscriptionOrderAction
-  case class RenewSubscriptionOrderAction(triggerDates: List[TriggerDate]) extends SubscriptionOrderAction
-  case class CancelSubscriptionOrderAction(triggerDates: List[TriggerDate], cancelSubscription: Cancellation) extends SubscriptionOrderAction
+  case class RenewSubscriptionOrderAction(triggerDates: TriggerDates) extends SubscriptionOrderAction
+  case class CancelSubscriptionOrderAction(triggerDates: TriggerDates, cancelSubscription: Cancellation) extends SubscriptionOrderAction
 
-  sealed trait TriggerDateName {
-    def value: String
-  }
+  case class TriggerDates(
+      contractEffective: LocalDate,
+      serviceActivation: Option[LocalDate] = None,
+      customerAcceptance: Option[LocalDate] = None,
+  )
 
-  object TriggerDateName {
-    case object ContractEffective extends TriggerDateName {
-      override val value = "ContractEffective"
-    }
+  object TriggerDates {
+    def allOn(date: LocalDate): TriggerDates = TriggerDates(date, Some(date), Some(date))
 
-    case object ServiceActivation extends TriggerDateName {
-      override val value = "ServiceActivation"
-    }
-
-    case object CustomerAcceptance extends TriggerDateName {
-      override val value = "CustomerAcceptance"
-    }
-
-    implicit val triggerDateNameWrites: Writes[TriggerDateName] = Writes(name => JsString(name.value))
-  }
-
-  case class TriggerDate(name: TriggerDateName, triggerDate: LocalDate)
-
-  object TriggerDate {
-    def allOn(date: LocalDate): List[TriggerDate] =
-      List(
-        TriggerDate(TriggerDateName.ContractEffective, date),
-        TriggerDate(TriggerDateName.ServiceActivation, date),
-        TriggerDate(TriggerDateName.CustomerAcceptance, date),
+    implicit val writes: Writes[TriggerDates] = Writes { dates =>
+      Json.toJson(
+        List(
+          Some(Json.obj("name" -> "ContractEffective", "triggerDate" -> dates.contractEffective)),
+          dates.serviceActivation.map(date => Json.obj("name" -> "ServiceActivation", "triggerDate" -> date)),
+          dates.customerAcceptance.map(date => Json.obj("name" -> "CustomerAcceptance", "triggerDate" -> date)),
+        ).flatten,
       )
-
-    def contractEffectiveOn(date: LocalDate): TriggerDate = TriggerDate(TriggerDateName.ContractEffective, date)
+    }
   }
 
   sealed trait CancellationPolicy {
@@ -220,7 +207,6 @@ object ZuoraRestService {
     }
   }
 
-  implicit val triggerDateWrites: Writes[TriggerDate] = Json.writes[TriggerDate]
   implicit val cancellationWrites: Writes[Cancellation] = Json.writes[Cancellation]
   implicit val orderProcessingOptionsWrites: Writes[OrderProcessingOptions] = Json.writes[OrderProcessingOptions]
   implicit val subscriptionOrderActionWrites: Writes[SubscriptionOrderAction] = new Writes[SubscriptionOrderAction] {
