@@ -11,7 +11,7 @@ import okio.Buffer
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
 import play.api.libs.json.Json
-import scalaz.{-\/, \/}
+import scalaz.\/
 import scalaz.std.scalaFuture._
 import services.zuora.rest.SimpleClientZuoraRestService.OrderResponse
 import services.zuora.rest.ZuoraRestService.CancellationOrderRequest
@@ -91,11 +91,11 @@ class CancellationOrderRequestTest extends Specification {
 
   "OrderResponse" should {
     "only accept a completed Zuora order" in {
-      OrderResponse.completed(OrderResponse(success = true, status = Some("Completed"))) shouldEqual \/.right(())
-      OrderResponse.completed(OrderResponse(success = true, status = Some("Processing"))) shouldEqual -\/(
+      OrderResponse.completed(OrderResponse(success = true, status = Some("Completed"))) shouldEqual Right(())
+      OrderResponse.completed(OrderResponse(success = true, status = Some("Processing"))) shouldEqual Left(
         "Zuora order completed with success = true and status = Processing",
       )
-      OrderResponse.completed(OrderResponse(success = false, status = None)) shouldEqual -\/(
+      OrderResponse.completed(OrderResponse(success = false, status = None)) shouldEqual Left(
         "Zuora order completed with success = false and status = missing",
       )
     }
