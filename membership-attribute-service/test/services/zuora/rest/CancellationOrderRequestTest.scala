@@ -105,7 +105,7 @@ class CancellationOrderRequestTest extends Specification {
       val ordersClient = new RespondingClient("""{"success": true, "status": "Completed"}""")
       val zuoraConfig = ZuoraRestConfig("CODE", "https://example.com/v1", "user", "password")
       val restClient = SimpleClient(zuoraConfig, ordersClient)
-      val service = new SimpleClientZuoraRestService(restClient, restClient, () => orderDate)
+      val service = new SimpleClientZuoraRestService(restClient, () => orderDate)
 
       Await.result(
         service.cancelSubscription(

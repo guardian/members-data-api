@@ -104,10 +104,8 @@ class TouchpointComponents(
 
   lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
 
-  lazy val zuoraOrdersRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(18.seconds))
-
   lazy val zuoraRestService: ZuoraRestService = {
-    lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient, zuoraOrdersRestClient)
+    lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
     zuoraRestServiceOverride.getOrElse(simpleClientZuoraRestService)
   }
 

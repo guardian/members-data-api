@@ -12,7 +12,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class SimpleClientZuoraRestService(
     private val simpleRest: SimpleClient[Future],
-    private val ordersRest: SimpleClient[Future],
     private val currentDate: () => LocalDate = () => LocalDate.now,
 )(implicit val m: Monad[Future])
     extends ZuoraRestService
@@ -98,7 +97,7 @@ class SimpleClientZuoraRestService(
       needsTermRenewal,
     )
 
-    completedOrderResponseToLeft(EitherT(ordersRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
+    completedOrderResponseToLeft(EitherT(simpleRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
   }
 
   def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
