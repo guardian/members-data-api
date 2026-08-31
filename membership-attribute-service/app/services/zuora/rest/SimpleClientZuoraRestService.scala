@@ -5,10 +5,25 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.rest.{SimpleClient, ZuoraResponse}
 import org.joda.time.LocalDate
+import play.api.libs.json.{Json, Reads}
 import scalaz.{Name => avoidclash, _}
 import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
+
+object SimpleClientZuoraRestService {
+  case class OrderResponse(success: Boolean, status: Option[String])
+
+  object OrderResponse {
+    def completed(response: OrderResponse): String \/ Unit = response match {
+      case OrderResponse(true, Some("Completed")) => \/.right(())
+      case OrderResponse(success, status) =>
+        \/.left(s"Zuora order completed with success = $success and status = ${status.getOrElse("missing")}")
+    }
+  }
+
+  implicit val orderResponseReads: Reads[OrderResponse] = Json.reads[OrderResponse]
+}
 
 class SimpleClientZuoraRestService(
     private val simpleRest: SimpleClient[Future],
@@ -16,6 +31,8 @@ class SimpleClientZuoraRestService(
 )(implicit val m: Monad[Future])
     extends ZuoraRestService
     with SafeLogging {
+
+  import SimpleClientZuoraRestService._
 
   def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ AccountSummary] = {
     simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") // TODO error handling

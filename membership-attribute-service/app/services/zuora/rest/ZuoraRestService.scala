@@ -197,15 +197,6 @@ object ZuoraRestService {
 
   case class Cancellation(cancellationPolicy: CancellationPolicy, cancellationEffectiveDate: LocalDate)
   case class OrderProcessingOptions(runBilling: Boolean, collectPayment: Boolean)
-  case class OrderResponse(success: Boolean, status: Option[String])
-
-  object OrderResponse {
-    def completed(response: OrderResponse): String \/ Unit = response match {
-      case OrderResponse(true, Some("Completed")) => \/.right(())
-      case OrderResponse(success, status) =>
-        \/.left(s"Zuora order completed with success = $success and status = ${status.getOrElse("missing")}")
-    }
-  }
 
   implicit val cancellationWrites: Writes[Cancellation] = Json.writes[Cancellation]
   implicit val orderProcessingOptionsWrites: Writes[OrderProcessingOptions] = Json.writes[OrderProcessingOptions]
@@ -219,7 +210,6 @@ object ZuoraRestService {
   }
   implicit val orderSubscriptionWrites: Writes[OrderSubscription] = Json.writes[OrderSubscription]
   implicit val cancellationOrderRequestWrites: Writes[CancellationOrderRequest] = Json.writes[CancellationOrderRequest]
-  implicit val orderResponseReads: Reads[OrderResponse] = Json.reads[OrderResponse]
 
   case class UpdateCancellationSubscriptionCommand(cancellationReason: String, userCancellationReason: String)
 

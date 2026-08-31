@@ -13,7 +13,8 @@ import org.specs2.mutable.Specification
 import play.api.libs.json.Json
 import scalaz.{-\/, \/}
 import scalaz.std.scalaFuture._
-import services.zuora.rest.ZuoraRestService.{CancellationOrderRequest, OrderResponse}
+import services.zuora.rest.SimpleClientZuoraRestService.OrderResponse
+import services.zuora.rest.ZuoraRestService.CancellationOrderRequest
 import testdata.TestLogPrefix.testLogPrefix
 
 import scala.concurrent.duration.Duration
