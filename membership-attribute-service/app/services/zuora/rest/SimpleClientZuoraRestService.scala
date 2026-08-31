@@ -60,7 +60,7 @@ class SimpleClientZuoraRestService(
     EitherT(validated)
   }
 
-  private def completedOrderResponseToLeft(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] =
+  private def validateCompletedOrder(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] =
     for {
       response <- restResponse
       _ <- EitherT.fromEither(Future.successful(OrderResponse.completed(response).toEither))
@@ -92,7 +92,7 @@ class SimpleClientZuoraRestService(
       needsTermRenewal,
     )
 
-    completedOrderResponseToLeft(EitherT(simpleRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
+    validateCompletedOrder(EitherT(simpleRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
   }
 
   def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
