@@ -60,16 +60,11 @@ class SimpleClientZuoraRestService(
     EitherT(validated)
   }
 
-  private def completedOrderResponseToLeft(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] = {
-    val futureMonad = implicitly[Monad[Future]]
-
-    val validated: Future[String \/ Unit] = futureMonad.map(restResponse.run) {
-      case \/-(response) => OrderResponse.completed(response)
-      case -\/(error) => -\/(error)
-    }
-
-    EitherT(validated)
-  }
+  private def completedOrderResponseToLeft(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] =
+    for {
+      response <- restResponse
+      _ <- EitherT.fromEither(Future.successful(OrderResponse.completed(response).toEither))
+    } yield ()
 
   def cancelSubscription(
       subscriptionNumber: SubscriptionNumber,
