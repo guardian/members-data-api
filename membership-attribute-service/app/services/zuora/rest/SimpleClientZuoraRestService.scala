@@ -5,14 +5,34 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.rest.{SimpleClient, ZuoraResponse}
 import org.joda.time.LocalDate
+import play.api.libs.json.{Json, Reads}
 import scalaz.{Name => avoidclash, _}
 import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])(implicit val m: Monad[Future])
+object SimpleClientZuoraRestService {
+  case class OrderResponse(success: Boolean, status: Option[String])
+
+  object OrderResponse {
+    def completed(response: OrderResponse): String \/ Unit = response match {
+      case OrderResponse(true, Some("Completed")) => \/.right(())
+      case OrderResponse(success, status) =>
+        \/.left(s"Zuora order completed with success = $success and status = ${status.getOrElse("missing")}")
+    }
+  }
+
+  implicit val orderResponseReads: Reads[OrderResponse] = Json.reads[OrderResponse]
+}
+
+class SimpleClientZuoraRestService(
+    private val simpleRest: SimpleClient[Future],
+    private val currentDate: () => LocalDate = () => LocalDate.now,
+)(implicit val m: Monad[Future])
     extends ZuoraRestService
     with SafeLogging {
+
+  import SimpleClientZuoraRestService._
 
   def getAccount(accountId: AccountId)(implicit logPrefix: LogPrefix): Future[String \/ AccountSummary] = {
     simpleRest.get[AccountSummary](s"accounts/${accountId.get}/summary") // TODO error handling
@@ -57,8 +77,15 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     EitherT(validated)
   }
 
+  private def validateCompletedOrder(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] =
+    for {
+      response <- restResponse
+      _ <- EitherT.either(OrderResponse.completed(response))
+    } yield ()
+
   def cancelSubscription(
       subscriptionNumber: SubscriptionNumber,
+      accountId: AccountId,
       termEndDate: LocalDate,
       maybeChargedThroughDate: Option[
         LocalDate,
@@ -69,28 +96,20 @@ class SimpleClientZuoraRestService(private val simpleRest: SimpleClient[Future])
     //   1. Free trial should be explicitly handled: val cancellationEffectiveDate = if(sub.startDate <= today && sub.acceptanceDate > today) LocalDate.now
     //   2. If outside trial, and invoiced, ChargedThroughDate should always exist: val cancellationEffectiveDate = ChargedThroughDate
     //   3. If outside trial, and invoiced, but ChargedThroughDate does not exist, then it is a likely logic error. Investigate ASAP!. Currently it happens after Contributions amount change.
-    val cancellationEffectiveDate =
-      maybeChargedThroughDate.getOrElse(LocalDate.now) // immediate cancellation for subs which aren't yet invoiced (e.g. during digipack trial)
+    val orderDate = currentDate()
+    val cancellationEffectiveDate = maybeChargedThroughDate.getOrElse(orderDate)
 
-    val extendTermIfNeeded = maybeChargedThroughDate
-      .filter(_.isAfter(termEndDate)) // we need to extend the term if they've paid past their term end date, otherwise cancel call will fail
-      .map(_ =>
-        EitherT(
-          simpleRest.put[RenewSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}/renew", RenewSubscriptionCommand()),
-        ),
-      )
-      .getOrElse(EitherT.right[String, Future, ZuoraResponse](ZuoraResponse(success = true)))
+    /** Zuora rejects a cancellation after the current term end date, even when the subscriber has already paid beyond it. */
+    val needsTermRenewal = maybeChargedThroughDate.exists(_.isAfter(termEndDate))
+    val order = CancellationOrderRequest.forSubscription(
+      accountId,
+      subscriptionNumber,
+      orderDate,
+      cancellationEffectiveDate,
+      needsTermRenewal,
+    )
 
-    val cancelCommand = CancelSubscriptionCommand(cancellationEffectiveDate)
-
-    val restResponse = for {
-      _ <- extendTermIfNeeded
-      cancelResponse <- EitherT(
-        simpleRest.put[CancelSubscriptionCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}/cancel", cancelCommand),
-      )
-    } yield cancelResponse
-
-    unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
+    validateCompletedOrder(EitherT(simpleRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
   }
 
   def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit

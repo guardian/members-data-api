@@ -121,25 +121,95 @@ object ZuoraRestService {
     )
   }
 
-  case class CancelSubscriptionCommand(cancellationEffectiveDate: LocalDate)
+  case class CancellationOrderRequest(
+      orderDate: LocalDate,
+      existingAccountId: String,
+      subscriptions: List[OrderSubscription],
+      processingOptions: OrderProcessingOptions,
+  )
 
-  implicit val cancelSubscriptionCommandWrites = new Writes[CancelSubscriptionCommand] {
-    override def writes(command: CancelSubscriptionCommand): JsValue =
-      Json.obj(
-        "cancellationPolicy" -> "SpecificDate",
-        "cancellationEffectiveDate" -> command.cancellationEffectiveDate,
-        "invoiceCollect" -> false,
+  object CancellationOrderRequest {
+    def forSubscription(
+        accountId: AccountId,
+        subscriptionNumber: SubscriptionNumber,
+        orderDate: LocalDate,
+        cancellationEffectiveDate: LocalDate,
+        needsTermRenewal: Boolean,
+    ): CancellationOrderRequest = {
+      val renewSubscriptionAction =
+        if (needsTermRenewal) List(RenewSubscriptionOrderAction(TriggerDates.allOn(orderDate)))
+        else Nil
+
+      CancellationOrderRequest(
+        orderDate = orderDate,
+        existingAccountId = accountId.get,
+        subscriptions = List(
+          OrderSubscription(
+            subscriptionNumber = subscriptionNumber.getNumber,
+            orderActions = renewSubscriptionAction :+ CancelSubscriptionOrderAction(
+              triggerDates = TriggerDates(cancellationEffectiveDate),
+              cancelSubscription = Cancellation(CancellationPolicy.SpecificDate, cancellationEffectiveDate),
+            ),
+          ),
+        ),
+        processingOptions = OrderProcessingOptions(runBilling = false, collectPayment = false),
       )
+    }
   }
 
-  case class RenewSubscriptionCommand()
+  case class OrderSubscription(subscriptionNumber: String, orderActions: List[SubscriptionOrderAction])
 
-  implicit val renewSubscriptionCommandWrites = new Writes[RenewSubscriptionCommand] {
-    override def writes(command: RenewSubscriptionCommand): JsValue =
-      Json.obj(
-        "invoiceCollect" -> false,
+  sealed trait SubscriptionOrderAction
+  case class RenewSubscriptionOrderAction(triggerDates: TriggerDates) extends SubscriptionOrderAction
+  case class CancelSubscriptionOrderAction(triggerDates: TriggerDates, cancelSubscription: Cancellation) extends SubscriptionOrderAction
+
+  case class TriggerDates(
+      contractEffective: LocalDate,
+      serviceActivation: Option[LocalDate] = None,
+      customerAcceptance: Option[LocalDate] = None,
+  )
+
+  object TriggerDates {
+    def allOn(date: LocalDate): TriggerDates = TriggerDates(date, Some(date), Some(date))
+
+    implicit val writes: Writes[TriggerDates] = Writes { dates =>
+      Json.toJson(
+        List(
+          Some(Json.obj("name" -> "ContractEffective", "triggerDate" -> dates.contractEffective)),
+          dates.serviceActivation.map(date => Json.obj("name" -> "ServiceActivation", "triggerDate" -> date)),
+          dates.customerAcceptance.map(date => Json.obj("name" -> "CustomerAcceptance", "triggerDate" -> date)),
+        ).flatten,
       )
+    }
   }
+
+  sealed trait CancellationPolicy {
+    def value: String
+  }
+
+  object CancellationPolicy {
+    case object SpecificDate extends CancellationPolicy {
+      override val value = "SpecificDate"
+    }
+
+    implicit val cancellationPolicyWrites: Writes[CancellationPolicy] = Writes(policy => JsString(policy.value))
+  }
+
+  case class Cancellation(cancellationPolicy: CancellationPolicy, cancellationEffectiveDate: LocalDate)
+  case class OrderProcessingOptions(runBilling: Boolean, collectPayment: Boolean)
+
+  implicit val cancellationWrites: Writes[Cancellation] = Json.writes[Cancellation]
+  implicit val orderProcessingOptionsWrites: Writes[OrderProcessingOptions] = Json.writes[OrderProcessingOptions]
+  implicit val subscriptionOrderActionWrites: Writes[SubscriptionOrderAction] = new Writes[SubscriptionOrderAction] {
+    override def writes(action: SubscriptionOrderAction): JsValue = action match {
+      case RenewSubscriptionOrderAction(triggerDates) =>
+        Json.obj("type" -> "RenewSubscription", "triggerDates" -> triggerDates)
+      case CancelSubscriptionOrderAction(triggerDates, cancellation) =>
+        Json.obj("type" -> "CancelSubscription", "triggerDates" -> triggerDates, "cancelSubscription" -> cancellation)
+    }
+  }
+  implicit val orderSubscriptionWrites: Writes[OrderSubscription] = Json.writes[OrderSubscription]
+  implicit val cancellationOrderRequestWrites: Writes[CancellationOrderRequest] = Json.writes[CancellationOrderRequest]
 
   case class UpdateCancellationSubscriptionCommand(cancellationReason: String, userCancellationReason: String)
 
@@ -519,6 +589,7 @@ trait ZuoraRestService {
 
   def cancelSubscription(
       subscriptionNumber: SubscriptionNumber,
+      accountId: AccountId,
       termEndDate: LocalDate,
       maybeChargedThroughDate: Option[
         LocalDate,
