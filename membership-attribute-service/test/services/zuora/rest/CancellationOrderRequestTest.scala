@@ -91,11 +91,11 @@ class CancellationOrderRequestTest extends Specification {
 
   "OrderResponse" should {
     "only accept a completed Zuora order" in {
-      OrderResponse.completed(OrderResponse(success = true, status = Some("Completed"))) shouldEqual Right(())
-      OrderResponse.completed(OrderResponse(success = true, status = Some("Processing"))) shouldEqual Left(
+      OrderResponse.completed(OrderResponse(success = true, status = Some("Completed"))) shouldEqual \/.right(())
+      OrderResponse.completed(OrderResponse(success = true, status = Some("Processing"))) shouldEqual \/.left(
         "Zuora order completed with success = true and status = Processing",
       )
-      OrderResponse.completed(OrderResponse(success = false, status = None)) shouldEqual Left(
+      OrderResponse.completed(OrderResponse(success = false, status = None)) shouldEqual \/.left(
         "Zuora order completed with success = false and status = missing",
       )
     }

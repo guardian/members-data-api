@@ -15,10 +15,10 @@ object SimpleClientZuoraRestService {
   case class OrderResponse(success: Boolean, status: Option[String])
 
   object OrderResponse {
-    def completed(response: OrderResponse): Either[String, Unit] = response match {
-      case OrderResponse(true, Some("Completed")) => Right(())
+    def completed(response: OrderResponse): String \/ Unit = response match {
+      case OrderResponse(true, Some("Completed")) => \/.right(())
       case OrderResponse(success, status) =>
-        Left(s"Zuora order completed with success = $success and status = ${status.getOrElse("missing")}")
+        \/.left(s"Zuora order completed with success = $success and status = ${status.getOrElse("missing")}")
     }
   }
 
@@ -80,7 +80,7 @@ class SimpleClientZuoraRestService(
   private def validateCompletedOrder(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] =
     for {
       response <- restResponse
-      _ <- EitherT.fromEither(Future.successful(OrderResponse.completed(response)))
+      _ <- EitherT.either(OrderResponse.completed(response))
     } yield ()
 
   def cancelSubscription(
