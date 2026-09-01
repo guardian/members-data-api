@@ -128,6 +128,7 @@ case class RatePlanCharge(
     chargedThroughDate: Option[LocalDate],
     effectiveStartDate: LocalDate,
     effectiveEndDate: LocalDate,
+    number: Option[SubscriptionRatePlanChargeNumber] = None,
 ) {
 
   def billingPeriod: Validation[String, BillingPeriod] =

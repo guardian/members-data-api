@@ -140,19 +140,25 @@ class SimpleClientZuoraRestService(
 
   def updateChargeAmount(
       subscriptionNumber: SubscriptionNumber,
-      ratePlanChargeId: SubscriptionRatePlanChargeId,
+      accountId: AccountId,
+      ratePlanChargeNumber: SubscriptionRatePlanChargeNumber,
       ratePlanId: RatePlanId,
       amount: Double,
       reason: String,
       applyFromDate: LocalDate,
   )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[\/[String, Unit]] = {
-    val updateCommand =
-      UpdateChargeCommand(price = amount, ratePlanChargeId = ratePlanChargeId, ratePlanId = ratePlanId, applyFromDate = applyFromDate, note = reason)
-    val restResponse = for {
-      restResponse <- EitherT(simpleRest.put[UpdateChargeCommand, ZuoraResponse](s"subscriptions/${subscriptionNumber.getNumber}", updateCommand))
-    } yield restResponse
+    val order = ContributionAmountOrderRequest.forSubscription(
+      accountId,
+      subscriptionNumber,
+      ratePlanId,
+      ratePlanChargeNumber,
+      amount,
+      reason,
+      currentDate(),
+      applyFromDate,
+    )
 
-    unsuccessfulResponseToLeft(restResponse).map(_ => ()).run
+    validateCompletedOrder(EitherT(simpleRest.post[ContributionAmountOrderRequest, OrderResponse]("orders", order))).run
   }
 
   def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {

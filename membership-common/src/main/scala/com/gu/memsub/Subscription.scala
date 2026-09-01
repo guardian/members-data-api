@@ -10,6 +10,7 @@ object Subscription {
   case class ProductId(get: String) extends AnyVal
   case class ProductRatePlanChargeId(get: String) extends AnyVal
   case class SubscriptionRatePlanChargeId(get: String) extends AnyVal
+  case class SubscriptionRatePlanChargeNumber(get: String) extends AnyVal
 
   object Feature {
     case class Id(get: String) extends AnyVal
