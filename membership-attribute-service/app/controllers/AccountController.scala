@@ -271,6 +271,9 @@ class AccountController(
             case period: RecurringPeriod => Right(period)
             case period: BillingPeriod.OneOffPeriod => Left(s"period $period was not recurring for contribution update")
           })
+          chargeNumber <- SimpleEitherT.fromEither(
+            contributionPlan.ratePlanCharges.head.number.toRight(s"missing Zuora charge number for contribution subscription $subscriptionName"),
+          )
           applyFromDate = contributionPlan.chargedThroughDate.getOrElse(contributionPlan.effectiveStartDate)
           currency = contributionPlan.chargesPrice.prices.head.currency
           currencyGlyph = currency.glyph
@@ -280,7 +283,8 @@ class AccountController(
           result <- SimpleEitherT(
             services.zuoraRestService.updateChargeAmount(
               subscription.subscriptionNumber,
-              contributionPlan.ratePlanCharges.head.id,
+              subscription.accountId,
+              chargeNumber,
               contributionPlan.id,
               newPrice.toDouble,
               reasonForChange,

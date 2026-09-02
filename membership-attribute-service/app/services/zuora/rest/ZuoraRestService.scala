@@ -1,7 +1,7 @@
 package services.zuora.rest
 
 import com.gu.i18n.{Country, Currency, Title}
-import com.gu.memsub.Subscription.{AccountId, AccountNumber, SubscriptionNumber, RatePlanId, SubscriptionRatePlanChargeId}
+import com.gu.memsub.Subscription.{AccountId, AccountNumber, RatePlanId, SubscriptionNumber, SubscriptionRatePlanChargeNumber}
 import com.gu.memsub.subsv2.reads.CommonReads._
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.salesforce.ContactId
@@ -157,11 +157,61 @@ object ZuoraRestService {
     }
   }
 
+  case class ContributionAmountOrderRequest(
+      orderDate: LocalDate,
+      existingAccountId: String,
+      subscriptions: List[OrderSubscription],
+      processingOptions: OrderProcessingOptions,
+  )
+
+  object ContributionAmountOrderRequest {
+    def forSubscription(
+        accountId: AccountId,
+        subscriptionNumber: SubscriptionNumber,
+        ratePlanId: RatePlanId,
+        chargeNumber: SubscriptionRatePlanChargeNumber,
+        amount: Double,
+        reason: String,
+        orderDate: LocalDate,
+        applyFromDate: LocalDate,
+    ): ContributionAmountOrderRequest =
+      ContributionAmountOrderRequest(
+        orderDate = orderDate,
+        existingAccountId = accountId.get,
+        subscriptions = List(
+          OrderSubscription(
+            subscriptionNumber = subscriptionNumber.getNumber,
+            orderActions = List(
+              UpdateProductOrderAction(
+                triggerDates = TriggerDates.allOn(applyFromDate),
+                changeReason = reason,
+                updateProduct = UpdateProduct(
+                  ratePlanId = ratePlanId,
+                  chargeUpdates = List(
+                    ChargeUpdate(
+                      chargeNumber = chargeNumber,
+                      pricing = RecurringFlatFeePricing(amount),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        processingOptions = OrderProcessingOptions(runBilling = false, collectPayment = false),
+      )
+  }
+
   case class OrderSubscription(subscriptionNumber: String, orderActions: List[SubscriptionOrderAction])
 
   sealed trait SubscriptionOrderAction
   case class RenewSubscriptionOrderAction(triggerDates: TriggerDates) extends SubscriptionOrderAction
   case class CancelSubscriptionOrderAction(triggerDates: TriggerDates, cancelSubscription: Cancellation) extends SubscriptionOrderAction
+  case class UpdateProductOrderAction(triggerDates: TriggerDates, changeReason: String, updateProduct: UpdateProduct) extends SubscriptionOrderAction
+
+  case class UpdateProduct(ratePlanId: RatePlanId, chargeUpdates: List[ChargeUpdate])
+  case class ChargeUpdate(chargeNumber: SubscriptionRatePlanChargeNumber, pricing: RecurringFlatFeePricing)
+  case class RecurringFlatFeePricing(listPrice: Double)
 
   case class TriggerDates(
       contractEffective: LocalDate,
@@ -206,10 +256,31 @@ object ZuoraRestService {
         Json.obj("type" -> "RenewSubscription", "triggerDates" -> triggerDates)
       case CancelSubscriptionOrderAction(triggerDates, cancellation) =>
         Json.obj("type" -> "CancelSubscription", "triggerDates" -> triggerDates, "cancelSubscription" -> cancellation)
+      case UpdateProductOrderAction(triggerDates, changeReason, updateProduct) =>
+        Json.obj(
+          "type" -> "UpdateProduct",
+          "triggerDates" -> triggerDates,
+          "changeReason" -> changeReason,
+          "updateProduct" -> updateProduct,
+        )
     }
+  }
+  implicit val recurringFlatFeePricingWrites: Writes[RecurringFlatFeePricing] = Json.writes[RecurringFlatFeePricing]
+  implicit val chargeUpdateWrites: Writes[ChargeUpdate] = new Writes[ChargeUpdate] {
+    override def writes(chargeUpdate: ChargeUpdate): JsValue = Json.obj(
+      "chargeNumber" -> chargeUpdate.chargeNumber.get,
+      "pricing" -> Json.obj("recurringFlatFee" -> chargeUpdate.pricing),
+    )
+  }
+  implicit val updateProductWrites: Writes[UpdateProduct] = new Writes[UpdateProduct] {
+    override def writes(updateProduct: UpdateProduct): JsValue = Json.obj(
+      "ratePlanId" -> updateProduct.ratePlanId.get,
+      "chargeUpdates" -> updateProduct.chargeUpdates,
+    )
   }
   implicit val orderSubscriptionWrites: Writes[OrderSubscription] = Json.writes[OrderSubscription]
   implicit val cancellationOrderRequestWrites: Writes[CancellationOrderRequest] = Json.writes[CancellationOrderRequest]
+  implicit val contributionAmountOrderRequestWrites: Writes[ContributionAmountOrderRequest] = Json.writes[ContributionAmountOrderRequest]
 
   case class UpdateCancellationSubscriptionCommand(cancellationReason: String, userCancellationReason: String)
 
@@ -240,38 +311,6 @@ object ZuoraRestService {
         "billToContact" ->
           Json.obj(
             "workEmail" -> command.email,
-          ),
-      )
-    }
-  }
-
-  case class UpdateChargeCommand(
-      price: Double,
-      ratePlanChargeId: SubscriptionRatePlanChargeId,
-      ratePlanId: RatePlanId,
-      applyFromDate: LocalDate,
-      note: String,
-  )
-
-  implicit val updateChargeCommandWrites = new Writes[UpdateChargeCommand] {
-    override def writes(command: UpdateChargeCommand): JsValue = {
-      Json.obj(
-        "notes" -> command.note,
-        "update" ->
-          Json.arr(
-            Json.obj(
-              "chargeUpdateDetails" ->
-                Json.arr(
-                  Json.obj(
-                    "price" -> command.price,
-                    "ratePlanChargeId" -> command.ratePlanChargeId.get,
-                  ),
-                ),
-              "contractEffectiveDate" -> command.applyFromDate,
-              "customerAcceptanceDate" -> command.applyFromDate,
-              "serviceActivationDate" -> command.applyFromDate,
-              "ratePlanId" -> command.ratePlanId.get,
-            ),
           ),
       )
     }
@@ -604,7 +643,8 @@ trait ZuoraRestService {
 
   def updateChargeAmount(
       subscriptionNumber: SubscriptionNumber,
-      ratePlanChargeId: SubscriptionRatePlanChargeId,
+      accountId: AccountId,
+      ratePlanChargeNumber: SubscriptionRatePlanChargeNumber,
       ratePlanId: RatePlanId,
       amount: Double,
       reason: String,

@@ -358,7 +358,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraRestServiceMock.updateChargeAmount(
         subscription.subscriptionNumber,
-        charge.id,
+        subscription.accountId,
+        charge.number.get,
         plan.id,
         12.00d,
         any,
@@ -385,7 +386,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       subscriptionServiceMock.current(contact)(any) was called
       zuoraRestServiceMock.updateChargeAmount(
         subscription.subscriptionNumber,
-        charge.id,
+        subscription.accountId,
+        charge.number.get,
         plan.id,
         12.00d,
         any,
