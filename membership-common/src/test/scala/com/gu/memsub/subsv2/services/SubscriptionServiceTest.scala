@@ -301,6 +301,7 @@ class SubscriptionServiceTest extends Specification {
               Some(20 Jun 2024),
               20 May 2024,
               20 May 2025,
+              Some(SubscriptionRatePlanChargeNumber("C-01552416")),
             ),
             RatePlanCharge(
               SubscriptionRatePlanChargeId("8ad08ae28f9570f0018f9588142410e0"),
@@ -314,6 +315,7 @@ class SubscriptionServiceTest extends Specification {
               Some(20 Jun 2024),
               20 May 2024,
               20 May 2025,
+              Some(SubscriptionRatePlanChargeNumber("C-01552417")),
             ),
           ),
         ),

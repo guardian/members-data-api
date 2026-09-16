@@ -26,6 +26,9 @@ case object StripeAUPaymentIntentsMembershipGateway extends PaymentGateway {
 case object StripeTortoiseMediaPaymentIntentsMembershipGateway extends PaymentGateway {
   val gatewayName = "Stripe - Observer - Tortoise Media"
 }
+case object StripeBankTransferMembershipGateway extends PaymentGateway {
+  val gatewayName = "Stripe Bank Transfer - GNM Membership"
+}
 case object GoCardlessGateway extends PaymentGateway {
   val gatewayName = "GoCardless"
 }
@@ -39,6 +42,12 @@ case object GoCardlessZuoraInstance extends PaymentGateway {
 case object PayPal extends PaymentGateway {
   val gatewayName = "PayPal Express"
 }
+case object PayPalCompletePaymentsGateway extends PaymentGateway {
+  val gatewayName = "PayPal Complete Payments"
+}
+case object PayPalTortoiseMediaGateway extends PaymentGateway {
+  val gatewayName = "PayPal - Observer - Tortoise Media"
+}
 
 object PaymentGateway {
   private val gatewaysByName = Set(
@@ -47,10 +56,13 @@ object PaymentGateway {
     StripeUKPaymentIntentsMembershipGateway,
     StripeAUPaymentIntentsMembershipGateway,
     StripeTortoiseMediaPaymentIntentsMembershipGateway,
+    StripeBankTransferMembershipGateway,
     GoCardlessGateway,
     GoCardlessTortoiseMediaGateway,
     GoCardlessZuoraInstance,
     PayPal,
+    PayPalCompletePaymentsGateway,
+    PayPalTortoiseMediaGateway,
   ).map(g => (g.gatewayName, g)).toMap
   def getByName(gatewayName: String): Option[PaymentGateway] = gatewaysByName.get(gatewayName)
 }

@@ -2,6 +2,7 @@ package com.gu.zuora.rest
 
 import com.gu.i18n.Currency.GBP
 import com.gu.memsub.Subscription.AccountId
+import com.gu.zuora.api.PayPalCompletePaymentsGateway
 import com.gu.zuora.rest.ZuoraQueryReads._
 import com.gu.zuora.models.Queries
 import org.joda.time.LocalDate
@@ -15,7 +16,7 @@ class ZuoraQueryReadsTest extends Specification {
       val json = Json.parse("""{
         "Id": "acc-1", "BillToId": "bill-1", "SoldToId": "sold-1", "BillCycleDay": 18,
         "CreditBalance": 0, "Currency": "GBP", "DefaultPaymentMethodId": "pm-1",
-        "sfContactId__c": "003xxx", "PaymentGateway": "Stripe PaymentIntents GNM Membership"
+        "sfContactId__c": "003xxx", "PaymentGateway": "PayPal Complete Payments"
       }""")
       val account = json.as[Queries.Account]
       account.billCycleDay must_== 18
@@ -23,7 +24,7 @@ class ZuoraQueryReadsTest extends Specification {
       account.currency must_== Some(GBP)
       account.defaultPaymentMethodId must beSome("pm-1")
       account.sfContactId must beSome("003xxx")
-      account.paymentGateway must beSome
+      account.paymentGateway must_== Some(PayPalCompletePaymentsGateway)
     }
   }
 

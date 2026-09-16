@@ -63,7 +63,8 @@ object SubJsonReads {
       (__ \ "upToPeriodsType").readNullable[UpToPeriodsType] and
       (__ \ "chargedThroughDate").readNullable[LocalDate] and
       (__ \ "effectiveStartDate").read[LocalDate] and
-      (__ \ "effectiveEndDate").read[LocalDate]
+      (__ \ "effectiveEndDate").read[LocalDate] and
+      (__ \ "number").readNullable[String].map(_.map(SubscriptionRatePlanChargeNumber))
   )(RatePlanCharge.apply _)
 
   private val ratePlanReads: Reads[RatePlan] = new Reads[RatePlan] {
