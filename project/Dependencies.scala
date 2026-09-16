@@ -3,7 +3,7 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientV2Version = "2.35.10"
+  val awsClientV2Version = "2.35.11"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "5.0.0"
