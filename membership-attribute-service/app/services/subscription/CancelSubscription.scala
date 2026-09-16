@@ -30,7 +30,7 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
           )
         case None => EitherT.rightT[String, Future, Unit](Future.successful(()))
       }
-      _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
+      _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, accountId, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
         s"Failed to execute Zuora cancellation proper: $message",
       )
     } yield cancellationEffectiveDate).leftMap(ApiError(_, "", 500))

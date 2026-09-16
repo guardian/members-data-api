@@ -3,7 +3,7 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientV2Version = "2.35.10"
+  val awsClientV2Version = "2.35.11"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "5.0.0"
@@ -19,7 +19,7 @@ object Dependencies {
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
-  val nettyVersion = "4.1.132.Final"
+  val nettyVersion = "4.1.137.Final"
   val netty = "io.netty" % "netty-codec" % nettyVersion
   val nettyHttp = "io.netty" % "netty-codec-http" % nettyVersion
   val nettyHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion // Fix CVE-2026-33871 (HTTP/2 CONTINUATION Flood DoS)
@@ -36,8 +36,8 @@ object Dependencies {
   val ionJava = "com.amazon.ion" % "ion-java" % "1.11.9" // Fix CVE-2024-21634 (StackOverflow DoS)
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.1.0" // Fix CVE-2025-67030 (Directory Traversal)
   val bouncyCastleBcpkix =
-    "org.bouncycastle" % "bcpkix-jdk18on" % "1.84" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
-  val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.84" // https://github.com/guardian/members-data-api/security/dependabot/79
+    "org.bouncycastle" % "bcpkix-jdk18on" % "1.85" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
+  val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.85.2" // https://github.com/guardian/members-data-api/security/dependabot/79
   val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
   val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
   val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
@@ -45,7 +45,7 @@ object Dependencies {
   val mockitoScala = "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   val logback = "ch.qos.logback" % "logback-classic" % "1.5.25"
 
-  val jacksonVersion = "2.18.6"
+  val jacksonVersion = "2.18.9"
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % "10.2.9"
   val oktaJwtVerifierVersion = "0.5.7"
   val jackson = Seq(
