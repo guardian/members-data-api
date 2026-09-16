@@ -3,7 +3,13 @@ package com.gu.memsub.subsv2.reads
 import com.gu.i18n.Currency._
 import com.gu.lib.DateDSL._
 import com.gu.memsub.BillingPeriod.Month
-import com.gu.memsub.Subscription.{ProductRatePlanChargeId, ProductRatePlanId, RatePlanId, SubscriptionRatePlanChargeId}
+import com.gu.memsub.Subscription.{
+  ProductRatePlanChargeId,
+  ProductRatePlanId,
+  RatePlanId,
+  SubscriptionRatePlanChargeId,
+  SubscriptionRatePlanChargeNumber,
+}
 import com.gu.memsub.subsv2.ReaderType.Patron
 import com.gu.memsub.subsv2._
 import com.gu.memsub.subsv2.reads.SubJsonReads._
@@ -44,6 +50,7 @@ class SubReadsTest extends Specification {
               chargedThroughDate = None,
               effectiveStartDate = 2 Oct 2016,
               effectiveEndDate = 16 Sep 2017,
+              number = Some(SubscriptionRatePlanChargeNumber("C-00068084")),
             ),
           ),
         ),
@@ -242,6 +249,7 @@ object PlanWithCreditsTestData {
     chargedThroughDate = Some(28 Jul 2024),
     effectiveStartDate = 28 Jun 2024,
     effectiveEndDate = 13 Jun 2099,
+    number = Some(SubscriptionRatePlanChargeNumber("C-01565115")),
   )
   private val sPlusCharge = RatePlanCharge(
     id = SubscriptionRatePlanChargeId("8ad093fb90a5fb8c0190bdfd67d862b0"),
@@ -254,6 +262,7 @@ object PlanWithCreditsTestData {
     chargedThroughDate = Some(28 Jul 2024),
     effectiveStartDate = 28 Jun 2024,
     effectiveEndDate = 13 Jun 2099,
+    number = Some(SubscriptionRatePlanChargeNumber("C-01565116")),
   )
   val mainPlan = subsv2.RatePlan(
     id = RatePlanId("8ad093fb90a5fb8c0190bdfd67d662ac"),
@@ -274,6 +283,7 @@ object PlanWithCreditsTestData {
     chargedThroughDate = None,
     effectiveStartDate = 28 Jul 2024,
     effectiveEndDate = 29 Jul 2024,
+    number = Some(SubscriptionRatePlanChargeNumber("C-01568794")),
   )
   private val discountPlan = subsv2.RatePlan(
     id = RatePlanId("8ad093fb90a5fb8c0190bdfd67d062a7"),

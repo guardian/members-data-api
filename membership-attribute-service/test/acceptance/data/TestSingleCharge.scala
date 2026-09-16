@@ -2,7 +2,7 @@ package acceptance.data
 
 import acceptance.data.Randoms.randomId
 import com.gu.memsub.PricingSummary
-import com.gu.memsub.Subscription.{ProductRatePlanChargeId, SubscriptionRatePlanChargeId}
+import com.gu.memsub.Subscription.{ProductRatePlanChargeId, SubscriptionRatePlanChargeId, SubscriptionRatePlanChargeNumber}
 import com.gu.memsub.subsv2.{RatePlanCharge, SubscriptionEnd, ZBillingPeriod, ZYear}
 import org.joda.time.LocalDate
 
@@ -12,6 +12,7 @@ object TestSingleCharge {
       price: PricingSummary = TestPricingSummary(),
       chargeId: ProductRatePlanChargeId = randomProductRatePlanChargeId(),
       subRatePlanChargeId: SubscriptionRatePlanChargeId = SubscriptionRatePlanChargeId(randomId("subscriptionRatePlanChargeId")),
+      subRatePlanChargeNumber: Option[SubscriptionRatePlanChargeNumber] = Some(SubscriptionRatePlanChargeNumber("C-00000001")),
       chargedThroughDate: Option[LocalDate] = None, // this is None if the sub hasn't been billed yet (on a free trial)
       effectiveStartDate: LocalDate = LocalDate.now().minusDays(13),
       effectiveEndDate: LocalDate = LocalDate.now().minusDays(13).plusYears(1),
@@ -27,6 +28,7 @@ object TestSingleCharge {
     chargedThroughDate,
     effectiveStartDate,
     effectiveEndDate,
+    subRatePlanChargeNumber,
   )
 
   def randomProductRatePlanChargeId(): ProductRatePlanChargeId = ProductRatePlanChargeId(

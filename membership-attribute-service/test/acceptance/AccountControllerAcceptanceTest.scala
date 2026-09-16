@@ -358,7 +358,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraRestServiceMock.updateChargeAmount(
         subscription.subscriptionNumber,
-        charge.id,
+        subscription.accountId,
+        charge.number.get,
         plan.id,
         12.00d,
         any,
@@ -385,7 +386,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       subscriptionServiceMock.current(contact)(any) was called
       zuoraRestServiceMock.updateChargeAmount(
         subscription.subscriptionNumber,
-        charge.id,
+        subscription.accountId,
+        charge.number.get,
         plan.id,
         12.00d,
         any,
@@ -474,7 +476,12 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
 
       zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) returns unit()
 
-      zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
+      zuoraRestServiceMock.cancelSubscription(
+        SubscriptionNumber(subscriptionId),
+        subscription.accountId,
+        subscription.termEndDate,
+        Some(cancellationEffectiveDate),
+      )(
         any,
         any,
       ) returns unit()
@@ -502,7 +509,12 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       subscriptionServiceMock.subscriptionsForAccountId(subscription.accountId)(any) was called
       zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) was called
       zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) was called
-      zuoraRestServiceMock.cancelSubscription(SubscriptionNumber(subscriptionId), subscription.termEndDate, Some(cancellationEffectiveDate))(
+      zuoraRestServiceMock.cancelSubscription(
+        SubscriptionNumber(subscriptionId),
+        subscription.accountId,
+        subscription.termEndDate,
+        Some(cancellationEffectiveDate),
+      )(
         any,
         any,
       ) was called
