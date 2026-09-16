@@ -37,7 +37,7 @@ object Dependencies {
   val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "4.0.3" // Fix CVE-2025-67030 (Directory Traversal)
   val bouncyCastleBcpkix =
     "org.bouncycastle" % "bcpkix-jdk18on" % "1.85" // Fix CVE-2025-8916 (Excessive Allocation) & moved to 1.84 when we did bouncyCastleBcprov
-  val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.85" // https://github.com/guardian/members-data-api/security/dependabot/79
+  val bouncyCastleBcprov = "org.bouncycastle" % "bcprov-jdk18on" % "1.85.2" // https://github.com/guardian/members-data-api/security/dependabot/79
   val commonsLang3 = "org.apache.commons" % "commons-lang3" % "3.18.0" // Fix CVE-2025-48924 (Uncontrolled Recursion)
   val jsonPath = "com.jayway.jsonpath" % "json-path" % "2.9.0" // Fix CVE-2023-51074 (OOB Write)
   val rhino = "org.mozilla" % "rhino" % "1.7.15.1" // Fix CVE-2025-66453 (DoS via toFixed)
