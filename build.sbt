@@ -41,6 +41,7 @@ val buildDebSettings = Seq(
   packageDescription := """Members Data API""",
   riffRaffManifestProjectName := s"MemSub::Membership::members-data-api",
   riffRaffPackageType := (Debian / packageBin).value,
+  riffRaffAwsRegion := "eu-west-1",
   riffRaffArtifactResources += (file("cloudformation/membership-attribute-service.yaml") -> "cloudformation/membership-attribute-service.yaml"),
   Universal / javaOptions ++= Seq(
     "-Dpidfile.path=/dev/null",
