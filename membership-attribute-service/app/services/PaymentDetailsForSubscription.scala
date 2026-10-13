@@ -48,5 +48,8 @@ class PaymentDetailsForSubscription(paymentService: PaymentService, futureCatalo
     ),
     subscriberId = giftSubscription.subscriptionNumber.getNumber,
     remainingTrialLength = 0,
+    nextChargeDate = None,
+    nextChargeAmount = None,
+    remainingDiscountDays = None,
   )
 }
