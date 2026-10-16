@@ -37,5 +37,9 @@ object SimpleEitherT {
   def fromEither[T](either: Either[String, T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
     apply(Future.successful(either))
 
+  /** Turns a failed Future into a left, using the exception to build the message. */
+  def fromFuture[T](f: Future[T])(onFailure: Throwable => String)(implicit ec: ExecutionContext): SimpleEitherT[T] =
+    SimpleEitherT(f.map(\/.right[String, T]).recover { case exception => \/.left[String, T](onFailure(exception)) })
+
   def fromListT[T](value: ListTEither[T])(implicit ec: ExecutionContext): SimpleEitherT[List[T]] = SimpleEitherT(value.toList.run)
 }

@@ -23,8 +23,10 @@ import play.api.mvc._
 import scalaz._
 import scalaz.std.scalaFuture._
 import services._
+import services.cancellationsBus.{CancellationEvent, PublishCancellationEvent}
 import services.mail.Emails.{subscriptionCancelledEmail, updateAmountEmail}
 import services.mail.SendEmail
+import services.zuora.rest.OrderNumber
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 
@@ -62,6 +64,7 @@ class AccountController(
     override val controllerComponents: ControllerComponents,
     contributionsStoreDatabaseService: ContributionsStoreDatabaseService,
     sendEmail: SendEmail,
+    publishCancellationEvent: PublishCancellationEvent,
     createMetrics: CreateMetrics,
 ) extends BaseController
     with SafeLogging {
@@ -112,7 +115,7 @@ class AccountController(
               .leftMap(CancelError(_, 503))
           cancellationEffectiveDate <- services.subscriptionService.decideCancellationEffectiveDate(subscriptionNumber).leftMap(CancelError(_, 500))
           cancellationReason = extractCancellationReason(cancelForm)
-          _ <- services.cancelSubscription.cancel(
+          orderNumber <- services.cancelSubscription.cancel(
             subscriptionNumber,
             cancellationEffectiveDate,
             cancellationReason,
@@ -127,6 +130,7 @@ class AccountController(
             subscription.plan(catalog).productType(catalog),
             cancellationEffectiveDate,
           )
+          _ <- publishCancellation(subscriptionNumber, orderNumber)
         } yield result).run.map(_.toEither).map {
           case Left(apiError) =>
             logger.error(scrub"Failed to cancel subscription for user $identityId because $apiError")
@@ -322,6 +326,15 @@ class AccountController(
     SimpleEitherT
       .right(sendEmail.send(subscriptionCancelledEmail(email, contact, productType, cancellationEffectiveDate)))
       .leftMap(ApiError(_, "Email could not be put on the queue", 500))
+
+  private def publishCancellation(
+      subscriptionNumber: memsub.Subscription.SubscriptionNumber,
+      orderNumber: OrderNumber,
+  )(implicit logPrefix: LogPrefix): EitherT[ApiError, Future, Unit] =
+    (for {
+      event <- SimpleEitherT.fromEither(CancellationEvent.forSelfServiceCancellation(subscriptionNumber, orderNumber))
+      _ <- SimpleEitherT.fromFuture(publishCancellationEvent.publish(event))(exception => s"Failed to publish cancellation event: $exception")
+    } yield ()).leftMap(ApiError(_, "Cancellation event could not be published", 500))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
     val minAmount = 1

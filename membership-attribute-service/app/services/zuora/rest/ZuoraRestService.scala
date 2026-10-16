@@ -633,7 +633,7 @@ trait ZuoraRestService {
       maybeChargedThroughDate: Option[
         LocalDate,
       ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
-  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ Unit]
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ OrderNumber]
 
   def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
       logPrefix: LogPrefix,

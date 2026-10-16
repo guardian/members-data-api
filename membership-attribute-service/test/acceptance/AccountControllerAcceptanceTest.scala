@@ -22,10 +22,11 @@ import org.mockserver.model.HttpResponse.response
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.{JsArray, Json}
 import scalaz.{NonEmptyList, \/}
+import services.cancellationsBus.{CancellationEvent, PublishCancellationEvent}
 import services.mail.{EmailData, SendEmail}
 import services.salesforce.ContactRepository
 import services.stripe.BasicStripeService
-import services.zuora.rest.ZuoraRestService
+import services.zuora.rest.{OrderNumber, ZuoraRestService}
 import services.zuora.rest.ZuoraRestService.GiftSubscriptionsFromIdentityIdRecord
 import services.{ContributionsStoreDatabaseService, SupporterProductDataService}
 import utils.SimpleEitherT
@@ -44,6 +45,8 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
   var databaseServiceMock: ContributionsStoreDatabaseService = _
   var patronsStripeServiceMock: BasicStripeService = _
   var sendEmailMock: SendEmail = _
+  var publishCancellationEventMock: PublishCancellationEvent = _
+  private val orderNumber = OrderNumber.fromString("O-00005678").toOption.get
 
   override protected def before: Unit = {
     contactRepositoryMock = mock[ContactRepository]
@@ -55,6 +58,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
     databaseServiceMock = mock[ContributionsStoreDatabaseService]
     patronsStripeServiceMock = mock[BasicStripeService]
     sendEmailMock = mock[SendEmail]
+    publishCancellationEventMock = mock[PublishCancellationEvent]
     super.before
   }
 
@@ -69,6 +73,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       override lazy val dbService = databaseServiceMock
       override lazy val patronsStripeServiceOverride = Some(patronsStripeServiceMock)
       override lazy val sendEmail = sendEmailMock
+      override lazy val publishCancellationEvent = publishCancellationEventMock
     }
   }
 
@@ -484,9 +489,11 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       )(
         any,
         any,
-      ) returns unit()
+      ) returns Future.successful(\/.right[String, OrderNumber](orderNumber))
 
       sendEmailMock.send(emailData)(any) returns Future.successful(())
+
+      publishCancellationEventMock.publish(any)(any) returns Future.successful(())
 
       val httpResponse = Unirest
         .post(endpointUrl(s"/user-attributes/me/cancel/$subscriptionId"))
@@ -520,6 +527,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       ) was called
 
       sendEmailMock.send(emailData)(any) was called
+      publishCancellationEventMock.publish(
+        CancellationEvent.forSelfServiceCancellation(SubscriptionNumber(subscriptionId), orderNumber).toOption.get,
+      )(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain
@@ -528,6 +538,7 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       zuoraServiceMock wasNever called
       databaseServiceMock wasNever called
       sendEmailMock wasNever calledAgain
+      publishCancellationEventMock wasNever calledAgain
 
       val responseBody = httpResponse.getBody
       val responseJson = Json.parse(responseBody)
@@ -535,6 +546,68 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       responseJson shouldEqual Json.parse(s"""
           |{"cancellationEffectiveDate":"$cancellationDateFormatted"}
           |""".stripMargin)
+    }
+
+    "return a 500 but still send the email if publishing the cancellation event fails" in {
+      val subscriptionId = "A-S00474148"
+
+      identityMockClientAndServer
+        .when(
+          request()
+            .withMethod("GET")
+            .withPath("/user/me")
+            .withHeader("X-GU-ID-Client-Access-Token", s"Bearer $identityApiToken")
+            .withHeader(
+              "X-GU-ID-FOWARDED-SC-GU-U",
+              "WyIyMDAwNjQ2MTEiLDE2ODY3Nzg3NDQxMTUsIjY5MGVmNmYzMTllYTQwODI4OTBjMGExYTNkOWM5ZTFmIiwiIiwwXQ.MC0CFBUObHNIHJMVasjnW7HHRmeni8GdAhUAkJxvh4IR7UbMc5rL-QWk9J9trTE",
+            ),
+        )
+        .respond(
+          response()
+            .withBody(IdentityResponse(userId = 200067388, firstName = "Frank", lastName = "Poole", email = "frank.poole@amail.com")),
+        )
+
+      val contact = TestContact(identityId = "200067388", firstName = Some("Frank"), lastName = "Poole")
+      contactRepositoryMock.get("200067388")(any) returns Future(\/.right(Some(contact)))
+
+      val subscription = TestSubscription(
+        subscriptionNumber = Subscription.SubscriptionNumber(subscriptionId),
+        plans = List(TestPaidSubscriptionPlan(productRatePlanId = TestCatalog.digipackPrpId)),
+        termEndDate = new LocalDate(2024, 4, 12),
+      )
+      subscriptionServiceMock.current(contact)(any) returns Future(List(subscription))
+      subscriptionServiceMock
+        .decideCancellationEffectiveDate(SubscriptionNumber(subscriptionId), any, any)(any) returns SimpleEitherT
+        .right(Some(new LocalDate(2024, 4, 5)))
+      subscriptionServiceMock
+        .subscriptionsForAccountId(subscription.accountId)(any) shouldReturn SimpleEitherT.right(List(subscription)).run
+
+      zuoraRestServiceMock.disableAutoPay(subscription.accountId)(any) returns unit()
+      zuoraRestServiceMock.updateCancellationReason(SubscriptionNumber(subscriptionId), "My reason")(any) returns unit()
+      zuoraRestServiceMock.cancelSubscription(
+        SubscriptionNumber(subscriptionId),
+        subscription.accountId,
+        subscription.termEndDate,
+        Some(new LocalDate(2024, 4, 5)),
+      )(any, any) returns Future.successful(\/.right[String, OrderNumber](orderNumber))
+
+      sendEmailMock.send(any)(any) returns Future.successful(())
+      publishCancellationEventMock.publish(any)(any) returns Future.failed(new RuntimeException("EventBridge unavailable"))
+
+      val httpResponse = Unirest
+        .post(endpointUrl(s"/user-attributes/me/cancel/$subscriptionId"))
+        .header("Csrf-Token", "nocheck")
+        .header(
+          "Cookie",
+          "SC_GU_U=WyIyMDAwNjQ2MTEiLDE2ODY3Nzg3NDQxMTUsIjY5MGVmNmYzMTllYTQwODI4OTBjMGExYTNkOWM5ZTFmIiwiIiwwXQ.MC0CFBUObHNIHJMVasjnW7HHRmeni8GdAhUAkJxvh4IR7UbMc5rL-QWk9J9trTE",
+        )
+        .field("reason", "My reason")
+        .asString
+
+      sendEmailMock.send(any)(any) was called
+      publishCancellationEventMock.publish(any)(any) was called
+
+      httpResponse.getStatus shouldEqual 500
     }
   }
 

@@ -123,6 +123,12 @@ Resources:
               Fn::ImportValue:
                 !Sub "comms-${Stage}-EmailQueueArn"
             Effect: Allow
+          - Action:
+              - events:PutEvents
+            Resource:
+              Fn::ImportValue:
+                !Sub "cancellations-bus-${Stage}-arn"
+            Effect: Allow
       ManagedPolicyArns:
       - !Sub arn:aws:iam::${AWS::AccountId}:policy/guardian-ec2-role-for-ssm
 

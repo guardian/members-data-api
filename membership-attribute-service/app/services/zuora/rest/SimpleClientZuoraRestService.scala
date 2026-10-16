@@ -5,24 +5,27 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.monitoring.SafeLogging
 import com.gu.zuora.rest.{SimpleClient, ZuoraResponse}
 import org.joda.time.LocalDate
-import play.api.libs.json.{Json, Reads}
+import play.api.libs.json.{JsError, JsSuccess, Reads}
 import scalaz.{Name => avoidclash, _}
 import services.zuora.rest.ZuoraRestService._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object SimpleClientZuoraRestService {
-  case class OrderResponse(success: Boolean, status: Option[String])
 
-  object OrderResponse {
-    def completed(response: OrderResponse): String \/ Unit = response match {
-      case OrderResponse(true, Some("Completed")) => \/.right(())
-      case OrderResponse(success, status) =>
-        \/.left(s"Zuora order completed with success = $success and status = ${status.getOrElse("missing")}")
-    }
+  /** Only a completed order can be read, so deserialisation fails for anything else (e.g. success = false or status = Processing). */
+  case class OrderResponse(orderNumber: OrderNumber)
+
+  implicit val orderResponseReads: Reads[OrderResponse] = Reads { json =>
+    for {
+      success <- (json \ "success").validate[Boolean]
+      status <- (json \ "status").validateOpt[String]
+      _ <-
+        if (success && status.contains("Completed")) JsSuccess(())
+        else JsError(s"Zuora order not completed: success = $success and status = ${status.getOrElse("missing")}")
+      orderNumber <- (json \ "orderNumber").validate[OrderNumber]
+    } yield OrderResponse(orderNumber)
   }
-
-  implicit val orderResponseReads: Reads[OrderResponse] = Json.reads[OrderResponse]
 }
 
 class SimpleClientZuoraRestService(
@@ -77,12 +80,6 @@ class SimpleClientZuoraRestService(
     EitherT(validated)
   }
 
-  private def validateCompletedOrder(restResponse: EitherT[String, Future, OrderResponse]): EitherT[String, Future, Unit] =
-    for {
-      response <- restResponse
-      _ <- EitherT.either(OrderResponse.completed(response))
-    } yield ()
-
   def cancelSubscription(
       subscriptionNumber: SubscriptionNumber,
       accountId: AccountId,
@@ -90,7 +87,7 @@ class SimpleClientZuoraRestService(
       maybeChargedThroughDate: Option[
         LocalDate,
       ], // FIXME: Optionality should probably be removed and semantics changed to cancellationEffectiveDate (see comments bellow)
-  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ Unit] = {
+  )(implicit ex: ExecutionContext, logPrefix: LogPrefix): Future[String \/ OrderNumber] = {
 
     // FIXME: Not always safe assumption. There are multiple scenarios to consider
     //   1. Free trial should be explicitly handled: val cancellationEffectiveDate = if(sub.startDate <= today && sub.acceptanceDate > today) LocalDate.now
@@ -109,7 +106,7 @@ class SimpleClientZuoraRestService(
       needsTermRenewal,
     )
 
-    validateCompletedOrder(EitherT(simpleRest.post[CancellationOrderRequest, OrderResponse]("orders", order))).run
+    simpleRest.post[CancellationOrderRequest, OrderResponse]("orders", order).map(_.map(_.orderNumber))
   }
 
   def updateCancellationReason(subscriptionNumber: SubscriptionNumber, userCancellationReason: String)(implicit
@@ -158,7 +155,7 @@ class SimpleClientZuoraRestService(
       applyFromDate,
     )
 
-    validateCompletedOrder(EitherT(simpleRest.post[ContributionAmountOrderRequest, OrderResponse]("orders", order))).run
+    simpleRest.post[ContributionAmountOrderRequest, OrderResponse]("orders", order).map(_.map(_ => ()))
   }
 
   def getCancellationEffectiveDate(subscriptionNumber: SubscriptionNumber)(implicit logPrefix: LogPrefix): Future[String \/ Option[String]] = {

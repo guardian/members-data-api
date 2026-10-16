@@ -21,6 +21,7 @@ import play.api.mvc.EssentialFilter
 import play.filters.cors.{CORSConfig, CORSFilter}
 import play.filters.csrf.CSRFComponents
 import router.Routes
+import services.cancellationsBus.{PublishCancellationEvent, PublishCancellationEventToEventBridge}
 import services.mail.{QueueName, SendEmail, SendEmailToSQS}
 import services.salesforce.ContactRepository
 import services.stripe.{BasicStripeService, ChooseStripe}
@@ -72,6 +73,9 @@ class MyComponents(context: Context)
   lazy val emailQueueName = QueueName(if (isProd) "braze-emails-PROD" else "braze-emails-CODE")
   lazy val sendEmail: SendEmail = new SendEmailToSQS(emailQueueName)
 
+  lazy val cancellationsBusName = if (isProd) "cancellations-bus-PROD" else "cancellations-bus-CODE"
+  lazy val publishCancellationEvent: PublishCancellationEvent = new PublishCancellationEventToEventBridge(cancellationsBusName)(executionContext)
+
   lazy val touchPointBackends = new TouchpointBackends(
     actorSystem,
     config,
@@ -113,7 +117,7 @@ class MyComponents(context: Context)
     new HealthCheckController(touchPointBackends, controllerComponents),
     new AttributeController(commonActions, controllerComponents, dbService, mobileSubscriptionService, addGuIdentityHeaders, createMetrics),
     new ExistingPaymentOptionsController(commonActions, controllerComponents, createMetrics),
-    new AccountController(commonActions, controllerComponents, dbService, sendEmail, createMetrics),
+    new AccountController(commonActions, controllerComponents, dbService, sendEmail, publishCancellationEvent, createMetrics),
     new PaymentUpdateController(commonActions, controllerComponents, sendEmail, createMetrics),
     new ContactController(commonActions, controllerComponents, createMetrics),
   )

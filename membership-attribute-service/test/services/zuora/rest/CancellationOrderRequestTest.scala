@@ -10,7 +10,7 @@ import okhttp3.{MediaType, Protocol, Request, Response => OkResponse, ResponseBo
 import okio.Buffer
 import org.joda.time.LocalDate
 import org.specs2.mutable.Specification
-import play.api.libs.json.Json
+import play.api.libs.json.{JsSuccess, Json}
 import scalaz.\/
 import scalaz.std.scalaFuture._
 import services.zuora.rest.SimpleClientZuoraRestService.OrderResponse
@@ -28,6 +28,7 @@ class CancellationOrderRequestTest extends Specification {
   private val subscriptionNumber = SubscriptionNumber("A-S01234567")
   private val orderDate = new LocalDate(2026, 8, 26)
   private val cancellationEffectiveDate = new LocalDate(2026, 9, 10)
+  private val orderNumber = OrderNumber.fromString("O-00005678").toOption.get
 
   "CancellationOrderRequest" should {
     "renew the term before cancelling when the paid period extends past the term" in {
@@ -90,20 +91,37 @@ class CancellationOrderRequestTest extends Specification {
   }
 
   "OrderResponse" should {
-    "only accept a completed Zuora order" in {
-      OrderResponse.completed(OrderResponse(success = true, status = Some("Completed"))) shouldEqual \/.right(())
-      OrderResponse.completed(OrderResponse(success = true, status = Some("Processing"))) shouldEqual \/.left(
-        "Zuora order completed with success = true and status = Processing",
-      )
-      OrderResponse.completed(OrderResponse(success = false, status = None)) shouldEqual \/.left(
-        "Zuora order completed with success = false and status = missing",
-      )
+    "read a completed order with its order number" in {
+      Json.parse("""{"success": true, "status": "Completed", "orderNumber": "O-00005678"}""").validate[OrderResponse] shouldEqual
+        JsSuccess(OrderResponse(orderNumber))
+    }
+
+    "fail to read a completed order with a missing or malformed order number" in {
+      Json.parse("""{"success": true, "status": "Completed"}""").validate[OrderResponse].isError should beTrue
+      Json.parse("""{"success": true, "status": "Completed", "orderNumber": "O 123!"}""").validate[OrderResponse].isError should beTrue
+      Json.parse("""{"success": true, "status": "Completed", "orderNumber": 123}""").validate[OrderResponse].isError should beTrue
+    }
+
+    "fail to read an order that is not completed, even if it has an order number" in {
+      Json.parse("""{"success": false}""").validate[OrderResponse].isError should beTrue
+      Json.parse("""{"success": false, "status": "Completed", "orderNumber": "O-00005678"}""").validate[OrderResponse].isError should beTrue
+      Json.parse("""{"success": true, "status": "Processing", "orderNumber": "O-00005678"}""").validate[OrderResponse].isError should beTrue
+      Json.parse("""{"success": true, "orderNumber": "O-00005678"}""").validate[OrderResponse].isError should beTrue
+    }
+  }
+
+  "OrderNumber" should {
+    "only accept letters, digits and hyphens" in {
+      OrderNumber.fromString("O-00005678").map(_.value) shouldEqual Right("O-00005678")
+      OrderNumber.fromString("").isLeft should beTrue
+      OrderNumber.fromString("O_00005678").isLeft should beTrue
+      OrderNumber.fromString("O-0000 5678").isLeft should beTrue
     }
   }
 
   "SimpleClientZuoraRestService" should {
     "post the cancellation order and only return once Zuora completes it" in {
-      val ordersClient = new RespondingClient("""{"success": true, "status": "Completed"}""")
+      val ordersClient = new RespondingClient("""{"success": true, "status": "Completed", "orderNumber": "O-00005678"}""")
       val zuoraConfig = ZuoraRestConfig("CODE", "https://example.com/v1", "user", "password")
       val restClient = SimpleClient(zuoraConfig, ordersClient)
       val service = new SimpleClientZuoraRestService(restClient, () => orderDate)
@@ -116,7 +134,7 @@ class CancellationOrderRequestTest extends Specification {
           Some(cancellationEffectiveDate),
         ),
         Duration.Inf,
-      ) shouldEqual \/.right(())
+      ) shouldEqual \/.right(orderNumber)
 
       ordersClient.request.url().toString() shouldEqual "https://example.com/v1/orders"
       ordersClient.request.method() shouldEqual "POST"
@@ -131,6 +149,19 @@ class CancellationOrderRequestTest extends Specification {
           needsTermRenewal = true,
         ),
       )
+    }
+
+    "return an error if Zuora does not complete the cancellation order" in {
+      val ordersClient = new RespondingClient("""{"success": true, "status": "Processing", "orderNumber": "O-00005678"}""")
+      val zuoraConfig = ZuoraRestConfig("CODE", "https://example.com/v1", "user", "password")
+      val service = new SimpleClientZuoraRestService(SimpleClient(zuoraConfig, ordersClient), () => orderDate)
+
+      val result = Await.result(
+        service.cancelSubscription(subscriptionNumber, accountId, new LocalDate(2026, 9, 1), Some(cancellationEffectiveDate)),
+        Duration.Inf,
+      )
+
+      result.isLeft should beTrue
     }
   }
 

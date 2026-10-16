@@ -3,7 +3,7 @@ import play.sbt.PlayImport
 
 object Dependencies {
 
-  val awsClientV2Version = "2.35.11"
+  val awsClientV2Version = "2.56.0"
 
   val sentryLogback = "io.sentry" % "sentry-logback" % "7.2.0"
   val identityAuth = "com.gu.identity" %% "identity-auth-play" % "5.0.0"
@@ -17,6 +17,7 @@ object Dependencies {
   val scanamo = "org.scanamo" %% "scanamo" % "4.0.0"
   val awsDynamo = "software.amazon.awssdk" % "dynamodb" % awsClientV2Version
   val awsSQS = "software.amazon.awssdk" % "sqs" % awsClientV2Version
+  val awsEventBridge = "software.amazon.awssdk" % "eventbridge" % awsClientV2Version
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.8"
   val anorm = "org.playframework.anorm" %% "anorm" % "2.7.0"
   val nettyVersion = "4.1.137.Final"
@@ -77,6 +78,7 @@ object Dependencies {
     scanamo,
     awsDynamo,
     awsSQS,
+    awsEventBridge,
     scalaz,
     specs2.exclude("org.specs2", "specs2-mock_2.13"),
     logback,
