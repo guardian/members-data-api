@@ -74,7 +74,7 @@ class ContributionAmountOrderRequestTest extends Specification {
 
   "SimpleClientZuoraRestService" should {
     "post the contribution amount order and only return once Zuora completes it" in {
-      val ordersClient = new RespondingClient("""{"success": true, "status": "Completed"}""")
+      val ordersClient = new RespondingClient("""{"success": true, "status": "Completed", "orderNumber": "O-00005678"}""")
       val zuoraConfig = ZuoraRestConfig("CODE", "https://example.com/v1", "user", "password")
       val service = new SimpleClientZuoraRestService(SimpleClient(zuoraConfig, ordersClient), () => orderDate)
 
