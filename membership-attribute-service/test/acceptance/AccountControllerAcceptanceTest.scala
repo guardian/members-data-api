@@ -527,7 +527,9 @@ class AccountControllerAcceptanceTest extends AcceptanceTest {
       ) was called
 
       sendEmailMock.send(emailData)(any) was called
-      publishCancellationEventMock.publish(CancellationEvent.forSelfServiceCancellation(subscriptionId, orderNumber).toOption.get)(any) was called
+      publishCancellationEventMock.publish(
+        CancellationEvent.forSelfServiceCancellation(SubscriptionNumber(subscriptionId), orderNumber).toOption.get,
+      )(any) was called
 
       supporterProductDataServiceMock wasNever called
       contactRepositoryMock wasNever calledAgain

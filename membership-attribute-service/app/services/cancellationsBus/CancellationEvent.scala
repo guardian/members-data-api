@@ -1,5 +1,6 @@
 package services.cancellationsBus
 
+import com.gu.memsub.Subscription.SubscriptionNumber
 import com.gu.monitoring.SafeLogger.LogPrefix
 import play.api.libs.json._
 import services.zuora.rest.OrderNumber
@@ -16,11 +17,11 @@ object CancellationEvent {
 
   private val ValidSubscriptionNumber = "^[A-Za-z0-9-]+$".r
 
-  def forSelfServiceCancellation(subscriptionNumber: String, orderNumber: OrderNumber): Either[String, CancellationEvent] =
+  def forSelfServiceCancellation(subscriptionNumber: SubscriptionNumber, orderNumber: OrderNumber): Either[String, CancellationEvent] =
     Either.cond(
-      ValidSubscriptionNumber.matches(subscriptionNumber),
-      new CancellationEvent(subscriptionNumber, orderNumber, allowUserNotifications = true),
-      s"invalid subscription number: '$subscriptionNumber'",
+      ValidSubscriptionNumber.matches(subscriptionNumber.getNumber),
+      new CancellationEvent(subscriptionNumber.getNumber, orderNumber, allowUserNotifications = true),
+      s"invalid subscription number: '${subscriptionNumber.getNumber}'",
     )
 
   implicit val writes: OWrites[CancellationEvent] = OWrites { event =>

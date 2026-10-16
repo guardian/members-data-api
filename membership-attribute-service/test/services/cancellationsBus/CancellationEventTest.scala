@@ -1,5 +1,6 @@
 package services.cancellationsBus
 
+import com.gu.memsub.Subscription.SubscriptionNumber
 import org.mockito.{ArgumentMatchersSugar, IdiomaticMockito}
 import org.mockito.captor.ArgCaptor
 import org.specs2.mutable.Specification
@@ -19,7 +20,7 @@ class CancellationEventTest extends Specification with IdiomaticMockito with Arg
   implicit private val executionContext: ExecutionContext = ExecutionContext.global
 
   private val orderNumber = OrderNumber.fromString("O-00005678").toOption.get
-  private val event = CancellationEvent.forSelfServiceCancellation("A-S00001234", orderNumber).toOption.get
+  private val event = CancellationEvent.forSelfServiceCancellation(SubscriptionNumber("A-S00001234"), orderNumber).toOption.get
 
   "CancellationEvent" should {
     "serialise to the shape expected by the cancellations bus listener" in {
@@ -32,9 +33,9 @@ class CancellationEventTest extends Specification with IdiomaticMockito with Arg
     }
 
     "reject an invalid subscription number" in {
-      CancellationEvent.forSelfServiceCancellation("", orderNumber).isLeft should beTrue
-      CancellationEvent.forSelfServiceCancellation("A-S0000 1234", orderNumber).isLeft should beTrue
-      CancellationEvent.forSelfServiceCancellation("A-S00001234\"}", orderNumber).isLeft should beTrue
+      CancellationEvent.forSelfServiceCancellation(SubscriptionNumber(""), orderNumber).isLeft should beTrue
+      CancellationEvent.forSelfServiceCancellation(SubscriptionNumber("A-S0000 1234"), orderNumber).isLeft should beTrue
+      CancellationEvent.forSelfServiceCancellation(SubscriptionNumber("A-S00001234\"}"), orderNumber).isLeft should beTrue
     }
   }
 

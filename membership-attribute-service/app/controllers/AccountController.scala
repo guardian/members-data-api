@@ -332,10 +332,8 @@ class AccountController(
       orderNumber: OrderNumber,
   )(implicit logPrefix: LogPrefix): EitherT[ApiError, Future, Unit] =
     (for {
-      event <- SimpleEitherT.fromEither(CancellationEvent.forSelfServiceCancellation(subscriptionNumber.getNumber, orderNumber))
-      _ <- SimpleEitherT(publishCancellationEvent.publish(event).map(_ => \/.right[String, Unit](())).recover { case exception =>
-        \/.left[String, Unit](s"Failed to publish cancellation event: $exception")
-      })
+      event <- SimpleEitherT.fromEither(CancellationEvent.forSelfServiceCancellation(subscriptionNumber, orderNumber))
+      _ <- SimpleEitherT.fromFuture(publishCancellationEvent.publish(event))(exception => s"Failed to publish cancellation event: $exception")
     } yield ()).leftMap(ApiError(_, "Cancellation event could not be published", 500))
 
   private[controllers] def validateContributionAmountUpdateForm(implicit request: Request[AnyContent]): Either[String, BigDecimal] = {
