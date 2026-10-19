@@ -7,7 +7,7 @@ import com.gu.monitoring.SafeLogger.LogPrefix
 import models.ApiError
 import org.joda.time.LocalDate
 import scalaz.{EitherT, Monad}
-import services.zuora.rest.ZuoraRestService
+import services.zuora.rest.{OrderNumber, ZuoraRestService}
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 
@@ -20,7 +20,7 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
       reason: Option[String],
       accountId: memsub.Subscription.AccountId,
       endOfTermDate: LocalDate,
-  )(implicit ec: ExecutionContext, logPrefix: LogPrefix): EitherT[ApiError, Future, Option[LocalDate]] =
+  )(implicit ec: ExecutionContext, logPrefix: LogPrefix): EitherT[ApiError, Future, OrderNumber] =
     (for {
       _ <- disableAutoPayOnlyIfAccountHasOneSubscription(accountId).leftMap(message => s"Failed to disable AutoPay: $message")
       _ <- reason match {
@@ -30,10 +30,10 @@ class CancelSubscription(subscriptionService: SubscriptionService[Future], zuora
           )
         case None => EitherT.rightT[String, Future, Unit](Future.successful(()))
       }
-      _ <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, accountId, endOfTermDate, cancellationEffectiveDate)).leftMap(message =>
-        s"Failed to execute Zuora cancellation proper: $message",
+      orderNumber <- EitherT(zuoraRestService.cancelSubscription(subscriptionNumber, accountId, endOfTermDate, cancellationEffectiveDate)).leftMap(
+        message => s"Failed to execute Zuora cancellation proper: $message",
       )
-    } yield cancellationEffectiveDate).leftMap(ApiError(_, "", 500))
+    } yield orderNumber).leftMap(ApiError(_, "", 500))
 
   /** If user has multiple subscriptions within the same billing account, then disabling auto-pay on the account would stop collecting payments for
     * all subscriptions including the non-cancelled ones. In this case debt would start to accumulate in the form of positive Zuora account balance,

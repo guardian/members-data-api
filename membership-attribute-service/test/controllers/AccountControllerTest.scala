@@ -7,6 +7,7 @@ import org.specs2.mutable.Specification
 import play.api.test.Helpers._
 import play.api.test._
 import services.FakePostgresService
+import services.cancellationsBus.PublishCancellationEvent
 import services.mail.SendEmail
 
 class AccountControllerTest extends Specification with IdiomaticMockito {
@@ -15,7 +16,14 @@ class AccountControllerTest extends Specification with IdiomaticMockito {
 
     val subName = "s1"
     val commonActions = mock[CommonActions]
-    val controller = new AccountController(commonActions, stubControllerComponents(), FakePostgresService("123"), mock[SendEmail], CreateNoopMetrics)
+    val controller = new AccountController(
+      commonActions,
+      stubControllerComponents(),
+      FakePostgresService("123"),
+      mock[SendEmail],
+      mock[PublishCancellationEvent],
+      CreateNoopMetrics,
+    )
     val request = FakeRequest("POST", s"/api/update/amount/contributions/$subName")
 
     "succeed when given value is valid" in {
