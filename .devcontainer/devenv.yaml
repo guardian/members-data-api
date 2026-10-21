@@ -22,6 +22,11 @@ forwardPorts:
   - 9400  # same port on host and container
 #  - "8000:9000"  # hostPort:containerPort
 
+# Optional: Extra switches for container generation (passed to `docker create`)
+
+runArgs:
+  - '--name=members-data-api-devcontainer' # override docker's auto-generated name
+
 # Optional: Mount directories from host to container
 # mounts:
 #   - "source=${localEnv:HOME}/.gu/example,target=/home/vscode/.gu/example,readonly,type=bind,consistency=cached"
