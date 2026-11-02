@@ -1,6 +1,5 @@
 package com.gu.monitoring
 
-import com.amazonaws.regions.{Region, Regions}
 import com.gu.monitoring.SafeLogger.LogPrefix
 
 class SalesforceMetrics(val stage: String, val application: String)
@@ -9,7 +8,6 @@ class SalesforceMetrics(val stage: String, val application: String)
     with RequestMetrics
     with AuthenticationMetrics {
 
-  val region = Region.getRegion(Regions.EU_WEST_1)
   val service = "Salesforce"
 
   def recordRequest()(implicit logPrefix: LogPrefix) {

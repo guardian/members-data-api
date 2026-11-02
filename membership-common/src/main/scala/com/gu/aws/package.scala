@@ -1,14 +1,16 @@
 package com.gu
 
-import com.amazonaws.auth.{InstanceProfileCredentialsProvider, AWSCredentialsProviderChain}
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProviderChain, InstanceProfileCredentialsProvider, ProfileCredentialsProvider}
 
 package object aws {
   val ProfileName = "membership"
 
-  lazy val CredentialsProvider = new AWSCredentialsProviderChain(
-    new ProfileCredentialsProvider(ProfileName),
-    new InstanceProfileCredentialsProvider(false),
-  )
+  lazy val CredentialsProvider = AwsCredentialsProviderChain
+    .builder()
+    .credentialsProviders(
+      ProfileCredentialsProvider.builder().profileName(ProfileName).build(),
+      InstanceProfileCredentialsProvider.create(),
+    )
+    .build()
 
 }
