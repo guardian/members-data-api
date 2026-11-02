@@ -1,14 +1,14 @@
 package monitoring
 
-import com.amazonaws.services.cloudwatch.model.StandardUnit
 import com.gu.monitoring.SafeLogging
+import software.amazon.awssdk.services.cloudwatch.model.StandardUnit
 import utils.SimpleEitherT
 import utils.SimpleEitherT.SimpleEitherT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Metrics(service: String, cloudwatch: CloudWatch) extends SafeLogging {
-  def incrementCount(metricName: String): Unit = cloudwatch.put(metricName + " count", 1, StandardUnit.Count)
+  def incrementCount(metricName: String): Unit = cloudwatch.put(metricName + " count", 1, StandardUnit.COUNT)
 
   def measureDurationEither[T](metricName: String)(block: => SimpleEitherT[T])(implicit ec: ExecutionContext): SimpleEitherT[T] =
     SimpleEitherT(measureDuration(metricName)(block.run))
@@ -20,7 +20,7 @@ case class Metrics(service: String, cloudwatch: CloudWatch) extends SafeLogging 
 
     def recordEnd[A](name: String)(value: A): A = {
       val duration = System.currentTimeMillis() - startTime
-      cloudwatch.put(name + " duration ms", duration.toDouble, StandardUnit.Milliseconds)
+      cloudwatch.put(name + " duration ms", duration.toDouble, StandardUnit.MILLISECONDS)
       logger.debug(s"$service $name completed in $duration ms")
 
       value

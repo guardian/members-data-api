@@ -1,11 +1,11 @@
 package monitoring
 
 import org.apache.pekko.actor.ActorSystem
-import com.amazonaws.regions.Regions.EU_WEST_1
-import com.amazonaws.services.cloudwatch.model.StandardUnit
-import com.amazonaws.services.cloudwatch.{AmazonCloudWatchAsync, AmazonCloudWatchAsyncClient}
 import com.gu.aws.CredentialsProvider
 import configuration.{ApplicationName, Stage}
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
+import software.amazon.awssdk.services.cloudwatch.model.StandardUnit
 
 import scala.concurrent.ExecutionContext
 
@@ -15,9 +15,10 @@ trait CreateMetrics {
 }
 
 class CreateRealMetrics(stage: Stage) extends CreateMetrics {
-  private val cloudwatch: AmazonCloudWatchAsync = AmazonCloudWatchAsyncClient.asyncBuilder
-    .withCredentials(CredentialsProvider)
-    .withRegion(EU_WEST_1)
+  private val cloudwatch: CloudWatchAsyncClient = CloudWatchAsyncClient
+    .builder()
+    .credentialsProvider(CredentialsProvider)
+    .region(Region.EU_WEST_1)
     .build()
 
   private def cloudWatchWrapper(service: Class[_]) =

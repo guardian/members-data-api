@@ -1,10 +1,8 @@
 package com.gu.monitoring
 
-import com.amazonaws.regions.{Region, Regions}
 import com.gu.monitoring.SafeLogger.LogPrefix
 
 trait ApplicationMetrics extends CloudWatch {
-  val region = Region.getRegion(Regions.EU_WEST_1)
   val application: String
   val stage: String
 }

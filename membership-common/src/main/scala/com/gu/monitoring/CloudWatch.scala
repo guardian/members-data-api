@@ -1,12 +1,10 @@
 package com.gu.monitoring
 
-import com.amazonaws.handlers.AsyncHandler
-import com.amazonaws.regions.Regions.EU_WEST_1
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient
-import com.amazonaws.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResult}
 import com.gu.aws.CredentialsProvider
-import com.gu.monitoring.CloudWatch.cloudwatch
 import com.gu.monitoring.SafeLogger.LogPrefix
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
+import software.amazon.awssdk.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, PutMetricDataResponse, StandardUnit}
 
 import java.util.concurrent.Future
 
@@ -14,43 +12,46 @@ trait CloudWatch extends SafeLogging {
   val stage: String
   val application: String
   val service: String
-  lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
-  lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
+  lazy val stageDimension = Dimension.builder().name("Stage").value(stage).build()
+  lazy val servicesDimension = Dimension.builder().name("Services").value(service).build()
   def mandatoryDimensions: Seq[Dimension] = Seq(stageDimension, servicesDimension)
+  protected def cloudWatchClient: CloudWatchAsyncClient = CloudWatch.cloudwatch
 
-  class LoggingAsyncHandler(implicit logPrefix: LogPrefix) extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] {
-    def onError(exception: Exception) {
-      logger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
-    }
-    def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult) {
-      logger.debug("CloudWatch PutMetricDataRequest - success")
-      CloudWatchHealth.hasPushedMetricSuccessfully = true
-    }
-  }
-
-  def put(name: String, count: Double, extraDimensions: Dimension*)(implicit logPrefix: LogPrefix): Future[PutMetricDataResult] = {
+  def put(name: String, count: Double, extraDimensions: Dimension*)(implicit logPrefix: LogPrefix): Future[PutMetricDataResponse] = {
     val metric =
-      new MetricDatum()
-        .withValue(count)
-        .withMetricName(name)
-        .withUnit("Count")
-        .withDimensions((mandatoryDimensions ++ extraDimensions): _*)
+      MetricDatum
+        .builder()
+        .value(count)
+        .metricName(name)
+        .unit(StandardUnit.COUNT)
+        .dimensions((mandatoryDimensions ++ extraDimensions): _*)
+        .build()
 
-    val request = new PutMetricDataRequest().withNamespace(application).withMetricData(metric)
+    val request = PutMetricDataRequest.builder().namespace(application).metricData(metric).build()
 
-    cloudwatch.putMetricDataAsync(request, new LoggingAsyncHandler)
+    val result = cloudWatchClient.putMetricData(request)
+    result.whenComplete { (_, exception) =>
+      if (exception != null) {
+        logger.info(s"CloudWatch PutMetricDataRequest error: ${exception.getMessage}")
+      } else {
+        logger.debug("CloudWatch PutMetricDataRequest - success")
+        CloudWatchHealth.hasPushedMetricSuccessfully = true
+      }
+    }
+    result
   }
 
   def put(name: String, count: Double, responseMethod: String)(implicit logPrefix: LogPrefix) {
-    put(name, count, new Dimension().withName("ResponseMethod").withValue(responseMethod))
+    put(name, count, Dimension.builder().name("ResponseMethod").value(responseMethod).build())
   }
 }
 
 object CloudWatch {
 
-  lazy val cloudwatch = AmazonCloudWatchAsyncClient.asyncBuilder
-    .withCredentials(CredentialsProvider)
-    .withRegion(EU_WEST_1)
+  lazy val cloudwatch = CloudWatchAsyncClient
+    .builder()
+    .credentialsProvider(CredentialsProvider)
+    .region(Region.EU_WEST_1)
     .build()
 
 }

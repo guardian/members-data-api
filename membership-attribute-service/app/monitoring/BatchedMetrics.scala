@@ -1,10 +1,9 @@
 package monitoring
 
 import org.apache.pekko.actor.ActorSystem
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
-import com.amazonaws.services.cloudwatch.model.StandardUnit
 import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
 import configuration.ApplicationName
+import software.amazon.awssdk.services.cloudwatch.model.StandardUnit
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -30,7 +29,7 @@ final class BatchedMetrics(
 
   private def publishAllMetrics(): Unit =
     countMap.foreach { case (key, value) =>
-      cloudwatch.put(key, value.doubleValue(), StandardUnit.Count)
+      cloudwatch.put(key, value.doubleValue(), StandardUnit.COUNT)
       resetCount(key)
     }
 }

@@ -5,9 +5,6 @@ object MembershipCommonDependencies {
   val playJsonVersion = "3.0.1"
   val specs2Version = "4.19.2"
 
-  // versions
-  val awsClientVersion = "1.12.472"
-  val dynamoDbVersion = "1.12.387"
   // libraries
   val supportInternationalisation =
     "com.gu" %% "support-internationalisation" % "0.16" exclude ("com.typesafe.scala-logging", "scala-logging_2.13") // it's not actually used and is the 2.13 version
@@ -22,14 +19,12 @@ object MembershipCommonDependencies {
   val specs2MatchersExtra = "org.specs2" %% "specs2-matcher-extra" % specs2Version
   val scalaTest = "org.scalatest" %% "scalatest" % "3.2.15"
   val diff = "com.softwaremill.diffx" %% "diffx-scalatest-should" % "0.9.0"
-  val localDynamoDB = "com.amazonaws" %% "DynamoDBLocal" % dynamoDbVersion
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
-  val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsClientVersion
-  val awsS3 = "com.amazonaws" % "aws-java-sdk-s3" % awsClientVersion
+  val awsCloudWatch = "software.amazon.awssdk" % "cloudwatch" % Dependencies.awsClientV2Version
+  val awsS3 = "software.amazon.awssdk" % "s3" % Dependencies.awsClientV2Version
   val okHttp = "com.squareup.okhttp3" % "okhttp" % "4.10.0"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.3.7"
   val libPhoneNumber = "com.googlecode.libphonenumber" % "libphonenumber" % "8.13.12"
-  val dynamoDB = "com.amazonaws" % "aws-java-sdk-dynamodb" % awsClientVersion
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val jacksonDatabind = "com.fasterxml.jackson.core" % "jackson-databind" % "2.14.2"
 
@@ -48,10 +43,10 @@ object MembershipCommonDependencies {
     diff % "test",
     scalaLogging,
     awsCloudWatch,
+    awsS3,
     okHttp,
     scalaz,
     libPhoneNumber,
-    dynamoDB,
     scalaXml,
     Dependencies.ionJava, // Replace excluded software.amazon.ion:ion-java (CVE-2024-21634)
   )

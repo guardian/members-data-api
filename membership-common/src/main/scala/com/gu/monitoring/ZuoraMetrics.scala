@@ -1,8 +1,9 @@
 package com.gu.monitoring
 
-import java.util.concurrent.{CompletableFuture, Future}
-import com.amazonaws.services.cloudwatch.model.{Dimension, PutMetricDataResult}
 import com.gu.monitoring.SafeLogger.LogPrefix
+import software.amazon.awssdk.services.cloudwatch.model.{Dimension, PutMetricDataResponse}
+
+import java.util.concurrent.{CompletableFuture, Future}
 
 class ZuoraMetrics(val stage: String, val application: String, val service: String = "Zuora")
     extends CloudWatch
@@ -15,6 +16,6 @@ class ZuoraMetrics(val stage: String, val application: String, val service: Stri
 
 // Dummy for tests, and as default argument so API clients do not have to change
 object NoOpZuoraMetrics extends ZuoraMetrics("dummy", "dummy") {
-  override def put(name: String, count: Double, extraDimensions: Dimension*)(implicit logPrefix: LogPrefix): Future[PutMetricDataResult] =
-    CompletableFuture.completedFuture(null.asInstanceOf[PutMetricDataResult])
+  override def put(name: String, count: Double, extraDimensions: Dimension*)(implicit logPrefix: LogPrefix): Future[PutMetricDataResponse] =
+    CompletableFuture.completedFuture(null.asInstanceOf[PutMetricDataResponse])
 }

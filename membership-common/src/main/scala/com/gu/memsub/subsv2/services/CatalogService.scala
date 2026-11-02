@@ -1,7 +1,5 @@
 package com.gu.memsub.subsv2.services
 
-import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.model.GetObjectRequest
 import com.gu.aws.AwsS3
 import com.gu.config.SubsV2ProductIds
 import com.gu.config.SubsV2ProductIds.ProductMap
@@ -18,6 +16,8 @@ import scalaz.syntax.functor.ToFunctorOps
 import scalaz.syntax.monad._
 import scalaz.syntax.std.either._
 import scalaz.{Functor, Monad, \/}
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 import scala.concurrent.Future
 
@@ -31,8 +31,12 @@ object FetchCatalog {
       logPrefix,
     )
 
-  def fromS3(zuoraEnvironment: String, s3Client: AmazonS3 = AwsS3.client)(implicit m: Monad[Future]): Future[String \/ JsValue] = {
-    val catalogRequest = new GetObjectRequest(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}", "catalog.json")
+  def fromS3(zuoraEnvironment: String, s3Client: S3Client = AwsS3.client)(implicit m: Monad[Future]): Future[String \/ JsValue] = {
+    val catalogRequest = GetObjectRequest
+      .builder()
+      .bucket(s"gu-zuora-catalog/PROD/Zuora-${zuoraEnvironment}")
+      .key("catalog.json")
+      .build()
     AwsS3.fetchJson(s3Client, catalogRequest)(LogPrefix.noLogPrefix).point[Future]
   }
 

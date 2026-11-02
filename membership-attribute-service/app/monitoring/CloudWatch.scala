@@ -1,36 +1,33 @@
 package monitoring
 
-import com.amazonaws.handlers.AsyncHandler
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync
-import com.amazonaws.services.cloudwatch.model._
 import com.gu.monitoring.SafeLogging
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
+import software.amazon.awssdk.services.cloudwatch.model.{Dimension, MetricDatum, PutMetricDataRequest, StandardUnit}
 
-class CloudWatch(stage: String, application: String, service: String, cloudwatch: AmazonCloudWatchAsync) extends SafeLogging {
-  private lazy val stageDimension = new Dimension().withName("Stage").withValue(stage)
-  private lazy val servicesDimension = new Dimension().withName("Services").withValue(service)
+class CloudWatch(stage: String, application: String, service: String, cloudwatch: CloudWatchAsyncClient) extends SafeLogging {
+  private lazy val stageDimension = Dimension.builder().name("Stage").value(stage).build()
+  private lazy val servicesDimension = Dimension.builder().name("Services").value(service).build()
 
   private val mandatoryDimensions = Seq(stageDimension, servicesDimension)
 
   protected[monitoring] def put(name: String, count: Double, unit: StandardUnit): Unit = {
     val metric =
-      new MetricDatum()
-        .withValue(count)
-        .withMetricName(name)
-        .withUnit(unit)
-        .withDimensions(mandatoryDimensions: _*)
+      MetricDatum
+        .builder()
+        .value(count)
+        .metricName(name)
+        .unit(unit)
+        .dimensions(mandatoryDimensions: _*)
+        .build()
 
-    val request = new PutMetricDataRequest().withNamespace(application).withMetricData(metric)
+    val request = PutMetricDataRequest.builder().namespace(application).metricData(metric).build()
 
-    cloudwatch.putMetricDataAsync(request, LoggingAsyncHandler)
-  }
-}
-
-object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, PutMetricDataResult] with SafeLogging {
-  def onError(exception: Exception): Unit = {
-    logger.errorNoPrefix(scrub"CloudWatch PutMetricDataRequest error: ${exception.getMessage}}")
-  }
-
-  def onSuccess(request: PutMetricDataRequest, result: PutMetricDataResult): Unit = {
-    logger.debug("CloudWatch PutMetricDataRequest - success")
+    cloudwatch.putMetricData(request).whenComplete { (_, exception) =>
+      if (exception != null) {
+        logger.errorNoPrefix(scrub"CloudWatch PutMetricDataRequest error: ${exception.getMessage}")
+      } else {
+        logger.debug("CloudWatch PutMetricDataRequest - success")
+      }
+    }
   }
 }
