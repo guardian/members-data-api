@@ -4,7 +4,7 @@ import com.gu.memsub.Subscription.{AccountId, RatePlanId, SubscriptionNumber, Su
 import com.gu.monitoring.SafeLogger.LogPrefix
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.zuora.ZuoraRestConfig
-import com.gu.zuora.rest.SimpleClient
+import com.gu.zuora.rest.{AccessTokenProvider, SimpleClient}
 import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3.{MediaType, Protocol, Request, Response => OkResponse, ResponseBody}
 import okio.Buffer
@@ -75,8 +75,12 @@ class ContributionAmountOrderRequestTest extends Specification {
   "SimpleClientZuoraRestService" should {
     "post the contribution amount order and only return once Zuora completes it" in {
       val ordersClient = new RespondingClient("""{"success": true, "status": "Completed", "orderNumber": "O-00005678"}""")
-      val zuoraConfig = ZuoraRestConfig("CODE", "https://example.com/v1", "user", "password")
-      val service = new SimpleClientZuoraRestService(SimpleClient(zuoraConfig, ordersClient), () => orderDate)
+      val zuoraConfig =
+        ZuoraRestConfig("CODE", "https://example.com/v1", "https://example.com/oauth/token", "client-id", "client-secret")
+      val service = new SimpleClientZuoraRestService(
+        SimpleClient(zuoraConfig, AccessTokenProvider.constant[Future]("access-token"), ordersClient),
+        () => orderDate,
+      )
 
       Await.result(
         service.updateChargeAmount(
