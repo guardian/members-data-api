@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.exceptions.TestFailedException
 import play.api.libs.json.{Json, Reads}
+import scalaz.std.list._
 import scalaz.{-\/, OptionT, Writer, \/}
 import utils.TestLogPrefix.testLogPrefix
 
@@ -51,8 +52,8 @@ class SimpleClientTest extends AnyFlatSpec {
       )
   }
 
-  val config = ZuoraRestConfig("DEV", "https://example.com", "user", "pass")
-  val noResponseClient = SimpleClient[M](config, noResponseRunner)
+  val config = ZuoraRestConfig("DEV", "https://example.com", "https://example.com/oauth/token", "client-id", "client-secret")
+  val noResponseClient = SimpleClient[M](config, AccessTokenProvider.constant[M]("access-token"), noResponseRunner)
 
   case class TestClass(in: String, bar: Int)
   implicit val r: Reads[TestClass] = Json.reads[TestClass]
@@ -65,13 +66,14 @@ class SimpleClientTest extends AnyFlatSpec {
     ).foreach { r =>
       val sentRequest = r.run.written.last
       sentRequest.url().toString() should be("https://example.com/foo/bar")
-      sentRequest.header("apiSecretAccessKey") should be("pass")
-      sentRequest.header("apiAccessKeyId") should be("user")
+      sentRequest.header("Authorization") should be("Bearer access-token")
+      sentRequest.header("apiSecretAccessKey") should be(null)
+      sentRequest.header("apiAccessKeyId") should be(null)
     }
   }
 
   it should "include the body string if it fails to parse the response as JSON post" in {
-    val badClient = SimpleClient[W](config, constRunner("bad json"))
+    val badClient = SimpleClient[W](config, AccessTokenProvider.constant[W]("access-token"), constRunner("bad json"))
 
     val result = badClient.post[String, Int]("foo/bar", "stuff")
 
@@ -82,7 +84,7 @@ class SimpleClientTest extends AnyFlatSpec {
   }
 
   it should "include the body string if it fails to parse the response as JSON put" in {
-    val badClient = SimpleClient[W](config, constRunner("bad json"))
+    val badClient = SimpleClient[W](config, AccessTokenProvider.constant[W]("access-token"), constRunner("bad json"))
 
     val result = badClient.put[String, Int]("foo/bar", "stuff")
 
@@ -93,10 +95,14 @@ class SimpleClientTest extends AnyFlatSpec {
   }
 
   it should "Return the body string parsed into a JSObject if it does contain valid JSON" in {
-    SimpleClient[W](config, constRunner("""{"in": "foo", "bar": 4}""")).post[String, TestClass]("foo/bar", "stuff").value should be(
+    SimpleClient[W](config, AccessTokenProvider.constant[W]("access-token"), constRunner("""{"in": "foo", "bar": 4}"""))
+      .post[String, TestClass]("foo/bar", "stuff")
+      .value should be(
       \/.right(TestClass("foo", 4)),
     )
-    SimpleClient[W](config, constRunner("""{"in": "foo", "bar": 4}""")).put[String, TestClass]("foo/bar", "stuff").value should be(
+    SimpleClient[W](config, AccessTokenProvider.constant[W]("access-token"), constRunner("""{"in": "foo", "bar": 4}"""))
+      .put[String, TestClass]("foo/bar", "stuff")
+      .value should be(
       \/.right(TestClass("foo", 4)),
     )
   }

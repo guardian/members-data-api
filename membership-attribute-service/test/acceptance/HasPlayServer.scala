@@ -38,6 +38,8 @@ trait HasPlayServer {
       "play.filters.csrf.header.bypassHeaders.Csrf-Token" -> "nocheck",
       "touchpoint.backend.environments.CODE.identity.apiUrl" -> identityServerUrl,
       "touchpoint.backend.environments.CODE.identity.apiToken" -> identityApiToken,
+      "touchpoint.backend.environments.CODE.zuora.api.clientId" -> "test-client-id",
+      "touchpoint.backend.environments.CODE.zuora.api.clientSecret" -> "test-client-secret",
     )
       .withFallback(devPublicConf)
       .withFallback(configuration)

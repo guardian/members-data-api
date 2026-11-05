@@ -12,6 +12,7 @@ import com.gu.monitoring.SafeLogging
 import com.gu.okhttp.RequestRunners
 import com.gu.touchpoint.TouchpointBackendConfig
 import com.gu.zuora.rest.SimpleClient
+import com.gu.zuora.rest.ZuoraAccessTokenProvider
 import com.gu.zuora.{ZuoraService, rest}
 import com.typesafe.config.Config
 import configuration.Stage
@@ -102,7 +103,11 @@ class TouchpointComponents(
     zuoraServiceOverride.getOrElse(simpleZuoraService)
   }
 
-  lazy val zuoraRestClient = SimpleClient(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
+  lazy val zuoraAccessTokenProvider =
+    new ZuoraAccessTokenProvider(backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(30.seconds))
+
+  lazy val zuoraRestClient =
+    SimpleClient(backendConfig.zuoraRest, zuoraAccessTokenProvider, RequestRunners.configurableFutureRunner(30.seconds))
 
   lazy val zuoraRestService: ZuoraRestService = {
     lazy val simpleClientZuoraRestService = new SimpleClientZuoraRestService(zuoraRestClient)
@@ -111,7 +116,8 @@ class TouchpointComponents(
 
   private lazy val futureCatalogNoPrefix: Future[Catalog] = {
     logger.infoNoPrefix(s"Loading catalog in $stage")
-    val catalogRestClient = rest.SimpleClient[Future](backendConfig.zuoraRest, RequestRunners.configurableFutureRunner(60.seconds))
+    val catalogRestClient =
+      rest.SimpleClient[Future](backendConfig.zuoraRest, zuoraAccessTokenProvider, RequestRunners.configurableFutureRunner(60.seconds))
     catalogServiceOverride.getOrElse(
       CatalogService
         .read(FetchCatalog.fromZuoraApi(catalogRestClient)(implicitly, LogPrefix.noLogPrefix), productIds)

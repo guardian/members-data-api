@@ -7,27 +7,32 @@ import com.gu.zuora.ZuoraRestConfig
 import okhttp3.{Response => OKHttpResponse, _}
 import play.api.libs.json.{JsValue, Json, Reads, Writes}
 import scalaz.syntax.std.either._
-import scalaz.syntax.functor.ToFunctorOps
-import scalaz.{Functor, \/}
+import scalaz.syntax.monad._
+import scalaz.{Monad, \/}
 
 import scala.util.{Success, Try}
 
 /** This is the smallest client required to talk to Zuora over REST It just authenticates calls, adds the right URL and lets you send JSON via a
   * particular request method
   */
-case class SimpleClient[M[_]: Functor](
+case class SimpleClient[M[_]: Monad](
     config: ZuoraRestConfig,
+    accessTokenProvider: AccessTokenProvider[M],
     client: HttpClient[M],
     metrics: ZuoraMetrics = NoOpZuoraMetrics,
 ) {
-  def authenticated(url: String)(implicit logPrefix: LogPrefix): Request.Builder = {
+  private def authenticated(url: String, accessToken: String)(implicit logPrefix: LogPrefix): Request.Builder = {
     metrics.countRequest() // to count total number of request hitting Zuora
 
     new Request.Builder()
-      .addHeader("apiSecretAccessKey", config.password)
-      .addHeader("apiAccessKeyId", config.username)
+      .addHeader("Authorization", s"Bearer $accessToken")
       .url(s"${config.url}/$url")
   }
+
+  private def execute(url: String)(buildRequest: Request.Builder => Request)(implicit logPrefix: LogPrefix): M[OKHttpResponse] =
+    accessTokenProvider.get().flatMap { accessToken =>
+      client.execute(buildRequest(authenticated(url, accessToken)))
+    }
 
   def isSuccess(statusCode: Int) = statusCode >= 200 && statusCode < 300
 
@@ -60,15 +65,15 @@ case class SimpleClient[M[_]: Functor](
   def jsonBody(in: JsValue): RequestBody = RequestBody.create(MediaType.parse("application/json"), in.toString())
 
   def get[B](url: String)(implicit r: Reads[B], logPrefix: LogPrefix): M[String \/ B] =
-    client.execute(authenticated(url).get.build).map(parseResponse(_)(r))
+    execute(url)(_.get.build).map(parseResponse(_)(r))
 
   def getJson(url: String)(implicit logPrefix: LogPrefix): M[String \/ JsValue] =
-    client.execute(authenticated(url).get.build).map(parseJson(_))
+    execute(url)(_.get.build).map(parseJson(_))
 
   def put[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A], logPrefix: LogPrefix): M[String \/ B] =
-    client.execute(authenticated(url).put(body(in)).build).map(parseResponse(_)(r))
+    execute(url)(_.put(body(in)).build).map(parseResponse(_)(r))
 
   def post[A, B](url: String, in: A)(implicit r: Reads[B], w: Writes[A], logPrefix: LogPrefix): M[String \/ B] =
-    client.execute(authenticated(url).post(body(in)).build).map(parseResponse(_)(r))
+    execute(url)(_.post(body(in)).build).map(parseResponse(_)(r))
 
 }
