@@ -4,7 +4,7 @@ import com.gu.memsub.Subscription.ProductRatePlanId
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.zuora.ZuoraRestConfig
-import com.gu.zuora.rest.{AccessTokenProvider, SimpleClient}
+import com.gu.zuora.rest.SimpleClient
 import com.typesafe.config.ConfigFactory
 import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
@@ -53,8 +53,8 @@ object CatalogServiceTest {
           .build()
     }
 
-    val restConfig = ZuoraRestConfig("foo", "http://localhost", "http://localhost/oauth/token", "client-id", "client-secret")
-    new SimpleClient[Id](restConfig, AccessTokenProvider.constant[Id]("access-token"), runner)
+    val restConfig = ZuoraRestConfig("foo", "http://localhost", "joe", "public")
+    new SimpleClient[Id](restConfig, runner)
   }
 
 }

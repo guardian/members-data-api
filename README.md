@@ -250,7 +250,7 @@ Application instances allow SSH via SSM tunnel, not via port 22,
 
 ## Enabling fine metrics
 
-To enable fine metrics for all http calls to external services (Zuora REST, Salesforce, etc), set this in config (either application.conf or s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf):
+To enable fine metrics for all http calls to external services (Zuora Rest and SOAP, Salesforce, etc), set this in config (either application.conf or s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf):
 
 `use-fine-metrics=true`
 
