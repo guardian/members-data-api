@@ -5,7 +5,7 @@ import com.gu.identity.IdapiConfig
 import com.gu.monitoring.SafeLogging
 import com.gu.salesforce.SalesforceConfig
 import com.gu.stripe.{BasicStripeServiceConfig, StripeServiceConfig}
-import com.gu.zuora.{ZuoraApiConfig, ZuoraRestConfig, ZuoraSoapConfig}
+import com.gu.zuora.{ZuoraApiConfig, ZuoraRestConfig}
 
 case class TouchpointBackendConfig(
     environmentName: String,
@@ -14,7 +14,6 @@ case class TouchpointBackendConfig(
     stripeUKMembership: StripeServiceConfig,
     stripeAUMembership: StripeServiceConfig,
     stripeTortoiseMedia: StripeServiceConfig,
-    zuoraSoap: ZuoraSoapConfig,
     zuoraRest: ZuoraRestConfig,
     idapi: IdapiConfig,
 )
@@ -31,7 +30,6 @@ object TouchpointBackendConfig extends SafeLogging {
       StripeServiceConfig.from(envBackendConf, environmentName, Country.UK), // uk-membership
       StripeServiceConfig.from(envBackendConf, environmentName, Country.Australia, variant = "au-membership"),
       StripeServiceConfig.from(envBackendConf, environmentName, Country.UK, variant = "tortoise-media"), // tortoise-media
-      ZuoraApiConfig.soap(envBackendConf, environmentName),
       ZuoraApiConfig.rest(envBackendConf, environmentName),
       IdapiConfig.from(envBackendConf, environmentName),
     )

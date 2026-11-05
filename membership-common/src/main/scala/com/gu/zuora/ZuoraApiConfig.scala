@@ -1,19 +1,32 @@
 package com.gu.zuora
 
+import com.typesafe.config.{Config, ConfigException}
 import io.lemonlabs.uri.Uri
 import io.lemonlabs.uri.typesafe.dsl._
 
 object ZuoraApiConfig {
+  private def required(c: Config, path: String): String = {
+    val value = c.getString(path)
+    if (value.trim.isEmpty) {
+      throw new ConfigException.BadValue(path, "must not be empty")
+    }
+    value
+  }
 
-  private def username(c: com.typesafe.config.Config) = c.getString("zuora.api.username")
-  private def password(c: com.typesafe.config.Config) = c.getString("zuora.api.password")
-
-  def soap(c: com.typesafe.config.Config, environmentName: String) =
-    ZuoraSoapConfig(environmentName, c.getString("zuora.api.url"), username(c), password(c))
-
-  def rest(c: com.typesafe.config.Config, environmentName: String) =
-    ZuoraRestConfig(environmentName, c.getString("zuora.api.restUrl"), username(c), password(c))
+  def rest(c: Config, environmentName: String) =
+    ZuoraRestConfig(
+      environmentName,
+      required(c, "zuora.api.restUrl"),
+      required(c, "zuora.api.oauthTokenUrl"),
+      required(c, "zuora.api.clientId"),
+      required(c, "zuora.api.clientSecret"),
+    )
 }
 
-case class ZuoraRestConfig(envName: String, url: Uri, username: String, password: String)
-case class ZuoraSoapConfig(envName: String, url: Uri, username: String, password: String)
+case class ZuoraRestConfig(
+    envName: String,
+    url: Uri,
+    oauthTokenUrl: Uri,
+    clientId: String,
+    clientSecret: String,
+)

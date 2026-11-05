@@ -52,6 +52,10 @@ from Stripe (Guardian Patrons only) and Zuora (digital and print subscriptions &
 (you may need to `brew install awscli` to get the command.)  
 `aws s3 cp s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf /etc/gu/ --profile membership`
 
+### Zuora OAuth configuration
+
+Before deploying a build that uses Zuora OAuth, the private configuration for the target stage must provide non-empty `touchpoint.backend.environments.<STAGE>.zuora.api.clientId` and `clientSecret` values. The application validates these values at startup so an instance with incomplete OAuth configuration will not become healthy.
+
 
 ## Running Locally
 
@@ -250,7 +254,7 @@ Application instances allow SSH via SSM tunnel, not via port 22,
 
 ## Enabling fine metrics
 
-To enable fine metrics for all http calls to external services (Zuora Rest and SOAP, Salesforce, etc), set this in config (either application.conf or s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf):
+To enable fine metrics for all http calls to external services (Zuora REST, Salesforce, etc), set this in config (either application.conf or s3://gu-reader-revenue-private/membership/members-data-api/DEV/members-data-api.private.conf):
 
 `use-fine-metrics=true`
 
