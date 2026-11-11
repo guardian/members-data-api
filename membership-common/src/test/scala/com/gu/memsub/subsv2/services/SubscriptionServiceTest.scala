@@ -14,7 +14,7 @@ import com.gu.memsub.{Subscription => _, _}
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.salesforce.ContactId
-import com.gu.zuora.rest.SimpleClient
+import com.gu.zuora.rest.{AccessTokenProvider, SimpleClient}
 import com.gu.zuora.{ZuoraClient, ZuoraRestConfig}
 import io.lemonlabs.uri.typesafe.dsl._
 import okhttp3._
@@ -68,7 +68,11 @@ class SubscriptionServiceTest extends Specification {
       }
   }
 
-  val rc = new SimpleClient[Id](ZuoraRestConfig("TESTS", "https://localhost", "foo", "bar"), subscriptions)
+  val rc = new SimpleClient[Id](
+    ZuoraRestConfig("TESTS", "https://localhost", "https://localhost/oauth/token", "client-id", "client-secret"),
+    AccessTokenProvider.constant[Id]("access-token"),
+    subscriptions,
+  )
   private val service = new SubscriptionService[Id](_ => catalog, rc, zuoraClient, () => LocalDate.parse("2025-01-01"))
 
   "Current Plan" should {
@@ -340,7 +344,7 @@ class SubscriptionServiceTest extends Specification {
       def salesforceAccountId = "bar"
     }
 
-    "Leverage the soap client to fetch subs by contact ID" in {
+    "Leverage the Zuora client to fetch subs by contact ID" in {
       val subs = service.current(contact)
       subs.map(_.subscriptionNumber.getNumber).sorted mustEqual List("A-S00890520", "A-S00890521") // from the test resources jsons
     }
