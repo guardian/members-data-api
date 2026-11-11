@@ -23,7 +23,6 @@ class CatReadsTest extends AnyFlatSpec {
         productId = ProductId("2c92c0f8574b2b8101574c4a9473068b"),
         productRatePlanCharges = Map(ProductRatePlanChargeId("2c92c0f958aa45600158ac00e19d5daf") -> Weekly),
         productTypeOption = Some(ProductType("Guardian Weekly")),
-        extraTaxApplies = true,
       ),
     )
 
@@ -67,7 +66,7 @@ class CatReadsTest extends AnyFlatSpec {
   }
 
   it should "mark a plan as extra tax applies when a charge has taxMode TaxExclusive" in {
-    val taxExclusivePlan = plans.find(_.id.get == "2c92c0f958aa455e0158aa6bc72f2aba")
+    val taxExclusivePlan = plans.find(_.id.get == "71a1889a1579daf14eedb5c64fe800c9")
     assert(taxExclusivePlan.exists(_.extraTaxApplies))
   }
 

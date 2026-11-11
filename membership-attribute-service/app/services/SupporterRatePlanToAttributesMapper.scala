@@ -102,6 +102,14 @@ object SupporterRatePlanToAttributesMapper {
   private val prodMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
     List(Catalog.guardianPatronProductRatePlanId.get) -> guardianPatronTransformer,
     List(
+      "8a129ea1a16a27c601a182e43653374e", // Masthead annual
+      "8a1281f6a16a0c6601a182e42a16515d", // Masthead monthly
+      "8a128b8ba16a0c6401a182e439a635d4", // Headline annual
+      "8a12998ba16a27c201a182e42eeb69e3", // Headline monthly
+      "8a128e62a16a0c6d01a182e432a00e12", // Byline annual
+      "8a129187a16a27bd01a182e427110a3e", // Byline monthly
+    ) -> guardianPatronTransformer,
+    List(
       "8a12865b8219d9b401822106192b64dc",
       "8a12865b8219d9b40182210618a464ba",
     ) -> supporterPlusTransformer,
@@ -244,6 +252,14 @@ object SupporterRatePlanToAttributesMapper {
 
   private val codeMappings: Map[List[ProductRatePlanId], AttributeTransformer] = Map(
     List(Catalog.guardianPatronProductRatePlanId.get) -> guardianPatronTransformer,
+    List(
+      "8529f4fa66cc413c942dc679592614bf", // Masthead annual
+      "6a36545502eb403296d4d8baa835a4bb", // Masthead monthly
+      "9fd51e81e0a04b289e29ad59dc720c71", // Headline annual
+      "96fedf12414146dfb779e8da3abea844", // Headline monthly
+      "a3922119499242fcafefb15261cd9df9", // Byline annual
+      "f5dceb89ca7947d6b3d92c024fc313ca", // Byline monthly
+    ) -> guardianPatronTransformer,
     List(
       "8ad09fc281de1ce70181de3b251736a4",
       "8ad09fc281de1ce70181de3b28ee3783",
