@@ -41,6 +41,30 @@ class SupporterRatePlanToAttributesMapperTest extends Specification {
       )
     }
 
+    "identify the Zuora Masthead, Headline and Byline Patron plans" in {
+      testMapper(
+        Map(
+          "PROD" -> List(
+            "8a129ea1a16a27c601a182e43653374e",
+            "8a1281f6a16a0c6601a182e42a16515d",
+            "8a128b8ba16a0c6401a182e439a635d4",
+            "8a12998ba16a27c201a182e42eeb69e3",
+            "8a128e62a16a0c6d01a182e432a00e12",
+            "8a129187a16a27bd01a182e427110a3e",
+          ).map(ratePlanItem(_)),
+          "CODE" -> List(
+            "8529f4fa66cc413c942dc679592614bf",
+            "6a36545502eb403296d4d8baa835a4bb",
+            "9fd51e81e0a04b289e29ad59dc720c71",
+            "96fedf12414146dfb779e8da3abea844",
+            "a3922119499242fcafefb15261cd9df9",
+            "f5dceb89ca7947d6b3d92c024fc313ca",
+          ).map(ratePlanItem(_)),
+        ),
+        _ should beSome.which(_.GuardianPatronExpiryDate should beSome(termEndDate)),
+      )
+    }
+
     "identify a monthly contribution" in {
       testMapper(
         Map(

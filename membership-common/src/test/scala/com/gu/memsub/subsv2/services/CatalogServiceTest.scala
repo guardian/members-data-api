@@ -1,6 +1,6 @@
 package com.gu.memsub.subsv2.services
 import com.gu.config.SubsV2ProductIds
-import com.gu.memsub.Subscription.ProductRatePlanId
+import com.gu.memsub.Subscription.{ProductId, ProductRatePlanId}
 import com.gu.monitoring.SafeLogger
 import com.gu.okhttp.RequestRunners.HttpClient
 import com.gu.zuora.ZuoraRestConfig
@@ -30,7 +30,20 @@ class CatalogServiceTest extends Specification {
 
       val tierThreeProductId = ids.find(_._2 == com.gu.memsub.Product.TierThree).get._1 // TODO might need to do this better
       val tierThree = cats.productRatePlans.collect { case (_, plan) if plan.productId == tierThreeProductId => plan }.toList
-      tierThree.size must beEqualTo(4)
+      tierThree.size must beEqualTo(8)
+
+      val patronProductId = ProductId(dev.getString("touchpoint.backend.environments.CODE.zuora.productIds.membership.patron"))
+      val patronPlans = cats.productRatePlans.values.filter(_.productId == patronProductId).map(_.name).toSet
+      patronPlans must contain(
+        allOf(
+          "Patrons Masthead - annual",
+          "Patrons Masthead - monthly",
+          "Patrons Headline - annual",
+          "Patrons Headline - monthly",
+          "Patrons Byline - annual",
+          "Patrons Byline - monthly",
+        ),
+      )
 
       val guardianAdLite = cats.productRatePlans(ProductRatePlanId("71a1bebf6be9444afad446c5ebaf0019"))
       guardianAdLite.productType.productTypeString must beEqualTo("Guardian Ad-Lite")
